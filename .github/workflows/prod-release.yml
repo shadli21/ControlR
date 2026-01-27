@@ -22,6 +22,7 @@ jobs:
   docker-deploy:
     name: Deploy to Docker Hub
     uses: ./.github/workflows/docker-deploy.yml
+    secrets: inherit
     with:
       docker_tag: latest
       run_id: ${{ inputs.run_id }}
@@ -33,6 +34,7 @@ jobs:
     name: Create GitHub Release
     needs: docker-deploy
     uses: ./.github/workflows/github-release.yml
+    secrets: inherit
     with:
       prerelease: ${{ inputs.prerelease }}
       run_id: ${{ inputs.run_id }}
@@ -43,6 +45,7 @@ jobs:
     name: Publish NuGet Packages
     needs: docker-deploy
     uses: ./.github/workflows/publish-nugets.yml
+    secrets: inherit
     with:
       run_id: ${{ inputs.run_id }}
     permissions:
