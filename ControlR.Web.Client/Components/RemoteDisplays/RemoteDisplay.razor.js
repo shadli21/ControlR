@@ -2,6 +2,8 @@
 
 const MAX_KEYPRESS_AGE_MS = 5000;
 
+/** @typedef {"scale" | "fit" | "stretch" | "unknown"} ViewMode */
+
 class State {
   /** @type {CanvasRenderingContext2D} */
   canvas2dContext;
@@ -15,8 +17,14 @@ class State {
   currentPointerType;
   /** @type {boolean} */
   isDragging;
+  /** @type {boolean} */
+  isPanning;
   /** @type {number} */
   lastMouseMove;
+  /** @type {number} */
+  lastPanClientX;
+  /** @type {number} */
+  lastPanClientY;
   /** @type {boolean} */
   longPressStarted;
   /** @type {number} */
@@ -44,7 +52,7 @@ class State {
 
   constructor() {
     this.windowEventHandlers = [];
-    this.touchList = {length: 0};
+    this.touchList = { length: 0 };
     this.previousPinchDistance = -1;
     this.mouseMoveTimeout = -1;
     this.touchClickTimeout = -1;
@@ -52,6 +60,49 @@ class State {
     this.mutationObserver = null;
     this.pressedKeysWithCode = new Map();
     this.cleanupIntervalId = -1;
+
+    // Single-finger panning state
+    this.isPanning = false;
+    this.lastPanClientX = -1;
+    this.lastPanClientY = -1;
+
+    // Panning inertia state (velocity in pixels per ms)
+    this.panVelocityX = 0;
+    this.panVelocityY = 0;
+    this.panAnimationFrameId = -1;
+    this.lastPanTime = -1;
+  }
+
+  get isScrollModeEnabled() {
+    if (!this.canvasElement) {
+      return false;
+    }
+
+    return this.canvasElement.classList.contains("scroll-mode");
+  }
+
+  get isMinimized() {
+    if (!this.canvasElement) {
+      return false;
+    }
+    return this.canvasElement.classList.contains("minimized");
+  }
+
+  /** @returns {ViewMode} */
+  get viewMode() {
+    if (!this.canvasElement) {
+      return "unknown";
+    }
+    if (this.canvasElement.classList.contains("scale")) {
+      return "scale";
+    }
+    if (this.canvasElement.classList.contains("fit")) {
+      return "fit";
+    }
+    if (this.canvasElement.classList.contains("stretch")) {
+      return "stretch";
+    }
+    return "unknown";
   }
 
   /**
@@ -104,18 +155,18 @@ class WindowEventHandler {
  * @param {number} cursorY - Cursor Y position relative to canvas
  */
 export async function applyMouseWheelZoom(contentDiv, canvasRef, canvasCssWidth, canvasCssHeight, widthChange, heightChange, cursorX, cursorY) {
-    canvasRef.style.width = `${canvasCssWidth}px`;
-    canvasRef.style.height = `${canvasCssHeight}px`;
+  canvasRef.style.width = `${canvasCssWidth}px`;
+  canvasRef.style.height = `${canvasCssHeight}px`;
 
-    // Calculate cursor position as percentage of canvas
-    const cursorPercentX = cursorX / canvasRef.clientWidth;
-    const cursorPercentY = cursorY / canvasRef.clientHeight;
+  // Calculate cursor position as percentage of canvas
+  const cursorPercentX = cursorX / canvasRef.clientWidth;
+  const cursorPercentY = cursorY / canvasRef.clientHeight;
 
-    // Scroll to maintain cursor position relative to the canvas
-    const scrollByX = widthChange * cursorPercentX;
-    const scrollByY = heightChange * cursorPercentY;
+  // Scroll to maintain cursor position relative to the canvas
+  const scrollByX = widthChange * cursorPercentX;
+  const scrollByY = heightChange * cursorPercentY;
 
-    contentDiv.scrollBy(scrollByX, scrollByY);
+  contentDiv.scrollBy(scrollByX, scrollByY);
 }
 
 /**
@@ -130,17 +181,17 @@ export async function applyMouseWheelZoom(contentDiv, canvasRef, canvasCssWidth,
  * @param {number} scrollDeltaY
  */
 export async function applyPinchZoom(contentDiv, canvasRef, canvasCssWidth, canvasCssHeight, widthChange, heightChange, scrollDeltaX, scrollDeltaY) {
-    canvasRef.style.width = `${canvasCssWidth}px`;
-    canvasRef.style.height = `${canvasCssHeight}px`;
+  canvasRef.style.width = `${canvasCssWidth}px`;
+  canvasRef.style.height = `${canvasCssHeight}px`;
 
-    // center of the visible client area expressed as a percent of the full scrollable size
-    const clientCenterPercentX = (contentDiv.scrollLeft + contentDiv.clientWidth * 0.5) / contentDiv.scrollWidth;
-    const clientCenterPercentY = (contentDiv.scrollTop + contentDiv.clientHeight * 0.5) / contentDiv.scrollHeight;
+  // center of the visible client area expressed as a percent of the full scrollable size
+  const clientCenterPercentX = (contentDiv.scrollLeft + contentDiv.clientWidth * 0.5) / contentDiv.scrollWidth;
+  const clientCenterPercentY = (contentDiv.scrollTop + contentDiv.clientHeight * 0.5) / contentDiv.scrollHeight;
 
-    const scrollByX = widthChange * clientCenterPercentX;
-    const scrollByY = heightChange * clientCenterPercentY;
+  const scrollByX = widthChange * clientCenterPercentX;
+  const scrollByY = heightChange * clientCenterPercentY;
 
-    contentDiv.scrollBy(scrollByX + scrollDeltaX * 2, scrollByY + scrollDeltaY * 2);
+  contentDiv.scrollBy(scrollByX + scrollDeltaX * 2, scrollByY + scrollDeltaY * 2);
 }
 
 /**
@@ -186,13 +237,13 @@ export async function initialize(componentRef, canvasId) {
 
   // Create a MutationObserver that watches for the canvas being removed from the DOM.
   // We observe document.body with subtree:true to catch removals anywhere in the tree.
-  // When the canvas is no longer contained in the document we call dispose to clean up.
+  // When the canvas is no longer contained in the document, we call dispose to clean up.
   try {
     const observer = new MutationObserver(() => {
       try {
         if (!document.body.contains(canvas)) {
           // disconnect first to avoid re-entrancy
-          try { observer.disconnect(); } catch (e) {}
+          try { observer.disconnect(); } catch (e) { }
           // call dispose to run cleanup logic
           try { dispose(canvasId); } catch (e) { console.error('Error disposing canvas after removal', e); }
         }
@@ -203,7 +254,6 @@ export async function initialize(componentRef, canvasId) {
     observer.observe(document.body, { childList: true, subtree: true });
     state.mutationObserver = observer;
   } catch (e) {
-    // In very constrained environments MutationObserver may not be available; ignore safely.
     console.warn('MutationObserver not available or failed to initialize', e);
     state.mutationObserver = null;
   }
@@ -213,7 +263,7 @@ export async function initialize(componentRef, canvasId) {
       return;
     }
 
-    if (canvas.classList.contains("scroll-mode")) {
+    if (state.isScrollModeEnabled) {
       ev.preventDefault();
       ev.stopPropagation();
       return;
@@ -228,8 +278,16 @@ export async function initialize(componentRef, canvasId) {
       await sendMouseButtonEvent(ev.offsetX, ev.offsetY, false, 0, state);
     }
 
+    // If we were panning, start inertia on lift
+    if (state.isPanning) {
+      const screenArea = canvas.parentElement;
+      if (screenArea) {
+        startPanInertia(state, screenArea);
+      }
+    }
+
     resetTouchState(state);
-  });
+  }, { passive: false });
 
   canvas.addEventListener("pointercancel", () => {
     resetTouchState(state);
@@ -242,13 +300,11 @@ export async function initialize(componentRef, canvasId) {
   });
 
   canvas.addEventListener("pointermove", async ev => {
-    state.pointerDownEvent = ev;
-    
-    if (canvas.classList.contains("minimized")) {
+    if (state.isMinimized) {
       return;
     }
 
-    if (canvas.classList.contains("scroll-mode")) {
+    if (state.isScrollModeEnabled) {
       ev.preventDefault();
       ev.stopPropagation();
 
@@ -288,31 +344,89 @@ export async function initialize(componentRef, canvasId) {
       ev.preventDefault();
       ev.stopPropagation();
       await sendPointerMove(ev.offsetX, ev.offsetY, state, true);
+      return;
     }
-  })
+
+    // Single-finger panning in scaled view: emulate native pan by scrolling the parent container.
+    if (state.viewMode === "scale" &&
+      state.currentPointerType === "touch" &&
+      state.touchList.length === 1 &&
+      !state.longPressStarted && !state.isDragging) {
+
+      const screenArea = canvas.parentElement;
+      if (screenArea) {
+        ev.preventDefault();
+
+        const now = performance.now();
+        const dt = state.lastPanTime > 0 ? Math.max(1, now - state.lastPanTime) : 16;
+
+        // Prefer movementX/Y when available (negate to match existing dx convention)
+        const deltaX = typeof ev.movementX === 'number' ? -ev.movementX : (state.lastPanClientX - ev.clientX);
+        const deltaY = typeof ev.movementY === 'number' ? -ev.movementY : (state.lastPanClientY - ev.clientY);
+
+        if (!state.isPanning) {
+          state.isPanning = true;
+          state.lastPanClientX = ev.clientX;
+          state.lastPanClientY = ev.clientY;
+          // Initialize velocity
+          state.panVelocityX = deltaX / dt;
+          state.panVelocityY = deltaY / dt;
+          stopPanInertia(state);
+          state.lastPanTime = now;
+        } else {
+          // Immediate scroll for responsive feel
+          screenArea.scrollBy(deltaX, deltaY);
+
+          // Smooth velocity (pixels per ms). alpha closer to 1 preserves previous velocity
+          const vx = deltaX / dt;
+          const vy = deltaY / dt;
+          const alpha = 0.75;
+          state.panVelocityX = state.panVelocityX * alpha + vx * (1 - alpha);
+          state.panVelocityY = state.panVelocityY * alpha + vy * (1 - alpha);
+
+          state.lastPanClientX = ev.clientX;
+          state.lastPanClientY = ev.clientY;
+          state.lastPanTime = now;
+        }
+
+        return;
+      }
+    }
+  }, { passive: false });
 
   canvas.addEventListener("pointerdown", ev => {
     state.currentPointerType = ev.pointerType;
     state.pointerDownEvent = ev;
-  });
+    // Stop any ongoing inertia when user starts a new interaction
+    stopPanInertia(state);
+    state.lastPanTime = -1;
+  }, { passive: false });
 
   canvas.addEventListener("pointerenter", ev => {
     state.currentPointerType = ev.pointerType;
+  }, { passive: false });
+
+  canvas.addEventListener("touchstart", ev => {
+    state.touchList = ev.touches;
+  });
+
+  canvas.addEventListener("touchend", ev => {
+    state.touchList = ev.touches;
   });
 
   canvas.addEventListener("touchmove", ev => {
-    if (state.longPressStarted || state.isDragging || canvas.classList.contains("scroll-mode")) {
+    if (state.longPressStarted || state.isDragging || state.isScrollModeEnabled) {
       ev.preventDefault();
     }
-  });
+  }, { passive: false });
 
   canvas.addEventListener("mousemove", async ev => {
-    if (canvas.classList.contains("minimized")) {
+    if (state.isMinimized) {
       return;
     }
 
     await sendPointerMove(ev.offsetX, ev.offsetY, state, true);
-  });
+  }, { passive: false });
 
   canvas.addEventListener("mousedown", async ev => {
     ev.stopPropagation();
@@ -325,12 +439,12 @@ export async function initialize(componentRef, canvasId) {
       ev.preventDefault();
     }
 
-    if (canvas.classList.contains("minimized")) {
+    if (state.isMinimized) {
       return;
     }
 
     await sendMouseButtonEvent(ev.offsetX, ev.offsetY, true, ev.button, state);
-  });
+  }, { passive: false });
 
   canvas.addEventListener("mouseup", async ev => {
     ev.stopPropagation();
@@ -343,12 +457,12 @@ export async function initialize(componentRef, canvasId) {
       ev.preventDefault();
     }
 
-    if (canvas.classList.contains("minimized")) {
+    if (state.isMinimized) {
       return;
     }
 
     await sendMouseButtonEvent(ev.offsetX, ev.offsetY, false, ev.button, state);
-  });
+  }, { passive: false });
 
   canvas.addEventListener("click", async ev => {
     ev.stopPropagation();
@@ -363,7 +477,7 @@ export async function initialize(componentRef, canvasId) {
         await sendMouseClick(ev.offsetX, ev.offsetY, ev.button, false, state);
       },
       500);
-  });
+  }, { passive: false });
 
   canvas.addEventListener("dblclick", async ev => {
     ev.stopPropagation();
@@ -374,14 +488,14 @@ export async function initialize(componentRef, canvasId) {
 
     window.clearTimeout(state.touchClickTimeout);
     await sendMouseClick(ev.offsetX, ev.offsetY, ev.button, true, state);
-  });
+  }, { passive: false });
 
   canvas.addEventListener("contextmenu", async ev => {
     ev.preventDefault();
     ev.stopPropagation();
 
-    if (canvas.classList.contains("minimized") ||
-      canvas.classList.contains("scroll-mode")) {
+    if (state.isMinimized ||
+      state.isScrollModeEnabled) {
       return;
     }
 
@@ -389,8 +503,13 @@ export async function initialize(componentRef, canvasId) {
       state.longPressStarted = true;
       state.longPressStartOffsetX = ev.offsetX;
       state.longPressStartOffsetY = ev.offsetY;
+      // Cancel any single-finger panning candidate so subsequent moves can start a drag
+      state.isPanning = false;
+      state.lastPanClientX = -1;
+      state.lastPanClientY = -1;
+      stopPanInertia(state);
     }
-  });
+  }, { passive: false });
 
   /** @param {KeyboardEvent} ev */
   const onKeyDown = async (ev) => {
@@ -398,7 +517,7 @@ export async function initialize(componentRef, canvasId) {
       return;
     }
 
-    if (canvas.classList.contains("minimized")) {
+    if (state.isMinimized) {
       return;
     }
 
@@ -421,7 +540,7 @@ export async function initialize(componentRef, canvasId) {
 
     await state.invokeDotNet("SendKeyEvent", ev.key, codeToSend, true);
   };
-  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keydown", onKeyDown, { passive: false });
   state.windowEventHandlers.push(new WindowEventHandler("keydown", onKeyDown));
 
   /** @param {KeyboardEvent} ev */
@@ -430,7 +549,7 @@ export async function initialize(componentRef, canvasId) {
       return;
     }
 
-    if (canvas.classList.contains("minimized")) {
+    if (state.isMinimized) {
       return;
     }
 
@@ -446,7 +565,7 @@ export async function initialize(componentRef, canvasId) {
 
     state.invokeDotNet("SendKeyEvent", ev.key, codeToSend, false);
   }
-  window.addEventListener("keyup", onKeyUp);
+  window.addEventListener("keyup", onKeyUp, { passive: false });
   state.windowEventHandlers.push(new WindowEventHandler("keyup", onKeyUp));
 
   const onBlur = async () => {
@@ -454,7 +573,7 @@ export async function initialize(componentRef, canvasId) {
     state.pressedKeysWithCode.clear();
     await state.invokeDotNet("SendKeyboardStateReset");
   }
-  window.addEventListener("blur", onBlur);
+  window.addEventListener("blur", onBlur, { passive: false });
   state.windowEventHandlers.push(new WindowEventHandler("blur", onBlur));
 
   // Start periodic cleanup of orphaned tracking entries
@@ -479,40 +598,6 @@ export async function initialize(componentRef, canvasId) {
 }
 
 /**
- *
- * @param {string} canvasId
- */
-export async function dispose(canvasId) {
-  const state = getState(canvasId);
-
-  // Disconnect mutation observer if present
-  try {
-    if (state.mutationObserver) {
-      try { state.mutationObserver.disconnect(); } catch (e) {}
-      state.mutationObserver = null;
-    }
-  } catch (e) {
-    // ignore
-  }
-
-  // Stop cleanup interval
-  try {
-    if (state.cleanupIntervalId !== -1) {
-      window.clearInterval(state.cleanupIntervalId);
-      state.cleanupIntervalId = -1;
-    }
-  } catch (e) {
-    // ignore
-  }
-
-  state.windowEventHandlers.forEach(x => {
-    console.log("Removing event handler: ", x);
-    window.removeEventListener(x.type, x.handler);
-  })
-  delete window[`controlr-canvas-${canvasId}`];
-}
-
-/**
  * Applies auto-pan based on cursor position relative to the screen-area div.
  * @param {string} canvasId
  * @param {HTMLDivElement} screenArea
@@ -526,7 +611,7 @@ export async function applyAutoPan(canvasId, screenArea, pageX, pageY) {
     }
 
     const rect = screenArea.getBoundingClientRect();
-    
+
     // Calculate cursor position relative to screen-area div
     const offsetX = pageX - rect.left;
     const offsetY = pageY - rect.top;
@@ -571,6 +656,41 @@ export async function applyAutoPan(canvasId, screenArea, pageX, pageY) {
   }
 }
 
+
+/**
+ *
+ * @param {string} canvasId
+ */
+async function dispose(canvasId) {
+  const state = getState(canvasId);
+
+  // Disconnect mutation observer if present
+  try {
+    if (state.mutationObserver) {
+      try { state.mutationObserver.disconnect(); } catch (e) { }
+      state.mutationObserver = null;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Stop cleanup interval
+  try {
+    if (state.cleanupIntervalId !== -1) {
+      window.clearInterval(state.cleanupIntervalId);
+      state.cleanupIntervalId = -1;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  state.windowEventHandlers.forEach(x => {
+    console.log("Removing event handler: ", x);
+    window.removeEventListener(x.type, x.handler, { passive: false });
+  })
+  delete window[`controlr-canvas-${canvasId}`];
+}
+
 /**
  * @param {number} point1X
  * @param {number} point1Y
@@ -601,7 +721,35 @@ function getState(canvasId) {
 function resetTouchState(state) {
   state.longPressStarted = false;
   state.isDragging = false;
-  state.canvasElement.parentElement.style.touchAction = "";
+  state.isPanning = false;
+}
+
+/**
+ *
+ * @param {number} offsetX
+ * @param {number} offsetY
+ * @param {boolean} isPressed
+ * @param {number} button
+ * @param {State} state
+ */
+async function sendMouseButtonEvent(offsetX, offsetY, isPressed, button, state) {
+  const percentX = offsetX / state.canvasElement.clientWidth;
+  const percentY = offsetY / state.canvasElement.clientHeight;
+  await state.invokeDotNet("SendMouseButtonEvent", button, isPressed, percentX, percentY);
+}
+
+/**
+ *
+ * @param {number} offsetX
+ * @param {number} offsetY
+ * @param {number} button
+ * @param {boolean} isDoubleClick
+ * @param {State} state
+ */
+async function sendMouseClick(offsetX, offsetY, button, isDoubleClick, state) {
+  const percentX = offsetX / state.canvasElement.clientWidth;
+  const percentY = offsetY / state.canvasElement.clientHeight;
+  await state.invokeDotNet("SendMouseClick", button, isDoubleClick, percentX, percentY);
 }
 
 /**
@@ -636,29 +784,50 @@ async function sendPointerMove(offsetX, offsetY, state, throttle = false) {
 }
 
 /**
- *
- * @param {number} offsetX
- * @param {number} offsetY
- * @param {boolean} isPressed
- * @param {number} button
+ * Start inertia animation using pan velocities (pixels per ms).
  * @param {State} state
+ * @param {HTMLElement} screenArea
  */
-async function sendMouseButtonEvent(offsetX, offsetY, isPressed, button, state) {
-  const percentX = offsetX / state.canvasElement.clientWidth;
-  const percentY = offsetY / state.canvasElement.clientHeight;
-  await state.invokeDotNet("SendMouseButtonEvent", button, isPressed, percentX, percentY);
+function startPanInertia(state, screenArea) {
+  stopPanInertia(state);
+  let last = performance.now();
+
+  const step = (timestamp) => {
+    const now = performance.now();
+    const dt = Math.max(1, now - last);
+    last = now;
+
+    const dx = state.panVelocityX * dt;
+    const dy = state.panVelocityY * dt;
+
+    screenArea.scrollBy(dx, dy);
+
+    // decay factor per 16ms frame
+    const decay = Math.pow(0.95, dt / 16);
+    state.panVelocityX *= decay;
+    state.panVelocityY *= decay;
+
+    const speed = Math.hypot(state.panVelocityX, state.panVelocityY);
+    if (speed < 0.02) {
+      state.panVelocityX = 0;
+      state.panVelocityY = 0;
+      state.panAnimationFrameId = -1;
+      return;
+    }
+
+    state.panAnimationFrameId = requestAnimationFrame(step);
+  };
+
+  state.panAnimationFrameId = requestAnimationFrame(step);
 }
 
 /**
- *
- * @param {number} offsetX
- * @param {number} offsetY
- * @param {number} button
- * @param {boolean} isDoubleClick
+ * Stop any ongoing pan inertia.
  * @param {State} state
  */
-async function sendMouseClick(offsetX, offsetY, button, isDoubleClick, state) {
-  const percentX = offsetX / state.canvasElement.clientWidth;
-  const percentY = offsetY / state.canvasElement.clientHeight;
-  await state.invokeDotNet("SendMouseClick", button, isDoubleClick, percentX, percentY);
+function stopPanInertia(state) {
+  if (state.panAnimationFrameId !== -1) {
+    cancelAnimationFrame(state.panAnimationFrameId);
+    state.panAnimationFrameId = -1;
+  }
 }

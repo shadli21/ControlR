@@ -35,7 +35,7 @@
 
 .remote-screen {
     position: absolute;
-    touch-action: pan-x pan-y;
+    touch-action: none;
     object-fit: fill;
     cursor: default;
     -webkit-user-select: none;

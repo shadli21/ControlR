@@ -25,8 +25,8 @@
         <MudDivider Vertical FlexItem />
 
         <MudTooltip Text="Virtual Keyboard" Placement="Placement.Right" Class="z9002">
-          <MudToggleIconButton Variant="Variant.Outlined" Icon="@(Icons.Material.Filled.Keyboard)" Size="Size.Small"
-            ToggledColor="Color.Success" ToggledIcon="@(Icons.Material.Filled.Keyboard)"
+          <MudToggleIconButton Variant="Variant.Outlined" Icon="@(Icons.Material.Filled.KeyboardHide)" Size="Size.Small"
+            ToggledColor="Color.Success" ToggledIcon="@(Icons.Material.Filled.KeyboardHide)"
             Toggled="RemoteControlState.IsVirtualKeyboardToggled" ToggledChanged="HandleKeyboardToggled" />
         </MudTooltip>
 
@@ -50,13 +50,22 @@
       </MudTooltip>
 
     </div>
-    <div class="screen-area" @ref="_screenArea" @onwheel="OnCanvasWheel" @onwheel:preventDefault
-      @onwheel:stopPropagation @ontouchstart="OnTouchStart" @ontouchmove="OnTouchMove" @ontouchcancel="OnTouchCancel"
-      @ontouchend="OnTouchEnd">
+    <div class="screen-area" 
+         @ref="_screenArea" 
+         @onwheel="HandleScreenAreaCanvasWheel"
+         @onwheel:preventDefault
+         @onwheel:stopPropagation 
+         @ontouchstart="HandleScreenAreaTouchStart" 
+         @ontouchmove="HandleScreenAreaTouchMove" 
+         @ontouchcancel="HandleScreenAreaTouchCancel"
+         @ontouchend="HandleScreenAreaTouchEnd">
 
-      <canvas id="@_canvasId" @ref="_canvasRef" width="@CanvasWidth" height="@CanvasHeight"
-        class='@($"remote-screen {CanvasClasses}")' style="@(CanvasStyle)" 
-        @onpointermove="HandleCanvasPointerMove" @onpointerdown="HandleCanvasPointerDown"></canvas>
+      <canvas id="@_canvasId" @ref="_canvasRef" 
+              width="@CanvasWidth" height="@CanvasHeight"
+              class='@($"remote-screen {CanvasClasses}")' style="@(CanvasStyle)"
+              @onpointermove="HandleCanvasPointerMove"
+              @onpointerdown="HandleCanvasPointerDown">
+      </canvas>
     </div>
   </div>
 

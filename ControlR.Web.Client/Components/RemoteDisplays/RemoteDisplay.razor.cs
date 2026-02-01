@@ -51,7 +51,7 @@ public partial class RemoteDisplay : JsInteropableComponent
   {
     get
     {
-      var classNames = $"{RemoteControlState.ViewMode}";
+      var classNames = $"{RemoteControlState.ViewMode}".ToLower();
       if (RemoteControlState.IsScrollModeToggled)
       {
         classNames += " scroll-mode";
@@ -285,6 +285,11 @@ public partial class RemoteDisplay : JsInteropableComponent
       _controlMode = ControlMode.Mouse;
     }
 
+    if (e.PointerType == "touch" && _controlMode != ControlMode.Touch)
+    {
+      _controlMode = ControlMode.Touch;
+    }
+
     if (
         e.PointerType == "mouse" &&
         RemoteControlState.IsAutoPanEnabled &&
@@ -491,20 +496,7 @@ public partial class RemoteDisplay : JsInteropableComponent
     }
   }
 
-  private void HandleScrollModeToggled(bool isEnabled)
-  {
-    RemoteControlState.IsScrollModeToggled = isEnabled;
-  }
-
-  private async Task HandleVirtualKeyboardBlurred(FocusEventArgs args)
-  {
-    if (RemoteControlState.IsVirtualKeyboardToggled)
-    {
-      await _virtualKeyboard.FocusAsync();
-    }
-  }
-
-  private async Task OnCanvasWheel(WheelEventArgs e)
+  private async Task HandleScreenAreaCanvasWheel(WheelEventArgs e)
   {
     try
     {
@@ -567,7 +559,7 @@ public partial class RemoteDisplay : JsInteropableComponent
     }
   }
 
-  private void OnTouchCancel(TouchEventArgs ev)
+  private void HandleScreenAreaTouchCancel(TouchEventArgs ev)
   {
     _lastPinchDistance = -1;
     _lastTouch0X = -1;
@@ -576,7 +568,7 @@ public partial class RemoteDisplay : JsInteropableComponent
     _lastTouch1Y = -1;
   }
 
-  private void OnTouchEnd(TouchEventArgs ev)
+  private void HandleScreenAreaTouchEnd(TouchEventArgs ev)
   {
     _lastPinchDistance = -1;
     _lastTouch0X = -1;
@@ -585,7 +577,7 @@ public partial class RemoteDisplay : JsInteropableComponent
     _lastTouch1Y = -1;
   }
 
-  private async void OnTouchMove(TouchEventArgs ev)
+  private async void HandleScreenAreaTouchMove(TouchEventArgs ev)
   {
     try
     {
@@ -668,7 +660,7 @@ public partial class RemoteDisplay : JsInteropableComponent
     }
   }
 
-  private void OnTouchStart(TouchEventArgs ev)
+  private void HandleScreenAreaTouchStart(TouchEventArgs ev)
   {
     _controlMode = ControlMode.Touch;
     _lastPinchDistance = -1;
@@ -676,6 +668,19 @@ public partial class RemoteDisplay : JsInteropableComponent
     _lastTouch0Y = -1;
     _lastTouch1X = -1;
     _lastTouch1Y = -1;
+  }
+
+  private void HandleScrollModeToggled(bool isEnabled)
+  {
+    RemoteControlState.IsScrollModeToggled = isEnabled;
+  }
+
+  private async Task HandleVirtualKeyboardBlurred(FocusEventArgs args)
+  {
+    if (RemoteControlState.IsVirtualKeyboardToggled)
+    {
+      await _virtualKeyboard.FocusAsync();
+    }
   }
 
   private async Task OnVkKeyDown(KeyboardEventArgs args)
