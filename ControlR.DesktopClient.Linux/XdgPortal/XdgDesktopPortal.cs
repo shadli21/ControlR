@@ -14,7 +14,7 @@ public interface IXdgDesktopPortal : IDisposable
   Task<(SafeFileHandle Fd, string SessionHandle)?> GetPipeWireConnection();
   Task<string?> GetRemoteDesktopSessionHandle();
   Task<List<PipeWireStreamInfo>> GetScreenCastStreams();
-  Task Initialize();
+  Task Initialize(bool force = false);
   Task NotifyKeyboardKeycodeAsync(string sessionHandle, int keycode, bool pressed);
   Task NotifyPointerAxisAsync(string sessionHandle, double dx, double dy, bool finish = true);
   Task NotifyPointerAxisDiscreteAsync(string sessionHandle, uint axis, int steps);
@@ -35,6 +35,7 @@ public sealed class XdgDesktopPortal(
   private readonly SemaphoreSlim _initLock = new(1, 1);
   private readonly ILogger<XdgDesktopPortal> _logger = logger;
   private readonly IOptionsMonitor<DesktopClientOptions> _options = options;
+  private readonly TimeSpan _userInteractionTimeout = TimeSpan.FromSeconds(90);
 
   private Connection? _connection;
   private bool _disposed;
@@ -77,9 +78,9 @@ public sealed class XdgDesktopPortal(
     return _streams ?? throw new InvalidOperationException("ScreenCast streams are not initialized.");
   }
 
-  public async Task Initialize()
+  public async Task Initialize(bool force = false)
   {
-    await EnsureInitializedAsync();
+    await EnsureInitializedAsync(force);
   }
 
   public async Task NotifyKeyboardKeycodeAsync(string sessionHandle, int keycode, bool pressed)
@@ -165,53 +166,15 @@ public sealed class XdgDesktopPortal(
       await EnsureInitializedAsync();
       var proxy = Connection.CreateProxy<IRemoteDesktop>(PortalBusName, PortalObjectPath);
       await proxy.NotifyPointerMotionAsync(
-        new ObjectPath(sessionHandle), 
-        new Dictionary<string, object>(), 
-        dx, 
+        new ObjectPath(sessionHandle),
+        new Dictionary<string, object>(),
+        dx,
         dy).ConfigureAwait(false);
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error sending pointer motion");
     }
-  }
-
-  private async Task<(uint, IDictionary<string, object>)> CallPortalMethodAsync(
-    string interfaceName,
-    string methodName,
-    string requestToken,
-    IDictionary<string, object> options,
-    TimeSpan timeout,
-    CancellationToken ct = default)
-  {
-    ObjectPath requestPath;
-    if (interfaceName.Contains("ScreenCast"))
-    {
-      var proxy = Connection.CreateProxy<IScreenCast>(PortalBusName, PortalObjectPath);
-      requestPath = methodName switch
-      {
-        "CreateSession" => await proxy.CreateSessionAsync(options).ConfigureAwait(false),
-        _ => throw new ArgumentException($"Unknown ScreenCast method: {methodName}")
-      };
-    }
-    else if (interfaceName.Contains("RemoteDesktop"))
-    {
-      var proxy = Connection.CreateProxy<IRemoteDesktop>(PortalBusName, PortalObjectPath);
-      requestPath = methodName switch
-      {
-        "CreateSession" => await proxy.CreateSessionAsync(options).ConfigureAwait(false),
-        _ => throw new ArgumentException($"Unknown RemoteDesktop method: {methodName}")
-      };
-    }
-    else
-    {
-      throw new ArgumentException($"Unknown interface: {interfaceName}");
-    }
-
-    var pathStr = requestPath.ToString();
-    _logger.LogDebug("Portal {Method} returned request path: {Path}", methodName, pathStr);
-
-    return await WaitForResponseAsync(pathStr, timeout, ct).ConfigureAwait(false);
   }
 
   private async Task ConnectAsync(CancellationToken ct = default)
@@ -252,13 +215,15 @@ public sealed class XdgDesktopPortal(
         ["session_handle_token"] = sessionToken
       };
 
-      var (response, results) = await CallPortalMethodAsync(
-        "org.freedesktop.portal.RemoteDesktop",
-        "CreateSession",
-        requestToken,
-        options,
-        TimeSpan.FromSeconds(180),
-        ct).ConfigureAwait(false);
+      var proxy = Connection.CreateProxy<IRemoteDesktop>(PortalBusName, PortalObjectPath);
+      var requestPath = await proxy.CreateSessionAsync(options).ConfigureAwait(false);
+
+      var (response, results) = await WaitForResponseAsync(
+          requestPath.ToString(),
+          _userInteractionTimeout, 
+          ct
+        )
+        .ConfigureAwait(false);
 
       if (response != 0)
       {
@@ -327,7 +292,7 @@ public sealed class XdgDesktopPortal(
         _sessionHandle,
         sourceTypes: 1,
         multipleSources: true,
-        cursorMode: 2);
+        cursorMode: AvailableCursorModes.Embedded);
 
       if (!selectSourcesResult.IsSuccess)
       {
@@ -441,7 +406,7 @@ public sealed class XdgDesktopPortal(
       var proxy = Connection.CreateProxy<IRemoteDesktop>(PortalBusName, PortalObjectPath);
       var requestPath = await proxy.SelectDevicesAsync(new ObjectPath(sessionHandle), options).ConfigureAwait(false);
 
-      var (response, _) = await WaitForResponseAsync(requestPath.ToString(), TimeSpan.FromSeconds(180), ct).ConfigureAwait(false);
+      var (response, _) = await WaitForResponseAsync(requestPath.ToString(), _userInteractionTimeout, ct).ConfigureAwait(false);
 
       if (response != 0)
       {
@@ -462,7 +427,7 @@ public sealed class XdgDesktopPortal(
     string sessionHandle,
     uint sourceTypes = 1,
     bool multipleSources = true,
-    uint cursorMode = 4,
+    uint cursorMode = AvailableCursorModes.Embedded,
     Dictionary<string, object>? additionalOptions = null,
     CancellationToken ct = default)
   {
@@ -489,7 +454,7 @@ public sealed class XdgDesktopPortal(
       var proxy = Connection.CreateProxy<IScreenCast>(PortalBusName, PortalObjectPath);
       var requestPath = await proxy.SelectSourcesAsync(new ObjectPath(sessionHandle), options).ConfigureAwait(false);
 
-      var (response, _) = await WaitForResponseAsync(requestPath.ToString(), TimeSpan.FromSeconds(180), ct).ConfigureAwait(false);
+      var (response, _) = await WaitForResponseAsync(requestPath.ToString(), _userInteractionTimeout, ct).ConfigureAwait(false);
 
       if (response != 0)
       {
@@ -523,7 +488,7 @@ public sealed class XdgDesktopPortal(
       var proxy = Connection.CreateProxy<IRemoteDesktop>(PortalBusName, PortalObjectPath);
       var requestPath = await proxy.StartAsync(new ObjectPath(sessionHandle), parentWindow, options).ConfigureAwait(false);
 
-      var (response, results) = await WaitForResponseAsync(requestPath.ToString(), TimeSpan.FromSeconds(180), ct).ConfigureAwait(false);
+      var (response, results) = await WaitForResponseAsync(requestPath.ToString(), _userInteractionTimeout, ct).ConfigureAwait(false);
 
       if (response != 0)
       {
@@ -543,7 +508,7 @@ public sealed class XdgDesktopPortal(
       }
 
       var streams = new List<PipeWireStreamInfo>();
-      
+
       if (results.TryGetValue("streams", out var streamsObj))
       {
         if (streamsObj is System.Collections.IEnumerable enumerable)

@@ -36,6 +36,8 @@ public partial class RemoteDisplay : JsInteropableComponent
   [Parameter]
   [EditorRequired]
   public EventCallback OnDisconnectRequested { get; set; }
+  [Parameter]
+  public EventCallback<string> OnFatalError { get; set; }
   [Inject]
   public required IRemoteControlState RemoteControlState { get; init; }
   [Inject]
@@ -455,6 +457,16 @@ public partial class RemoteDisplay : JsInteropableComponent
           {
             var dto = wrapper.GetPayload<ToastNotificationDto>();
             Snackbar.Add(dto.Message, dto.Severity.ToMudSeverity());
+            break;
+          }
+        case DtoType.RemoteControlSessionError:
+          {
+            var dto = wrapper.GetPayload<RemoteControlSessionErrorDto>();
+            Snackbar.Add(dto.Message, Severity.Error);
+            if (dto.IsFatal)
+            {
+              await OnFatalError.InvokeAsync(dto.Message);
+            }
             break;
           }
         case DtoType.BlockInputResult:

@@ -29,4 +29,5 @@ public enum DtoType
   TogglePrivacyScreen = 46,
   PrivacyScreenResult = 47,
   SessionDisconnectRequested = 48,
+  RemoteControlSessionError = 49,
 }

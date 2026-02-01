@@ -91,6 +91,11 @@ internal class StreamBasedCapturer(
 
   public Task StartCapturingChanges(CancellationToken cancellationToken)
   {
+    if (_captureTask is not null)
+    {
+      return Task.CompletedTask;
+    }
+
     _captureTask = CaptureLoop(cancellationToken);
     return Task.CompletedTask;
   }

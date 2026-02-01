@@ -73,10 +73,11 @@ public class InputSimulatorWayland(
         return;
       }
 
-      var keycode = LinuxKeycodeMapper.BrowserCodeToLinuxKeycode(code);
+      // Use the code-first mapping and pass both code and key for fallback
+      var keycode = LinuxKeycodeMapper.BrowserCodeToLinuxKeycode(code, key);
       if (keycode < 0)
       {
-        _logger.LogWarning("Unknown key code: {Code}", code);
+        _logger.LogWarning("Unknown key: Code={Code}, Key={Key}", code, key);
         return;
       }
 
@@ -86,7 +87,7 @@ public class InputSimulatorWayland(
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Error simulating key event on Wayland: {Code}", code);
+      _logger.LogError(ex, "Error simulating key event on Wayland: Code={Code}, Key={Key}", code, key);
     }
   }
 
@@ -263,9 +264,9 @@ public class InputSimulatorWayland(
   {
     return ch switch
     {
-      >= 'a' and <= 'z' => (LinuxKeycodeMapper.BrowserCodeToLinuxKeycode($"Key{char.ToUpper(ch)}"), false),
-      >= 'A' and <= 'Z' => (LinuxKeycodeMapper.BrowserCodeToLinuxKeycode($"Key{ch}"), true),
-      >= '0' and <= '9' => (LinuxKeycodeMapper.BrowserCodeToLinuxKeycode($"Digit{ch}"), false),
+      >= 'a' and <= 'z' => (LinuxKeycodeMapper.BrowserCodeToLinuxKeycode($"Key{char.ToUpper(ch)}", ch.ToString()), false),
+      >= 'A' and <= 'Z' => (LinuxKeycodeMapper.BrowserCodeToLinuxKeycode($"Key{ch}", ch.ToString()), true),
+      >= '0' and <= '9' => (LinuxKeycodeMapper.BrowserCodeToLinuxKeycode($"Digit{ch}", ch.ToString()), false),
       ' ' => (57, false),
       '!' => (2, true),
       '@' => (3, true),

@@ -49,6 +49,18 @@ public partial class Deploy
       : "Must be a valid GUID.";
   };
 
+  private string LinuxDeployScript
+  {
+    get
+    {
+      var downloadUri = new Uri(GetServerUri(), "/downloads/linux-x64/ControlR.Agent");
+      return
+        $"sudo rm -f /tmp/ControlR.Agent && " +
+        $"sudo wget -O /tmp/ControlR.Agent {downloadUri} && " +
+        $"sudo chmod +x /tmp/ControlR.Agent && " +
+        $"sudo /tmp/ControlR.Agent install {GetCommonArgs()}";
+    }
+  }
   private string MacArm64DeployScript
   {
     get
@@ -77,18 +89,6 @@ public partial class Deploy
     _selectedTags is null
       ? ""
       : string.Join(", ", _selectedTags.Select(x => x.Name));
-  private string UbuntuDeployScript
-  {
-    get
-    {
-      var downloadUri = new Uri(GetServerUri(), "/downloads/linux-x64/ControlR.Agent");
-      return
-        $"sudo rm -f /tmp/ControlR.Agent && " +
-        $"sudo wget -O /tmp/ControlR.Agent {downloadUri} && " +
-        $"sudo chmod +x /tmp/ControlR.Agent && " +
-        $"sudo /tmp/ControlR.Agent install {GetCommonArgs()}";
-    }
-  }
   private string WindowsX64DeployScript
   {
     get
@@ -140,6 +140,18 @@ public partial class Deploy
     Snackbar.Add("Installer key copied to clipboard", Severity.Success);
   }
 
+  private async Task CopyLinuxScript()
+  {
+    if (_tenantId is null)
+    {
+      Snackbar.Add("Failed to find TenantId", Severity.Error);
+      return;
+    }
+
+    await Clipboard.SetText(LinuxDeployScript);
+    Snackbar.Add("Install script copied to clipboard", Severity.Success);
+  }
+
   private async Task CopyMacArm64Script()
   {
     await Clipboard.SetText(MacArm64DeployScript);
@@ -149,18 +161,6 @@ public partial class Deploy
   private async Task CopyMacX64Script()
   {
     await Clipboard.SetText(MacX64DeployScript);
-    Snackbar.Add("Install script copied to clipboard", Severity.Success);
-  }
-
-  private async Task CopyUbuntuScript()
-  {
-    if (_tenantId is null)
-    {
-      Snackbar.Add("Failed to find TenantId", Severity.Error);
-      return;
-    }
-
-    await Clipboard.SetText(UbuntuDeployScript);
     Snackbar.Add("Install script copied to clipboard", Severity.Success);
   }
 
@@ -323,6 +323,7 @@ public partial class Deploy
     var name = string.IsNullOrWhiteSpace(key.FriendlyName) ? "Unnamed Key" : key.FriendlyName;
     return $"{name} ({key.KeyType}) - {key.Id}";
   }
+
   private Uri GetServerUri()
   {
     var currentUri = new Uri(NavMan.Uri);

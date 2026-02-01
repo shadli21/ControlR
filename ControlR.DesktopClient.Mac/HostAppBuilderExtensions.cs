@@ -1,5 +1,6 @@
 using ControlR.DesktopClient.Common.ServiceInterfaces;
 using ControlR.DesktopClient.Mac.Services;
+using ControlR.DesktopClient.Mac.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ControlR.Libraries.DevicesCommon.Extensions;
@@ -19,6 +20,7 @@ public static class HostAppBuilderExtensions
     builder.Services
       .AddSingleton<IMacInterop, MacInterop>()
       .AddSingleton<IDisplayManager, DisplayManagerMac>()
+      .AddSingleton<IDisplayEnumHelperMac, DisplayEnumHelperMac>()
       .AddSingleton<IScreenGrabberFactory, ScreenGrabberFactory<ScreenGrabberMac>>()
       .AddSingleton(services => services.GetRequiredService<IScreenGrabberFactory>().GetOrCreateDefault())
       .AddSingleton<IClipboardManager, ClipboardManagerMac>()

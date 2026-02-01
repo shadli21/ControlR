@@ -226,7 +226,10 @@ public partial class Dashboard
   {
     if (_dataGrid is not null)
     {
-      await InvokeAsync(_dataGrid.ReloadServerData);
+      Debouncer.Debounce(
+        wait: TimeSpan.FromMilliseconds(500),
+        action: async () => await InvokeAsync(_dataGrid.ReloadServerData)
+      );
     }
   }
 

@@ -17,6 +17,7 @@ using ControlR.DesktopClient.ViewModels.Mac;
 using ControlR.DesktopClient.Views.Mac;
 using ControlR.DesktopClient.Views.Linux;
 using ControlR.DesktopClient.ViewModels.Linux;
+using ControlR.DesktopClient.Mac.Helpers;
 
 namespace ControlR.DesktopClient;
 
@@ -129,6 +130,7 @@ internal static class StaticServiceProvider
         .AddSingleton<IScreenGrabberFactory, ScreenGrabberFactory<ScreenGrabberMac>>()
         .AddSingleton(services => services.GetRequiredService<IScreenGrabberFactory>().GetOrCreateDefault())
         .AddSingleton<IMacInterop, MacInterop>()
+        .AddSingleton<IDisplayEnumHelperMac, DisplayEnumHelperMac>()
         .AddSingleton<IDisplayManager, DisplayManagerMac>()
         .AddSingleton<IPermissionsViewModelMac, PermissionsViewModelMac>()
         .AddTransient<PermissionsViewMac>();
@@ -149,7 +151,9 @@ internal static class StaticServiceProvider
             .AddSingleton(services => services.GetRequiredService<IXdgDesktopPortalFactory>().GetOrCreateDefault())
             .AddSingleton<IScreenGrabberFactory, ScreenGrabberFactory<ScreenGrabberWayland>>()
             .AddSingleton(services => services.GetRequiredService<IScreenGrabberFactory>().GetOrCreateDefault())
-            .AddSingleton<IDisplayManager, DisplayManagerWayland>()
+            .AddSingleton<DisplayManagerWayland>()
+            .AddSingleton<IDisplayManager>(services => services.GetRequiredService<DisplayManagerWayland>())
+            .AddSingleton<IDisplayManagerWayland>(services => services.GetRequiredService<DisplayManagerWayland>())
             .AddSingleton<IPipeWireStreamFactory, PipeWireStreamFactory>()
             .AddSingleton<IPermissionsViewModelWayland, PermissionsViewModelWayland>()
             .AddTransient<PermissionsViewWayland>()

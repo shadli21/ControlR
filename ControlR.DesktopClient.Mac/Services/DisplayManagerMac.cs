@@ -10,8 +10,9 @@ using Microsoft.Extensions.Logging;
 
 namespace ControlR.DesktopClient.Mac.Services;
 
-internal class DisplayManagerMac(ILogger<DisplayManagerMac> logger) : IDisplayManager
+internal class DisplayManagerMac(ILogger<DisplayManagerMac> logger, IDisplayEnumHelperMac displayEnumHelper) : IDisplayManager
 {
+  private readonly IDisplayEnumHelperMac _displayEnumHelper = displayEnumHelper;
   private readonly Lock _displayLock = new();
   private readonly ConcurrentDictionary<string, DisplayInfo> _displays = new();
   private readonly ILogger<DisplayManagerMac> _logger = logger;
@@ -129,7 +130,7 @@ internal class DisplayManagerMac(ILogger<DisplayManagerMac> logger) : IDisplayMa
     try
     {
       _displays.Clear();
-      var displays = DisplayEnumHelperMac.GetDisplays();
+      var displays = _displayEnumHelper.GetDisplays();
       foreach (var display in displays)
       {
         _displays[display.DeviceName] = display;

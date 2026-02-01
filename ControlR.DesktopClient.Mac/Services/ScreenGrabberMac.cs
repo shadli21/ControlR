@@ -126,23 +126,20 @@ public sealed class ScreenGrabberMac(
 
         try
         {
-          var displayBitmap = CoreGraphicsHelper.CGImageToSKBitmap(cgImageRef);
+          using var displayBitmap = CoreGraphicsHelper.CGImageToSKBitmap(cgImageRef);
           if (displayBitmap is null)
           {
             _logger.LogWarning("Failed to convert CGImage to SKBitmap for {DisplayId}", display.DeviceName);
             continue;
           }
 
-          using (displayBitmap)
-          {
-            var destRect = SKRect.Create(
-              display.MonitorArea.X - virtualBounds.X,
-              display.MonitorArea.Y - virtualBounds.Y,
-              display.MonitorArea.Width,
-              display.MonitorArea.Height);
+          var destRect = SKRect.Create(
+             display.MonitorArea.X - virtualBounds.X,
+             display.MonitorArea.Y - virtualBounds.Y,
+             display.MonitorArea.Width,
+             display.MonitorArea.Height);
 
-            canvas.DrawBitmap(displayBitmap, destRect);
-          }
+          canvas.DrawBitmap(displayBitmap, destRect);
         }
         finally
         {

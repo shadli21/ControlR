@@ -10,10 +10,9 @@
   x:DataType="vm:IPermissionsViewModelWayland">
 
   <ScrollViewer>
-    <!-- Wayland Permissions -->
-    <StackPanel Spacing="20" Margin="16">
+    <StackPanel Spacing="16">
 
-      <TextBlock Text="{x:Static common:Localization.Permissions}" Classes="h1" />
+      <TextBlock Text="{x:Static common:Localization.Permissions}" Classes="h1 Primary" />
 
       <!-- Remote Control Permission -->
       <StackPanel Spacing="8">

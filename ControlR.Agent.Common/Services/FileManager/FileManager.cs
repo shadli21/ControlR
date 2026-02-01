@@ -205,7 +205,7 @@ internal class FileManager(
     }
   }
 
-  public async Task<List<LogFileGroupDto>> GetLogFiles()
+  public Task<List<LogFileGroupDto>> GetLogFiles()
   {
     var logGroups = new List<LogFileGroupDto>();
 
@@ -230,7 +230,7 @@ internal class FileManager(
       _logger.LogError(ex, "Error gathering log files");
     }
 
-    return logGroups;
+    return logGroups.AsTaskResult();
   }
 
   public Task<PathSegmentsResponseDto> GetPathSegments(string targetPath)

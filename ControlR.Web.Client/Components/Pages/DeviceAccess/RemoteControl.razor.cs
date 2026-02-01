@@ -127,6 +127,24 @@ public partial class RemoteControl : ViewportAwareComponent
     }
   }
 
+  private async Task CleanupRemoteControlSession(bool sendCloseStreamingSession, bool refreshSessionsQuiet)
+  {
+    RemoteControlState.ConnectionClosedRegistration?.Dispose();
+    RemoteControlState.ConnectionClosedRegistration = null;
+    _systemSessions = [];
+    RemoteControlState.CurrentSession = null;
+
+    if (sendCloseStreamingSession)
+    {
+      using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+      await StreamingClient.SendCloseStreamingSession(cts.Token);
+    }
+
+    await StreamingClient.Close();
+    await ScreenWake.SetScreenWakeLock(false);
+    await GetDeviceDesktopSessions(refreshSessionsQuiet);
+  }
+
   private async Task GetDeviceDesktopSessions(bool quiet)
   {
     try
@@ -149,16 +167,9 @@ public partial class RemoteControl : ViewportAwareComponent
   {
     try
     {
-      RemoteControlState.ConnectionClosedRegistration?.Dispose();
-      _systemSessions = [];
-      RemoteControlState.CurrentSession = null;
       _loadingMessage = "Refreshing sessions";
-      using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-      await StreamingClient.SendCloseStreamingSession(cts.Token);
-      await StreamingClient.Close();
-      await ScreenWake.SetScreenWakeLock(false);
+      await CleanupRemoteControlSession(sendCloseStreamingSession: true, refreshSessionsQuiet: false);
       Snackbar.Add("Remote control session disconnected", Severity.Info);
-      await GetDeviceDesktopSessions(false);
     }
     catch (Exception ex)
     {
@@ -168,6 +179,28 @@ public partial class RemoteControl : ViewportAwareComponent
     finally
     {
       _loadingMessage = null;
+    }
+  }
+
+  private async Task HandleFatalStreamingError(string message)
+  {
+    try
+    {
+      _isReconnecting = false;
+      _loadingMessage = null;
+
+      _alertMessage = message;
+      _alertSeverity = Severity.Error;
+
+      await CleanupRemoteControlSession(sendCloseStreamingSession: false, refreshSessionsQuiet: true);
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Error while handling fatal streaming error.");
+    }
+    finally
+    {
+      await InvokeAsync(StateHasChanged);
     }
   }
 

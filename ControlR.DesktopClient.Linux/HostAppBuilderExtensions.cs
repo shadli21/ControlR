@@ -30,12 +30,15 @@ public static class HostAppBuilderExtensions
         builder.Services
           .AddSingleton<IXdgDesktopPortalFactory, XdgDesktopPortalFactory>()
           .AddSingleton(services => services.GetRequiredService<IXdgDesktopPortalFactory>().GetOrCreateDefault())
-          .AddSingleton<IDisplayManager, DisplayManagerWayland>()
+          .AddSingleton<DisplayManagerWayland>()
+          .AddSingleton<IDisplayManager>(services => services.GetRequiredService<DisplayManagerWayland>())
+          .AddSingleton<IDisplayManagerWayland>(services => services.GetRequiredService<DisplayManagerWayland>())
           .AddSingleton<IScreenGrabberFactory, ScreenGrabberFactory<ScreenGrabberWayland>>()
           .AddSingleton(services => services.GetRequiredService<IScreenGrabberFactory>().GetOrCreateDefault())
           .AddSingleton<IInputSimulator, InputSimulatorWayland>()
           .AddSingleton<IWaylandPermissionProvider, WaylandPermissionProvider>()
-          .AddSingleton<IPipeWireStreamFactory, PipeWireStreamFactory>();
+          .AddSingleton<IPipeWireStreamFactory, PipeWireStreamFactory>()
+          .AddHostedService<WaylandDisplaySettingsWatcher>();
         break;
       case DesktopEnvironmentType.X11:
         logger.LogInformation("Detected X11 desktop environment.");

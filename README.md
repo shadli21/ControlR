@@ -79,14 +79,17 @@ The database uses EF Core's [Global Query Filters](https://learn.microsoft.com/e
 ### macOS Intel (untested)
 - Experimental remote control via VNC (Apple Screen Sharing)
 - Signed using adhoc certificate (this will change soon)
-### Ubuntu AMD64 (latest LTS)
+
+### Linux AMD64 (latest LTS)
 
 - Full remote control support on X11
   - Tested on Ubuntu, Kubuntu, and Mint
   - On Ubuntu, you must enable X11 for the login screen
     - Edit `/etc/gdm3/custom.conf` and uncomment the line `WaylandEnable=false`, then reboot
 - Experimental remote control on Wayland via XDG Desktop Portal
-  - Requires GStreamer v1.26: `sudo apt install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good`
+  - Tested on Ubuntu, Kubuntu, and Fedora KDE
+  - These are preinstalled on the above distros
+    - Manual installation: `sudo apt install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good`
   - Requires X11 to be used for the login/greeter screen
 - Experimental remote control via VNC
 
@@ -99,7 +102,7 @@ Agent logs can be streamed in real-time from the Remote Logs page, which can be 
 
 Logs for the agent and desktop client are detailed below. On Windows, the path depends on whether the app is running in Debug or Release mode. On macOS and Linux, the path depends on whether the app is running as root.
 
-Under normal user circumstances, the main agent will run in Release mode as SYSTEM/root. For Mac and Ubuntu, the desktop client will normally run as the user for the current GUI session.  For Windows, the desktop client runs as SYSTEM due to permissions required for capturing and controlling full-screen UAC prompts and the WinLogon desktop.
+Under normal user circumstances, the main agent will run in Release mode as SYSTEM/root. For Mac and Linux, the desktop client will normally run as the user for the current GUI session.  For Windows, the desktop client runs as SYSTEM due to permissions required for capturing and controlling full-screen UAC prompts and the WinLogon desktop.
 
 **Main Agent**
 - **Windows**

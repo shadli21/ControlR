@@ -91,13 +91,13 @@ public class DesktopPreviewController : ControllerBase
     }
     catch (OperationCanceledException)
     {
-      logger.LogWarning("Desktop preview request for device {DeviceId} timed out or was canceled.", deviceId);
-      return StatusCode(StatusCodes.Status408RequestTimeout);
+      logger.LogError("Desktop preview request for device {DeviceId} timed out or was canceled.", deviceId);
+      throw;
     }
     catch (Exception ex)
     {
       logger.LogError(ex, "Error streaming desktop preview for device {DeviceId}.", deviceId);
-      return StatusCode(StatusCodes.Status500InternalServerError);
+      throw;
     }
   }
 }

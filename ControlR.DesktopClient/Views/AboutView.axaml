@@ -56,45 +56,43 @@
 
 			<Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="16" RowSpacing="8">
 
-				<TextBlock Grid.Row="0" Grid.Column="0" Text="Avalonia UI" />
-				<StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+				<TextBlock Grid.Row="0" Grid.Column="0" Text="Avalonia UI" VerticalAlignment="Center" />
+				<StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
 					<HyperlinkButton Content="source"
-													 NavigateUri="https://github.com/AvaloniaUI/Avalonia"
-													 Classes="link" />
+						 NavigateUri="https://github.com/AvaloniaUI/Avalonia"
+						 Classes="link" />
 					<HyperlinkButton Content="license"
-													 NavigateUri="https://github.com/AvaloniaUI/Avalonia/blob/master/licence.md"
-													 Classes="link" />
+						 NavigateUri="https://github.com/AvaloniaUI/Avalonia/blob/master/licence.md"
+						 Classes="link" />
 				</StackPanel>
 
-				<TextBlock Grid.Row="1" Grid.Column="0" Text="Serilog" />
-				<StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+				<TextBlock Grid.Row="1" Grid.Column="0" Text="Serilog" VerticalAlignment="Center" />
+				<StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
 					<HyperlinkButton Content="source"
-													 NavigateUri="https://github.com/serilog/serilog"
-													 Classes="link" />
+						 NavigateUri="https://github.com/serilog/serilog"
+						 Classes="link" />
 					<HyperlinkButton Content="license"
-													 NavigateUri="https://github.com/serilog/serilog/blob/dev/LICENSE"
-													 Classes="link" />
+						 NavigateUri="https://github.com/serilog/serilog/blob/dev/LICENSE"
+						 Classes="link" />
 				</StackPanel>
 
-				<TextBlock Grid.Row="2" Grid.Column="0" Text="Tmds.DBus" />
-				<StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+				<TextBlock Grid.Row="2" Grid.Column="0" Text="Tmds.DBus" VerticalAlignment="Center" />
+				<StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
 					<HyperlinkButton Content="source"
-													 NavigateUri="https://github.com/tmds/Tmds.DBus"
-													 Classes="link" />
+						 NavigateUri="https://github.com/tmds/Tmds.DBus"
+						 Classes="link" />
 					<HyperlinkButton Content="license"
-													 NavigateUri="https://github.com/tmds/Tmds.DBus/blob/main/COPYING"
-													 Classes="link" />
+						 NavigateUri="https://github.com/tmds/Tmds.DBus/blob/main/COPYING"
+						 Classes="link" />
 				</StackPanel>
 
-				<TextBlock Grid.Row="3" Grid.Column="0" Text="Microsoft Libraries" />
+				<TextBlock Grid.Row="3" Grid.Column="0" Text="Microsoft Libraries" VerticalAlignment="Center" />
 				<HyperlinkButton Grid.Row="3" Grid.Column="1"
-												 Content="source"
-												 NavigateUri="https://github.com/microsoft"
-												 Classes="link" />
+							 Content="source"
+							 NavigateUri="https://github.com/microsoft"
+							 Classes="link" VerticalAlignment="Center" />
 
 			</Grid>
-
 		</StackPanel>
 	</ScrollViewer>
-
 </UserControl>

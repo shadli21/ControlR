@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using Bitbound.SimpleMessenger;
 using ControlR.DesktopClient.Common.Messages;
+using ControlR.Libraries.DevicesCommon.Services.Processes;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
@@ -9,6 +10,7 @@ namespace ControlR.DesktopClient.Windows.Services;
 
 internal class SystemEventHandler(
   IMessenger messenger,
+  IProcessManager processManager,
   IHostApplicationLifetime appLifetime,
   ILogger<SystemEventHandler> logger) : IHostedService
 {
@@ -67,7 +69,7 @@ internal class SystemEventHandler(
       logger.LogInformation("Session changing.  Reason: {reason}", e.Reason);
 
       var reason = (SessionSwitchReasonEx)(int)e.Reason;
-      messenger.Send(new WindowsSessionSwitchedMessage(reason, Process.GetCurrentProcess().SessionId));
+      messenger.Send(new WindowsSessionSwitchedMessage(reason, processManager.GetCurrentSessionId()));
 
       appLifetime.StopApplication();
     }

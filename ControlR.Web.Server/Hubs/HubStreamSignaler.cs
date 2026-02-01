@@ -14,7 +14,7 @@ public sealed class HubStreamSignaler<T>(Guid streamId, Action? onDispose = null
   private readonly CancellationTokenSource _streamCancelledSource = new();
   private readonly CancellationTokenSource _writeCompletedSource = new();
 
-  private int _disposedValue;
+  private volatile bool _disposedValue;
 
   public object? Metadata { get; set; }
   public ChannelReader<T> Reader => _channel.Reader;
@@ -41,7 +41,8 @@ public sealed class HubStreamSignaler<T>(Guid streamId, Action? onDispose = null
     {
       await foreach (var item in items)
       {
-        await _channel.Writer.WriteAsync(item, linkedCts.Token);
+        using var writeCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await _channel.Writer.WriteAsync(item, writeCts.Token);
       }
       _channel.Writer.TryComplete();
     }
@@ -63,7 +64,8 @@ public sealed class HubStreamSignaler<T>(Guid streamId, Action? onDispose = null
     {
       await foreach (var item in reader.ReadAllAsync(linkedCts.Token))
       {
-        await _channel.Writer.WriteAsync(item, linkedCts.Token);
+        using var writeCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await _channel.Writer.WriteAsync(item, writeCts.Token);
       }
       _channel.Writer.TryComplete();
     }
@@ -81,13 +83,9 @@ public sealed class HubStreamSignaler<T>(Guid streamId, Action? onDispose = null
 
   private void Dispose(bool disposing)
   {
-
-    if (Interlocked.CompareExchange(ref _disposedValue, 1, 0) != 0)
-    {
-      return;
-    }
-
+    if (_disposedValue) return;
     if (!disposing) return;
+    _disposedValue = true;
     _streamCancelledSource.Cancel();
     _streamCancelledSource.Dispose();
     _channel.Writer.TryComplete();

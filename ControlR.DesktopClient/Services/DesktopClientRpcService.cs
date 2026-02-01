@@ -102,7 +102,6 @@ public class DesktopClientRpcService(
               dto.StreamId,
               dto.TargetProcessId);
 
-            // Capture preview (synchronous wait for async task)
             var result = await _desktopPreviewService.CapturePreview();
 
             if (!result.IsSuccess)
@@ -130,7 +129,6 @@ public class DesktopClientRpcService(
             _logger.LogWarning("Ctrl+Alt+Del invocation requested on non-Windows OS. Ignoring.");
             return Task.CompletedTask;
         }
-
 
         _logger.LogInformation("Handling Ctrl+Alt+Del request. Requester ID: {RequesterId}", dto.InvokerUserName);
         var win32Interop = _serviceProvider.GetRequiredService<IWin32Interop>();

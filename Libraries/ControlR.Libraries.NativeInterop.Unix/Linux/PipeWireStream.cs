@@ -1,37 +1,40 @@
+using ControlR.Libraries.Shared.Primitives;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Buffers;
+using ControlR.Libraries.Shared.Services.Buffers;
 
 namespace ControlR.Libraries.NativeInterop.Unix.Linux;
-
-public class PipeWireFrameData
-{
-  public required byte[] Data { get; init; }
-  public required int Height { get; init; }
-  public required uint PixelFormat { get; init; }
-  public required int Stride { get; init; }
-  public required int Width { get; init; }
-}
 
 public class PipeWireStream : IDisposable
 {
   public const uint SPA_VIDEO_FORMAT_BGRA = 12;
 
-  private readonly int _height;
+  private const ulong AppSinkPullTimeout = 100 * 1000000;
 
+  private readonly int _expectedHeight;
+  private readonly int _expectedWidth;
   private readonly ILogger _logger;
   private readonly uint _nodeId;
   private readonly int _pipewireFd;
-  private readonly int _width;
 
   private nint _appsink;
   private Thread? _captureThread;
-
   private bool _disposed;
+  private int _height;
   private PipeWireFrameData? _latestFrame;
+  private int _loggedDimensionMismatch;
+  private int _loggedStrideMismatch;
   private nint _pipeline;
+  private int _width;
 
-  public PipeWireStream(ILogger logger, uint nodeId, SafeHandle pipewireFd, int expectedLogicalWidth, int expectedLogicalHeight)
+  public PipeWireStream(
+    uint nodeId,
+    SafeHandle pipewireFd,
+    int expectedLogicalWidth,
+    int expectedLogicalHeight,
+    ILogger<PipeWireStream> logger)
   {
     if (expectedLogicalWidth <= 0 || expectedLogicalHeight <= 0)
     {
@@ -41,19 +44,18 @@ public class PipeWireStream : IDisposable
     _logger = logger;
     _nodeId = nodeId;
     _pipewireFd = (int)pipewireFd.DangerousGetHandle();
+    _expectedWidth = expectedLogicalWidth;
+    _expectedHeight = expectedLogicalHeight;
+
     _width = expectedLogicalWidth;
     _height = expectedLogicalHeight;
 
     InitializeGStreamer();
   }
 
-
-  public int ActualHeight => _height;
-
-  public int ActualWidth => _width;
-
+  public int Height => Volatile.Read(ref _height);
   public bool IsStreaming => !_disposed && _pipeline != nint.Zero;
-  public double ScaleFactor => 1.0;
+  public int Width => Volatile.Read(ref _width);
 
   public void Dispose()
   {
@@ -62,18 +64,36 @@ public class PipeWireStream : IDisposable
       Cleanup();
       _disposed = true;
     }
+    GC.SuppressFinalize(this);
   }
 
   public PipeWireFrameData GetLatestFrame()
   {
-    return Volatile.Read(ref _latestFrame)
+    var current = Volatile.Read(ref _latestFrame)
       ?? throw new InvalidOperationException("No frame available yet.");
+
+    return CloneFrameData(current);
   }
 
   public bool TryGetLatestFrame([NotNullWhen(true)] out PipeWireFrameData? frame)
   {
-    frame = Volatile.Read(ref _latestFrame);
-    return frame is not null;
+    try
+    {
+      var current = Volatile.Read(ref _latestFrame);
+      if (current is null)
+      {
+        frame = null;
+        return false;
+      }
+      frame = CloneFrameData(current);
+      return true;
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error trying to get latest frame.");
+      frame = null;
+      return false;
+    }
   }
 
   private void Cleanup()
@@ -82,7 +102,7 @@ public class PipeWireStream : IDisposable
     {
       if (_pipeline != nint.Zero)
       {
-        GStreamer.gst_element_set_state(_pipeline, (int)GStreamer.State.Null);
+        _ = GStreamer.gst_element_set_state(_pipeline, (int)GStreamer.State.Null);
         GStreamer.gst_object_unref(_pipeline);
         _pipeline = nint.Zero;
       }
@@ -92,10 +112,37 @@ public class PipeWireStream : IDisposable
         GStreamer.gst_object_unref(_appsink);
         _appsink = nint.Zero;
       }
+
+      using var old = Interlocked.Exchange(ref _latestFrame, null);
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error cleaning up");
+    }
+  }
+
+  private PipeWireFrameData CloneFrameData(PipeWireFrameData source)
+  {
+    var size = source.Data.Length;
+    var array = ArrayPool<byte>.Shared.Rent(size);
+    try
+    {
+      source.Data.Span.CopyTo(array.AsSpan(0, size));
+      var arrayOwner = new ArrayPoolOwner(array, size);
+
+      return new PipeWireFrameData
+      {
+        DataOwner = arrayOwner,
+        Width = source.Width,
+        Height = source.Height,
+        Stride = source.Stride,
+        PixelFormat = source.PixelFormat
+      };
+    }
+    catch
+    {
+      ArrayPool<byte>.Shared.Return(array);
+      throw;
     }
   }
 
@@ -111,9 +158,7 @@ public class PipeWireStream : IDisposable
       // max-buffers=1 limits the queue to a single buffer.
       var pipelineStr =
         $"pipewiresrc fd={_pipewireFd} path={_nodeId} always-copy=true ! " +
-        $"videoconvert ! videoscale ! " +
-        $"video/x-raw,format=BGRA,width={_width},height={_height} ! " +
-        $"appsink name=sink max-buffers=1 drop=true";
+        $"appsink name=sink max-buffers=1 drop=true sync=false caps=video/x-raw,format=BGRA";
 
       _logger.LogInformation("Initializing GStreamer pipeline: {Pipeline}", pipelineStr);
 
@@ -155,13 +200,12 @@ public class PipeWireStream : IDisposable
 
   private void StartReadingGstreamerOutput()
   {
-    try
-    {
-      const ulong appSinkPullTimeout = 100 * 1000000;
 
-      while (!_disposed)
+    while (!Volatile.Read(ref _disposed))
+    {
+      try
       {
-        var sample = GStreamer.gst_app_sink_try_pull_sample(_appsink, appSinkPullTimeout);
+        var sample = GStreamer.gst_app_sink_try_pull_sample(_appsink, AppSinkPullTimeout);
 
         if (sample == nint.Zero)
         {
@@ -169,55 +213,115 @@ public class PipeWireStream : IDisposable
           continue;
         }
 
-        try
-        {
-          var buffer = GStreamer.gst_sample_get_buffer(sample);
-          if (buffer == nint.Zero)
-          {
-            continue;
-          }
-
-          if (!GStreamer.gst_buffer_map(buffer, out var mapInfo, GStreamer.GST_MAP_READ))
-          {
-            continue;
-          }
-
-          try
-          {
-            var size = (int)mapInfo.size;
-            var data = new byte[size];
-
-            unsafe
-            {
-              fixed (byte* dest = data)
-              {
-                Buffer.MemoryCopy((void*)mapInfo.data, dest, size, size);
-              }
-            }
-
-            Volatile.Write(ref _latestFrame, new PipeWireFrameData
-            {
-              Data = data,
-              Width = _width,
-              Height = _height,
-              Stride = _width * 4,
-              PixelFormat = SPA_VIDEO_FORMAT_BGRA
-            });
-          }
-          finally
-          {
-            GStreamer.gst_buffer_unmap(buffer, ref mapInfo);
-          }
-        }
-        finally
+        using var sampleDisposer = new CallbackDisposable(() =>
         {
           GStreamer.gst_sample_unref(sample);
+        });
+
+        var width = _expectedWidth;
+        var height = _expectedHeight;
+
+        var caps = GStreamer.gst_sample_get_caps(sample);
+        if (caps != nint.Zero)
+        {
+          var structure = GStreamer.gst_caps_get_structure(caps, 0);
+          if (structure != nint.Zero)
+          {
+            if (GStreamer.gst_structure_get_int(structure, "width", out var capWidth) != 0 && capWidth > 0)
+            {
+              width = capWidth;
+            }
+            if (GStreamer.gst_structure_get_int(structure, "height", out var capHeight) != 0 && capHeight > 0)
+            {
+              height = capHeight;
+            }
+          }
+        }
+
+        var buffer = GStreamer.gst_sample_get_buffer(sample);
+        if (buffer == nint.Zero)
+        {
+          continue;
+        }
+
+        if (!GStreamer.gst_buffer_map(buffer, out var mapInfo, GStreamer.GST_MAP_READ))
+        {
+          continue;
+        }
+
+        using var mapDisposer = new CallbackDisposable(() =>
+        {
+          GStreamer.gst_buffer_unmap(buffer, ref mapInfo);
+        });
+
+        var size = checked((int)mapInfo.size);
+        var array = ArrayPool<byte>.Shared.Rent(size);
+        try
+        {
+          unsafe
+          {
+            fixed (byte* destPtr = array)
+            {
+              Buffer.MemoryCopy((void*)mapInfo.data, destPtr, array.Length, size);
+            }
+          }
+
+          if ((uint)width != (uint)_expectedWidth || (uint)height != (uint)_expectedHeight)
+          {
+            if (Interlocked.CompareExchange(ref _loggedDimensionMismatch, 1, 0) == 0)
+            {
+              _logger.LogInformation(
+                "PipeWire stream caps size ({Width}x{Height} physical px) differs from portal-reported logical size ({ExpectedLogicalWidth}x{ExpectedLogicalHeight}).",
+                width,
+                height,
+                _expectedWidth,
+                _expectedHeight);
+            }
+          }
+
+          Volatile.Write(ref _width, width);
+          Volatile.Write(ref _height, height);
+
+          var stride = width * 4;
+          if (height > 0)
+          {
+            var computedStride = size / height;
+            if (computedStride >= width * 4)
+            {
+              stride = computedStride;
+            }
+            else if (Interlocked.CompareExchange(ref _loggedStrideMismatch, 1, 0) == 0)
+            {
+              _logger.LogWarning(
+                "PipeWire frame stride computed as {Stride} which is smaller than width*4 ({MinStride}). Falling back to width*4.",
+                computedStride,
+                width * 4);
+            }
+          }
+
+          var arrayOwner = new ArrayPoolOwner(array, size);
+          var newFrame = new PipeWireFrameData
+          {
+            DataOwner = arrayOwner,
+            Width = width,
+            Height = height,
+            Stride = stride,
+            PixelFormat = SPA_VIDEO_FORMAT_BGRA
+          };
+
+          using var old = Interlocked.Exchange(ref _latestFrame, newFrame);
+        }
+        catch
+        {
+          ArrayPool<byte>.Shared.Return(array);
+          throw;
         }
       }
-    }
-    catch (Exception ex)
-    {
-      _logger.LogError(ex, "Error in capture loop");
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error in capture loop iteration");
+      }
+
     }
   }
 }

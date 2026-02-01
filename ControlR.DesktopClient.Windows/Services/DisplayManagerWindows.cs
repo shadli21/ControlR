@@ -167,7 +167,7 @@ internal class DisplayManagerWindows(
     try
     {
       _displays.Clear();
-      foreach (var display in DisplaysEnumHelperWindows.GetDisplays())
+      foreach (var display in DisplayEnumHelperWindows.GetDisplays())
       {
         _displays[display.DeviceName] = display;
       }

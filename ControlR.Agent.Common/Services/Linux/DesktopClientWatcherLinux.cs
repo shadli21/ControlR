@@ -54,7 +54,7 @@ internal class DesktopClientWatcherLinux(
         var isHeadless = await _headlessServerDetector.IsHeadlessServer();
         if (isHeadless)
         {
-          _logger.LogDeduped(LogLevel.Information, "Running on headless Ubuntu server. Desktop client services are not applicable.");
+          _logger.LogDeduped(LogLevel.Information, "Running on headless Linux server. Desktop client services are not applicable.");
           await Task.Delay(TimeSpan.FromMinutes(1), _timeProvider, stoppingToken);
           continue;
         }
@@ -208,16 +208,16 @@ internal class DesktopClientWatcherLinux(
     }
   }
 
-  private async Task<bool> IsLoginScreenDesktopClientRunning()
+  private Task<bool> IsLoginScreenDesktopClientRunning()
   {
     try
     {
-      return _loginScreenProcess is { HasExited: false };
+      return Task.FromResult(_loginScreenProcess is { HasExited: false });
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error checking login screen desktop client status");
-      return false;
+      return Task.FromResult(false);
     }
   }
 
@@ -321,13 +321,13 @@ internal class DesktopClientWatcherLinux(
     }
   }
 
-  private async Task StopLoginScreenDesktopClient()
+  private Task StopLoginScreenDesktopClient()
   {
     try
     {
       if (_loginScreenProcess is null)
       {
-        return;
+        return Task.CompletedTask;
       }
 
       _logger.LogInformation("Stopping login screen desktop client (PID {PID})", _loginScreenProcess.Id);
@@ -339,5 +339,7 @@ internal class DesktopClientWatcherLinux(
     {
       _logger.LogError(ex, "Error stopping login screen desktop client");
     }
+
+    return Task.CompletedTask;
   }
 }

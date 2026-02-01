@@ -1,28 +1,4 @@
-﻿//  ---------------------------------------------------------------------------------
-//  Copyright (c) Microsoft Corporation.  All rights reserved.
-// 
-//  The MIT License (MIT)
-// 
-//  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
-//  in the Software without restriction, including without limitation the rights
-//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-//  copies of the Software, and to permit persons to whom the Software is
-//  furnished to do so, subject to the following conditions:
-// 
-//  The above copyright notice and this permission notice shall be included in
-//  all copies or substantial portions of the Software.
-// 
-//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-//  THE SOFTWARE.
-//  ---------------------------------------------------------------------------------
-
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Graphics.Gdi;
@@ -30,7 +6,7 @@ using ControlR.DesktopClient.Common.Models;
 
 namespace ControlR.DesktopClient.Windows.Helpers;
 
-internal static class DisplaysEnumHelperWindows
+internal static class DisplayEnumHelperWindows
 {
   private const int Cchdevicename = 32;
 
@@ -48,51 +24,54 @@ internal static class DisplaysEnumHelperWindows
         var mi = new MonitorInfoEx();
         mi.Size = Marshal.SizeOf(mi);
         var success = GetMonitorInfo(hMonitor, ref mi);
-        if (success)
+        if (!success)
         {
-          var info = new DisplayInfo
-          {
-            MonitorArea = new Rectangle(
-              mi.Monitor.Left,
-              mi.Monitor.Top,
-              mi.Monitor.Right - mi.Monitor.Left,
-              mi.Monitor.Bottom - mi.Monitor.Top),
-            WorkArea = new Rectangle(
-              mi.WorkArea.Left,
-              mi.WorkArea.Top,
-              mi.WorkArea.Right - mi.WorkArea.Left,
-              mi.WorkArea.Bottom - mi.WorkArea.Top),
-            IsPrimary = mi.Flags > 0,
-            DeviceName = mi.DeviceName,
-            Index = displays.Count
-          };
-          displays.Add(info);
+          return true;
         }
+
+        // Try to determine the display DPI so we can populate LogicalMonitorArea and ScaleFactor.
+        var scale = 1.0;
+
+        var monitorRect = new Rectangle(
+          mi.Monitor.Left,
+          mi.Monitor.Top,
+          mi.Monitor.Right - mi.Monitor.Left,
+          mi.Monitor.Bottom - mi.Monitor.Top);
+
+        unsafe
+        {
+          var devMode = new DEVMODEW { dmSize = (ushort)sizeof(DEVMODEW) };
+          if (PInvoke.EnumDisplaySettings(mi.DeviceName, ENUM_DISPLAY_SETTINGS_MODE.ENUM_CURRENT_SETTINGS, ref devMode))
+          {
+            scale = devMode.dmLogPixels / 96.0;
+          }
+        }
+
+        var logicalLeft = (int)Math.Round(monitorRect.Left / scale);
+        var logicalTop = (int)Math.Round(monitorRect.Top / scale);
+        var logicalWidth = (int)Math.Round(monitorRect.Width / scale);
+        var logicalHeight = (int)Math.Round(monitorRect.Height / scale);
+
+        var info = new DisplayInfo
+        {
+          DisplayName = $"Display {displays.Count + 1}",
+          MonitorArea = monitorRect,
+          LogicalMonitorArea = new Rectangle(logicalLeft, logicalTop, logicalWidth, logicalHeight),
+          WorkArea = new Rectangle(
+            mi.WorkArea.Left,
+            mi.WorkArea.Top,
+            mi.WorkArea.Right - mi.WorkArea.Left,
+            mi.WorkArea.Bottom - mi.WorkArea.Top),
+          IsPrimary = mi.Flags > 0,
+          DeviceName = mi.DeviceName,
+          Index = displays.Count,
+          ScaleFactor = scale
+        };
+        
+        displays.Add(info);
 
         return true;
       }, nint.Zero);
-
-    unsafe
-    {
-      var devMode = new DEVMODEW
-      {
-        dmSize = (ushort)sizeof(DEVMODEW)
-      };
-
-      for (var i = 0; i < displays.Count; i++)
-      {
-        var display = displays[i];
-        display.DisplayName = $"Display {i}";
-
-        if (PInvoke.EnumDisplaySettings(
-            display.DeviceName,
-            ENUM_DISPLAY_SETTINGS_MODE.ENUM_CURRENT_SETTINGS,
-            ref devMode))
-        {
-          display.ScaleFactor = devMode.dmLogPixels / 96.0;
-        }
-      }
-    }
 
     return displays;
   }

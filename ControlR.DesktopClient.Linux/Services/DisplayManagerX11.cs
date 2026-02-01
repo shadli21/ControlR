@@ -168,12 +168,14 @@ internal class DisplayManagerX11 : IDisplayManager
             var monitorPtr = monitorsPtr + i * Marshal.SizeOf<LibXrandr.XRRMonitorInfo>();
             var monitor = Marshal.PtrToStructure<LibXrandr.XRRMonitorInfo>(monitorPtr);
 
+            var monitorRect = new Rectangle(monitor.x, monitor.y, monitor.width, monitor.height);
             var displayInfo = new DisplayInfo
             {
               DeviceName = i.ToString(),
-              DisplayName = $"Display {i}",
+              DisplayName = $"Display {i + 1}",
               Index = i,
-              MonitorArea = new Rectangle(monitor.x, monitor.y, monitor.width, monitor.height),
+              MonitorArea = monitorRect,
+              LogicalMonitorArea = new Rectangle(monitorRect.Left, monitorRect.Top, monitorRect.Width, monitorRect.Height),
               WorkArea = new Rectangle(monitor.x, monitor.y, monitor.width, monitor.height),
               IsPrimary = monitor.primary,
               ScaleFactor = 1.0 // X11 doesn't provide easy access to scale factor
@@ -193,12 +195,14 @@ internal class DisplayManagerX11 : IDisplayManager
             var width = LibX11.XDisplayWidth(xDisplay, i);
             var height = LibX11.XDisplayHeight(xDisplay, i);
 
+            var monitorRect = new Rectangle(0, 0, width, height);
             var displayInfo = new DisplayInfo
             {
               DeviceName = i.ToString(),
-              DisplayName = $"Screen {i}",
+              DisplayName = $"Display {i + 1}",
               Index = i,
-              MonitorArea = new Rectangle(0, 0, width, height),
+              MonitorArea = monitorRect,
+              LogicalMonitorArea = new Rectangle(monitorRect.Left, monitorRect.Top, monitorRect.Width, monitorRect.Height),
               WorkArea = new Rectangle(0, 0, width, height),
               IsPrimary = i == 0,
               ScaleFactor = 1.0

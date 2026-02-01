@@ -22,7 +22,6 @@ internal class FrameBasedCapturer : IDesktopCapturer
   public const int DefaultImageQuality = 75;
 
   private readonly TimeSpan _afterFailureDelay = TimeSpan.FromMilliseconds(100);
-
   private readonly Channel<ScreenRegionDto> _captureChannel = Channel.CreateBounded<ScreenRegionDto>(
     new BoundedChannelOptions(capacity: 1)
     {
@@ -30,7 +29,6 @@ internal class FrameBasedCapturer : IDesktopCapturer
       SingleWriter = true,
       FullMode = BoundedChannelFullMode.Wait,
     });
-
   private readonly SemaphoreSlim _displayLock = new(1, 1);
   private readonly TimeSpan _displayLockTimeout = TimeSpan.FromSeconds(5);
   private readonly IDisplayManager _displayManager;
@@ -41,6 +39,7 @@ internal class FrameBasedCapturer : IDesktopCapturer
   private readonly TimeSpan _noChangeDelay = TimeSpan.FromMilliseconds(10);
   private readonly IScreenGrabber _screenGrabber;
   private readonly TimeProvider _timeProvider;
+
   private Task? _captureTask;
   private string? _currentCaptureMode;
   private bool _disposedValue;
@@ -152,11 +151,17 @@ internal class FrameBasedCapturer : IDesktopCapturer
     return Task.CompletedTask;
   }
 
-  public Task StartCapturingChanges(CancellationToken cancellationToken)
+  public async Task StartCapturingChanges(CancellationToken cancellationToken)
   {
     ObjectDisposedException.ThrowIf(_disposedValue, this);
+
+    if (_captureTask is not null)
+    {
+      return;
+    }
+
+    await _screenGrabber.Initialize(cancellationToken);
     _captureTask = StartCapturingChangesImpl(cancellationToken);
-    return Task.CompletedTask;
   }
 
   public async Task<Result<DisplayInfo>> TryGetSelectedDisplay()
@@ -310,16 +315,6 @@ internal class FrameBasedCapturer : IDesktopCapturer
   {
     SKBitmap? previousCapture = null;
 
-    try
-    {
-      await _screenGrabber.Initialize(cancellationToken);
-    }
-    catch (Exception ex)
-    {
-      _logger.LogError(ex, "Failed to initialize screen grabber.");
-      return;
-    }
-
     while (!cancellationToken.IsCancellationRequested)
     {
       try
@@ -348,7 +343,7 @@ internal class FrameBasedCapturer : IDesktopCapturer
 
         using var currentCapture = await _screenGrabber.CaptureDisplay(
             targetDisplay: selectedDisplay,
-            captureCursor: false,
+            captureCursor: true,
             forceKeyFrame: _forceKeyFrame);
 
         if (currentCapture.HadNoChanges && !_forceKeyFrame)

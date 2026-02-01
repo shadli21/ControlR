@@ -142,6 +142,12 @@ public class ScreenRendererViewModel : IScreenRendererViewModel
             //await InvokeAsync(StateHasChanged);
             break;
           }
+        case DtoType.RemoteControlSessionError:
+          {
+            var dto = message.GetPayload<RemoteControlSessionErrorDto>();
+            Logger.LogError("Remote control session error: {Message}", dto.Message);
+            break;
+          }
         default:
           Logger.LogWarning("Received unsupported DTO type: {DtoType}", message.DtoType);
           //Snackbar.Add($"Unsupported DTO type: {message.DtoType}", Severity.Warning);

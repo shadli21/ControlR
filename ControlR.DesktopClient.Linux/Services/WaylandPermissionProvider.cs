@@ -41,9 +41,13 @@ internal class WaylandPermissionProvider(
     try
     {
       using var xdgPortal = _xdgFactory.CreateNew();
-      await xdgPortal.Initialize();
-      _logger.LogInformation("RemoteDesktop permission granted via XDG portal");
-      return await IsRemoteControlPermissionGranted();
+      await xdgPortal.Initialize(force);
+      var isGranted = await IsRemoteControlPermissionGranted();
+      if (isGranted)
+      {
+        _logger.LogInformation("RemoteDesktop permission granted via XDG portal");
+      }
+      return isGranted;
     }
     catch (Exception ex)
     {

@@ -364,8 +364,7 @@ public class AgentHub(
         await DrainChannelReader(agentStream);
         throw new InvalidOperationException($"No signaler found for {streamType} stream.");
       }
-
-      await processSignaler(signaler);
+      await processSignaler.Invoke(signaler);
     }
     catch (OperationCanceledException)
     {

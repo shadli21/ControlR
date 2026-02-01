@@ -1,7 +1,5 @@
 using System.Threading.Channels;
 using ControlR.Libraries.Shared.Constants;
-using ControlR.Libraries.Shared.Primitives;
-using Microsoft.Extensions.Logging;
 
 namespace ControlR.Libraries.Signalr.Client.Extensions;
 

@@ -1,6 +1,6 @@
 using System.Buffers;
 
-namespace ControlR.Libraries.Shared.Helpers;
+namespace ControlR.Libraries.Shared.Services.Buffers;
 
 public sealed class SlicedMemoryOwner<T>(IMemoryOwner<T> internalOwner, int length) : IMemoryOwner<T>
 {

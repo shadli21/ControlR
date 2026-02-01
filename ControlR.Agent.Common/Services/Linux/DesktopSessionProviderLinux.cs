@@ -195,19 +195,19 @@ internal class DesktopSessionProviderLinux(
 
     if (tty.StartsWith(':'))
     {
-      return $"{sessionTypeStr} (X11: {tty})";
+      return $"{sessionTypeStr} - X11: {tty}";
     }
     else if (tty.StartsWith("wayland", StringComparison.OrdinalIgnoreCase))
     {
-      return $"{sessionTypeStr} (Wayland: {tty})";
+      return $"{sessionTypeStr} - Wayland: {tty}";
     }
     else if (tty.StartsWith("tty"))
     {
-      return $"{sessionTypeStr} ({tty})";
+      return $"{sessionTypeStr} - Virtual: {tty}";
     }
     else
     {
-      return $"{sessionTypeStr} ({tty})";
+      return $"{sessionTypeStr} - Unknown: {tty}";
     }
   }
 

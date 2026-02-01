@@ -4,41 +4,62 @@ namespace ControlR.Libraries.NativeInterop.Unix.Linux;
 
 public static class GStreamer
 {
+    public const ulong GST_CLOCK_TIME_NONE = ulong.MaxValue;
     public const int GST_MAP_READ = 1;
+
 
     private const string AppLibraryName = "libgstapp-1.0.so.0";
     private const string LibraryName = "libgstreamer-1.0.so.0";
 
+
     [DllImport(AppLibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern bool gst_app_sink_is_eos(nint appsink);
+
     [DllImport(AppLibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern nint gst_app_sink_pull_sample(nint appsink);
+
     [DllImport(AppLibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern nint gst_app_sink_try_pull_sample(nint appsink, ulong timeout);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern nint gst_bin_get_by_name(nint bin, string name);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern bool gst_buffer_map(nint buffer, out GstMapInfo info, int flags);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gst_buffer_unmap(nint buffer, ref GstMapInfo info);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern nint gst_caps_get_structure(nint caps, uint index);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gst_element_set_state(nint element, int state);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gst_init(ref int argc, ref nint argv);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gst_object_unref(nint obj);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern nint gst_parse_launch(string pipeline_description, out nint error);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern nint gst_sample_get_buffer(nint sample);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern nint gst_sample_get_caps(nint sample);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gst_sample_unref(nint sample);
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gst_structure_get_int(nint structure, string fieldname, out int value);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern nint gst_structure_get_string(nint structure, string fieldname);
+
 
     public enum State
     {
@@ -49,6 +70,26 @@ public static class GStreamer
         Playing = 4
     }
 
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GstBuffer
+    {
+        public nint mini_object_type;
+        public int mini_object_refcount;
+        public int mini_object_lockstate;
+        public uint mini_object_flags;
+        public nint mini_object_copy;
+        public nint mini_object_dispose;
+        public nint mini_object_free;
+        public uint mini_object_priv_uint;
+        public nint mini_object_priv_pointer;
+        public nint pool;
+        public ulong pts;
+        public ulong dts;
+        public ulong duration;
+        public ulong offset;
+        public ulong offset_end;
+    }
     [StructLayout(LayoutKind.Sequential)]
     public struct GstMapInfo
     {

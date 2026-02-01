@@ -124,6 +124,9 @@ internal sealed class DesktopRemoteControlStream(
       Messenger.Register<SendToastToViewerMessage>(this, HandleSendToastToViewerMessage);
       _messageHandlerRegistration = RegisterMessageHandler(this, HandleMessageReceived);
 
+      await _desktopCapturer.StartCapturingChanges(_appLifetime.ApplicationStopping);
+      await _displayManager.ReloadDisplays();
+
       await SendDisplayData();
 
       if (_startupOptions.Value.NotifyUser)
@@ -141,6 +144,8 @@ internal sealed class DesktopRemoteControlStream(
         ex,
         "Error while initializing remote control session. " +
         "Remote control cannot start.  Shutting down.");
+
+      await TrySendSessionError(ex);
     }
     finally
     {
@@ -499,5 +504,32 @@ internal sealed class DesktopRemoteControlStream(
     }
 
     return new PointerCoordinates(percentX, percentY, point, selectedDisplay);
+  }
+
+  private async Task TrySendSessionError(Exception ex)
+  {
+    try
+    {
+      if (State != WebSocketState.Open)
+      {
+        return;
+      }
+
+      var message = ex.GetBaseException().Message;
+      if (string.IsNullOrWhiteSpace(message))
+      {
+        message = "An error occurred while initializing remote control.";
+      }
+
+      var dto = new RemoteControlSessionErrorDto(message, IsFatal: true);
+      var wrapper = DtoWrapper.Create(dto, DtoType.RemoteControlSessionError);
+
+      using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+      await Send(wrapper, cts.Token);
+    }
+    catch (Exception sendEx)
+    {
+      _logger.LogError(sendEx, "Error while sending remote control session error to viewer.");
+    }
   }
 }
