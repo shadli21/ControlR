@@ -264,7 +264,7 @@ internal class AgentInstallerWindows(
     controlrKey.SetValue("DisplayIcon", Path.Combine(installDir, fileName));
     controlrKey.SetValue("DisplayName", displayName);
     controlrKey.SetValue("DisplayVersion", version.FileVersion ?? "0.0.0");
-    controlrKey.SetValue("InstallDate", DateTime.Now.ToShortDateString());
+    controlrKey.SetValue("InstallDate", DateTime.Now.ToString("yyyyMMdd"));
     controlrKey.SetValue("Publisher", "Bitbound");
     controlrKey.SetValue("VersionMajor", $"{version.FileMajorPart}", RegistryValueKind.DWord);
     controlrKey.SetValue("VersionMinor", $"{version.FileMinorPart}", RegistryValueKind.DWord);
