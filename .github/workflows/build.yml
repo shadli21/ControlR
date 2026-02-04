@@ -247,7 +247,7 @@ jobs:
       - name: Sign DesktopClient (${{ matrix.arch }})
         shell: pwsh
         run: |
-          AzureSignTool sign `
+          dnx azuresigntool --yes sign `
             --du="${{ vars.SIGNING_DESCRIPTION_URL }}" `
             --fd=sha256 `
             --kvu="${{ secrets.AZURE_KEY_VAULT_URI }}" `
@@ -279,7 +279,7 @@ jobs:
       - name: Sign Agent (${{ matrix.arch }})
         shell: pwsh
         run: |
-          AzureSignTool sign `
+          dnx azuresigntool --yes sign `
             --du="${{ vars.SIGNING_DESCRIPTION_URL }}" `
             --fd=sha256 `
             --kvu="${{ secrets.AZURE_KEY_VAULT_URI }}" `
