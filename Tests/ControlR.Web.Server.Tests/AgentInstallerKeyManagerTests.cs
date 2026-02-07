@@ -13,6 +13,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   private readonly ITestOutputHelper _testOutput = testOutput;
 
   private AgentInstallerKeyManager _keyManager = null!;
+  private Guid _creatorId;
+  private Guid _tenantId;
   private TestApp _testApp = null!;
   private FakeTimeProvider _timeProvider = null!;
 
@@ -24,8 +26,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task IncrementUsage_WhenTimeBasedKeyExpired_RemovesKey()
   {
     var dto = await _keyManager.CreateKey(
-        tenantId: Guid.NewGuid(),
-        creatorId: Guid.NewGuid(),
+        tenantId: _tenantId,
+        creatorId: _creatorId,
         keyType: InstallerKeyType.TimeBased,
         allowedUses: null,
         expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -47,13 +49,18 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     _testApp = await TestAppBuilder.CreateTestApp(_testOutput, testDatabaseName: Guid.NewGuid().ToString());
     _timeProvider = _testApp.TimeProvider;
     _keyManager = (AgentInstallerKeyManager)_testApp.Services.GetRequiredService<IAgentInstallerKeyManager>();
+
+    var tenant = await _testApp.Services.CreateTestTenant();
+    var user = await _testApp.Services.CreateTestUser(tenant.Id, email: $"installer-{Guid.NewGuid():N}@test.local");
+    _tenantId = tenant.Id;
+    _creatorId = user.Id;
   }
   [Fact]
   public async Task ValidateAndConsumeKey_RecordsRemoteIpAddress()
   {
     var dto = await _keyManager.CreateKey(
-        tenantId: Guid.NewGuid(),
-        creatorId: Guid.NewGuid(),
+        tenantId: _tenantId,
+        creatorId: _creatorId,
         keyType: InstallerKeyType.UsageBased,
         allowedUses: 1,
         expiration: null,
@@ -71,8 +78,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task ValidateAndConsumeKey_WhenUsageBasedKeyExistsAndUsedUp_Fails(uint allowedUses)
   {
     var dto = await _keyManager.CreateKey(
-      tenantId: Guid.NewGuid(),
-      creatorId: Guid.NewGuid(),
+      tenantId: _tenantId,
+      creatorId: _creatorId,
       keyType: InstallerKeyType.UsageBased,
       allowedUses: allowedUses,
       expiration: null,
@@ -91,8 +98,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task ValidateAndConsumeKey_WhenUsageBasedKeyExists_Succeeds()
   {
     var dto = await _keyManager.CreateKey(
-      tenantId: Guid.NewGuid(),
-      creatorId: Guid.NewGuid(),
+      tenantId: _tenantId,
+      creatorId: _creatorId,
       keyType: InstallerKeyType.UsageBased,
       allowedUses: 1,
       expiration: null,
@@ -105,8 +112,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task ValidateKey_DoesNotConsumeUsage()
   {
     var dto = await _keyManager.CreateKey(
-        tenantId: Guid.NewGuid(),
-        creatorId: Guid.NewGuid(),
+        tenantId: _tenantId,
+        creatorId: _creatorId,
         keyType: InstallerKeyType.UsageBased,
         allowedUses: 1,
         expiration: null,
@@ -133,8 +140,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task ValidateKey_WhenPersistentKeyExists_Succeeds()
   {
     var dto = await _keyManager.CreateKey(
-        tenantId: Guid.NewGuid(),
-        creatorId: Guid.NewGuid(),
+        tenantId: _tenantId,
+        creatorId: _creatorId,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -147,8 +154,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task ValidateKey_WhenTimeBasedKeyExistsAndExpired_Fails()
   {
     var dto = await _keyManager.CreateKey(
-      tenantId: Guid.NewGuid(),
-      creatorId: Guid.NewGuid(),
+      tenantId: _tenantId,
+      creatorId: _creatorId,
       keyType: InstallerKeyType.TimeBased,
       allowedUses: null,
       expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -175,8 +182,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task ValidateKey_WhenTimeBasedKeyExistsAndNotExpired_Succeeds()
   {
     var dto = await _keyManager.CreateKey(
-      tenantId: Guid.NewGuid(),
-      creatorId: Guid.NewGuid(),
+      tenantId: _tenantId,
+      creatorId: _creatorId,
       keyType: InstallerKeyType.TimeBased,
       allowedUses: null,
       expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -190,8 +197,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task ValidateKey_WhenTimeBasedKeyExpired_RemovesKey()
   {
     var dto = await _keyManager.CreateKey(
-        tenantId: Guid.NewGuid(),
-        creatorId: Guid.NewGuid(),
+        tenantId: _tenantId,
+        creatorId: _creatorId,
         keyType: InstallerKeyType.TimeBased,
         allowedUses: null,
         expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -211,8 +218,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task ValidateKey_WithIncorrectKeyId_Fails()
   {
     var dto = await _keyManager.CreateKey(
-        tenantId: Guid.NewGuid(),
-        creatorId: Guid.NewGuid(),
+        tenantId: _tenantId,
+        creatorId: _creatorId,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -225,8 +232,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   public async Task ValidateKey_WithKeyId_Succeeds()
   {
     var dto = await _keyManager.CreateKey(
-        tenantId: Guid.NewGuid(),
-        creatorId: Guid.NewGuid(),
+        tenantId: _tenantId,
+        creatorId: _creatorId,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,

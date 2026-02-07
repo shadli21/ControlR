@@ -32,6 +32,8 @@ services:
       ControlR_POSTGRES_USER: *pgUser
       ControlR_POSTGRES_PASSWORD: *pgPassword
       ControlR_POSTGRES_HOST: "postgres"
+      ControlR_POSTGRES_PORT: 5432
+      ControlR_POSTGRES_DB: "controlr"
 
       # The access token for the Aspire Dashboard, where server logs and telemetry can be viewed.
       ControlR_AspireDashboard__Token: *aspireToken

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using Microsoft.AspNetCore.Components;
 using Xunit.Abstractions;
 
 namespace ControlR.Web.Server.Tests.Helpers;
@@ -24,12 +25,19 @@ internal static class TestAppBuilder
   {
     var timeProvider = new FakeTimeProvider(DateTimeOffset.Now);
 
+    var connectionInfo = await PostgresTestContainer.GetConnectionInfo();
+    var databaseName = await PostgresTestContainer.CreateDatabase($"{testDatabaseName}-{Guid.NewGuid():N}");
+
     var builder = WebApplication.CreateBuilder();
     builder.Environment.EnvironmentName = "Testing";
     _ = builder.Configuration.AddInMemoryCollection(
     [
-      new KeyValuePair<string, string?>("AppOptions:UseInMemoryDatabase", "true"),
-      new KeyValuePair<string, string?>("AppOptions:InMemoryDatabaseName", $"{testDatabaseName}-app")
+      new KeyValuePair<string, string?>("AppOptions:UseInMemoryDatabase", "false"),
+      new KeyValuePair<string, string?>("POSTGRES_USER", connectionInfo.Username),
+      new KeyValuePair<string, string?>("POSTGRES_PASSWORD", connectionInfo.Password),
+      new KeyValuePair<string, string?>("POSTGRES_HOST", connectionInfo.Host),
+      new KeyValuePair<string, string?>("POSTGRES_PORT", $"{connectionInfo.Port}"),
+      new KeyValuePair<string, string?>("POSTGRES_DB", databaseName)
     ]);
 
     if (extraConfiguration is not null)
@@ -39,13 +47,15 @@ internal static class TestAppBuilder
 
     _ = await builder.AddControlrServer(false);
 
+    _ = builder.Services.ReplaceImplementation<NavigationManager, FakeNavigationManager>(ServiceLifetime.Scoped);
+
     _ = builder.Services.ReplaceSingleton<TimeProvider, FakeTimeProvider>(timeProvider);
     _ = builder.Logging.ClearProviders();
     _ = builder.Logging.AddProvider(new XunitLoggerProvider(testOutput));
 
     // Build the app
     var app = builder.Build();
-    await app.AddBuiltInRoles();
+    await app.ApplyMigrations();
 
     return new TestApp(timeProvider, app);
   }

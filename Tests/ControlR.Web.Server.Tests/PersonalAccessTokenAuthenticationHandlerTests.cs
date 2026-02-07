@@ -206,7 +206,10 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
 
     Assert.NotNull(storedToken);
     Assert.NotNull(storedToken.LastUsed);
-    Assert.Equal(expectedLastUsed, storedToken.LastUsed);
+    Assert.InRange(
+      storedToken.LastUsed.Value,
+      expectedLastUsed.AddMilliseconds(-5),
+      expectedLastUsed.AddMilliseconds(5));
   }
   
 

@@ -317,22 +317,40 @@ public static class WebApplicationBuilderExtensions
     var pgUser = builder.Configuration.GetValue<string>("POSTGRES_USER");
     var pgPass = builder.Configuration.GetValue<string>("POSTGRES_PASSWORD");
     var pgHost = builder.Configuration.GetValue<string>("POSTGRES_HOST");
+    var pgDb = builder.Configuration.GetValue<string>("POSTGRES_DB");
+    var pgPortRaw = builder.Configuration.GetValue<string>("POSTGRES_PORT");
+    var pgPort = 5432;
 
     ArgumentException.ThrowIfNullOrWhiteSpace(pgUser);
     ArgumentException.ThrowIfNullOrWhiteSpace(pgPass);
     ArgumentException.ThrowIfNullOrWhiteSpace(pgHost);
 
+    if (string.IsNullOrWhiteSpace(pgDb))
+    {
+      pgDb = "controlr";
+    }
+
+    if (!string.IsNullOrWhiteSpace(pgPortRaw) && int.TryParse(pgPortRaw, out var parsedPort))
+    {
+      pgPort = parsedPort;
+    }
+
     if (Uri.TryCreate(pgHost, UriKind.Absolute, out var pgHostUri))
     {
-      pgHost = pgHostUri.Authority;
+      pgHost = pgHostUri.Host;
+      if (pgHostUri.Port > 0)
+      {
+        pgPort = pgHostUri.Port;
+      }
     }
 
     var pgBuilder = new NpgsqlConnectionStringBuilder
     {
-      Database = "controlr",
+      Database = pgDb,
       Username = pgUser,
       Password = pgPass,
-      Host = pgHost
+      Host = pgHost,
+      Port = pgPort
     };
 
     builder.Services.AddDbContextFactory<AppDb>((sp, options) =>

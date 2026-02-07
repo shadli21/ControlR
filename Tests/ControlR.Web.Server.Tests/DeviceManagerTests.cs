@@ -32,7 +32,8 @@ public class DeviceManagerTests(ITestOutputHelper testOutput)
     await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
 
     var deviceId = Guid.NewGuid();
-    var tenantId = Guid.NewGuid();
+    var tenant = await testApp.Services.CreateTestTenant();
+    var tenantId = tenant.Id;
     var tagIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
 
     // Create test tags
@@ -136,8 +137,10 @@ public class DeviceManagerTests(ITestOutputHelper testOutput)
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
     var db = scope.ServiceProvider.GetRequiredService<AppDb>();
 
-    var tenantId = Guid.NewGuid();
-    var otherTenantId = Guid.NewGuid();
+    var tenant = await testApp.Services.CreateTestTenant();
+    var otherTenant = await testApp.Services.CreateTestTenant("Other Tenant");
+    var tenantId = tenant.Id;
+    var otherTenantId = otherTenant.Id;
 
     // Create a test device
     var device = new Device
@@ -221,7 +224,8 @@ public class DeviceManagerTests(ITestOutputHelper testOutput)
     var db = scope.ServiceProvider.GetRequiredService<AppDb>();
 
     var deviceId = Guid.NewGuid();
-    var tenantId = Guid.NewGuid();
+    var tenant = await testApp.Services.CreateTestTenant();
+    var tenantId = tenant.Id;
     var tagIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
 
     // Create test tags
