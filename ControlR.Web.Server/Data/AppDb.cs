@@ -151,13 +151,6 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
       .WithMany(x => x.PersonalAccessTokens)
       .HasForeignKey(x => x.UserId)
       .OnDelete(DeleteBehavior.Cascade);
-
-    if (_tenantId is not null)
-    {
-      builder
-        .Entity<PersonalAccessToken>()
-        .HasQueryFilter(x => x.TenantId == _tenantId);
-    }
   }
   private void ConfigureTags(ModelBuilder builder)
   {

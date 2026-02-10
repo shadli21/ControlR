@@ -175,7 +175,6 @@ internal class UserSettingsProviderServer(
         Name = preferenceName,
         Value = stringValue,
         UserId = user.Id,
-        TenantId = user.TenantId
       };
 
       if (index >= 0)

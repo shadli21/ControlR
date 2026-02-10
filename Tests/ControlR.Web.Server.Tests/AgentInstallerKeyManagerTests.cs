@@ -12,8 +12,8 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
 {
   private readonly ITestOutputHelper _testOutput = testOutput;
 
-  private AgentInstallerKeyManager _keyManager = null!;
   private Guid _creatorId;
+  private AgentInstallerKeyManager _keyManager = null!;
   private Guid _tenantId;
   private TestApp _testApp = null!;
   private FakeTimeProvider _timeProvider = null!;
@@ -22,6 +22,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   {
     await _testApp.DisposeAsync();
   }
+
   [Fact]
   public async Task IncrementUsage_WhenTimeBasedKeyExpired_RemovesKey()
   {
@@ -44,6 +45,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var validateResult = await _keyManager.ValidateKey(dto.Id, dto.KeySecret);
     Assert.False(validateResult);
   }
+
   public async Task InitializeAsync()
   {
     _testApp = await TestAppBuilder.CreateTestApp(_testOutput, testDatabaseName: Guid.NewGuid().ToString());
@@ -55,6 +57,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     _tenantId = tenant.Id;
     _creatorId = user.Id;
   }
+
   [Fact]
   public async Task ValidateAndConsumeKey_RecordsRemoteIpAddress()
   {
@@ -71,6 +74,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var validateResult = await _keyManager.ValidateAndConsumeKey(dto.Id, dto.KeySecret, deviceId, remoteIp);
     Assert.True(validateResult);
   }
+
   [Theory]
   [InlineData(1)]
   [InlineData(5)]
@@ -94,6 +98,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var finalValidateResult = await _keyManager.ValidateAndConsumeKey(dto.Id, dto.KeySecret, Guid.NewGuid());
     Assert.False(finalValidateResult);
   }
+
   [Fact]
   public async Task ValidateAndConsumeKey_WhenUsageBasedKeyExists_Succeeds()
   {
@@ -108,6 +113,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var validateResult = await _keyManager.ValidateAndConsumeKey(dto.Id, dto.KeySecret, Guid.NewGuid());
     Assert.True(validateResult);
   }
+
   [Fact]
   public async Task ValidateKey_DoesNotConsumeUsage()
   {
@@ -130,12 +136,14 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var finalResult = await _keyManager.ValidateKey(dto.Id, dto.KeySecret);
     Assert.True(finalResult);
   }
+
   [Fact]
   public async Task ValidateKey_WhenKeyDoesNotExist_Fails()
   {
     var validateResult = await _keyManager.ValidateKey(Guid.NewGuid(), "asdf");
     Assert.False(validateResult);
   }
+
   [Fact]
   public async Task ValidateKey_WhenPersistentKeyExists_Succeeds()
   {
@@ -150,6 +158,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var validateResult = await _keyManager.ValidateKey(dto.Id, dto.KeySecret);
     Assert.True(validateResult);
   }
+
   [Fact]
   public async Task ValidateKey_WhenTimeBasedKeyExistsAndExpired_Fails()
   {
@@ -178,6 +187,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     validateResult = await _keyManager.ValidateKey(dto.Id, dto.KeySecret);
     Assert.False(validateResult);
   }
+
   [Fact]
   public async Task ValidateKey_WhenTimeBasedKeyExistsAndNotExpired_Succeeds()
   {
@@ -193,6 +203,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
 
     Assert.True(validateResult);
   }
+
   [Fact]
   public async Task ValidateKey_WhenTimeBasedKeyExpired_RemovesKey()
   {
@@ -214,6 +225,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     validateResult = await _keyManager.ValidateKey(dto.Id, dto.KeySecret);
     Assert.False(validateResult);
   }
+
   [Fact]
   public async Task ValidateKey_WithIncorrectKeyId_Fails()
   {
@@ -228,6 +240,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var validateResult = await _keyManager.ValidateKey(Guid.NewGuid(), dto.KeySecret);
     Assert.False(validateResult);
   }
+
   [Fact]
   public async Task ValidateKey_WithKeyId_Succeeds()
   {

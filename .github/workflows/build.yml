@@ -12,7 +12,7 @@ on:
       use_self_hosted_runners:
         description: "Use Self-Hosted Runners"
         required: true
-        default: false
+        default: true
         type: boolean
 
       retention_days_artifacts:
@@ -30,7 +30,7 @@ on:
       prerelease:
         description: "Is this a prerelease version?"
         required: false
-        default: false
+        default: true
         type: boolean
 
 env:
@@ -40,7 +40,7 @@ env:
 jobs:
   set-version:
     name: Increment Version
-    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","Unix"]') || fromJson('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","unix"]') || fromJson('["ubuntu-latest"]') }}
     permissions:
       contents: read
       actions: write
@@ -80,7 +80,7 @@ jobs:
 
   run-tests:
     name: Run Tests
-    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","Unix"]') || fromJson('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","unix"]') || fromJson('["ubuntu-latest"]') }}
     needs: set-version
 
     steps:
@@ -99,7 +99,7 @@ jobs:
 
   build-nuget-packages:
     name: Build NuGet Packages
-    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","Unix"]') || fromJson('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","unix"]') || fromJson('["ubuntu-latest"]') }}
     needs: set-version
 
     steps:
@@ -298,7 +298,7 @@ jobs:
 
   build-linux-binaries:
     name: Linux Build
-    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","Unix"]') || fromJson('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","unix"]') || fromJson('["ubuntu-latest"]') }}
     needs: [set-version]
 
     steps:

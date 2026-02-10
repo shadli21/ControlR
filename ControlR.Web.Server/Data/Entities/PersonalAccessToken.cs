@@ -3,7 +3,7 @@ using ControlR.Web.Server.Data.Entities.Bases;
 
 namespace ControlR.Web.Server.Data.Entities;
 
-public class PersonalAccessToken : TenantEntityBase
+public class PersonalAccessToken : EntityBase
 {
   [Required]
   [StringLength(256)]

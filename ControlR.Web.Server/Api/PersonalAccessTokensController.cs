@@ -21,7 +21,7 @@ public class PersonalAccessTokensController : ControllerBase
       return BadRequest("User tenant not found");
     }
 
-    var result = await personalAccessTokenManager.CreateToken(request, user.TenantId, user.Id);
+    var result = await personalAccessTokenManager.CreateToken(request, user.Id);
     if (!result.IsSuccess)
     {
       return BadRequest(result.Reason);

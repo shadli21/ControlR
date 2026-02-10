@@ -3,7 +3,7 @@ using ControlR.Web.Server.Data.Entities.Bases;
 
 namespace ControlR.Web.Server.Data.Entities;
 
-public class UserPreference : TenantEntityBase
+public class UserPreference : EntityBase
 {
   [StringLength(100)]
   [RegularExpression("^[a-zA-Z0-9-]+$", ErrorMessage = "Preference name can only contain letters, numbers, and hyphens.")]

@@ -30,7 +30,7 @@ public class LogonTokenDeviceScopeTests(ITestOutputHelper testOutput)
 
     // Create PAT
     var patManager = testApp.TestServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
-    var patCreate = await patManager.CreateToken(new CreatePersonalAccessTokenRequestDto("ScopeTest PAT"), user.TenantId, user.Id);
+    var patCreate = await patManager.CreateToken(new CreatePersonalAccessTokenRequestDto("ScopeTest PAT"), user.Id);
     Assert.True(patCreate.IsSuccess, patCreate.Reason);
     var pat = patCreate.Value.PlainTextToken;
 

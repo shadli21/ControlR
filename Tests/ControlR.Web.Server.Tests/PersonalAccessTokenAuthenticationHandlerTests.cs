@@ -34,7 +34,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
 
     var createRequest = new Libraries.Shared.Dtos.ServerApi.CreatePersonalAccessTokenRequestDto("Test Key");
-    var createResult = await patManager.CreateToken(createRequest, tenantId, serverAdmin.Id);
+    var createResult = await patManager.CreateToken(createRequest, serverAdmin.Id);
     var plainTextToken = createResult.Value!.PlainTextToken;
 
     var context = CreateHttpContext(plainTextToken);
@@ -74,7 +74,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var createRequest = new Libraries.Shared.Dtos.ServerApi.CreatePersonalAccessTokenRequestDto("Test Key");
-    var createResult = await personalAccessTokenManager.CreateToken(createRequest, tenantId, user.Id);
+    var createResult = await personalAccessTokenManager.CreateToken(createRequest, user.Id);
     var plainTextToken = createResult.Value!.PlainTextToken;
 
     var context = CreateHttpContext(plainTextToken);
@@ -186,7 +186,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     await using var db = services.GetRequiredService<AppDb>();
 
     var createRequest = new Libraries.Shared.Dtos.ServerApi.CreatePersonalAccessTokenRequestDto("Test Key");
-    var createResult = await patManager.CreateToken(createRequest, tenant.Id, user.Id);
+    var createResult = await patManager.CreateToken(createRequest, user.Id);
     var plainTextToken = createResult.Value!.PlainTextToken;
 
     // Advance time
@@ -230,7 +230,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
 
     var createRequest = new Libraries.Shared.Dtos.ServerApi.CreatePersonalAccessTokenRequestDto("Test Key");
-    var createResult = await patManager.CreateToken(createRequest, tenantId, normalUser.Id);
+    var createResult = await patManager.CreateToken(createRequest, normalUser.Id);
     var plainTextToken = createResult.Value!.PlainTextToken;
 
     var context = CreateHttpContext(plainTextToken);

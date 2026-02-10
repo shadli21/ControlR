@@ -4,7 +4,7 @@ namespace ControlR.Web.Server.Services;
 
 public interface IPersonalAccessTokenManager
 {
-  Task<Result<CreatePersonalAccessTokenResponseDto>> CreateToken(CreatePersonalAccessTokenRequestDto request, Guid tenantId, Guid userId);
+  Task<Result<CreatePersonalAccessTokenResponseDto>> CreateToken(CreatePersonalAccessTokenRequestDto request, Guid userId);
   Task<Result> Delete(Guid id, Guid userId);
   Task<IEnumerable<PersonalAccessTokenDto>> GetForUser(Guid userId);
   Task<Result<PersonalAccessTokenDto>> Update(Guid id, UpdatePersonalAccessTokenRequestDto request, Guid userId);
@@ -25,7 +25,7 @@ public class PersonalAccessTokenManager(
   private readonly IPasswordHasher<string> _passwordHasher = passwordHasher;
   private readonly TimeProvider _timeProvider = timeProvider;
 
-  public async Task<Result<CreatePersonalAccessTokenResponseDto>> CreateToken(CreatePersonalAccessTokenRequestDto request, Guid tenantId, Guid userId)
+  public async Task<Result<CreatePersonalAccessTokenResponseDto>> CreateToken(CreatePersonalAccessTokenRequestDto request, Guid userId)
   {
     try
     {
@@ -36,7 +36,6 @@ public class PersonalAccessTokenManager(
       {
         Name = request.Name,
         HashedKey = hashedKey,
-        TenantId = tenantId,
         UserId = userId
       };
 
@@ -143,7 +142,7 @@ public class PersonalAccessTokenManager(
       storedToken.LastUsed = _timeProvider.GetUtcNow();
       await _appDb.SaveChangesAsync();
 
-      var result = PersonalAccessTokenValidationResult.Success(storedToken.UserId, storedToken.TenantId);
+      var result = PersonalAccessTokenValidationResult.Success(storedToken.UserId);
       return Result.Ok(result);
     }
     catch (Exception ex)

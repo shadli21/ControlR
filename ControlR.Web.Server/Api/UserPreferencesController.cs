@@ -85,7 +85,6 @@ public class UserPreferencesController(AppDb appDb) : ControllerBase
       Name = preference.Name,
       Value = preference.Value.Trim(),
       UserId = user.Id,
-      TenantId = user.TenantId
     };
 
     user.UserPreferences ??= [];

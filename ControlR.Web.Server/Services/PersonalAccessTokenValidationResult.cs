@@ -5,9 +5,8 @@ namespace ControlR.Web.Server.Services;
 public class PersonalAccessTokenValidationResult
 {
   public string? ErrorMessage { get; set; }
-  [MemberNotNullWhen(true, nameof(UserId), nameof(TenantId))]
+  [MemberNotNullWhen(true, nameof(UserId))]
   public bool IsValid { get; set; }
-  public Guid? TenantId { get; set; }
 
   public Guid? UserId { get; set; }
 
@@ -20,13 +19,12 @@ public class PersonalAccessTokenValidationResult
     };
   }
 
-  public static PersonalAccessTokenValidationResult Success(Guid userId, Guid tenantId)
+  public static PersonalAccessTokenValidationResult Success(Guid userId)
   {
     return new PersonalAccessTokenValidationResult
     {
       IsValid = true,
-      UserId = userId,
-      TenantId = tenantId
+      UserId = userId
     };
   }
 }

@@ -305,6 +305,7 @@ public static class WebApplicationBuilderExtensions
     builder.Services.AddScoped<IDeviceManager, DeviceManager>();
     builder.Services.AddScoped<IUserSettingsProvider, UserSettingsProviderServer>();
     builder.Services.AddScoped<IPublicRegistrationSettingsProvider, PublicRegistrationSettingsProviderServer>();
+    builder.Services.AddScoped<ITenantInvitesProvider, TenantInvitesProvider>();
 
     return builder;
   }
