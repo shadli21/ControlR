@@ -73,8 +73,7 @@ internal static class PostgresTestContainer
         return _connectionInfo;
       }
 
-      _container ??= new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+      _container ??= new PostgreSqlBuilder("postgres:18-alpine")
         .WithUsername(DefaultUsername)
         .WithPassword(DefaultPassword)
         .WithDatabase("postgres")

@@ -92,7 +92,7 @@ public partial class RemoteControl : ViewportAwareComponent
     {
       return CurrentState == SignalingState.ConnectionActive
         ? "h-100"
-        : "h-100 ma-4";
+        : "h-100 pa-4";
     }
   }
 

@@ -151,6 +151,19 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
       .WithMany(x => x.PersonalAccessTokens)
       .HasForeignKey(x => x.UserId)
       .OnDelete(DeleteBehavior.Cascade);
+
+    if (_userId is not null)
+    {
+      builder
+        .Entity<PersonalAccessToken>()
+        .HasQueryFilter(x => x.UserId == _userId);
+    }
+    else if (_tenantId is not null)
+    {
+      builder
+        .Entity<PersonalAccessToken>()
+        .HasQueryFilter(x => x.User != null && x.User.TenantId == _tenantId);
+    }
   }
   private void ConfigureTags(ModelBuilder builder)
   {
@@ -238,6 +251,12 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
       builder
         .Entity<UserPreference>()
         .HasQueryFilter(x => x.UserId == _userId);
+    }
+    else if (_tenantId is not null)
+    {
+      builder
+        .Entity<UserPreference>()
+        .HasQueryFilter(x => x.User != null && x.User.TenantId == _tenantId);
     }
   }
   private void ConfigureUsers(ModelBuilder builder)

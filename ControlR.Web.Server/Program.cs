@@ -93,9 +93,9 @@ if (appOptions.UseInMemoryDatabase)
 else
 {
   await app.ApplyMigrations();
-    await app.SetAllDevicesOffline();
-    await app.SetAllUsersOffline();
-    await app.RemoveEmptyTenants();
+  await app.SetAllDevicesOffline();
+  await app.SetAllUsersOffline();
+  await app.RemoveEmptyTenants();
 }
 
 await app.RunAsync();

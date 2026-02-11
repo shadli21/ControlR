@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 
 namespace ControlR.Web.Server.Tests;
@@ -21,7 +20,7 @@ public class InviteAcceptanceTests(ITestOutputHelper testOutput)
   [Fact]
   public async Task AcceptInvite_ClearsOnlyUserRolesAndTags_RetainsTokensAndPreferences()
   {
-    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput, useInMemoryDatabase: false);
 
     AppUser adminUser;
     Guid tenantAId;

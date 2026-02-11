@@ -87,7 +87,7 @@ public partial class Chat : ComponentBase, IDisposable
         return "h-100";
       }
 
-      return "h-100 ma-4";
+      return "h-100 pa-4";
     }
   }
 

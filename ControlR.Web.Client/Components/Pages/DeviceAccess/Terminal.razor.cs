@@ -1,5 +1,6 @@
 ﻿using ControlR.Libraries.Shared.Dtos.HubDtos.PwshCommandCompletions;
 using ControlR.Libraries.Viewer.Common.State;
+using ControlR.Web.Client.Components.Dialogs;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
@@ -14,42 +15,32 @@ public partial class Terminal : IAsyncDisposable
     ["spellcheck"] = "false",
     ["autocomplete"] = "off"
   };
-
   private readonly string _commandInputElementId = $"terminal-input-{Guid.NewGuid()}";
 
-
   private MudTextField<string>? _commandInputElement;
-
   // Provided by UI.  Never null
   private MudAutocomplete<PwshCompletionMatch> _completionsAutoComplete = null!;
-
   private PwshCompletionsResponseDto? _currentCompletions;
   private bool _loading = true;
   private bool _taboutPrevented;
   private ElementReference _terminalOutputContainer;
 
-
   [SupplyParameterFromQuery]
   public required Guid DeviceId { get; init; }
-
   [Inject]
   public required IDeviceState DeviceState { get; init; }
-
+  [Inject]
+  public required IDialogService DialogService { get; init; }
   [Inject]
   public required IJsInterop JsInterop { get; init; }
-
   [Inject]
   public required ILogger<Terminal> Logger { get; init; }
-
   [Inject]
   public required IMessenger Messenger { get; init; }
-
   [Inject]
   public required ISnackbar Snackbar { get; init; }
-
   [Inject]
   public required ITerminalState TerminalState { get; init; }
-
   [Inject]
   public required IHubConnection<IViewerHub> ViewerHub { get; init; }
 
@@ -66,16 +57,7 @@ public partial class Terminal : IAsyncDisposable
 
   public async Task OnCompletionInputKeyDown(KeyboardEventArgs args)
   {
-    if (args.Key.Equals("Escape", StringComparison.OrdinalIgnoreCase))
-    {
-      // Clear completions and focus command input
-      _currentCompletions = null;
-      if (_commandInputElement is not null)
-      {
-        await _commandInputElement.FocusAsync();
-      }
-      await InvokeAsync(StateHasChanged);
-    }
+    await IsEscapeKey(args);
   }
 
   protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -380,6 +362,25 @@ public partial class Terminal : IAsyncDisposable
     await JsInterop.ScrollToEnd(_terminalOutputContainer);
   }
 
+  private async Task<bool> IsEscapeKey(KeyboardEventArgs args)
+  {
+    if (!args.Key.Equals("Escape", StringComparison.OrdinalIgnoreCase) ||
+        args.CtrlKey || args.ShiftKey || args.AltKey ||
+        _currentCompletions is null)
+    {
+      return false;
+    }
+
+    // Clear completions and focus command input
+    _currentCompletions = null;
+    if (_commandInputElement is not null)
+    {
+      await _commandInputElement.FocusAsync();
+    }
+    await InvokeAsync(StateHasChanged);
+    return true;
+  }
+
   private async Task OnCompletionSelected(PwshCompletionMatch match)
   {
     if (string.IsNullOrWhiteSpace(TerminalState.LastCompletionInput))
@@ -412,6 +413,11 @@ public partial class Terminal : IAsyncDisposable
 
   private async Task OnInputKeyDown(KeyboardEventArgs args)
   {
+    if (await IsEscapeKey(args))
+    {
+      return;
+    }
+
     if (_commandInputElement is null)
     {
       return;
@@ -446,7 +452,8 @@ public partial class Terminal : IAsyncDisposable
       return;
     }
 
-    if (args.CtrlKey && args.Key.Equals(" ", StringComparison.OrdinalIgnoreCase))
+    if ((args.CtrlKey && args.Key.Equals(" ", StringComparison.OrdinalIgnoreCase)) ||
+        (args.CtrlKey && args.Key.Equals(".", StringComparison.OrdinalIgnoreCase)))
     {
       await GetAllCompletions();
     }
@@ -480,5 +487,17 @@ public partial class Terminal : IAsyncDisposable
       await Task.Delay(50);
       await _commandInputElement.SelectRangeAsync(text.Length, text.Length);
     }
+  }
+
+  private async Task ShowKeyboardShortcuts()
+  {
+    var dialogOptions = new DialogOptions
+    {
+      BackdropClick = true,
+      MaxWidth = MaxWidth.Small,
+      FullWidth = true
+    };
+
+    await DialogService.ShowAsync<TerminalKeyboardShortcutsDialog>("Keyboard Shortcuts", dialogOptions);
   }
 }

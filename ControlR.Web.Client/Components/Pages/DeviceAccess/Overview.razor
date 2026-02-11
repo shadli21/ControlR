@@ -3,7 +3,7 @@
 @attribute [Route(ClientRoutes.DeviceAccess)]
 @attribute [Authorize]
 
-<div class="ma-4">
+<div class="pa-4">
   @if (DeviceAccessState.IsDeviceLoaded)
   {
     <DeviceOverviewGrid Device="DeviceAccessState.CurrentDevice" />

@@ -1,0 +1,66 @@
+<MudDialog>
+  <TitleContent>
+    <MudText Typo="Typo.h6" Color="Color.Info">Keyboard Shortcuts</MudText>
+  </TitleContent>
+  <DialogContent>
+    <div class="shortcuts-grid">
+      <MudText Typo="Typo.subtitle1">
+        Tab
+      </MudText>
+      <div>Next completion</div>
+
+      <MudText Typo="Typo.subtitle1">
+        Shift + Tab
+      </MudText>
+      <div>Previous completion</div>
+
+      <MudText Typo="Typo.subtitle1">
+        Ctrl + Space
+      </MudText>
+      <div>Show all completions</div>
+
+      <MudText Typo="Typo.subtitle1">
+        Ctrl + .
+      </MudText>
+      <div>Show all completions</div>
+
+      <MudText Typo="Typo.subtitle1">
+        Enter
+      </MudText>
+      <div>Execute command</div>
+
+      <MudText Typo="Typo.subtitle1">
+        Shift + Enter
+      </MudText>
+      <div>New line (multiline mode)</div>
+
+      <MudText Typo="Typo.subtitle1">
+        Arrow Up
+      </MudText>
+      <div>Previous command</div>
+
+      <MudText Typo="Typo.subtitle1">
+        Arrow Down
+      </MudText>
+      <div>Next command</div>
+
+      <MudText Typo="Typo.subtitle1">
+        Escape
+      </MudText>
+      <div>Close completions</div>
+    </div>
+  </DialogContent>
+  <DialogActions>
+    <MudButton OnClick="Close">Close</MudButton>
+  </DialogActions>
+</MudDialog>
+
+@code {
+  [CascadingParameter]
+  public required IMudDialogInstance MudDialog { get; set; }
+
+  private void Close()
+  {
+    MudDialog.Close();
+  }
+}

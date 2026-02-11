@@ -24,22 +24,6 @@
       "console": "internalConsole"
     },
     {
-      "name": "DesktopClient (GST Debug)",
-      "type": "coreclr",
-      "request": "launch",
-      "program": "${workspaceFolder}/ControlR.DesktopClient/bin/Debug/net10.0/ControlR.DesktopClient.dll",
-      "args": [],
-      "cwd": "${workspaceFolder}/ControlR.DesktopClient",
-      "launchSettingsProfile": "Run",
-      "stopAtEntry": false,
-      "console": "internalConsole",
-      "env": {
-        "GST_DEBUG": "*:3,pipewiresrc:6,appsink:6,caps:6",
-        "GST_DEBUG_FILE": "${workspaceFolder}/.logs/gstreamer.log",
-        "GST_DEBUG_NO_COLOR": "1"
-      }
-    },
-    {
       "name": "Server (Debug)",
       "type": "coreclr",
       "request": "launch",
@@ -51,16 +35,49 @@
       "console": "internalConsole"
     },
     {
-      "name": "Server (wasm debug)",
-      "type": "blazorwasm",
+      "name": "Agent (Hot Reload)",
+      "type": "coreclr",
       "request": "launch",
-      "browser": "edge",
+      "program": "dotnet",
+      "args": [
+        "watch",
+        "run",
+        "--project",
+        "${workspaceFolder}/ControlR.Agent/ControlR.Agent.csproj",
+        "--launch-profile",
+        "Run"
+      ],
+      "cwd": "${workspaceFolder}/ControlR.Agent",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "linux": {
+        "postDebugTask": "kill agent"
+      }
+    },
+    {
+      "name": "DesktopClient (Hot Reload)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "watch",
+        "run",
+        "--project",
+        "${workspaceFolder}/ControlR.DesktopClient/ControlR.DesktopClient.csproj",
+        "--launch-profile",
+        "Run"
+      ],
+      "cwd": "${workspaceFolder}/ControlR.DesktopClient",
+      "stopAtEntry": false,
+      "console": "internalConsole",
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "GST_DEBUG": "3",
+        "GST_DEBUG_FILE": "${workspaceFolder}/.logs/gstreamer.log",
+        "GST_DEBUG_NO_COLOR": "1"
       },
-      "hosted": true,
-      "program": "${workspaceFolder}/ControlR.Web.Server/bin/Debug/net10.0/ControlR.Web.Server.dll",
-      "cwd": "${workspaceFolder}/ControlR.Web.Server",
+      "linux": {
+        "postDebugTask": "kill desktopclient"
+      }
     },
     {
       "name": "Server (Hot Reload)",
@@ -84,7 +101,22 @@
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
+      "linux": {
+        "postDebugTask": "kill server"
+      }
+    },
+    {
+      "name": "Server (wasm debug)",
+      "type": "blazorwasm",
+      "request": "launch",
+      "browser": "edge",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "hosted": true,
+      "program": "${workspaceFolder}/ControlR.Web.Server/bin/Debug/net10.0/ControlR.Web.Server.dll",
+      "cwd": "${workspaceFolder}/ControlR.Web.Server",
     },
     {
       "name": "LoadTester",
@@ -97,44 +129,21 @@
       "console": "internalConsole"
     },
     {
-      "name": "Agent (Hot Reload)",
+      "name": "DesktopClient (GST Debug)",
       "type": "coreclr",
       "request": "launch",
-      "program": "dotnet",
-      "args": [
-        "watch",
-        "run",
-        "--project",
-        "${workspaceFolder}/ControlR.Agent/ControlR.Agent.csproj",
-        "--launch-profile",
-        "Run"
-      ],
-      "cwd": "${workspaceFolder}/ControlR.Agent",
-      "stopAtEntry": false,
-      "console": "internalConsole"
-    },
-    {
-      "name": "DesktopClient (Hot Reload)",
-      "type": "coreclr",
-      "request": "launch",
-      "program": "dotnet",
-      "args": [
-        "watch",
-        "run",
-        "--project",
-        "${workspaceFolder}/ControlR.DesktopClient/ControlR.DesktopClient.csproj",
-        "--launch-profile",
-        "Run"
-      ],
+      "program": "${workspaceFolder}/ControlR.DesktopClient/bin/Debug/net10.0/ControlR.DesktopClient.dll",
+      "args": [],
       "cwd": "${workspaceFolder}/ControlR.DesktopClient",
+      "launchSettingsProfile": "Run",
       "stopAtEntry": false,
       "console": "internalConsole",
       "env": {
-        "GST_DEBUG": "3",
+        "GST_DEBUG": "*:3,pipewiresrc:6,appsink:6,caps:6",
         "GST_DEBUG_FILE": "${workspaceFolder}/.logs/gstreamer.log",
         "GST_DEBUG_NO_COLOR": "1"
       }
-    }
+    },
   ],
   "compounds": [
     {
@@ -164,7 +173,7 @@
       "presentation": {
         "hidden": false,
         "group": "Compounds",
-        "order": 1
+        "order": 1,
       }
     },
     {

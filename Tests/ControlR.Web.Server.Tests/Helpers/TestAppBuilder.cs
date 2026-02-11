@@ -21,24 +21,38 @@ internal static class TestAppBuilder
   public static async Task<TestApp> CreateTestApp(
     ITestOutputHelper testOutput,
     Dictionary<string, string?>? extraConfiguration = null,
-    [CallerMemberName] string testDatabaseName = "")
+    [CallerMemberName] string testDatabaseName = "",
+    bool useInMemoryDatabase = true)
   {
     var timeProvider = new FakeTimeProvider(DateTimeOffset.Now);
-
-    var connectionInfo = await PostgresTestContainer.GetConnectionInfo();
-    var databaseName = await PostgresTestContainer.CreateDatabase($"{testDatabaseName}-{Guid.NewGuid():N}");
+    var uniqueDatabaseName = $"{testDatabaseName}-{Guid.NewGuid()}";
 
     var builder = WebApplication.CreateBuilder();
     builder.Environment.EnvironmentName = "Testing";
-    _ = builder.Configuration.AddInMemoryCollection(
-    [
-      new KeyValuePair<string, string?>("AppOptions:UseInMemoryDatabase", "false"),
-      new KeyValuePair<string, string?>("POSTGRES_USER", connectionInfo.Username),
-      new KeyValuePair<string, string?>("POSTGRES_PASSWORD", connectionInfo.Password),
-      new KeyValuePair<string, string?>("POSTGRES_HOST", connectionInfo.Host),
-      new KeyValuePair<string, string?>("POSTGRES_PORT", $"{connectionInfo.Port}"),
-      new KeyValuePair<string, string?>("POSTGRES_DB", databaseName)
-    ]);
+
+    if (useInMemoryDatabase)
+    {
+      _ = builder.Configuration.AddInMemoryCollection(
+      [
+        new KeyValuePair<string, string?>("AppOptions:UseInMemoryDatabase", $"{useInMemoryDatabase}"),
+        new KeyValuePair<string, string?>("AppOptions:InMemoryDatabaseName", uniqueDatabaseName),
+      ]);
+    }
+    else
+    {
+      var connectionInfo = await PostgresTestContainer.GetConnectionInfo();
+      var databaseName = await PostgresTestContainer.CreateDatabase($"{uniqueDatabaseName}");
+      _ = builder.Configuration.AddInMemoryCollection(
+      [
+        new KeyValuePair<string, string?>("AppOptions:UseInMemoryDatabase", $"{useInMemoryDatabase}"),
+        new KeyValuePair<string, string?>("AppOptions:InMemoryDatabaseName", string.Empty),
+        new KeyValuePair<string, string?>("POSTGRES_USER", connectionInfo.Username),
+        new KeyValuePair<string, string?>("POSTGRES_PASSWORD", connectionInfo.Password),
+        new KeyValuePair<string, string?>("POSTGRES_HOST", connectionInfo.Host),
+        new KeyValuePair<string, string?>("POSTGRES_PORT", $"{connectionInfo.Port}"),
+        new KeyValuePair<string, string?>("POSTGRES_DB", databaseName)
+      ]);
+    }
 
     if (extraConfiguration is not null)
     {
@@ -55,7 +69,14 @@ internal static class TestAppBuilder
 
     // Build the app
     var app = builder.Build();
-    await app.ApplyMigrations();
+    if (useInMemoryDatabase)
+    {
+      await app.AddBuiltInRoles();
+    }
+    else
+    {
+      await app.ApplyMigrations();
+    }
 
     return new TestApp(timeProvider, app);
   }

@@ -48,7 +48,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
 
   public async Task InitializeAsync()
   {
-    _testApp = await TestAppBuilder.CreateTestApp(_testOutput, testDatabaseName: Guid.NewGuid().ToString());
+    _testApp = await TestAppBuilder.CreateTestApp(_testOutput, testDatabaseName: $"{Guid.NewGuid()}");
     _timeProvider = _testApp.TimeProvider;
     _keyManager = (AgentInstallerKeyManager)_testApp.Services.GetRequiredService<IAgentInstallerKeyManager>();
 

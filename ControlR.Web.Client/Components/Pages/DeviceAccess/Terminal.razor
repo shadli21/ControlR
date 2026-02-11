@@ -7,7 +7,7 @@
 <div class="h-100">
   @if (_loading)
   {
-   <LoadingIndicator IsVisible Message="Loading" Class="mt-4"  />
+    <LoadingIndicator IsVisible Message="Loading" Class="mt-4" />
   }
   else
   {
@@ -24,18 +24,10 @@
       <div>
         @if (_currentCompletions is not null)
         {
-          <MudAutocomplete @ref="@(_completionsAutoComplete)"
-                           T="PwshCompletionMatch"
-                           OnKeyDown="@(OnCompletionInputKeyDown)"
-                           Clearable="true"
-                           ValueChanged="@(OnCompletionSelected)"
-                           SearchFunc="@SearchCompletions"
-                           ToStringFunc="@(x => x?.ListItemText)"
-                           SelectValueOnTab
-                           AutoFocus
-                           MaxItems="null"
-                           AnchorOrigin="@(Origin.TopCenter)"
-                           TransformOrigin="(Origin.BottomCenter)">
+          <MudAutocomplete @ref="@(_completionsAutoComplete)" T="PwshCompletionMatch"
+                           OnKeyDown="@(OnCompletionInputKeyDown)" Clearable="true" ValueChanged="@(OnCompletionSelected)"
+                           SearchFunc="@SearchCompletions" ToStringFunc="@(x => x?.ListItemText)" SelectValueOnTab AutoFocus
+                           MaxItems="null" AnchorOrigin="@(Origin.TopCenter)" TransformOrigin="(Origin.BottomCenter)">
             <ItemTemplate>
               @context.ListItemText
             </ItemTemplate>
@@ -44,26 +36,21 @@
             </ItemSelectedTemplate>
           </MudAutocomplete>
         }
-        <MudTextField T="string"
-                      @ref="@(_commandInputElement)"
-                      InputId="@(_commandInputElementId)"
-                      @bind-Value="@TerminalState.CommandInputText"
-                      @bind-Text="@TerminalState.CommandInputText"
-                      Label="Enter a command"
-                      HelperText="Type a command and press Enter to send"
-                      TextUpdateSuppression="false"
-                      Lines="@CommandInputLineCount"
-                      HelperTextOnFocus="true"
-                      AutoFocus="true"
-                      Immediate="true"
-                      UserAttributes="_commandInputAttributes"
-                      OnKeyDown="@OnInputKeyDown"
-                      Class="mt-2" />
+        <MudTextField T="string" @ref="@(_commandInputElement)" InputId="@(_commandInputElementId)"
+                      @bind-Value="@TerminalState.CommandInputText" @bind-Text="@TerminalState.CommandInputText"
+                      Label="Enter a command" HelperText="Type a command and press Enter to send" TextUpdateSuppression="false"
+                      Lines="@CommandInputLineCount" HelperTextOnFocus="true" AutoFocus="true" Immediate="true"
+                      UserAttributes="_commandInputAttributes" OnKeyDown="@OnInputKeyDown" Class="mt-2" />
       </div>
-      <div>
-        <MudSwitch @bind-Value="TerminalState.EnableMultiline"
-                   Color="Color.Success"
-                   Label="Multiline Input" />
+      <div class="d-flex justify-space-between align-center">
+        <MudSwitch @bind-Value="TerminalState.EnableMultiline" Color="Color.Success" Label="Multiline Input" />
+
+        <div>
+          <MudTooltip Text="Keyboard Shortcuts">
+            <MudIconButton Icon="@Icons.Material.Filled.QuestionMark" Color="Color.Info"
+                           OnClick="ShowKeyboardShortcuts" />
+          </MudTooltip>
+        </div>
       </div>
     </div>
   }
