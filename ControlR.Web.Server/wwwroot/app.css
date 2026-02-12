@@ -57,3 +57,7 @@
   background-color: var(--mud-palette-surface) !important;
   color: var(--mud-palette-text-primary) !important;
 }
+
+.loading-progress-text::after {
+    content: var(--blazor-load-percentage-text);
+}

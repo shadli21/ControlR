@@ -10,13 +10,13 @@
         ShowInTaskbar="False"
         Topmost="True"
         CanResize="False"
-				SystemDecorations="None"
+        SystemDecorations="None"
         SizeToContent="Height">
 
   <Design.DataContext>
     <fakes:ToastWindowViewModelFake />
   </Design.DataContext>
-  
+
   <Grid Margin="20">
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="Auto" />
@@ -70,10 +70,10 @@
             VerticalAlignment="Top"
             HorizontalAlignment="Right"
             Click="CloseButton_Click">
-			
-      <PathIcon Data="{StaticResource dismiss_regular}" 
-                Width="12" 
-                Height="12" 
+
+      <PathIcon Data="{StaticResource dismiss_regular}"
+                Width="12"
+                Height="12"
                 Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
     </Button>
   </Grid>

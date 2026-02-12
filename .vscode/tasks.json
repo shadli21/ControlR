@@ -66,19 +66,31 @@
       "label": "kill agent",
       "type": "shell",
       "command": "pkill -f \"ControlR\\.Agent\\b\" || true; pkill -f \"dotnet watch.*ControlR\\.Agent\\.csproj\" || true; pkill -f \"dotnet run.*ControlR\\.Agent\\.csproj\" || true",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "hide": true,
+      "presentation": {
+        "close": true
+      }
     },
     {
       "label": "kill desktopclient",
       "type": "shell",
       "command": "pkill -f \"ControlR\\.DesktopClient\\b\" || true; pkill -f \"dotnet watch.*ControlR\\.DesktopClient\\.csproj\" || true; pkill -f \"dotnet run.*ControlR\\.DesktopClient\\.csproj\" || true",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "hide": true,
+      "presentation": {
+        "close": true
+      }
     },
     {
       "label": "kill server",
       "type": "shell",
       "command": "pkill -f \"ControlR\\.Web\\.Server\\b\" || true; pkill -f \"dotnet watch.*ControlR\\.Web\\.Server\\.csproj\" || true; pkill -f \"dotnet run.*ControlR\\.Web\\.Server\\.csproj\" || true",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "hide": true,
+      "presentation": {
+        "close": true
+      }
     },
     {
       "label": "compose",
