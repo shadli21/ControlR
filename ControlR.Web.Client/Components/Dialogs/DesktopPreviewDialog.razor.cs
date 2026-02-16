@@ -1,3 +1,4 @@
+using ControlR.Libraries.Shared.Dtos.Devices;
 using Microsoft.AspNetCore.Components;
 
 namespace ControlR.Web.Client.Components.Dialogs;

@@ -2,6 +2,7 @@
     overflow: auto;
     position: relative;
     height: 100% !important;
+    touch-action: none;
 }
 
 /* apply overscroll-behavior only when supported (avoids issues on Safari iOS <16) */

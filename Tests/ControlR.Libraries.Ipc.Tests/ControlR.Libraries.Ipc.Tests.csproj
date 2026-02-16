@@ -21,6 +21,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\Libraries\ControlR.Libraries.Ipc\ControlR.Libraries.Ipc.csproj" />
-		<ProjectReference Include="..\ControlR.Tests.TestingUtilities\ControlR.Tests.TestingUtilities.csproj" />
+		<ProjectReference Include="..\..\Libraries\ControlR.Libraries.TestingUtilities\ControlR.Libraries.TestingUtilities.csproj" />
 	</ItemGroup>
 </Project>

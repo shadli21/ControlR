@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace ControlR.Tests.TestingUtilities;
+namespace ControlR.Libraries.TestingUtilities;
 
 /// <summary>
 ///   Marks a test method to be run only on interactive Windows sessions.

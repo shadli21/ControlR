@@ -1,13 +1,13 @@
 using Xunit;
 
-namespace ControlR.Tests.TestingUtilities;
+namespace ControlR.Libraries.TestingUtilities;
 
 /// <summary>
 /// Xunit attribute to skip tests when not running on Linux.
 /// </summary>
-public class LinuxOnlyTheoryAttribute : TheoryAttribute
+public class LinuxOnlyFactAttribute : FactAttribute
 {
-  public LinuxOnlyTheoryAttribute()
+  public LinuxOnlyFactAttribute()
   {
     if (!OperatingSystem.IsLinux())
     {

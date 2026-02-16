@@ -1,6 +1,7 @@
 using ControlR.DesktopClient.Common;
 using ControlR.DesktopClient.ViewModels.Linux;
 using ControlR.DesktopClient.ViewModels.Mac;
+using ControlR.Libraries.Hosting;
 using ControlR.Libraries.Shared.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,9 +18,12 @@ public class RemoteControlPermissionMonitor(
   ISystemEnvironment systemEnvironment,
   IToaster toaster,
   INavigationProvider navigationProvider,
-  ILogger<RemoteControlPermissionMonitor> logger) : BackgroundService
+  ILogger<RemoteControlPermissionMonitor> logger) 
+  : PeriodicBackgroundService(
+      TimeSpan.FromMinutes(10), 
+      timeProvider, 
+      logger)
 {
-  private readonly ILogger<RemoteControlPermissionMonitor> _logger = logger;
   private readonly INavigationProvider _navigationProvider = navigationProvider;
   private readonly IServiceProvider _serviceProvider = serviceProvider;
   private readonly ISystemEnvironment _systemEnvironment = systemEnvironment;
@@ -28,45 +32,46 @@ public class RemoteControlPermissionMonitor(
 
   protected override async Task ExecuteAsync(CancellationToken stoppingToken)
   {
-    // Only run on macOS or Linux Wayland
-    if (!_systemEnvironment.IsMacOS() && !_systemEnvironment.IsLinux())
-    {
-      _logger.LogInformation("Permission monitoring is not required on this platform");
-      return;
-    }
-
-    if (_systemEnvironment.IsLinux())
-    {
-      var detector = _serviceProvider.GetRequiredService<IDesktopEnvironmentDetector>();
-      if (!detector.IsWayland())
-      {
-        _logger.LogInformation("Permission monitoring is not required on this platform");
-        return;
-      }
-    }
-
-    _logger.LogInformation("Starting permission monitoring service");
-    await CheckPermissions();
-
-    using var timer = new PeriodicTimer(TimeSpan.FromMinutes(10), _timeProvider);
     try
     {
-      while (await timer.WaitForNextTickAsync(stoppingToken))
+      // Only run on macOS or Linux Wayland
+      if (!_systemEnvironment.IsMacOS() && !_systemEnvironment.IsLinux())
       {
-        await CheckPermissions();
+        Logger.LogInformation("Permission monitoring is not required on this platform");
+        return;
       }
+
+      if (_systemEnvironment.IsLinux())
+      {
+        var detector = _serviceProvider.GetRequiredService<IDesktopEnvironmentDetector>();
+        if (!detector.IsWayland())
+        {
+          Logger.LogInformation("Permission monitoring is not required on this platform");
+          return;
+        }
+      }
+
+      Logger.LogInformation("Starting permission monitoring service");
+      await CheckPermissions();
     }
-    catch (OperationCanceledException ex)
+    catch (Exception ex)
     {
-      _logger.LogInformation(ex, "Application is shutting down. Stopping permission monitoring service.");
+      Logger.LogError(ex, "Error starting RemoteControlPermissionMonitor.");
     }
+
+    await base.ExecuteAsync(stoppingToken);
+  }
+
+  protected override async Task HandleElapsed()
+  {
+    await CheckPermissions();
   }
 
   private async Task CheckPermissions()
   {
     try
     {
-      _logger.LogInformationDeduped("Checking OS remote control permissions");
+      Logger.LogInformationDeduped("Checking OS remote control permissions");
 
       if (_systemEnvironment.IsMacOS())
       {
@@ -75,16 +80,16 @@ public class RemoteControlPermissionMonitor(
         var isScreenCaptureGranted = macInterop.IsMacScreenCapturePermissionGranted();
         var arePermissionsGranted = isAccessibilityGranted && isScreenCaptureGranted;
 
-        _logger.LogInformationDeduped(
+        Logger.LogInformationDeduped(
           "macOS permissions: Accessibility={Accessibility}, ScreenCapture={ScreenCapture}",
           args: (isAccessibilityGranted, isScreenCaptureGranted));
 
         if (arePermissionsGranted)
         {
-          _logger.LogInformationDeduped("All required permissions are granted");
+          Logger.LogInformationDeduped("All required permissions are granted");
           return;
         }
-        _logger.LogWarningDeduped("Required permissions are missing");
+        Logger.LogWarningDeduped("Required permissions are missing");
         await ShowPermissionsMissingToast<IPermissionsViewModelMac>();
       }
       else if (_systemEnvironment.IsLinux())
@@ -95,27 +100,27 @@ public class RemoteControlPermissionMonitor(
           var waylandPermissions = _serviceProvider.GetRequiredService<IWaylandPermissionProvider>();
           var arePermissionsGranted = await waylandPermissions.IsRemoteControlPermissionGranted();
 
-          _logger.LogInformationDeduped("Wayland permissions: RemoteControl={RemoteControl}", args: arePermissionsGranted);
+          Logger.LogInformationDeduped("Wayland permissions: RemoteControl={RemoteControl}", args: arePermissionsGranted);
           
           if (arePermissionsGranted)
           {
-            _logger.LogInformationDeduped("All required permissions are granted");
+            Logger.LogInformationDeduped("All required permissions are granted");
             return;
           }
-          _logger.LogWarningDeduped("Required permissions are missing");
+          Logger.LogWarningDeduped("Required permissions are missing");
           await ShowPermissionsMissingToast<IPermissionsViewModelWayland>();
         }
         else
         {
           // X11 doesn't require special permissions
-          _logger.LogInformationDeduped("X11 detected, no permission monitoring required");
+          Logger.LogInformationDeduped("X11 detected, no permission monitoring required");
           return;
         }
       }
     }
     catch (Exception ex)
     {
-      _logger.LogErrorDeduped("Error while checking permissions", exception: ex);
+      Logger.LogErrorDeduped("Error while checking permissions", exception: ex);
     }
   }
 
@@ -139,7 +144,7 @@ public class RemoteControlPermissionMonitor(
     }
     catch (Exception ex)
     {
-      _logger.LogErrorDeduped("Error while showing permissions missing toast", exception: ex);
+      Logger.LogErrorDeduped("Error while showing permissions missing toast", exception: ex);
     }
   }
 }

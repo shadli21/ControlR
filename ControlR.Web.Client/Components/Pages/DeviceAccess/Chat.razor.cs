@@ -1,3 +1,4 @@
+using ControlR.Libraries.Shared.Dtos.Devices;
 using ControlR.Libraries.Viewer.Common.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;

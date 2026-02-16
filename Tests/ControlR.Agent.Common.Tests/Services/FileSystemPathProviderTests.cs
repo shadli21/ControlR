@@ -5,7 +5,7 @@ using ControlR.Libraries.DevicesCommon.Services;
 using ControlR.Libraries.Shared.Enums;
 using ControlR.Libraries.Shared.Helpers;
 using ControlR.Libraries.Shared.Services;
-using ControlR.Tests.TestingUtilities;
+using ControlR.Libraries.TestingUtilities;
 using Moq;
 using Xunit.Abstractions;
 

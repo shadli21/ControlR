@@ -6,6 +6,7 @@ using ControlR.Agent.Common.Services.FileManager;
 using ControlR.Agent.Common.Services.Terminal;
 using ControlR.Libraries.DevicesCommon.Services.Processes;
 using ControlR.Libraries.Shared.Constants;
+using ControlR.Libraries.Shared.Dtos.Devices;
 using ControlR.Libraries.Shared.Dtos.HubDtos.PwshCommandCompletions;
 using ControlR.Libraries.Shared.Dtos.IpcDtos;
 using ControlR.Libraries.Shared.Dtos.RemoteControlDtos;
@@ -178,11 +179,11 @@ internal class AgentHubClient(
         dto.WebsocketUri,
         dto.TargetSystemSession,
         dto.TargetProcessId,
-        dto.ViewerConnectionId,
         dto.DeviceId,
         dto.NotifyUserOnSessionStart,
         dto.RequireConsent,
         dataFolder,
+        dto.ViewerConnectionId,
         dto.ViewerName);
 
       var result = await ipcServer.Server.Client.ReceiveRemoteControlRequest(ipcDto);
@@ -473,7 +474,7 @@ internal class AgentHubClient(
   {
     try
     {
-      await _agentUpdater.CheckForUpdate();
+      _agentUpdater.CheckForUpdate(force: true).Forget();
     }
     catch (Exception ex)
     {

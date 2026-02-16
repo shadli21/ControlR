@@ -6,9 +6,9 @@ public record RemoteControlRequestIpcDto(
   Uri WebsocketUri,
   int TargetSystemSession,
   int TargetProcessId,
-  string ViewerConnectionId,
   Guid DeviceId,
   bool NotifyUserOnSessionStart,
   bool RequireConsent,
   string DataFolder,
-  string ViewerName = "");
+  string? ViewerConnectionId,
+  string? ViewerName);

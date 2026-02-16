@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace ControlR.Libraries.Shared.Models;
+namespace ControlR.Libraries.Shared.Dtos.Devices;
 
 [MessagePackObject]
 public record Drive

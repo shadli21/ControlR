@@ -1,21 +1,23 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using ControlR.Libraries.Shared.Collections;
 
-namespace ControlR.Libraries.Viewer.Common.State;
+namespace ControlR.Libraries.Shared.Services.StateManagement;
 
 public interface IStateBase
 {
   Task NotifyStateChanged();
   IDisposable OnStateChanged(Func<Task> callback);
 }
-public abstract class StateBase(ILogger<StateBase> logger) : IStateBase, INotifyPropertyChanged
+public abstract class ObservableState(ILogger<ObservableState> logger) : IStateBase, INotifyPropertyChanged
 {
   private readonly ConcurrentList<Func<Task>> _changeHandlers = [];
-  private readonly ILogger<StateBase> _logger = logger;
   private readonly ConcurrentDictionary<string, object?> _propertyValues = [];
 
   public event PropertyChangedEventHandler? PropertyChanged;
+
+  protected ILogger<ObservableState> Logger { get; } = logger;
 
   public virtual Task NotifyStateChanged()
   {
@@ -59,7 +61,7 @@ public abstract class StateBase(ILogger<StateBase> logger) : IStateBase, INotify
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Error occurred while invoking change handler.");
+        Logger.LogError(ex, "Error occurred while invoking change handler.");
       }
     }
   }

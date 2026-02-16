@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace ControlR.Tests.TestingUtilities;
+namespace ControlR.Libraries.TestingUtilities;
 
 public static class ServiceCollectionExtensions
 {

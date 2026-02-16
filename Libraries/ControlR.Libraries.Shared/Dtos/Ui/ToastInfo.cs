@@ -1,5 +1,5 @@
 ﻿using ControlR.Libraries.Shared.Enums;
-namespace ControlR.Libraries.Shared.Models;
+namespace ControlR.Libraries.Shared.Dtos.Ui;
 
 [MessagePackObject]
 public record ToastInfo(

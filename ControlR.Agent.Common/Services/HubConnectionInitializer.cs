@@ -82,7 +82,7 @@ internal class HubConnectionInitializer(
         _appLifetime.ApplicationStopping);
 
       await _agentHeartbeatTimer.SendDeviceHeartbeat();
-      await _agentUpdater.CheckForUpdate(linkedCts.Token);
+      await _agentUpdater.CheckForUpdate(cancellationToken: linkedCts.Token);
     }
     catch (Exception ex)
     {

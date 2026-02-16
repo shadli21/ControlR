@@ -1,6 +1,6 @@
 using ControlR.Libraries.Ipc.Interfaces;
 using ControlR.Libraries.Shared.Dtos.IpcDtos;
-using ControlR.Tests.TestingUtilities;
+using ControlR.Libraries.TestingUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;

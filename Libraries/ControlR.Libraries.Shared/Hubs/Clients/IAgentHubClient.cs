@@ -1,9 +1,9 @@
-﻿using ControlR.Libraries.Shared.Dtos.HubDtos;
+﻿using ControlR.Libraries.Shared.Dtos.Devices;
+using ControlR.Libraries.Shared.Dtos.HubDtos;
 using ControlR.Libraries.Shared.Dtos.HubDtos.PwshCommandCompletions;
 using ControlR.Libraries.Shared.Dtos.RemoteControlDtos;
 using ControlR.Libraries.Shared.Dtos.ServerApi;
 using ControlR.Libraries.Shared.Enums;
-using ControlR.Libraries.Shared.Models;
 
 namespace ControlR.Libraries.Shared.Hubs.Clients;
 

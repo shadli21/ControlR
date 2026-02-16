@@ -18,7 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Libraries\ControlR.Libraries.SecureStorage\ControlR.Libraries.SecureStorage.csproj" />
-    <ProjectReference Include="..\ControlR.Tests.TestingUtilities\ControlR.Tests.TestingUtilities.csproj" />
+    <ProjectReference Include="..\..\Libraries\ControlR.Libraries.TestingUtilities\ControlR.Libraries.TestingUtilities.csproj" />
   </ItemGroup>
 
   <ItemGroup>

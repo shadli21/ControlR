@@ -2,5 +2,5 @@
 
 internal record RemoteControlConnection(
   Guid SessionId, 
-  string ViewerName,
+  string? ViewerName,
   DateTimeOffset ConnectedAt);

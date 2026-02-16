@@ -115,7 +115,8 @@ public class RemoteControlHostManager(
   internal HostApplicationBuilder CreateRemoteControlHostBuilder(RemoteControlRequestIpcDto requestDto)
   {
     var builder = Host.CreateApplicationBuilder();
-    builder.AddCommonDesktopServices<Toaster>(
+    
+    builder.AddCommonDesktopServices(
       _ipcClientAccessor,
       _userInteractionService,
       appBuilder =>

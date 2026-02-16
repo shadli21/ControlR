@@ -2,10 +2,10 @@
 using System.Runtime.Versioning;
 using ControlR.Agent.Common.Interfaces;
 using ControlR.Agent.Common.Models;
+using ControlR.Libraries.Shared.Dtos.Devices;
 using ControlR.Libraries.Shared.Dtos.HubDtos;
 using ControlR.Libraries.Shared.Extensions;
 using ControlR.Libraries.Shared.Helpers;
-using ControlR.Libraries.Shared.Models;
 using ControlR.Libraries.Shared.Services;
 
 namespace ControlR.Agent.LoadTester;

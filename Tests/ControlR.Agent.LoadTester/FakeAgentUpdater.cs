@@ -12,7 +12,7 @@ internal class FakeAgentUpdater : IHostedService, IAgentUpdater
     return Task.FromResult<IDisposable>(new FakeLock());
   }
 
-  public Task CheckForUpdate(CancellationToken cancellationToken = default)
+  public Task CheckForUpdate(bool force = false, CancellationToken cancellationToken = default)
   {
     UpdateCheckCompletedSignal.Set();
     return Task.CompletedTask;

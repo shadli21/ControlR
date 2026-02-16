@@ -8,6 +8,7 @@
     <Project Path="Libraries/ControlR.Libraries.Configuration.InMemory/ControlR.Libraries.Configuration.InMemory.csproj" />
     <Project Path="Libraries/ControlR.Libraries.DataRedaction/ControlR.Libraries.DataRedaction.csproj" Id="90e1359d-8bae-44a8-99aa-1398e95e9a7c" />
     <Project Path="Libraries/ControlR.Libraries.DevicesCommon/ControlR.Libraries.DevicesCommon.csproj" />
+    <Project Path="Libraries/ControlR.Libraries.Hosting/ControlR.Libraries.Hosting.csproj" Id="fd48ac2f-a14b-4880-b99a-f0fc05963486" />
     <Project Path="Libraries/ControlR.Libraries.Ipc/ControlR.Libraries.Ipc.csproj" />
     <Project Path="Libraries/ControlR.Libraries.Messenger.Extensions/ControlR.Libraries.Messenger.Extensions.csproj" Id="d7e51764-d9d3-4006-823f-8717d8ef22df" />
     <Project Path="Libraries/ControlR.Libraries.NativeInterop.Unix/ControlR.Libraries.NativeInterop.Unix.csproj" />
@@ -15,6 +16,7 @@
     <Project Path="Libraries/ControlR.Libraries.SecureStorage/ControlR.Libraries.SecureStorage.csproj" />
     <Project Path="Libraries/ControlR.Libraries.Shared/ControlR.Libraries.Shared.csproj" />
     <Project Path="Libraries/ControlR.Libraries.Signalr.Client/ControlR.Libraries.Signalr.Client.csproj" />
+    <Project Path="Libraries/ControlR.Libraries.TestingUtilities/ControlR.Libraries.TestingUtilities.csproj" />
     <Project Path="Libraries/ControlR.Libraries.Viewer.Avalonia/ControlR.Libraries.Viewer.Avalonia.csproj" Id="51c176f7-d11b-4d42-8e01-d3d5c1c4433f" />
     <Project Path="Libraries/ControlR.Libraries.Viewer.Common/ControlR.Libraries.Viewer.Common.csproj" Id="e10c7dba-bc13-4641-b824-c30a335141a4" />
     <Project Path="Libraries/ControlR.Libraries.WebSocketRelay.Client/ControlR.Libraries.WebSocketRelay.Client.csproj" />
@@ -32,7 +34,6 @@
   <Folder Name="/Tests/">
     <Project Path="Tests/ControlR.Agent.Common.Tests/ControlR.Agent.Common.Tests.csproj" />
     <Project Path="Tests/ControlR.Agent.LoadTester/ControlR.Agent.LoadTester.csproj" />
-    <Project Path="Tests/ControlR.DesktopClient.Linux.CaptureSample/ControlR.DesktopClient.Linux.CaptureSample.csproj" />
     <Project Path="Tests/ControlR.DesktopClient.Linux.Tests/ControlR.DesktopClient.Linux.Tests.csproj" />
     <Project Path="Tests/ControlR.DesktopClient.Tests/ControlR.DesktopClient.Tests.csproj" />
     <Project Path="Tests/ControlR.DesktopClient.Windows.Tests/ControlR.DesktopClient.Windows.Tests.csproj" />
@@ -40,7 +41,6 @@
     <Project Path="Tests/ControlR.Libraries.Ipc.Tests/ControlR.Libraries.Ipc.Tests.csproj" />
     <Project Path="Tests/ControlR.Libraries.SecureStorage.Tests/ControlR.Libraries.SecureStorage.Tests.csproj" />
     <Project Path="Tests/ControlR.Libraries.Shared.Tests/ControlR.Libraries.Shared.Tests.csproj" />
-    <Project Path="Tests/ControlR.Tests.TestingUtilities/ControlR.Tests.TestingUtilities.csproj" />
     <Project Path="Tests/ControlR.Web.Server.Tests/ControlR.Web.Server.Tests.csproj" />
   </Folder>
   <Project Path="ControlR.Agent.Common/ControlR.Agent.Common.csproj" />

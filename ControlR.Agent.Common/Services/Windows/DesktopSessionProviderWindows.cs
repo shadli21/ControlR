@@ -1,5 +1,6 @@
 ﻿using ControlR.Agent.Common.Interfaces;
 using ControlR.Libraries.NativeInterop.Windows;
+using ControlR.Libraries.Shared.Dtos.Devices;
 
 namespace ControlR.Agent.Common.Services.Windows;
 

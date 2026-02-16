@@ -1,7 +1,7 @@
 ﻿using ControlR.DesktopClient.Common.ServiceInterfaces;
 using ControlR.DesktopClient.Windows.Services;
 using ControlR.Libraries.NativeInterop.Windows;
-using ControlR.Tests.TestingUtilities;
+using ControlR.Libraries.TestingUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

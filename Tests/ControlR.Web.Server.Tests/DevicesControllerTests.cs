@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using ControlR.Libraries.Shared.Dtos.HubDtos;
 using ControlR.Libraries.Shared.Dtos.ServerApi;
 using ControlR.Libraries.Shared.Enums;
-using ControlR.Libraries.Shared.Models;
+using ControlR.Libraries.Shared.Dtos.Devices;
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Api;
 using ControlR.Web.Server.Data;

@@ -27,7 +27,8 @@ public static class HostAppBuilderExtensions
       .AddSingleton<ICaptureMetrics, CaptureMetricsMac>()
       .AddSingleton<IInputSimulator, InputSimulatorMac>()
       .AddSingleton<IFileSystemUnix, FileSystemUnix>()
-      .AddHostedService<ScreenWakerMac>();
+      .AddHostedService<ScreenWakerMac>()
+      .AddHostedService<CursorWatcherMac>();
     
     builder.BootstrapSerilog(
       logFilePath: PathConstants.GetLogsPath(appDataFolder),

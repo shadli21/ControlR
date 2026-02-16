@@ -4,6 +4,8 @@ using ControlR.DesktopClient.Common.Messages;
 using ControlR.DesktopClient.Common.Models;
 using ControlR.DesktopClient.Common.ServiceInterfaces;
 using ControlR.DesktopClient.Common.Services.Encoders;
+using ControlR.DesktopClient.Common.State;
+using ControlR.Libraries.Shared.Collections;
 using ControlR.Libraries.Shared.Dtos.RemoteControlDtos;
 using ControlR.Libraries.Shared.Extensions;
 using ControlR.Libraries.Shared.Primitives;
@@ -19,8 +21,6 @@ namespace ControlR.DesktopClient.Common.Services;
 internal class FrameBasedCapturer : IDesktopCapturer
 {
   // ReSharper disable once MemberCanBePrivate.Global
-  public const int DefaultImageQuality = 75;
-
   private readonly TimeSpan _afterFailureDelay = TimeSpan.FromMilliseconds(100);
   private readonly Channel<ScreenRegionDto> _captureChannel = Channel.CreateBounded<ScreenRegionDto>(
     new BoundedChannelOptions(capacity: 1)
@@ -32,18 +32,22 @@ internal class FrameBasedCapturer : IDesktopCapturer
   private readonly SemaphoreSlim _displayLock = new(1, 1);
   private readonly TimeSpan _displayLockTimeout = TimeSpan.FromSeconds(5);
   private readonly IDisplayManager _displayManager;
+  private readonly DisposableCollection _disposables = [];
   private readonly IFrameEncoder _frameEncoder;
   private readonly ConcurrentQueue<DateTimeOffset> _framesSent = [];
   private readonly IImageUtility _imageUtility;
   private readonly ILogger<FrameBasedCapturer> _logger;
   private readonly TimeSpan _noChangeDelay = TimeSpan.FromMilliseconds(10);
   private readonly IScreenGrabber _screenGrabber;
+  private readonly IRemoteControlSessionState _sessionState;
   private readonly TimeProvider _timeProvider;
 
+  private bool _captureCursor;
   private Task? _captureTask;
   private string? _currentCaptureMode;
   private bool _disposedValue;
   private volatile bool _forceKeyFrame = true;
+  private int _imageQuality;
   private string? _lastDisplayId;
   private Rectangle? _lastMonitorArea;
   private DisplayInfo? _selectedDisplay;
@@ -55,6 +59,7 @@ internal class FrameBasedCapturer : IDesktopCapturer
     IImageUtility imageUtility,
     IFrameEncoder frameEncoder,
     IMessenger messenger,
+    IRemoteControlSessionState sessionState,
     ILogger<FrameBasedCapturer> logger)
   {
     _timeProvider = timeProvider;
@@ -62,9 +67,16 @@ internal class FrameBasedCapturer : IDesktopCapturer
     _displayManager = displayManager;
     _imageUtility = imageUtility;
     _frameEncoder = frameEncoder;
+    _sessionState = sessionState;
     _logger = logger;
 
-    messenger.Register<DisplaySettingsChangedMessage>(this, HandleDisplaySettingsChanged);
+    _disposables.AddRange(
+      sessionState.OnStateChanged(HandleSessionStateChanged),
+      messenger.Register<DisplaySettingsChangedMessage>(this, HandleDisplaySettingsChanged)
+    );
+
+    _captureCursor = sessionState.CaptureCursor;
+    _imageQuality = sessionState.ImageQuality;
   }
 
   public async Task ChangeDisplays(string displayId)
@@ -110,6 +122,7 @@ internal class FrameBasedCapturer : IDesktopCapturer
       await _captureTask.ConfigureAwait(false);
     }
 
+    _disposables.Dispose();
     GC.SuppressFinalize(this);
   }
 
@@ -285,6 +298,12 @@ internal class FrameBasedCapturer : IDesktopCapturer
     }
   }
 
+  private async Task HandleSessionStateChanged()
+  {
+    _captureCursor = _sessionState.CaptureCursor;
+    _imageQuality = _sessionState.ImageQuality;
+  }
+
   private void SetSelectedDisplay(DisplayInfo? display)
   {
     using var locker = _displayLock.AcquireLock(_displayLockTimeout);
@@ -343,7 +362,7 @@ internal class FrameBasedCapturer : IDesktopCapturer
 
         using var currentCapture = await _screenGrabber.CaptureDisplay(
             targetDisplay: selectedDisplay,
-            captureCursor: true,
+            captureCursor: _captureCursor,
             forceKeyFrame: _forceKeyFrame);
 
         if (currentCapture.HadNoChanges && !_forceKeyFrame)
@@ -381,7 +400,7 @@ internal class FrameBasedCapturer : IDesktopCapturer
           await EncodeRegion(
             currentCapture.Bitmap,
             currentCapture.Bitmap.ToSkRect(),
-            DefaultImageQuality);
+            _imageQuality);
 
           _forceKeyFrame = false;
           _lastDisplayId = selectedDisplay.DeviceName;
@@ -391,7 +410,7 @@ internal class FrameBasedCapturer : IDesktopCapturer
         {
           await EncodeCaptureResult(
             currentCapture,
-            DefaultImageQuality,
+            _imageQuality,
             previousCapture,
             cancellationToken);
         }

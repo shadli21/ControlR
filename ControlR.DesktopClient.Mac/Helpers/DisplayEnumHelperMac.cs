@@ -29,7 +29,7 @@ internal class DisplayEnumHelperMac(ILogger<DisplayEnumHelperMac> logger) : IDis
         // Fallback to main display only
         _logger.LogWarning("DisplayEnumHelperMac: Using fallback, result={Result}, displayCount={Count}", result, displayCount);
         var mainDisplayId = CoreGraphics.CGMainDisplayID();
-        return new List<DisplayInfo> { CreateDisplayInfo(mainDisplayId, 0, true) };
+        return [CreateDisplayInfo(mainDisplayId, 0, true)];
       }
 
       _logger.LogDebug("DisplayEnumHelperMac: Found {Count} displays", displayCount);
@@ -57,35 +57,34 @@ internal class DisplayEnumHelperMac(ILogger<DisplayEnumHelperMac> logger) : IDis
     var bounds = CoreGraphics.CGDisplayBounds(displayId);
     var logicalWidth = (int)bounds.Width;
     var logicalHeight = (int)bounds.Height;
-    
-    // On macOS, CGDisplayPixelsWide/High return logical dimensions, not physical pixels
-    // To get physical pixel dimensions, we need to capture the display and check the image size
-    // Or use the backing scale factor. Let's try capturing to get the physical dimensions.
+
+    // On macOS, CGDisplayPixelsWide/High return logical dimensions, not physical pixels.
+    // To get pixel dimensions, we need to capture the display and check the image size.
     nint testImageRef = nint.Zero;
-    int physicalPixelWidth = logicalWidth;
-    int physicalPixelHeight = logicalHeight;
+    int pixelWidth = logicalWidth;
+    int pixelHeight = logicalHeight;
     double scaleFactor = 1.0;
-    
+
     try
     {
       // Create a test capture to get actual pixel dimensions
       testImageRef = CoreGraphics.CGDisplayCreateImage(displayId);
       if (testImageRef != nint.Zero)
       {
-        physicalPixelWidth = (int)CoreGraphics.CGImageGetWidth(testImageRef);
-        physicalPixelHeight = (int)CoreGraphics.CGImageGetHeight(testImageRef);
-        
+        pixelWidth = (int)CoreGraphics.CGImageGetWidth(testImageRef);
+        pixelHeight = (int)CoreGraphics.CGImageGetHeight(testImageRef);
+
         // Calculate the backing scale factor (physical / logical)
         scaleFactor = Math.Max(
-          (double)physicalPixelWidth / logicalWidth,
-          (double)physicalPixelHeight / logicalHeight);
+          (double)pixelWidth / logicalWidth,
+          (double)pixelHeight / logicalHeight);
       }
     }
     catch
     {
       // If we can't capture, fall back to logical dimensions
-      physicalPixelWidth = logicalWidth;
-      physicalPixelHeight = logicalHeight;
+      pixelWidth = logicalWidth;
+      pixelHeight = logicalHeight;
       scaleFactor = 1.0;
     }
     finally
@@ -96,17 +95,20 @@ internal class DisplayEnumHelperMac(ILogger<DisplayEnumHelperMac> logger) : IDis
       }
     }
 
-    // The captured image will be in pixel coordinates starting from (0,0) for each display
-    // But the MonitorArea should reflect the physical screen area for coordinate calculations
     var monitorArea = new Rectangle(
-      (int)(bounds.X * scaleFactor), // Scale logical position to pixel position
-      (int)(bounds.Y * scaleFactor), // Scale logical position to pixel position
-      physicalPixelWidth, 
-      physicalPixelHeight);
+      (int)(bounds.X * scaleFactor),
+      (int)(bounds.Y * scaleFactor),
+      pixelWidth,
+      pixelHeight);
 
-    // Debug logging - this will help identify coordinate mismatches
+    var logicalArea = new Rectangle(
+      (int)bounds.X,
+      (int)bounds.Y,
+      logicalWidth,
+      logicalHeight);
+
     _logger.LogDebug("Display {DisplayId}: Logical bounds={LogicalW}x{LogicalH} at ({X},{Y}), Physical pixel size={PhysW}x{PhysH}, Scale={Scale:F2}, MonitorArea={MAW}x{MAH} at ({MAX},{MAY})",
-      displayId, logicalWidth, logicalHeight, bounds.X, bounds.Y, physicalPixelWidth, physicalPixelHeight, scaleFactor, monitorArea.Width, monitorArea.Height, monitorArea.X, monitorArea.Y);
+      displayId, logicalWidth, logicalHeight, bounds.X, bounds.Y, pixelWidth, pixelHeight, scaleFactor, monitorArea.Width, monitorArea.Height, monitorArea.X, monitorArea.Y);
 
     return new DisplayInfo
     {
@@ -115,6 +117,7 @@ internal class DisplayEnumHelperMac(ILogger<DisplayEnumHelperMac> logger) : IDis
       Index = index,
       IsPrimary = isMain,
       MonitorArea = monitorArea,
+      LogicalMonitorArea = logicalArea,
       WorkArea = monitorArea,
       ScaleFactor = scaleFactor
     };

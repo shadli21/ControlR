@@ -6,7 +6,7 @@
 		<ProjectReference Include="..\..\ControlR.DesktopClient.Linux\ControlR.DesktopClient.Linux.csproj" />
 		<ProjectReference Include="..\..\ControlR.DesktopClient.Common\ControlR.DesktopClient.Common.csproj" />
 		<ProjectReference Include="..\..\Libraries\ControlR.Libraries.NativeInterop.Unix\ControlR.Libraries.NativeInterop.Unix.csproj" />
-		<ProjectReference Include="..\ControlR.Tests.TestingUtilities\ControlR.Tests.TestingUtilities.csproj" />
+		<ProjectReference Include="..\..\Libraries\ControlR.Libraries.TestingUtilities\ControlR.Libraries.TestingUtilities.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.NET.Test.Sdk" />

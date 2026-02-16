@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 
-namespace ControlR.Tests.TestingUtilities;
+namespace ControlR.Libraries.TestingUtilities;
 
 public class XunitLoggerProvider(ITestOutputHelper testOutputHelper) : ILoggerProvider
 {

@@ -1,4 +1,4 @@
-using ControlR.Tests.TestingUtilities;
+using ControlR.Libraries.TestingUtilities;
 using Microsoft.Extensions.Logging;
 using Tmds.DBus.Protocol;
 using Xunit;

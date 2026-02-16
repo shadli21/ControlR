@@ -2,8 +2,8 @@ using Bitbound.SimpleMessenger;
 using ControlR.DesktopClient.Common.Messages;
 using ControlR.DesktopClient.Common.Services;
 using ControlR.Libraries.NativeInterop.Unix.Linux;
+using ControlR.Libraries.Hosting;
 using ControlR.Libraries.Shared.Enums;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;
 using System.Runtime.InteropServices;
@@ -11,12 +11,13 @@ using System.Runtime.InteropServices;
 namespace ControlR.DesktopClient.Linux.Services;
 
 internal class CursorWatcherX11(
+  TimeProvider timeProvider,
   IMessenger messenger,
   IImageUtility imageUtility,
-  ILogger<CursorWatcherX11> logger) : BackgroundService
+  ILogger<CursorWatcherX11> logger)
+  : PeriodicBackgroundService(TimeSpan.FromMilliseconds(10), timeProvider, logger)
 {
   private readonly IImageUtility _imageUtility = imageUtility;
-  private readonly ILogger<CursorWatcherX11> _logger = logger;
   private readonly IMessenger _messenger = messenger;
 
   private IntPtr _display = IntPtr.Zero;
@@ -28,7 +29,7 @@ internal class CursorWatcherX11(
     _display = LibX11.XOpenDisplay(null);
     if (_display == IntPtr.Zero)
     {
-      _logger.LogError("Failed to open X11 display");
+      Logger.LogError("Failed to open X11 display");
       return;
     }
 
@@ -37,29 +38,22 @@ internal class CursorWatcherX11(
       // Check if XFixes extension is available
       if (LibXfixes.XFixesQueryVersion(_display, out int major, out int minor) == 0)
       {
-        _logger.LogError("XFixes extension not available");
+        Logger.LogError("XFixes extension not available");
         return;
       }
 
-      _logger.LogInformation("XFixes version: {Major}.{Minor}", major, minor);
+      Logger.LogInformation("XFixes version: {Major}.{Minor}", major, minor);
 
-      while (!stoppingToken.IsCancellationRequested)
-      {
-        try
-        {
-          await Task.Delay(TimeSpan.FromMilliseconds(10), stoppingToken);
-          await CheckCursorChange();
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.LogInformation("Cursor watch aborted. Application shutting down.");
-          break;
-        }
-        catch (Exception ex)
-        {
-          _logger.LogError(ex, "Error while getting mouse cursor.");
-        }
-      }
+      // Let the periodic base class drive the loop and call HandleElapsed
+      await base.ExecuteAsync(stoppingToken);
+    }
+    catch (OperationCanceledException)
+    {
+      Logger.LogInformation("Cursor watch aborted. Application shutting down.");
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Error while getting mouse cursor.");
     }
     finally
     {
@@ -68,6 +62,18 @@ internal class CursorWatcherX11(
         LibX11.XCloseDisplay(_display);
         _display = IntPtr.Zero;
       }
+    }
+  }
+
+  protected override async Task HandleElapsed()
+  {
+    try
+    {
+      await CheckCursorChange();
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Error in HandleElapsed for CursorWatcherX11");
     }
   }
 
@@ -106,7 +112,7 @@ internal class CursorWatcherX11(
 
         await _messenger.Send(changeMessage);
 
-        _logger.LogDebug("Cursor changed. Broadcasted new cursor image.");
+        Logger.LogDebug("Cursor changed. Broadcasted new cursor image.");
       }
     }
     finally
@@ -121,14 +127,14 @@ internal class CursorWatcherX11(
     {
       if (cursorImage.width <= 0 || cursorImage.height <= 0 || cursorImage.pixels == IntPtr.Zero)
       {
-        _logger.LogDebug(
+        Logger.LogDebug(
           "Invalid cursor dimensions: {Width}x{Height}", 
           cursorImage.width,
           cursorImage.height);
         return null;
       }
 
-      _logger.LogDebug(
+      Logger.LogDebug(
         "Converting cursor: {Width}x{Height}, hotspot: ({XHot},{YHot})",
         cursorImage.width,
         cursorImage.height,
@@ -177,13 +183,13 @@ internal class CursorWatcherX11(
       }
 
       var pngBytes = _imageUtility.Encode(bitmap, SKEncodedImageFormat.Png);
-      _logger.LogDebug("Successfully converted cursor to PNG: {ByteCount} bytes", pngBytes.Length);
+      Logger.LogDebug("Successfully converted cursor to PNG: {ByteCount} bytes", pngBytes.Length);
       
       return Convert.ToBase64String(pngBytes);
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to convert cursor to PNG base64");
+      Logger.LogError(ex, "Failed to convert cursor to PNG base64");
       return null;
     }
   }

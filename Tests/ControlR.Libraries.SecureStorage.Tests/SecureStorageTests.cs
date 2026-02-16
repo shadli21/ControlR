@@ -1,4 +1,4 @@
-using ControlR.Tests.TestingUtilities;
+using ControlR.Libraries.TestingUtilities;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ControlR.Libraries.SecureStorage.Tests;

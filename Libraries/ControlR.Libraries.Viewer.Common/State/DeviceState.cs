@@ -1,3 +1,5 @@
+using ControlR.Libraries.Shared.Services.StateManagement;
+
 namespace ControlR.Libraries.Viewer.Common.State;
 
 public interface IDeviceState : IStateBase
@@ -7,21 +9,15 @@ public interface IDeviceState : IStateBase
   DeviceResponseDto? TryGetCurrentDevice();
 }
 
-public class DeviceState(ILogger<DeviceState> logger) : StateBase(logger), IDeviceState
+public class DeviceState(ILogger<DeviceState> logger) : ObservableState(logger), IDeviceState
 {
-  private DeviceResponseDto? _currentDevice;
-
   public DeviceResponseDto CurrentDevice
   {
-    get => _currentDevice ?? throw new InvalidOperationException("CurrentDevice is not set.");
-    set
-    {
-      _currentDevice = value;
-      NotifyStateChanged();
-    }
+    get => Get<DeviceResponseDto?>() ?? throw new InvalidOperationException("CurrentDevice is not set.");
+    set => Set(value);
   }
 
-  public bool IsDeviceLoaded => _currentDevice != null;
+  public bool IsDeviceLoaded => Get<DeviceResponseDto>(propertyName: nameof(CurrentDevice)) != null;
 
-  public DeviceResponseDto? TryGetCurrentDevice() => _currentDevice;
+  public DeviceResponseDto? TryGetCurrentDevice() => Get<DeviceResponseDto?>(propertyName: nameof(CurrentDevice));
 }

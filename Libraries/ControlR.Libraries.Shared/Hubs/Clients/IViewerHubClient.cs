@@ -1,6 +1,6 @@
 ﻿using ControlR.Libraries.Shared.Dtos.HubDtos;
 using ControlR.Libraries.Shared.Dtos.ServerApi;
-using ControlR.Libraries.Shared.Models;
+using ControlR.Libraries.Shared.Dtos.Ui;
 
 namespace ControlR.Libraries.Shared.Hubs.Clients;
 

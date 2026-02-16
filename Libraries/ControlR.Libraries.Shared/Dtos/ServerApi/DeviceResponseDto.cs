@@ -1,9 +1,9 @@
 ﻿using ControlR.Libraries.Shared.Enums;
-using ControlR.Libraries.Shared.Models;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 using System.Collections.Immutable;
+using ControlR.Libraries.Shared.Dtos.Devices;
 
 namespace ControlR.Libraries.Shared.Dtos.ServerApi;
 

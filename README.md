@@ -197,6 +197,15 @@ This is an experimental feature that allows you to control Mac and Linux devices
 
 Since the connection to the VNC server is over localhost, you can configure the VNC server to bind to the loopback interface, so it's not exposed to the local network.
 
+## Troubleshooting
+
+### Agent or desktop client not starting or crashing instantly
+
+- Check ControlR logs in the [Log Locations](#agent-log-locations) for any errors.
+- Check `Event Viewer -> Windows Logs -> Application` for any .NET runtime errors related to ControlR.
+- Check `Event Viewer -> Applications and Services -> Microsoft -> Windows -> CodeIntegrity -> Operational` for any code integrity violations that may be preventing the agent or desktop client from starting.
+- Check `Event Viewer -> Applications and Services -> Microsoft -> Windows -> AppLocker -> EXE and DLL` for any AppLocker blocks that may be preventing the agent or desktop client from starting.
+
 ## Screenshots
 
 ![Login Screen](.assets/screenshots/login-screen.png)

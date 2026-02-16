@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Xunit.Abstractions;
 
-namespace ControlR.Web.Server.Tests.Services.Users;
+namespace ControlR.Web.Server.Tests;
 
 public class UserCreatorTests(ITestOutputHelper output)
 {

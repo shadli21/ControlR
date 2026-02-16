@@ -2,8 +2,10 @@ using ControlR.DesktopClient.Common.Models;
 using ControlR.DesktopClient.Common.ServiceInterfaces;
 using ControlR.DesktopClient.Mac.Helpers;
 using ControlR.Libraries.NativeInterop.Unix.MacOs;
+using ControlR.Libraries.Shared.Extensions;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;
+using System.Drawing;
 
 namespace ControlR.DesktopClient.Mac.Services;
 
@@ -94,7 +96,14 @@ public sealed class ScreenGrabberMac(
 
           if (captureCursor)
           {
-            _logger.LogDebug("Cursor capture is not yet implemented on macOS.");
+            var bounds = CoreGraphics.CGDisplayBounds(displayId);
+            var scaleFactor = displays[0].ScaleFactor;
+            var captureArea = new Rectangle(
+              (int)(bounds.X * scaleFactor),
+              (int)(bounds.Y * scaleFactor),
+              bitmap.Width,
+              bitmap.Height);
+            DrawCursorOnBitmap(bitmap, captureArea, displays);
           }
 
           return CaptureResult.Ok(bitmap, captureMode: CoreGraphicsCaptureMode);
@@ -149,7 +158,7 @@ public sealed class ScreenGrabberMac(
 
       if (captureCursor)
       {
-        _logger.LogDebug("Cursor capture is not yet implemented on macOS.");
+        DrawCursorOnBitmap(compositeBitmap, virtualBounds, displays);
       }
 
       return CaptureResult.Ok(compositeBitmap, captureMode: CoreGraphicsCaptureMode);
@@ -186,11 +195,15 @@ public sealed class ScreenGrabberMac(
         return CaptureResult.Fail("Failed to convert CGImage to SKBitmap.");
       }
 
-      // Note: captureCursor is ignored for now as drawing cursor on macOS requires additional APIs
-      // This could be implemented using CGWindowListCreateImage with kCGWindowListOptionIncludingCursor
       if (captureCursor)
       {
-        _logger.LogDebug("Cursor capture is not yet implemented on macOS.");
+        var bounds = CoreGraphics.CGDisplayBounds(displayId);
+        var boundsRect = new Rectangle(
+          (int)(bounds.X * display.ScaleFactor),
+          (int)(bounds.Y * display.ScaleFactor),
+          bitmap.Width,
+          bitmap.Height);
+        DrawCursorOnBitmap(bitmap, boundsRect, new[] { display });
       }
 
       return CaptureResult.Ok(bitmap, captureMode: CoreGraphicsCaptureMode);
@@ -205,6 +218,148 @@ public sealed class ScreenGrabberMac(
       if (cgImageRef != nint.Zero)
       {
         CoreGraphicsHelper.ReleaseCGImage(cgImageRef);
+      }
+    }
+  }
+
+  private void DrawCursorOnBitmap(SKBitmap bitmap, Rectangle captureArea, IReadOnlyList<DisplayInfo> displays)
+  {
+    try
+    {
+      if (!CoreGraphics.CGCursorIsVisible())
+      {
+        return;
+      }
+
+      if (!TryGetMouseLocationInPixelCoordinates(displays, out var cursorX, out var cursorY))
+      {
+        _logger.LogDebug("Failed to get mouse location");
+        return;
+      }
+
+      // Adjust coordinates if we have a capture area (for multi-display)
+      if (!captureArea.IsEmpty)
+      {
+        cursorX -= captureArea.X;
+        cursorY -= captureArea.Y;
+      }
+
+      // Get current cursor from NSCursor
+      var cursor = AppKit.GetCurrentCursor();
+      if (cursor == nint.Zero)
+      {
+        _logger.LogDebug("Failed to get current cursor from NSCursor");
+        return;
+      }
+
+      // Get cursor image
+      var nsImage = AppKit.GetCursorImage(cursor);
+      if (nsImage == nint.Zero)
+      {
+        _logger.LogDebug("Failed to get cursor image");
+        return;
+      }
+
+      // Get hotspot
+      var (hotspotX, hotspotY) = AppKit.GetCursorHotspot(cursor);
+
+      // Convert NSImage to CGImage
+      var cgImageRef = AppKit.GetNSImageCGImage(nsImage);
+      if (cgImageRef == nint.Zero)
+      {
+        _logger.LogDebug("Failed to convert NSImage to CGImage");
+        return;
+      }
+
+      // Don't release cgImageRef - it's owned by NSImage
+      using var cursorBitmap = CoreGraphicsHelper.CGImageToSKBitmap(cgImageRef);
+      if (cursorBitmap is null)
+      {
+        _logger.LogDebug("Failed to convert cursor CGImage to SKBitmap");
+        return;
+      }
+
+      // Calculate draw position (cursor position minus hotspot)
+      var drawX = cursorX - (int)hotspotX;
+      var drawY = cursorY - (int)hotspotY;
+
+      // Draw cursor on bitmap
+      using var canvas = new SKCanvas(bitmap);
+      canvas.DrawBitmap(cursorBitmap, drawX, drawY);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogDebug(ex, "Failed to draw cursor on bitmap");
+    }
+  }
+
+  private bool TryGetMouseLocationInPixelCoordinates(
+    IReadOnlyList<DisplayInfo> displays,
+    out int x,
+    out int y)
+  {
+    x = 0;
+    y = 0;
+
+    nint cgEventRef = nint.Zero;
+    try
+    {
+      cgEventRef = CoreGraphics.CGEventCreate(nint.Zero);
+      if (cgEventRef == nint.Zero)
+      {
+        return false;
+      }
+
+      var location = CoreGraphics.CGEventGetLocation(cgEventRef);
+
+      var scaleFactor = 1.0;
+      try
+      {
+        var displayIds = new uint[1];
+        var rect = new CoreGraphics.CGRect(location.X, location.Y, 1, 1);
+        var result = CoreGraphics.CGGetDisplaysWithRect(rect, 1, displayIds, out var matchingDisplayCount);
+        if (result == 0 && matchingDisplayCount > 0)
+        {
+          var displayIdString = displayIds[0].ToString();
+          var display = displays.FirstOrDefault(d => d.DeviceName == displayIdString);
+          if (display is not null)
+          {
+            scaleFactor = display.ScaleFactor;
+          }
+        }
+      }
+      catch (Exception ex)
+      {
+        _logger.LogWarningDeduped("Error getting display scale factor", exception: ex);
+        scaleFactor = 1.0;
+      }
+
+      var scaledX = (int)Math.Round(location.X * scaleFactor);
+      var scaledY = (int)Math.Round(location.Y * scaleFactor);
+
+      if (displays.Any(d => d.MonitorArea.Contains(scaledX, scaledY)))
+      {
+        x = scaledX;
+        y = scaledY;
+        return true;
+      }
+
+      var unscaledX = (int)Math.Round(location.X);
+      var unscaledY = (int)Math.Round(location.Y);
+      if (displays.Any(d => d.MonitorArea.Contains(unscaledX, unscaledY)))
+      {
+        x = unscaledX;
+        y = unscaledY;
+        return true;
+      }
+
+      return false;
+    }
+    finally
+    {
+      if (cgEventRef != nint.Zero)
+      {
+        CoreGraphics.CFRelease(cgEventRef);
       }
     }
   }

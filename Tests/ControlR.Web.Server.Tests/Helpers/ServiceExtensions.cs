@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using ControlR.Libraries.Shared.Dtos.HubDtos;
 using ControlR.Web.Server.Services.DeviceManagement;
 using System.Net;
+using ControlR.Libraries.Shared.Dtos.Devices;
 
 namespace ControlR.Web.Server.Tests.Helpers;
 
@@ -77,7 +78,7 @@ internal static class ServiceExtensions
       // role lookups reflect the intended test state.
       var db = services.GetRequiredService<AppDb>();
       var userEntity = await db.Users.Include(u => u.UserRoles).FirstOrDefaultAsync(u => u.Id == user.Id);
-      if (userEntity is not null && userEntity.UserRoles?.Any() == true)
+      if (userEntity?.UserRoles?.Count == 0)
       {
         db.UserRoles.RemoveRange(userEntity.UserRoles);
         await db.SaveChangesAsync();
@@ -140,7 +141,7 @@ internal static class ServiceExtensions
       MacAddresses: ["00:11:22:33:44:55"],
       LocalIpV4: "10.0.0.2",
       LocalIpV6: "fe80::2",
-      Drives: [new Libraries.Shared.Models.Drive { Name = "C:", VolumeLabel = "System", TotalSize = 256000, FreeSpace = 128000 }]
+      Drives: [new Drive { Name = "C:", VolumeLabel = "System", TotalSize = 256000, FreeSpace = 128000 }]
     );
 
     var connectionContext = new DeviceConnectionContext(

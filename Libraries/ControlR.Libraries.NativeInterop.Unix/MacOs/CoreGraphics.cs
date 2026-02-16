@@ -6,6 +6,7 @@ public static class CoreGraphics
 {
   private const string CoreGraphicsFramework = "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics";
 
+
   [DllImport(CoreGraphicsFramework, EntryPoint = "CFDataGetBytePtr")]
   public static extern nint CFDataGetBytePtr(nint theData);
 
@@ -45,8 +46,14 @@ public static class CoreGraphics
   [DllImport(CoreGraphicsFramework, EntryPoint = "CGDisplayPixelsWide")]
   public static extern nint CGDisplayPixelsWide(uint display);
 
+  [DllImport(CoreGraphicsFramework, EntryPoint = "CGEventCreate")]
+  public static extern nint CGEventCreate(nint source);
+
   [DllImport(CoreGraphicsFramework, EntryPoint = "CGEventCreateMouseEvent")]
   public static extern nint CGEventCreateMouseEvent(nint source, uint mouseType, CGPoint mouseCursorPosition, uint mouseButton);
+
+  [DllImport(CoreGraphicsFramework, EntryPoint = "CGEventGetLocation")]
+  public static extern CGPoint CGEventGetLocation(nint @event);
 
   [DllImport(CoreGraphicsFramework, EntryPoint = "CGEventPost")]
   public static extern void CGEventPost(uint tap, nint @event);
@@ -84,11 +91,10 @@ public static class CoreGraphics
   // Remote Desktop permission APIs
   [DllImport(CoreGraphicsFramework, EntryPoint = "CGPreflightPostEventAccess")]
   public static extern bool CGPreflightPostEventAccess();
-  
+
   [DllImport(CoreGraphicsFramework, EntryPoint = "CGPreflightScreenCaptureAccess")]
   public static extern bool CGPreflightScreenCaptureAccess();
 
-  // Alternative method that might be available in some macOS versions
   [DllImport(CoreGraphicsFramework, EntryPoint = "CGRequestListenEventAccess")]
   public static extern bool CGRequestListenEventAccess();
 
@@ -98,8 +104,13 @@ public static class CoreGraphics
   [DllImport(CoreGraphicsFramework, EntryPoint = "CGRequestScreenCaptureAccess")]
   public static extern bool CGRequestScreenCaptureAccess();
 
+
   [DllImport(CoreGraphicsFramework, EntryPoint = "CGWarpMouseCursorPosition")]
   public static extern int CGWarpMouseCursorPosition(CGPoint newCursorPosition);
+
+  [DllImport(CoreGraphicsFramework, EntryPoint = "CGWindowListCreateImage")]
+  public static extern nint CGWindowListCreateImage(CGRect screenBounds, uint listOption, uint windowID, uint imageOption);
+
 
   [StructLayout(LayoutKind.Sequential)]
   public struct CGPoint
@@ -113,7 +124,6 @@ public static class CoreGraphics
       Y = y;
     }
   }
-
   [StructLayout(LayoutKind.Sequential)]
   public struct CGRect
   {
@@ -131,7 +141,6 @@ public static class CoreGraphics
     public double Width => Size.Width;
     public double Height => Size.Height;
   }
-
   [StructLayout(LayoutKind.Sequential)]
   public struct CGSize
   {

@@ -1,3 +1,6 @@
+using ControlR.Libraries.Shared.Dtos.Devices;
+using ControlR.Libraries.Shared.Services.StateManagement;
+
 namespace ControlR.Libraries.Viewer.Common.State;
 
 public interface IChatState : IStateBase
@@ -11,7 +14,7 @@ public interface IChatState : IStateBase
   void Clear();
 }
 
-public class ChatState(ILogger<ChatState> logger) : StateBase(logger), IChatState
+public class ChatState(ILogger<ChatState> logger) : ObservableState(logger), IChatState
 {
   public ConcurrentList<ChatMessage> ChatMessages { get; } = [];
   public DesktopSession? CurrentSession { get; set; }

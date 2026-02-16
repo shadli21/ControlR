@@ -7,9 +7,18 @@ using System.Security.Cryptography;
 
 namespace ControlR.Agent.Common.Services;
 
+/// <summary>
+/// Responsible for updating the main ControlR agent.
+/// </summary>
 internal interface IAgentUpdater : IHostedService
 {
-  Task CheckForUpdate(CancellationToken cancellationToken = default);
+  /// <summary>
+  /// Checks for updates to the ControlR agent.
+  /// </summary>
+  /// <param name="force">Whether to force an update check, bypassing DisableAutoUpdate in developer settings.</param>
+  /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+  /// <returns>A task representing the asynchronous operation.</returns>
+  Task CheckForUpdate(bool force = false, CancellationToken cancellationToken = default);
 }
 
 internal class AgentUpdater(
@@ -37,9 +46,9 @@ internal class AgentUpdater(
   private readonly ISystemEnvironment _systemEnvironment = environmentHelper;
   private readonly TimeProvider _timeProvider = timeProvider;
   
-  public async Task CheckForUpdate(CancellationToken cancellationToken = default)
+  public async Task CheckForUpdate(bool force = false, CancellationToken cancellationToken = default)
   {
-    if (_settings.DisableAutoUpdate)
+    if (!force && _settings.DisableAutoUpdate)
     {
       _logger.LogInformation("Auto-update disabled in developer options.  Skipping update check.");
       return;
@@ -194,13 +203,13 @@ internal class AgentUpdater(
       return;
     }
 
-    await CheckForUpdate(stoppingToken);
+    await CheckForUpdate(cancellationToken: stoppingToken);
 
     using var timer = new PeriodicTimer(TimeSpan.FromHours(6), _timeProvider);
 
     while (await timer.WaitForNextTickAsync(stoppingToken))
     {
-      await CheckForUpdate(stoppingToken);
+      await CheckForUpdate(cancellationToken: stoppingToken);
     }
   }
 }

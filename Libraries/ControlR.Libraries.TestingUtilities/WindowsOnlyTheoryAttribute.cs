@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace ControlR.Tests.TestingUtilities;
+namespace ControlR.Libraries.TestingUtilities;
 
 /// <summary>
 /// Xunit attribute to skip tests when not running on Windows.

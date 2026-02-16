@@ -1,4 +1,4 @@
-﻿using ControlR.Libraries.Shared.Models;
+﻿using ControlR.Libraries.Shared.Dtos.Devices;
 
 namespace ControlR.Libraries.Shared.Dtos.HubDtos;
 

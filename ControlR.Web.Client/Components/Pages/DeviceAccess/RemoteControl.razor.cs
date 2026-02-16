@@ -1,4 +1,5 @@
 ﻿using System.Net.WebSockets;
+using ControlR.Libraries.Shared.Dtos.Devices;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
 namespace ControlR.Web.Client.Components.Pages.DeviceAccess;
@@ -357,7 +358,6 @@ public partial class RemoteControl : ViewportAwareComponent
         desktopRelayUri,
         session.TargetSystemSession,
         session.TargetProcessId,
-        string.Empty, // ViewerConnectionId is set by hub.
         session.Device.Id,
         notifyUser,
         RequireConsent: false);

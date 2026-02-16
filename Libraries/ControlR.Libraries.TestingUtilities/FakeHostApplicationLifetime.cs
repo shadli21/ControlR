@@ -1,7 +1,7 @@
 ﻿using ControlR.Libraries.Shared.Extensions;
 using Microsoft.Extensions.Hosting;
 
-namespace ControlR.Tests.TestingUtilities;
+namespace ControlR.Libraries.TestingUtilities;
 public sealed class FakeHostApplicationLifetime : IHostApplicationLifetime, IDisposable
 {
   private readonly TimeSpan _stopDelay;

@@ -1,10 +1,14 @@
 using ControlR.Libraries.Shared.Dtos.IpcDtos;
 using ControlR.Libraries.Shared.Dtos.HubDtos;
 using ControlR.Libraries.Shared.Primitives;
+using StreamJsonRpc;
+using PolyType;
 
 namespace ControlR.Libraries.Ipc.Interfaces;
 
-public interface IDesktopClientRpcService
+[JsonRpcContract]
+[GenerateShape(IncludeMethods = MethodShapeFlags.PublicInstance)]
+public partial interface IDesktopClientRpcService
 {
     Task<CheckOsPermissionsResponseIpcDto> CheckOsPermissions(CheckOsPermissionsIpcDto dto);
     Task CloseChatSession(CloseChatSessionIpcDto dto);

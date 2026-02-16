@@ -15,7 +15,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\ControlR.DesktopClient.Windows\ControlR.DesktopClient.Windows.csproj" />
-		<ProjectReference Include="..\ControlR.Tests.TestingUtilities\ControlR.Tests.TestingUtilities.csproj" />
+		<ProjectReference Include="..\..\Libraries\ControlR.Libraries.TestingUtilities\ControlR.Libraries.TestingUtilities.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="Xunit" />

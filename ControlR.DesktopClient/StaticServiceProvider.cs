@@ -73,7 +73,7 @@ internal static class StaticServiceProvider
     services
       .AddControlrIpcClient<DesktopClientRpcService>()
       .AddSingleton(TimeProvider.System)
-      .AddSingleton(WeakReferenceMessenger.Default)
+      .AddSingleton<IMessenger>(new WeakReferenceMessenger())
       .AddSingleton<IProcessManager, ProcessManager>()
       .AddSingleton<IFileSystem, FileSystem>()
       .AddSingleton<ISystemEnvironment, SystemEnvironment>()

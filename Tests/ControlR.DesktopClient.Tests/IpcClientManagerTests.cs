@@ -6,7 +6,7 @@ using ControlR.Libraries.Ipc;
 using ControlR.Libraries.Ipc.Interfaces;
 using ControlR.Libraries.Shared.Dtos.IpcDtos;
 using ControlR.Libraries.Shared.Services;
-using ControlR.Tests.TestingUtilities.Extensions;
+using ControlR.Libraries.TestingUtilities.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

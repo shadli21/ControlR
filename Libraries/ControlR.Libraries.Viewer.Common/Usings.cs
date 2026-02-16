@@ -1,5 +1,4 @@
 ﻿global using ControlR.Libraries.Shared.Collections;
-global using ControlR.Libraries.Shared.Models;
 global using ControlR.Libraries.Shared;
 global using ControlR.Libraries.Shared.Dtos;
 global using ControlR.Libraries.Shared.Enums;

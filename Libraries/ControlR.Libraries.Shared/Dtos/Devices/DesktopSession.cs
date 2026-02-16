@@ -1,4 +1,4 @@
-﻿namespace ControlR.Libraries.Shared.Models;
+﻿namespace ControlR.Libraries.Shared.Dtos.Devices;
 
 public enum DesktopSessionType
 {

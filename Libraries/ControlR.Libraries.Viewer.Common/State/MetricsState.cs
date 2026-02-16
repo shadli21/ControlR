@@ -1,3 +1,5 @@
+using ControlR.Libraries.Shared.Services.StateManagement;
+
 namespace ControlR.Libraries.Viewer.Common.State;
 
 public interface IMetricsState
@@ -8,7 +10,7 @@ public interface IMetricsState
   double MbpsOut { get; set; }
 }
 
-public class MetricsState(ILogger<StateBase> logger) : StateBase(logger), IMetricsState
+public class MetricsState(ILogger<ObservableState> logger) : ObservableState(logger), IMetricsState
 {
   private TimeSpan _currentLatency;
   private CaptureMetricsDto? _currentMetrics;

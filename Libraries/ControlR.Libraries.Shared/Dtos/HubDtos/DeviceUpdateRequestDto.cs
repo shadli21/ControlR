@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
+using ControlR.Libraries.Shared.Dtos.Devices;
 using ControlR.Libraries.Shared.Enums;
-using ControlR.Libraries.Shared.Models;
 
 namespace ControlR.Libraries.Shared.Dtos.HubDtos;
 

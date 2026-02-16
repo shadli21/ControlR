@@ -4,12 +4,9 @@ description: Installs .NET 10.x and 9.x SDKs
 runs:
   using: composite
   steps:
-    - name: Setup .NET 10.x
+    - name: Setup .NET SDKs
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: "10.x"
-
-    - name: Setup .NET 9.x
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: "9.x"
+        dotnet-version: |
+          9.x
+          10.x

@@ -1,10 +1,11 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Runtime.InteropServices;
+using ControlR.Libraries.Shared.Dtos.Devices;
 using ControlR.Libraries.Shared.Dtos.HubDtos;
 using ControlR.Libraries.Shared.Dtos.ServerApi;
 using ControlR.Libraries.Shared.Enums;
-using ControlR.Libraries.Shared.Models;
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
@@ -22,6 +23,7 @@ public class DeviceManagerTests(ITestOutputHelper testOutput)
   private readonly ITestOutputHelper _testOutputHelper = testOutput;
 
   [Fact]
+  [SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Because")]
   public async Task DeviceManager_AddOrUpdate()
   {
     // Arrange

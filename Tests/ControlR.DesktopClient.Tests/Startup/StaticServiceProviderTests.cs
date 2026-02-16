@@ -1,6 +1,6 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using ControlR.DesktopClient.Common.ServiceInterfaces;
-using ControlR.Tests.TestingUtilities;
+using ControlR.Libraries.TestingUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Moq;

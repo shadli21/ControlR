@@ -1,4 +1,5 @@
-﻿using ControlR.Libraries.Shared.Hubs.Clients;
+﻿using ControlR.Libraries.Shared.Dtos.Ui;
+using ControlR.Libraries.Shared.Hubs.Clients;
 using ControlR.Web.Client.Extensions;
 
 namespace ControlR.Web.Client.Services;

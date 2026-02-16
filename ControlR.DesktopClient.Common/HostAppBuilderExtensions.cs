@@ -1,9 +1,9 @@
 ﻿using Bitbound.SimpleMessenger;
 using ControlR.DesktopClient.Common.Options;
 using ControlR.DesktopClient.Common.ServiceInterfaces;
-using ControlR.DesktopClient.Common.ServiceInterfaces.Toaster;
 using ControlR.DesktopClient.Common.Services;
 using ControlR.DesktopClient.Common.Services.Encoders;
+using ControlR.DesktopClient.Common.State;
 using ControlR.Libraries.DevicesCommon.Services;
 using ControlR.Libraries.DevicesCommon.Services.Processes;
 using ControlR.Libraries.Shared.Services;
@@ -16,14 +16,13 @@ using Microsoft.Extensions.Hosting;
 namespace ControlR.DesktopClient.Common;
 public static class HostAppBuilderExtensions
 {
-  public static IHostApplicationBuilder AddCommonDesktopServices<TToasterImpl>(
+  public static IHostApplicationBuilder AddCommonDesktopServices(
     this IHostApplicationBuilder builder,
     IIpcClientAccessor ipcClientAccessor,
     IUserInteractionService userInteractionService,
     Action<IHostApplicationBuilder> configureDependencies,
     Action<RemoteControlSessionOptions> configureSessionOptions,
     Action<DesktopClientOptions> configureDesktopClientOptions)
-    where TToasterImpl : class, IToaster
   {
     builder.Configuration.AddEnvironmentVariables();
 
@@ -32,7 +31,7 @@ public static class HostAppBuilderExtensions
     builder.Services
       .AddOptions()
       .AddTransient<IHubConnectionBuilder, HubConnectionBuilder>()
-      .AddSingleton(WeakReferenceMessenger.Default)
+      .AddSingleton<IMessenger>(new WeakReferenceMessenger())
       .AddSingleton(TimeProvider.System)
       .AddSingleton<IProcessManager, ProcessManager>()
       .AddSingleton<IFileSystem, FileSystem>()
@@ -45,8 +44,8 @@ public static class HostAppBuilderExtensions
       .AddSingleton<IDesktopCapturerFactory, DesktopCapturerFactory>()
       .AddSingleton<IDesktopPreviewProvider, DesktopPreviewProvider>()
       .AddSingleton<ISessionConsentService, SessionConsentService>()
+      .AddSingleton<IRemoteControlSessionState, RemoteControlSessionState>()
       .AddSingleton<IWaiter, Waiter>()
-      .AddSingleton<IToaster, TToasterImpl>()
       .AddSingleton(ipcClientAccessor)
       .AddSingleton(userInteractionService)
       .AddTransient<FrameBasedCapturer>()

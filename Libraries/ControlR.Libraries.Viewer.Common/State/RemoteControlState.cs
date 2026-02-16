@@ -1,4 +1,6 @@
-﻿namespace ControlR.Libraries.Viewer.Common.State;
+﻿using ControlR.Libraries.Shared.Services.StateManagement;
+
+namespace ControlR.Libraries.Viewer.Common.State;
 
 public interface IRemoteControlState : IStateBase
 {
@@ -21,7 +23,7 @@ public interface IRemoteControlState : IStateBase
   ViewMode ViewMode { get; set; }
 }
 
-public class RemoteControlState(ILogger<StateBase> logger) : StateBase(logger), IRemoteControlState
+public class RemoteControlState(ILogger<ObservableState> logger) : ObservableState(logger), IRemoteControlState
 {
   public double CanvasPixelHeight => (SelectedDisplay?.Height ?? 0) * CanvasScale;
   public double CanvasPixelWidth => (SelectedDisplay?.Width ?? 0) * CanvasScale;

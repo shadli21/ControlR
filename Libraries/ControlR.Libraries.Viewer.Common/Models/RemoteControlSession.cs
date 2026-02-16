@@ -1,4 +1,6 @@
-﻿namespace ControlR.Libraries.Viewer.Common.Models;
+﻿using ControlR.Libraries.Shared.Dtos.Devices;
+
+namespace ControlR.Libraries.Viewer.Common.Models;
 
 public class RemoteControlSession(
   DeviceResponseDto device,

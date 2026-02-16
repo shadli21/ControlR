@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using ControlR.Tests.TestingUtilities;
+using ControlR.Libraries.TestingUtilities;
 using ControlR.Web.Server.Startup;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;

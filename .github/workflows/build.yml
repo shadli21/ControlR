@@ -2,11 +2,6 @@ name: Build
 run-name: Build v${{ inputs.version || vars.CURRENT_VERSION }}
 
 on:
-  #push:
-  #  branches:
-  #    - main
-  #  paths-ignore:
-  #    - 'README.md'
   workflow_dispatch:
     inputs:
       use_self_hosted_runners:
@@ -33,6 +28,12 @@ on:
         default: true
         type: boolean
 
+      notarize_mac_undle:
+        description: "Notarize macOS bundle"
+        required: false
+        default: false
+        type: boolean
+
 env:
   VERSION: ${{ inputs.version || vars.CURRENT_VERSION }}
   RETENTION_DAYS_ARTIFACTS: ${{ inputs.retention_days_artifacts || 1 }}
@@ -40,7 +41,7 @@ env:
 jobs:
   set-version:
     name: Increment Version
-    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","unix"]') || fromJson('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","Linux"]') || fromJson('["ubuntu-latest"]') }}
     permissions:
       contents: read
       actions: write
@@ -80,7 +81,7 @@ jobs:
 
   run-tests:
     name: Run Tests
-    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","unix"]') || fromJson('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","Linux"]') || fromJson('["ubuntu-latest"]') }}
     needs: set-version
 
     steps:
@@ -99,7 +100,7 @@ jobs:
 
   build-nuget-packages:
     name: Build NuGet Packages
-    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","unix"]') || fromJson('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","Linux"]') || fromJson('["ubuntu-latest"]') }}
     needs: set-version
 
     steps:
@@ -129,10 +130,14 @@ jobs:
           artifact-name: DataRedactionNuGet
           retention-days: ${{ env.RETENTION_DAYS_ARTIFACTS }}
           prerelease: ${{ inputs.prerelease }}
+
   build-mac-binaries:
-    name: Apple Build
+    name: Apple Build (${{ matrix.arch }})
     runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","macOS"]') || fromJson('["macos-latest"]') }}
     needs: set-version
+    strategy:
+      matrix:
+        arch: [osx-arm64, osx-x64]
 
     steps:
       - name: Checkout
@@ -144,57 +149,151 @@ jobs:
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
 
-      - name: Publish DesktopClient + Agent (ARM64)
+      - name: Setup Code Signing Keychain
+        env:
+          APPLE_P12_BASE64: ${{ secrets.APPLE_P12_BASE64 }}
+          APPLE_P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD }}
+          APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+        shell: bash
         run: |
-          # Clean Resources folder
-          rm -f "./ControlR.Agent.Common/Resources/*.zip"
+          # Create temporary keychain
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          
+          echo "Creating temporary keychain..."
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "Configuring keychain settings..."
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          echo "Unlocking keychain..."
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
+          ORIGINAL_KEYCHAINS=$(security list-keychains -d user | xargs)
+          echo "ORIGINAL_KEYCHAINS=$ORIGINAL_KEYCHAINS" >> "$GITHUB_ENV"
+          echo "Adding temporary keychain to search list..."
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $ORIGINAL_KEYCHAINS
+          
+          echo "Decoding and importing certificate..."
+          P12_PATH="$RUNNER_TEMP/certificate.p12"
+          echo "$APPLE_P12_BASE64" | base64 --decode > "$P12_PATH"
+          
+          security import "$P12_PATH" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$APPLE_P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productsign
+          
+          echo "Setting partition list..."
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          
+          echo "Verifying certificate import..."
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          # Extract the unique SHA-1 hash for the identity in the temporary keychain
+          IDENTITY_HASH=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "$APPLE_DEVELOPER_ID" | head -n 1 | awk '{print $2}')
+          if [ -z "$IDENTITY_HASH" ]; then
+            echo "ERROR: No signing identity found for APPLE_DEVELOPER_ID in temporary keychain."
+            exit 1
+          fi
+          echo "IDENTITY_HASH=$IDENTITY_HASH" >> "$GITHUB_ENV"
+
+      - name: Publish DesktopClient + Agent (${{ matrix.arch }})
+        run: |
+          PUBLISH_DIR="./ControlR.DesktopClient/bin/publish/"
+
+          # Clean Resources folder
+          if [ -d "./ControlR.Agent.Common/Resources" ]; then
+            find "./ControlR.Agent.Common/Resources" -maxdepth 1 -type f -name '*.zip' -exec rm -f -- {} +
+          fi
+
+          echo "Publishing version $VERSION for macOS ${{ matrix.arch }}..."
           # Build DesktopClient
-          dotnet publish "./ControlR.DesktopClient/" -c Release -r osx-arm64 --self-contained -o "./ControlR.DesktopClient/bin/publish/osx-arm64/" -p:Version=$VERSION -p:FileVersion=$VERSION
-          codesign --force --deep --entitlements "./.build/Mac/ControlR.entitlements" --sign - "./ControlR.DesktopClient/bin/publish/osx-arm64/ControlR.DesktopClient"
-          pwsh "./.build/Mac/CreateMacApp.ps1" -OutputDir "./ControlR.DesktopClient/bin/publish/osx-arm64/"
-          ditto -c -k --sequesterRsrc "./ControlR.DesktopClient/bin/publish/osx-arm64/" "./ControlR.DesktopClient/bin/publish/osx-arm64/ControlR.app.zip"
+          dotnet publish "./ControlR.DesktopClient/" \
+            -c Release \
+            -r ${{ matrix.arch }} \
+            --self-contained \
+            -p:Version=$VERSION \
+            -p:FileVersion=$VERSION \
+            -o "$PUBLISH_DIR/${{ matrix.arch }}/"
+
+          # verify publish output exists (fail-fast with diagnostics)
+          if [ ! -f "$PUBLISH_DIR/${{ matrix.arch }}/ControlR.DesktopClient" ]; then
+            ls -la "$PUBLISH_DIR/${{ matrix.arch }}/" || true
+            echo "ERROR: DesktopClient publish output missing: $PUBLISH_DIR/${{ matrix.arch }}/ControlR.DesktopClient"
+            exit 1
+          fi
+
+          echo "Code signing DesktopClient for macOS ${{ matrix.arch }}..."
+          codesign \
+            --force \
+            --deep \
+            --options runtime \
+            --timestamp \
+            --entitlements "./.build/Mac/ControlR.entitlements" \
+            --keychain "$RUNNER_TEMP/build.keychain" \
+            --sign "$IDENTITY_HASH" \
+            "$PUBLISH_DIR/${{ matrix.arch }}/ControlR.DesktopClient"
+
+          echo "Creating Mac app bundle for macOS ${{ matrix.arch }}..."
+          pwsh "./.build/Mac/CreateMacApp.ps1" -OutputDir "$PUBLISH_DIR/${{ matrix.arch }}/"
+          ditto -c -k --sequesterRsrc "$PUBLISH_DIR/${{ matrix.arch }}/" "$PUBLISH_DIR/${{ matrix.arch }}/ControlR.app.zip"
 
           # Copy DesktopClient ZIP to Agent Resources
+          echo "Copying DesktopClient ZIP to Agent Resources..."
           mkdir -p "./ControlR.Agent.Common/Resources"
-          cp "./ControlR.DesktopClient/bin/publish/osx-arm64/ControlR.app.zip" "./ControlR.Agent.Common/Resources/ControlR.app.zip"
+          cp "$PUBLISH_DIR/${{ matrix.arch }}/ControlR.app.zip" "./ControlR.Agent.Common/Resources/ControlR.app.zip"
 
           # Build Agent
-          dotnet publish "./ControlR.Agent/" -c Release -r osx-arm64 --self-contained -o "./ControlR.Agent/bin/publish/osx-arm64/" -p:PublishSingleFile=true -p:UseAppHost=true -p:Version=$VERSION -p:FileVersion=$VERSION -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:IncludeAppSettingsInSingleFile=true
-          codesign --force --deep --entitlements "./.build/Mac/ControlR.entitlements" --sign - "./ControlR.Agent/bin/publish/osx-arm64/ControlR.Agent"
+          echo "Publishing Agent for macOS ${{ matrix.arch }}..."
+          dotnet publish "./ControlR.Agent/" \
+            -c Release \
+            -r ${{ matrix.arch }} \
+            --self-contained \
+            -p:PublishSingleFile=true \
+            -p:UseAppHost=true \
+            -p:Version=$VERSION \
+            -p:FileVersion=$VERSION \
+            -p:IncludeAllContentForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:IncludeAppSettingsInSingleFile=true \
+            -o "./ControlR.Agent/bin/publish/${{ matrix.arch }}/"
 
-      - name: Publish DesktopClient + Agent (x64)
+          # verify publish output exists (fail-fast with diagnostics)
+          if [ ! -f "./ControlR.Agent/bin/publish/${{ matrix.arch }}/ControlR.Agent" ]; then
+            ls -la "./ControlR.Agent/bin/publish/${{ matrix.arch }}/" || true
+            echo "ERROR: Agent publish output missing: ./ControlR.Agent/bin/publish/${{ matrix.arch }}/ControlR.Agent"
+            exit 1
+          fi
+
+          echo "Code signing Agent for macOS ${{ matrix.arch }}..."
+          codesign \
+            --force \
+            --deep \
+            --options runtime \
+            --timestamp \
+            --entitlements "./.build/Mac/ControlR.entitlements" \
+            --keychain "$RUNNER_TEMP/build.keychain" \
+            --sign "$IDENTITY_HASH" \
+            "./ControlR.Agent/bin/publish/${{ matrix.arch }}/ControlR.Agent"
+
+      - name: Upload Agent (${{ matrix.arch }})
+        uses: actions/upload-artifact@v6
+        with:
+          name: Agent-macOS-${{ matrix.arch == 'osx-arm64' && 'ARM64' || 'x64' }}
+          path: ControlR.Agent/bin/publish/${{ matrix.arch }}/ControlR.Agent
+          retention-days: ${{ env.RETENTION_DAYS_ARTIFACTS }}
+
+      - name: Cleanup Keychain
+        if: always()
         run: |
-          # Clean Resources folder
-          rm -f "./ControlR.Agent.Common/Resources/*.zip"
-
-          # Build DesktopClient
-          dotnet publish "./ControlR.DesktopClient/" -c Release -r osx-x64 --self-contained -o "./ControlR.DesktopClient/bin/publish/osx-x64/" -p:Version=$VERSION -p:FileVersion=$VERSION
-          codesign --force --deep --entitlements "./.build/Mac/ControlR.entitlements" --sign - "./ControlR.DesktopClient/bin/publish/osx-x64/ControlR.DesktopClient"
-          pwsh "./.build/Mac/CreateMacApp.ps1" -OutputDir "./ControlR.DesktopClient/bin/publish/osx-x64/"
-          ditto -c -k --sequesterRsrc "./ControlR.DesktopClient/bin/publish/osx-x64/" "./ControlR.DesktopClient/bin/publish/osx-x64/ControlR.app.zip"
-
-          # Copy DesktopClient ZIP to Agent Resources
-          mkdir -p "./ControlR.Agent.Common/Resources"
-          mv "./ControlR.DesktopClient/bin/publish/osx-x64/ControlR.app.zip" "./ControlR.Agent.Common/Resources/ControlR.app.zip"
-
-          # Build Agent
-          dotnet publish "./ControlR.Agent/" -c Release -r osx-x64 --self-contained -o "./ControlR.Agent/bin/publish/osx-x64/" -p:PublishSingleFile=true -p:UseAppHost=true -p:Version=$VERSION -p:FileVersion=$VERSION -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:IncludeAppSettingsInSingleFile=true
-          codesign --force --deep --entitlements "./.build/Mac/ControlR.entitlements" --sign - "./ControlR.Agent/bin/publish/osx-x64/ControlR.Agent"
-
-      - name: Upload Agent (macOS ARM64)
-        uses: actions/upload-artifact@v6
-        with:
-          name: Agent-macOS-ARM64
-          path: ControlR.Agent/bin/publish/osx-arm64/ControlR.Agent
-          retention-days: ${{ env.RETENTION_DAYS_ARTIFACTS }}
-
-      - name: Upload Agent (macOS x64)
-        uses: actions/upload-artifact@v6
-        with:
-          name: Agent-macOS-x64
-          path: ControlR.Agent/bin/publish/osx-x64/ControlR.Agent
-          retention-days: ${{ env.RETENTION_DAYS_ARTIFACTS }}
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          if [ -n "$ORIGINAL_KEYCHAINS" ]; then
+            echo "Restoring original keychain search list..."
+            security list-keychains -d user -s $ORIGINAL_KEYCHAINS
+          fi
+          if [ -f "$KEYCHAIN_PATH" ]; then
+            echo "Removing temporary keychain..."
+            security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+          fi
 
   build-windows-binaries:
     name: Windows Build (${{ matrix.arch }})
@@ -255,7 +354,9 @@ jobs:
             --kvm `
             --tr=http://timestamp.digicert.com `
             --td=sha256 `
-            "${{ github.workspace }}\ControlR.DesktopClient\bin\publish\${{ matrix.arch }}\ControlR.DesktopClient.exe"
+            --skip-signed `
+            "${{ github.workspace }}\ControlR.DesktopClient\bin\publish\${{ matrix.arch }}\*.exe " `
+            "${{ github.workspace }}\ControlR.DesktopClient\bin\publish\${{ matrix.arch }}\*.dll"
 
       - name: Package and Prepare DesktopClient (${{ matrix.arch }})
         shell: pwsh
@@ -287,7 +388,9 @@ jobs:
             --kvm `
             --tr=http://timestamp.digicert.com `
             --td=sha256 `
-            "${{ github.workspace }}\ControlR.Web.Server\wwwroot\downloads\${{ matrix.arch }}\ControlR.Agent.exe"
+            --skip-signed `
+            "${{ github.workspace }}\ControlR.Web.Server\wwwroot\downloads\${{ matrix.arch }}\*.exe " `
+            "${{ github.workspace }}\ControlR.Web.Server\wwwroot\downloads\${{ matrix.arch }}\*.dll"
 
       - name: Upload Agent (${{ matrix.arch }})
         uses: actions/upload-artifact@v6
@@ -298,7 +401,7 @@ jobs:
 
   build-linux-binaries:
     name: Linux Build
-    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","unix"]') || fromJson('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","Linux"]') || fromJson('["ubuntu-latest"]') }}
     needs: [set-version]
 
     steps:
@@ -346,7 +449,7 @@ jobs:
 
   build-web-server:
     name: Build Web Server
-    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","macOS"]') || fromJson('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJson(inputs.use_self_hosted_runners) && fromJson('["self-hosted","fast"]') || fromJson('["ubuntu-latest"]') }}
     needs:
       [
         build-windows-binaries,

@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace ControlR.Tests.TestingUtilities;
+namespace ControlR.Libraries.TestingUtilities;
 
 /// <summary>
 ///   Marks a test as requiring macOS Keychain availability.

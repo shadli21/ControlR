@@ -10,8 +10,10 @@ public record RemoteControlSessionRequestDto(
   Uri WebsocketUri,
   int TargetSystemSession,
   int TargetProcessId,
-  string ViewerConnectionId,
   Guid DeviceId,
   bool NotifyUserOnSessionStart,
-  bool RequireConsent,
-  string ViewerName = "");
+  bool RequireConsent)
+{
+  public string? ViewerConnectionId { get; init; }
+  public string? ViewerName { get; init; }
+}

@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Reflection;
 
-namespace ControlR.Tests.TestingUtilities.Extensions;
+namespace ControlR.Libraries.TestingUtilities.Extensions;
 
 public static class FakeTimeProviderExtensions
 {

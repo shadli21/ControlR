@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using ControlR.Libraries.Shared.Constants;
+using ControlR.Libraries.Shared.Dtos.Devices;
 using ControlR.Libraries.Shared.Dtos.HubDtos;
 using ControlR.Libraries.Shared.Dtos.HubDtos.PwshCommandCompletions;
 using ControlR.Libraries.Shared.Helpers;
@@ -858,22 +859,6 @@ public class ViewerHub(
     }
 
     _logger.LogError("UserId claim is unexpected missing when calling {MemberName}.", callerName);
-    return false;
-  }
-
-  private bool VerifyIsServerAdmin([CallerMemberName] string callerMember = "")
-  {
-    if (IsServerAdmin())
-    {
-      return true;
-    }
-
-    var userName = Context.User?.Identity?.Name;
-    _logger.LogCritical(
-      "Admin verification failed when invoking member {MemberName}. User: {UserName}",
-      callerMember,
-      userName);
-
     return false;
   }
 }

@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using Xunit.Abstractions;
 
-namespace ControlR.Tests.TestingUtilities;
+namespace ControlR.Libraries.TestingUtilities;
 
 public class XunitLogger<T>(ITestOutputHelper testOutput) : XunitLogger(testOutput, nameof(T)), ILogger<T>
 {
