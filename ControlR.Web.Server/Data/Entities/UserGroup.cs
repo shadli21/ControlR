@@ -8,7 +8,7 @@ public class UserGroup : TenantEntityBase
   [StringLength(500)]
   public string? Description { get; set; }
 
-  public List<UserGroupMember> Members { get; set; } = [];
+  public List<UserGroupMember>? Members { get; set; }
 
   [StringLength(100)]
   public required string Name { get; set; }
