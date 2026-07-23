@@ -1,0 +1,74 @@
+namespace ControlR.Web.Server.Authz.Permissions;
+
+public static class PermissionNames
+{
+  public const string ServerAdmin = "server.admin";
+  public const string ServerAlertsRead = "server.alerts.read";
+  public const string ServerAlertsWrite = "server.alerts.write";
+  public const string ServerDashboardRead = "server.dashboard.read";
+  public const string ServerServiceAccountsRead = "server.service-accounts.read";
+  public const string ServerServiceAccountsWrite = "server.service-accounts.write";
+  public const string ServerServiceAccountsRotateCredentials = "server.service-accounts.rotate-credentials";
+
+  public const string TenantRead = "tenant.read";
+  public const string TenantSettingsRead = "tenant.settings.read";
+  public const string TenantSettingsWrite = "tenant.settings.write";
+  public const string TenantUsersRead = "tenant.users.read";
+  public const string TenantUsersWrite = "tenant.users.write";
+  public const string TenantUsersDelete = "tenant.users.delete";
+  public const string TenantRolesRead = "tenant.roles.read";
+  public const string TenantRolesAssign = "tenant.roles.assign";
+  public const string TenantUserGroupsRead = "tenant.user-groups.read";
+  public const string TenantUserGroupsWrite = "tenant.user-groups.write";
+  public const string TenantDeviceGroupsRead = "tenant.device-groups.read";
+  public const string TenantDeviceGroupsWrite = "tenant.device-groups.write";
+  public const string TenantPermissionsRead = "tenant.permissions.read";
+  public const string TenantPermissionsWrite = "tenant.permissions.write";
+  public const string TenantPermissionsDeny = "tenant.permissions.deny";
+
+  public const string DeviceRead = "device.read";
+  public const string DeviceDelete = "device.delete";
+  public const string DeviceAliasWrite = "device.alias.write";
+  public const string DeviceTagsRead = "device.tags.read";
+  public const string DeviceTagsWrite = "device.tags.write";
+  public const string DeviceDesktopPreviewRead = "device.desktop-preview.read";
+  public const string DeviceLogsRead = "device.logs.read";
+
+  public const string DeviceRemoteControlConnect = "device.remote-control.connect";
+  public const string DeviceRemoteControlInteract = "device.remote-control.interact";
+  public const string DeviceRemoteControlBlockInput = "device.remote-control.block-input";
+  public const string DeviceRemoteControlElevatedDesktop = "device.remote-control.elevated-desktop";
+  public const string DeviceCtrlAltDelSend = "device.ctrl-alt-del.send";
+  public const string DeviceClipboardRead = "device.clipboard.read";
+  public const string DeviceClipboardWrite = "device.clipboard.write";
+  public const string DeviceChatSend = "device.chat.send";
+
+  public const string DeviceFileSystemRead = "device.file-system.read";
+  public const string DeviceFileSystemWrite = "device.file-system.write";
+  public const string DeviceFileSystemDelete = "device.file-system.delete";
+  public const string DeviceFileSystemTransferUpload = "device.file-system.transfer-upload";
+  public const string DeviceFileSystemTransferDownload = "device.file-system.transfer-download";
+
+  public const string DeviceTerminalUse = "device.terminal.use";
+  public const string DeviceLogonTokenCreate = "device.logon-token.create";
+  public const string DeviceWakeSend = "device.wake.send";
+  public const string DevicePowerManage = "device.power.manage";
+  public const string DeviceAgentUpdate = "device.agent.update";
+
+  public const string PersonalAccessTokenSelfRead = "personal-access-token.self.read";
+  public const string PersonalAccessTokenSelfWrite = "personal-access-token.self.write";
+  public const string PersonalAccessTokenOthersRead = "personal-access-token.others.read";
+  public const string PersonalAccessTokenOthersWrite = "personal-access-token.others.write";
+  public const string ServiceAccountRead = "service-account.read";
+  public const string ServiceAccountWrite = "service-account.write";
+  public const string ServiceAccountRotateCredentials = "service-account.rotate-credentials";
+
+  public const string InstallerKeyRead = "installer-key.read";
+  public const string InstallerKeyWrite = "installer-key.write";
+  public const string AgentInstall = "agent.install";
+
+  public const string CustomerTenantRead = "customer-tenant.read";
+  public const string CustomerTenantWrite = "customer-tenant.write";
+  public const string DeviceGroupAssignDevices = "device-group.assign-devices";
+  public const string UserGroupAssignUsers = "user-group.assign-users";
+}
