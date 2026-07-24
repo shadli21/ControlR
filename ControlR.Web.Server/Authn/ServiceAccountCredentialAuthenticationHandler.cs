@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using ControlR.Web.Server.Constants;
+using ControlR.Web.Server.Data.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -71,13 +72,23 @@ public class ServiceAccountCredentialAuthenticationHandler(
 
       var (account, credential) = validationResult.Value;
 
+      var principalType = account.Kind == ServiceAccountKind.Server
+        ? PrincipalClaimTypes.ServerServiceAccount
+        : PrincipalClaimTypes.TenantServiceAccount;
+
       var claims = new List<Claim>
       {
-        new(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.ServerServiceAccount),
+        new(PrincipalClaimTypes.PrincipalType, principalType),
         new(PrincipalClaimTypes.PrincipalId, account.Id.ToString()),
         new(UserClaimTypes.AuthenticationMethod, PrincipalClaimTypes.ServiceAccountCredentialMethod),
-        new(PrincipalClaimTypes.CredentialId, credential.Id.ToString())
+        new(PrincipalClaimTypes.CredentialId, credential.Id.ToString()),
+        new(PrincipalClaimTypes.CredentialType, PrincipalClaimTypes.ServiceAccountCredentialType),
       };
+
+      if (account.TenantId.HasValue)
+      {
+        claims.Add(new Claim(UserClaimTypes.TenantId, account.TenantId.Value.ToString()));
+      }
 
       if (account.Description is not null)
       {
