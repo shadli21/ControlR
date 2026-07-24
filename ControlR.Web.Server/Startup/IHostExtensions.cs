@@ -212,6 +212,16 @@ public static class HostExtensions
       return;
     }
 
+    var tenantIds = emptyTenants.Select(x => x.Id).ToList();
+
+    await context.PermissionAssignments
+      .Where(x => x.OwningTenantId != null && tenantIds.Contains(x.OwningTenantId.Value))
+      .ExecuteDeleteAsync();
+
+    await context.AuthorizationChangeLogs
+      .Where(x => x.OwningTenantId != null && tenantIds.Contains(x.OwningTenantId.Value))
+      .ExecuteDeleteAsync();
+
     context.Tenants.RemoveRange(emptyTenants);
     await context.SaveChangesAsync();
   }

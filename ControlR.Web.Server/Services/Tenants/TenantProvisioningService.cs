@@ -59,6 +59,14 @@ public class TenantProvisioningService(
         return HttpResult.Fail(HttpResultErrorCode.NotFound, "Tenant not found.");
       }
 
+      await appDb.PermissionAssignments
+        .Where(x => x.OwningTenantId == id)
+        .ExecuteDeleteAsync(cancellationToken);
+
+      await appDb.AuthorizationChangeLogs
+        .Where(x => x.OwningTenantId == id)
+        .ExecuteDeleteAsync(cancellationToken);
+
       appDb.Tenants.Remove(tenant);
       await appDb.SaveChangesAsync(cancellationToken);
 
