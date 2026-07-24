@@ -58,8 +58,12 @@ public class LogonTokenAuthenticationHandler(
       new(UserClaimTypes.TenantId, user.TenantId.ToString()),
       new(ClaimTypes.NameIdentifier, user.Id.ToString()),
       new(ClaimTypes.Name, user.UserName ?? "User"),
-      new(UserClaimTypes.AuthenticationMethod, LogonTokenAuthenticationSchemeOptions.DefaultScheme),
+      new(UserClaimTypes.AuthenticationMethod, PrincipalClaimTypes.LogonTokenMethod),
       new(UserClaimTypes.DeviceSessionScope, deviceId.ToString()),
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.User),
+      new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
+      new(PrincipalClaimTypes.CredentialId, tokenValidation.TokenId.Value.ToString()),
+      new(PrincipalClaimTypes.CredentialType, PrincipalClaimTypes.LogonTokenCredentialType),
     };
 
     if (!string.IsNullOrWhiteSpace(tokenValidation.SessionCorrelationId))

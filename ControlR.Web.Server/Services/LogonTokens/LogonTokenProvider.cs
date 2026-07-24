@@ -217,7 +217,7 @@ public class LogonTokenProvider(
       "Validated and consumed logon token for user {UserId} on device {DeviceId}.",
       userId, deviceId);
 
-    return LogonTokenValidationResult.Success(userId.Value, logonToken.TenantId, logonToken.SessionCorrelationId);
+    return LogonTokenValidationResult.Success(logonToken.Id, userId.Value, logonToken.TenantId, logonToken.SessionCorrelationId);
   }
 
   public async Task<Result<LogonTokenValidationResult>> ValidateToken(string token, CancellationToken cancellationToken = default)
@@ -265,7 +265,7 @@ public class LogonTokenProvider(
 
       _logger.LogInformation("Validated logon token for user {UserId}", userId);
 
-      var result = LogonTokenValidationResult.Success(userId.Value, logonToken.TenantId, logonToken.SessionCorrelationId);
+      var result = LogonTokenValidationResult.Success(logonToken.Id, userId.Value, logonToken.TenantId, logonToken.SessionCorrelationId);
       return Result.Ok(result);
     }
     catch (Exception ex)
