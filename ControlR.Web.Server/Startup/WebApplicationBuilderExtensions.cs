@@ -13,6 +13,7 @@ using ControlR.Web.Server.Services.LogonTokens;
 using ControlR.Web.Client.Services;
 using Microsoft.AspNetCore.Http.Features;
 using ControlR.Web.Server.Services.AgentInstaller;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
 using System.Globalization;
 using System.Threading.RateLimiting;
@@ -235,6 +236,10 @@ public static class WebApplicationBuilderExtensions
     builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentInstallerKeyUsageCleanupBackgroundService>());
     builder.Services.AddSingleton<ExternalUserCleanupBackgroundService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<ExternalUserCleanupBackgroundService>());
+    builder.Services.AddSingleton<LogonTokenCleanupBackgroundService>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<LogonTokenCleanupBackgroundService>());
+    builder.Services.AddSingleton<AuthorizationChangeLogCleanupBackgroundService>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<AuthorizationChangeLogCleanupBackgroundService>());
     builder.Services.AddScoped<IAgentInstallerKeyManager, AgentInstallerKeyManager>();
     builder.Services.AddScoped<IAgentVersionProvider, AgentVersionProvider>();
     builder.Services.AddScoped<IReleaseNotesProvider, ReleaseNotesProvider>();

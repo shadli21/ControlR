@@ -48,6 +48,13 @@ public class AppOptions
   public string? AuthenticatorIssuerName { get; init; }
 
   /// <summary>
+  /// The number of days to retain authorization change log entries.
+  /// Entries older than this are pruned by a background service.
+  /// Set to 0 or less to disable pruning and retain entries indefinitely.
+  /// </summary>
+  public int AuthorizationChangeLogRetentionDays { get; init; } = 365;
+
+  /// <summary>
   /// Array of allowed origins for CORS.
   /// Only used when EnableCors is true.
   /// </summary>
