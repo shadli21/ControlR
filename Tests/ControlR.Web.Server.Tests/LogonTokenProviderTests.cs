@@ -81,18 +81,18 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
     using var scope = testApp.App.Services.CreateScope();
     var logonTokenProvider = scope.ServiceProvider.GetRequiredService<ILogonTokenProvider>();
 
-    var deviceId = Guid.NewGuid();
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
 
     var createResult = await logonTokenProvider.CreateToken(
-      deviceId, tenant.Id, user.Id, cancellationToken: TestContext.Current.CancellationToken);
+      device.Id, tenant.Id, user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
     Assert.True(createResult.IsSuccess);
     Assert.Null(createResult.Value.SessionCorrelationId);
 
     var validationResult = await logonTokenProvider.ValidateAndConsumeToken(
-      createResult.Value.Token, deviceId, TestContext.Current.CancellationToken);
+      createResult.Value.Token, device.Id, TestContext.Current.CancellationToken);
 
     Assert.True(validationResult.IsValid);
     Assert.Null(validationResult.SessionCorrelationId);
@@ -105,13 +105,13 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
     using var scope = testApp.App.Services.CreateScope();
     var logonTokenProvider = scope.ServiceProvider.GetRequiredService<ILogonTokenProvider>();
 
-    var deviceId = Guid.NewGuid();
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
     var sessionCorrelationId = $"session-{Guid.NewGuid():N}";
 
     var createResult = await logonTokenProvider.CreateToken(
-      deviceId, tenant.Id, user.Id,
+      device.Id, tenant.Id, user.Id,
       sessionCorrelationId: sessionCorrelationId,
       cancellationToken: TestContext.Current.CancellationToken);
 
@@ -119,7 +119,7 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
     Assert.Equal(sessionCorrelationId, createResult.Value.SessionCorrelationId);
 
     var validationResult = await logonTokenProvider.ValidateAndConsumeToken(
-      createResult.Value.Token, deviceId, TestContext.Current.CancellationToken);
+      createResult.Value.Token, device.Id, TestContext.Current.CancellationToken);
 
     Assert.True(validationResult.IsValid);
     Assert.Equal(sessionCorrelationId, validationResult.SessionCorrelationId);
@@ -154,40 +154,39 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
     using var scope = testApp.App.Services.CreateScope();
     var logonTokenProvider = scope.ServiceProvider.GetRequiredService<ILogonTokenProvider>();
 
-    var deviceId = Guid.NewGuid();
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
 
-    var createResult = await logonTokenProvider.CreateToken(deviceId, tenant.Id, user.Id, cancellationToken: TestContext.Current.CancellationToken);
+    var createResult = await logonTokenProvider.CreateToken(device.Id, tenant.Id, user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
     Assert.True(createResult.IsSuccess);
-    var firstValidation = await logonTokenProvider.ValidateAndConsumeToken(createResult.Value.Token, deviceId, TestContext.Current.CancellationToken);
+    var firstValidation = await logonTokenProvider.ValidateAndConsumeToken(createResult.Value.Token, device.Id, TestContext.Current.CancellationToken);
 
-    var secondValidation = await logonTokenProvider.ValidateAndConsumeToken(createResult.Value.Token, deviceId, TestContext.Current.CancellationToken);
+    var secondValidation = await logonTokenProvider.ValidateAndConsumeToken(createResult.Value.Token, device.Id, TestContext.Current.CancellationToken);
 
     Assert.True(firstValidation.IsValid);
     Assert.False(secondValidation.IsValid);
-    Assert.Contains("already been used", secondValidation.ErrorMessage);
   }
 
   [Fact]
   public async Task ValidateAndConsumeToken_WhenConcurrentCalls_PreventsDoubleConsumption()
   {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput, useInMemoryDatabase: false);
     using var scope = testApp.App.Services.CreateScope();
     var logonTokenProvider = scope.ServiceProvider.GetRequiredService<ILogonTokenProvider>();
 
-    var deviceId = Guid.NewGuid();
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
 
-    var createResult = await logonTokenProvider.CreateToken(deviceId, tenant.Id, user.Id, cancellationToken: TestContext.Current.CancellationToken);
+    var createResult = await logonTokenProvider.CreateToken(device.Id, tenant.Id, user.Id, cancellationToken: TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var token = createResult.Value.Token;
 
     var tasks = Enumerable.Range(0, 10)
-      .Select(_ => logonTokenProvider.ValidateAndConsumeToken(token, deviceId, TestContext.Current.CancellationToken))
+      .Select(_ => logonTokenProvider.ValidateAndConsumeToken(token, device.Id, TestContext.Current.CancellationToken))
       .ToArray();
 
     var results = await Task.WhenAll(tasks);

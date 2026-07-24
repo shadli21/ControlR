@@ -48,7 +48,7 @@ public class DeviceAccessScopeResolver(AppDb appDb) : IDeviceAccessScopeResolver
     deviceId = Guid.Empty;
 
     var authMethod = user.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value;
-    if (authMethod != LogonTokenAuthenticationSchemeOptions.DefaultScheme)
+    if (authMethod != PrincipalClaimTypes.LogonTokenMethod)
     {
       return false;
     }

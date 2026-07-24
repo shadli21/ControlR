@@ -1,6 +1,6 @@
 using ControlR.Web.Server.Services.DeviceManagement;
 
-namespace ControlR.Web.Server.Extensions;
+namespace ControlR.Web.Server.Extensions.Database;
 
 public static class DeviceAccessQueryExtensions
 {

@@ -1,4 +1,5 @@
 using ControlR.Libraries.Hosting;
+using ControlR.Web.Server.Extensions.Database;
 
 namespace ControlR.Web.Server.Services.AgentInstaller;
 
@@ -26,23 +27,7 @@ public class AgentInstallerKeyUsageCleanupBackgroundService(
     var query = db.AgentInstallerKeyUsages
       .Where(x => x.CreatedAt < cutoff.Value);
 
-    int removedCount;
-
-    if (db.Database.IsRelational())
-    {
-      removedCount = await query.ExecuteDeleteAsync(cancellationToken);
-    }
-    else
-    {
-      var expiredUsages = await query.ToListAsync(cancellationToken);
-      removedCount = expiredUsages.Count;
-
-      if (removedCount > 0)
-      {
-        db.AgentInstallerKeyUsages.RemoveRange(expiredUsages);
-        await db.SaveChangesAsync(cancellationToken);
-      }
-    }
+    var removedCount = await query.ExecuteDeleteCompatAsync(db, cancellationToken);
 
     if (removedCount > 0)
     {

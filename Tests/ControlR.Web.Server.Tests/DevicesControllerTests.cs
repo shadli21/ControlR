@@ -1871,7 +1871,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var claims = new List<Claim>
     {
       new(UserClaimTypes.TenantId, tenant.Id.ToString()),
-      new(UserClaimTypes.AuthenticationMethod, LogonTokenAuthenticationSchemeOptions.DefaultScheme),
+      new(UserClaimTypes.AuthenticationMethod, PrincipalClaimTypes.LogonTokenMethod),
       new(UserClaimTypes.DeviceSessionScope, scopedDeviceId.ToString())
     };
 

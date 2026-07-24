@@ -1,4 +1,5 @@
 using ControlR.Libraries.Hosting;
+using ControlR.Web.Server.Extensions.Database;
 
 namespace ControlR.Web.Server.Services.LogonTokens;
 
@@ -19,23 +20,7 @@ public class LogonTokenCleanupBackgroundService(
     var query = db.LogonTokens
       .Where(x => x.ExpiresAt < now || x.IsConsumed);
 
-    int removedCount;
-
-    if (db.Database.IsRelational())
-    {
-      removedCount = await query.ExecuteDeleteAsync(cancellationToken);
-    }
-    else
-    {
-      var expiredTokens = await query.ToListAsync(cancellationToken);
-      removedCount = expiredTokens.Count;
-
-      if (removedCount > 0)
-      {
-        db.LogonTokens.RemoveRange(expiredTokens);
-        await db.SaveChangesAsync(cancellationToken);
-      }
-    }
+    var removedCount = await query.ExecuteDeleteCompatAsync(db, cancellationToken);
 
     if (removedCount > 0)
     {

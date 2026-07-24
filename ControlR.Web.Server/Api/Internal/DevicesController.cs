@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 

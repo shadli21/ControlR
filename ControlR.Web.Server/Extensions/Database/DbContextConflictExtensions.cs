@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 
-namespace ControlR.Web.Server.Data.Extensions;
+namespace ControlR.Web.Server.Extensions.Database;
 
 public enum SaveChangesResult
 {

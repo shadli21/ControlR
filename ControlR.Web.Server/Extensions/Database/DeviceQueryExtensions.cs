@@ -2,7 +2,7 @@
 using ControlR.Libraries.Api.Contracts.FilterSort;
 using MudBlazor;
 
-namespace ControlR.Web.Server.Extensions;
+namespace ControlR.Web.Server.Extensions.Database;
 
 public static class DeviceQueryExtensions
 {

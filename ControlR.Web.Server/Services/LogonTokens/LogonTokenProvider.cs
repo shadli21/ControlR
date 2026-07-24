@@ -1,6 +1,7 @@
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Shared.Helpers;
 using ControlR.Web.Server.Data.Enums;
+using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Settings;
 
@@ -197,7 +198,11 @@ public class LogonTokenProvider(
 
     var consumedCount = await dbContext.LogonTokens
       .Where(x => x.Id == logonToken.Id && !x.IsConsumed)
-      .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsConsumed, true), cancellationToken);
+      .ExecuteUpdateCompatAsync(
+        dbContext,
+        q => q.ExecuteUpdateAsync(s => s.SetProperty(x => x.IsConsumed, true), cancellationToken),
+        x => x.IsConsumed = true,
+        cancellationToken);
 
     if (consumedCount == 0)
     {

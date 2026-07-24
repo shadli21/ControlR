@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore.Metadata;
 
-namespace ControlR.Web.Server.Data.Extensions;
+namespace ControlR.Web.Server.Extensions.Database;
 
 public static class UpsertExtensions
 {
