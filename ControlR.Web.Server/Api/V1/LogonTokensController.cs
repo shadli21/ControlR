@@ -72,7 +72,7 @@ public class LogonTokensController : ControllerBase
     return Ok(BuildResponse(result.Value));
   }
 
-  private V1Dtos.LogonTokenResponseDto BuildResponse(LogonTokenModel logonToken)
+  private V1Dtos.LogonTokenResponseDto BuildResponse(LogonTokenResult logonToken)
   {
     var deviceAccessUrl = new Uri(
       Request.ToOrigin(),

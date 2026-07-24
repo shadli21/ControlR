@@ -29,7 +29,6 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
     Assert.Equal(deviceId, result.Value.DeviceId);
     Assert.Equal(tenant.Id, result.Value.TenantId);
     Assert.True(result.Value.ExpiresAt > DateTimeOffset.UtcNow);
-    Assert.False(result.Value.IsConsumed);
   }
 
   [Fact]
@@ -146,7 +145,6 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
     Assert.Equal(tenant.Id, result.Value.TenantId);
     Assert.Equal(user.Id, result.Value.UserId);
     Assert.True(result.Value.ExpiresAt > DateTimeOffset.UtcNow);
-    Assert.False(result.Value.IsConsumed);
   }
 
   [Fact]

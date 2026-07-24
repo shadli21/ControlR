@@ -3,13 +3,12 @@ using ControlR.Libraries.Shared.Helpers;
 using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Settings;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace ControlR.Web.Server.Services.LogonTokens;
 
 public interface ILogonTokenProvider
 {
-  Task<HttpResult<LogonTokenModel>> CreateToken(
+  Task<HttpResult<LogonTokenResult>> CreateToken(
     Guid deviceId,
     Guid tenantId,
     Guid userId,
@@ -18,7 +17,7 @@ public interface ILogonTokenProvider
     string? sessionCorrelationId = null,
     CancellationToken cancellationToken = default);
 
-  Task<HttpResult<LogonTokenModel>> CreateTokenForExternal(
+  Task<HttpResult<LogonTokenResult>> CreateTokenForExternal(
     Guid deviceId,
     Guid tenantId,
     string userCorrelationId,
@@ -33,18 +32,18 @@ public interface ILogonTokenProvider
 
 public class LogonTokenProvider(
   TimeProvider timeProvider,
-  IMemoryCache cache,
   IDbContextFactory<AppDb> dbContextFactory,
   IServiceScopeFactory scopeFactory,
+  IPasswordHasher<string> passwordHasher,
   ILogger<LogonTokenProvider> logger) : ILogonTokenProvider
 {
-  private readonly IMemoryCache _cache = cache;
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogger<LogonTokenProvider> _logger = logger;
+  private readonly IPasswordHasher<string> _passwordHasher = passwordHasher;
   private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
   private readonly TimeProvider _timeProvider = timeProvider;
 
-  public async Task<HttpResult<LogonTokenModel>> CreateToken(
+  public async Task<HttpResult<LogonTokenResult>> CreateToken(
     Guid deviceId,
     Guid tenantId,
     Guid userId,
@@ -60,36 +59,41 @@ public class LogonTokenProvider(
 
     if (!userExists)
     {
-      return HttpResult.Fail<LogonTokenModel>(HttpResultErrorCode.NotFound, $"User {userId} not found in tenant {tenantId}.");
+      return HttpResult.Fail<LogonTokenResult>(HttpResultErrorCode.NotFound, $"User {userId} not found in tenant {tenantId}.");
     }
 
     var now = _timeProvider.GetUtcNow();
     var expiresAt = now.AddMinutes(expirationMinutes);
+    var plainTextKey = RandomGenerator.CreateAccessToken();
+    var hashedKey = _passwordHasher.HashPassword(string.Empty, plainTextKey);
 
-    var logonToken = new LogonTokenModel
+    var logonToken = new LogonToken
     {
-      Token = RandomGenerator.CreateAccessToken(),
+      Token = hashedKey,
+      Prefix = plainTextKey[..8],
       DeviceId = deviceId,
-      ExpiresAt = expiresAt,
-      UserId = userId,
       TenantId = tenantId,
-      CreatedAt = now,
+      UserId = userId,
+      ExpiresAt = expiresAt,
       UserCorrelationId = userCorrelationId,
       SessionCorrelationId = sessionCorrelationId
     };
 
-    // The absolute expiration lets the cache evict the entry on its own once the token
-    // is no longer usable, so entries never accumulate without a background sweeper.
-    _cache.Set(GetCacheKey(logonToken.Token), logonToken, expiresAt);
+    dbContext.LogonTokens.Add(logonToken);
+    await dbContext.SaveChangesAsync(cancellationToken);
+
+    var hexId = Convert.ToHexString(logonToken.Id.ToByteArray());
+    var combinedToken = $"{hexId}:{plainTextKey}";
 
     _logger.LogInformation(
       "Created logon token for user {UserId} on device {DeviceId} in tenant {TenantId}, expires at {ExpiresAt}",
       userId, deviceId, tenantId, expiresAt);
 
-    return HttpResult.Ok(logonToken);
+    return HttpResult.Ok(new LogonTokenResult(
+      combinedToken, deviceId, tenantId, userId, expiresAt, sessionCorrelationId, userCorrelationId));
   }
 
-  public async Task<HttpResult<LogonTokenModel>> CreateTokenForExternal(
+  public async Task<HttpResult<LogonTokenResult>> CreateTokenForExternal(
     Guid deviceId,
     Guid tenantId,
     string userCorrelationId,
@@ -118,7 +122,7 @@ public class LogonTokenProvider(
       var createResult = await userManager.CreateAsync(guestUser);
       if (!createResult.Succeeded)
       {
-        return HttpResult.Fail<LogonTokenModel>(HttpResultErrorCode.InternalServerError, $"Failed to create external user for correlation ID '{userCorrelationId}'.");
+        return HttpResult.Fail<LogonTokenResult>(HttpResultErrorCode.InternalServerError, $"Failed to create external user for correlation ID '{userCorrelationId}'.");
       }
     }
 
@@ -130,7 +134,7 @@ public class LogonTokenProvider(
     catch (Exception ex)
     {
       _logger.LogError(ex, "Failed to update LastLogin for external user {UserId}.", guestUser.Id);
-      return HttpResult.Fail<LogonTokenModel>(HttpResultErrorCode.InternalServerError,
+      return HttpResult.Fail<LogonTokenResult>(HttpResultErrorCode.InternalServerError,
         "Failed to prepare external user for token issuance.");
     }
 
@@ -154,13 +158,29 @@ public class LogonTokenProvider(
 
   public async Task<LogonTokenValidationResult> ValidateAndConsumeToken(string token, Guid deviceId, CancellationToken cancellationToken = default)
   {
-    var logonToken = GetLiveToken(token, out var error);
-    if (logonToken is null)
+    var parseResult = TryParseToken(token);
+    if (parseResult is not (var tokenId, var secret))
     {
-      return LogonTokenValidationResult.Failure(error);
+      return LogonTokenValidationResult.Failure("Invalid logon token format.");
     }
 
-    // Device binding is immutable, so it can be checked outside the single-use gate.
+    await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+    var logonToken = await dbContext.LogonTokens
+      .FirstOrDefaultAsync(x => x.Id == tokenId, cancellationToken);
+
+    if (logonToken is null)
+    {
+      _logger.LogWarning("Logon token not found.");
+      return LogonTokenValidationResult.Failure("Invalid or expired token.");
+    }
+
+    if (_timeProvider.GetUtcNow() > logonToken.ExpiresAt)
+    {
+      _logger.LogWarning("Token has expired at {ExpiresAt}.", logonToken.ExpiresAt);
+      return LogonTokenValidationResult.Failure("Token has expired.");
+    }
+
     if (logonToken.DeviceId != deviceId)
     {
       _logger.LogWarning(
@@ -169,18 +189,29 @@ public class LogonTokenProvider(
       return LogonTokenValidationResult.Failure("Token is not valid for this device.");
     }
 
-    // The single-use gate: exactly one caller wins, lock-free, even under concurrency.
-    if (!logonToken.TryConsume())
+    var verification = _passwordHasher.VerifyHashedPassword(string.Empty, logonToken.Token, secret);
+    if (verification == PasswordVerificationResult.Failed)
+    {
+      return LogonTokenValidationResult.Failure("Invalid or expired token.");
+    }
+
+    var consumedCount = await dbContext.LogonTokens
+      .Where(x => x.Id == logonToken.Id && !x.IsConsumed)
+      .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsConsumed, true), cancellationToken);
+
+    if (consumedCount == 0)
     {
       return LogonTokenValidationResult.Failure("Token has already been used.");
     }
 
-    // Only the winning caller reaches the database.
     var userId = await GetValidUserId(logonToken, cancellationToken);
     if (userId is null)
     {
       return LogonTokenValidationResult.Failure("User not found.");
     }
+
+    dbContext.LogonTokens.Remove(logonToken);
+    await dbContext.SaveChangesAsync(cancellationToken);
 
     _logger.LogInformation(
       "Validated and consumed logon token for user {UserId} on device {DeviceId}.",
@@ -193,15 +224,37 @@ public class LogonTokenProvider(
   {
     try
     {
-      var logonToken = GetLiveToken(token, out var error);
+      var parseResult = TryParseToken(token);
+      if (parseResult is not (var tokenId, var secret))
+      {
+        return Result.Fail<LogonTokenValidationResult>("Invalid logon token format.");
+      }
+
+      await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+      var logonToken = await dbContext.LogonTokens
+        .AsNoTracking()
+        .FirstOrDefaultAsync(x => x.Id == tokenId, cancellationToken);
+
       if (logonToken is null)
       {
-        return Result.Fail<LogonTokenValidationResult>(error);
+        return Result.Fail<LogonTokenValidationResult>("Invalid or expired token.");
+      }
+
+      if (_timeProvider.GetUtcNow() > logonToken.ExpiresAt)
+      {
+        return Result.Fail<LogonTokenValidationResult>("Token has expired.");
       }
 
       if (logonToken.IsConsumed)
       {
         return Result.Fail<LogonTokenValidationResult>("Token has already been used.");
+      }
+
+      var verification = _passwordHasher.VerifyHashedPassword(string.Empty, logonToken.Token, secret);
+      if (verification == PasswordVerificationResult.Failed)
+      {
+        return Result.Fail<LogonTokenValidationResult>("Invalid or expired token.");
       }
 
       var userId = await GetValidUserId(logonToken, cancellationToken);
@@ -222,36 +275,26 @@ public class LogonTokenProvider(
     }
   }
 
-  private static string GetCacheKey(string token) => $"logon_token:{token}";
-
-  /// <summary>
-  /// Returns the cached token when it exists and has not expired. Expired entries are
-  /// evicted eagerly. On failure, <paramref name="error"/> describes the reason.
-  /// </summary>
-  private LogonTokenModel? GetLiveToken(string token, out string error)
+  private static (Guid TokenId, string Secret)? TryParseToken(string token)
   {
-    var cacheKey = GetCacheKey(token);
-
-    if (!_cache.TryGetValue(cacheKey, out LogonTokenModel? logonToken) || logonToken is null)
+    var parts = token.Split(':', 2);
+    if (parts.Length != 2)
     {
-      _logger.LogWarning("Logon token not found.");
-      error = "Invalid or expired token.";
       return null;
     }
 
-    if (_timeProvider.GetUtcNow() > logonToken.ExpiresAt)
+    try
     {
-      _logger.LogWarning("Token has expired at {ExpiresAt}.", logonToken.ExpiresAt);
-      _cache.Remove(cacheKey);
-      error = "Token has expired.";
+      var tokenIdBytes = Convert.FromHexString(parts[0]);
+      return (new Guid(tokenIdBytes), parts[1]);
+    }
+    catch (FormatException)
+    {
       return null;
     }
-
-    error = string.Empty;
-    return logonToken;
   }
 
-  private async Task<Guid?> GetValidUserId(LogonTokenModel logonToken, CancellationToken cancellationToken)
+  private async Task<Guid?> GetValidUserId(LogonToken logonToken, CancellationToken cancellationToken)
   {
     await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
     var userId = await dbContext.Users
