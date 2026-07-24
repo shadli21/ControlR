@@ -233,7 +233,7 @@ public class PersonalAccessTokenManager(
       storedToken.LastUsed = _timeProvider.GetUtcNow();
       await _appDb.SaveChangesAsync();
 
-      var result = PersonalAccessTokenValidationResult.Success(storedToken.UserId);
+      var result = PersonalAccessTokenValidationResult.Success(storedToken.Id, storedToken.UserId);
       return Result.Ok(result);
     }
     catch (Exception ex)
