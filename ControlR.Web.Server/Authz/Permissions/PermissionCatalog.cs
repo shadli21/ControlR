@@ -8,10 +8,10 @@ public static class PermissionCatalog
 
   public static IReadOnlyDictionary<string, PermissionMetadata> All => _permissions;
 
+  public static bool Exists(string permissionName) => _permissions.ContainsKey(permissionName);
+
   public static PermissionMetadata? Get(string permissionName) =>
     _permissions.GetValueOrDefault(permissionName);
-
-  public static bool Exists(string permissionName) => _permissions.ContainsKey(permissionName);
 
   private static Dictionary<string, PermissionMetadata> BuildCatalog()
   {

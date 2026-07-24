@@ -23,6 +23,7 @@ public static class AuthenticationRegistrationExtensions
       .AddRoles<AppRole>()
       .AddEntityFrameworkStores<AppDb>()
       .AddSignInManager()
+      .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>()
       .AddDefaultTokenProviders();
 
     if (appOptions.EnableInteractiveBearerLogin)
