@@ -17,7 +17,7 @@ public interface IDeviceGroupManager
     Guid deviceGroupId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.DeviceGroupDetailDto>> Get(
     Guid deviceGroupId, Guid tenantId, CancellationToken cancellationToken = default);
-  Task<List<InternalDtos.DeviceGroupDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default);
+  Task<IReadOnlyList<InternalDtos.DeviceGroupDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default);
   Task<HttpResult> RemoveMembers(
     Guid deviceGroupId, List<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.DeviceGroupDetailDto>> Update(
@@ -173,7 +173,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     return HttpResult.Ok(MapToDetailDto(group));
   }
 
-  public async Task<List<InternalDtos.DeviceGroupDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default)
+  public async Task<IReadOnlyList<InternalDtos.DeviceGroupDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default)
   {
     var groups = await _appDb.DeviceGroups
       .Where(x => x.TenantId == tenantId)

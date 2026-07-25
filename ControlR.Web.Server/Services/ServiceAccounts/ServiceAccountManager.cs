@@ -64,12 +64,12 @@ public interface IServiceAccountManager
   /// <summary>
   /// Returns all server-scoped service accounts with their credential metadata.
   /// </summary>
-  Task<List<ServiceAccountResult>> GetAllForServer(CancellationToken cancellationToken);
+  Task<IReadOnlyList<ServiceAccountResult>> GetAllForServer(CancellationToken cancellationToken);
 
   /// <summary>
   /// Returns all tenant-scoped service accounts for a given tenant.
   /// </summary>
-  Task<List<ServiceAccountResult>> GetAllForTenant(Guid tenantId, CancellationToken cancellationToken);
+  Task<IReadOnlyList<ServiceAccountResult>> GetAllForTenant(Guid tenantId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Returns a single tenant-scoped service account with its credential metadata.
@@ -486,7 +486,7 @@ public class ServiceAccountManager(
     return HttpResult.Ok(MapToResult(account));
   }
 
-  public async Task<List<ServiceAccountResult>> GetAllForServer(CancellationToken cancellationToken)
+  public async Task<IReadOnlyList<ServiceAccountResult>> GetAllForServer(CancellationToken cancellationToken)
   {
     var accounts = await appDb.ServiceAccounts
       .Where(x => x.Kind == ServiceAccountKind.Server)
@@ -498,7 +498,7 @@ public class ServiceAccountManager(
     return [.. accounts.Select(MapToResult)];
   }
 
-  public async Task<List<ServiceAccountResult>> GetAllForTenant(Guid tenantId, CancellationToken cancellationToken)
+  public async Task<IReadOnlyList<ServiceAccountResult>> GetAllForTenant(Guid tenantId, CancellationToken cancellationToken)
   {
     var accounts = await appDb.ServiceAccounts
       .Where(x => x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId)
