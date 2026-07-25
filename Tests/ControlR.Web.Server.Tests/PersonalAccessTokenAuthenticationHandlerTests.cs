@@ -1,6 +1,7 @@
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Services;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Tests.Helpers;
 using ControlR.Web.Client.Authz;
 using Microsoft.AspNetCore.Authentication;
@@ -278,6 +279,8 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
     var timeProvider = services.GetRequiredService<TimeProvider>();
     var memoryCache = services.GetRequiredService<IMemoryCache>();
+    var trimQueue = services.GetRequiredService<IPatScopeTrimQueue>();
+    var dbContextFactory = services.GetRequiredService<IDbContextFactory<AppDb>>();
 
     var scheme = new AuthenticationScheme(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultScheme,
@@ -290,6 +293,8 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
       loggerFactory,
       personalAccessTokenManager,
       memoryCache,
+      trimQueue,
+      dbContextFactory,
       options);
 
     await handler.InitializeAsync(scheme, context);

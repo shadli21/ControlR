@@ -1,0 +1,17 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
+
+/// <summary>
+/// A single permission scope grant for a credential (PAT or logon token).
+/// Defines what permission the credential is allowed, at what scope.
+/// </summary>
+public record CredentialScopeDto(
+  [property: Required]
+  [property: StringLength(150, MinimumLength = 1)]
+  string PermissionName,
+
+  [property: Required]
+  string ScopeKind,
+
+  Guid? ScopeId);

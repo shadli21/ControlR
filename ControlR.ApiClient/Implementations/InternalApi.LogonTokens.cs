@@ -17,4 +17,21 @@ internal partial class InternalApi
       return await response.Content.ReadFromJsonAsync<InternalDtos.LogonTokenResponseDto>(cancellationToken);
     });
   }
+
+  async Task<ApiResult<InternalDtos.CredentialScopeDto[]>> ILogonTokensApi.GetScopes(Guid tokenId, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+      await _client.HttpClient.GetFromJsonAsync<InternalDtos.CredentialScopeDto[]>(
+        $"{HttpConstants.Internal.LogonTokensEndpoint}/{tokenId}/scopes", cancellationToken));
+  }
+
+  async Task<ApiResult> ILogonTokensApi.SetScopes(Guid tokenId, InternalDtos.SetCredentialScopesRequestDto request, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+    {
+      using var response = await _client.HttpClient.PutAsJsonAsync(
+        $"{HttpConstants.Internal.LogonTokensEndpoint}/{tokenId}/scopes", request, cancellationToken);
+      await response.EnsureSuccessStatusCodeWithDetails();
+    });
+  }
 }

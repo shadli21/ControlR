@@ -42,4 +42,21 @@ internal partial class InternalApi
       return await response.Content.ReadFromJsonAsync<PersonalAccessTokenResponseDto>(cancellationToken);
     });
   }
+
+  async Task<ApiResult<CredentialScopeDto[]>> IPersonalAccessTokensApi.GetScopes(Guid id, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+      await _client.HttpClient.GetFromJsonAsync<CredentialScopeDto[]>(
+        $"{HttpConstants.Internal.PersonalAccessTokensEndpoint}/{id}/scopes", cancellationToken));
+  }
+
+  async Task<ApiResult> IPersonalAccessTokensApi.SetScopes(Guid id, SetCredentialScopesRequestDto request, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+    {
+      using var response = await _client.HttpClient.PutAsJsonAsync(
+        $"{HttpConstants.Internal.PersonalAccessTokensEndpoint}/{id}/scopes", request, cancellationToken);
+      await response.EnsureSuccessStatusCodeWithDetails();
+    });
+  }
 }

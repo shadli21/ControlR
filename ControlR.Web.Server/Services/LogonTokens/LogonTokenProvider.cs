@@ -91,7 +91,7 @@ public class LogonTokenProvider(
       userId, deviceId, tenantId, expiresAt);
 
     return HttpResult.Ok(new LogonTokenResult(
-      combinedToken, deviceId, tenantId, userId, expiresAt, sessionCorrelationId, userCorrelationId));
+      combinedToken, logonToken.Id, deviceId, tenantId, userId, expiresAt, sessionCorrelationId, userCorrelationId));
   }
 
   public async Task<HttpResult<LogonTokenResult>> CreateTokenForExternal(

@@ -2723,6 +2723,154 @@
         ]
       }
     },
+    "/api/logon-tokens/{tokenId}/scopes": {
+      "get": {
+        "tags": [
+          "LogonTokens"
+        ],
+        "parameters": [
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialScopeDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialScopeDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialScopeDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "LogonTokens"
+        ],
+        "parameters": [
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCredentialScopesRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCredentialScopesRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCredentialScopesRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
     "/api/personal-access-tokens": {
       "post": {
         "tags": [
@@ -2987,6 +3135,154 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
+    "/api/personal-access-tokens/{id}/scopes": {
+      "get": {
+        "tags": [
+          "PersonalAccessTokens"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialScopeDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialScopeDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialScopeDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "PersonalAccessTokens"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCredentialScopesRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCredentialScopesRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCredentialScopesRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "500": {
             "description": "Internal Server Error",
@@ -7368,6 +7664,31 @@
           }
         }
       },
+      "CredentialScopeDto": {
+        "required": [
+          "permissionName",
+          "scopeKind",
+          "scopeId"
+        ],
+        "type": "object",
+        "properties": {
+          "permissionName": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scopeKind": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "CurrentUserResponseDto": {
         "required": [
           "id",
@@ -8301,6 +8622,15 @@
             "type": "integer",
             "format": "int32",
             "default": 15
+          },
+          "scopes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CredentialScopeDto"
+            }
           }
         }
       },
@@ -8633,6 +8963,20 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "SetCredentialScopesRequestDto": {
+        "required": [
+          "scopes"
+        ],
+        "type": "object",
+        "properties": {
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CredentialScopeDto"
+            }
           }
         }
       },

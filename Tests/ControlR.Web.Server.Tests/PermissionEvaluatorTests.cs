@@ -385,7 +385,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task PatScopeGrants_BoundedByUserGroupPermissions()
+  public async Task PatScopes_BoundedByUserGroupPermissions()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
@@ -433,7 +433,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task PatScopeGrants_WhenMatchingAllow_Allows()
+  public async Task PatScopes_WhenMatchingAllow_Allows()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
@@ -478,7 +478,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task PatScopeGrants_WhenOutsideUserPermissions_Denies()
+  public async Task PatScopes_WhenOutsideUserPermissions_Denies()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
@@ -511,7 +511,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task PatScopeGrants_WhenZeroRows_FallsThroughToUserPermissions()
+  public async Task PatScopes_WhenZeroRows_FallsThroughToUserPermissions()
   {
     // BRIDGE (deleted in PR 13): Until PR 7 adds scope management, no credential scope
     // rows exist yet. Zero scope rows falls through to the user's effective permissions
