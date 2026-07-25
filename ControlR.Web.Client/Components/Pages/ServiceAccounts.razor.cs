@@ -1,3 +1,4 @@
+using ControlR.Web.Client.Components.Shared;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Pages;
@@ -5,7 +6,6 @@ namespace ControlR.Web.Client.Components.Pages;
 public partial class ServiceAccounts : ComponentBase
 {
   private IEnumerable<InternalDtos.TenantServiceAccountDto> _accounts = [];
-  private string? _lastCreatedSecret;
   private bool _loading;
   private string _searchString = string.Empty;
 
@@ -55,8 +55,7 @@ public partial class ServiceAccounts : ComponentBase
       return;
     }
 
-    _lastCreatedSecret = result.Value.PlainTextSecretKey;
-    Snackbar.Add("Credential created", Severity.Success);
+    await ShowSecretDialog("Credential Created", result.Value.PlainTextSecretKey, result.Value.Credential.Name);
     await Refresh();
   }
 
@@ -81,8 +80,7 @@ public partial class ServiceAccounts : ComponentBase
       return;
     }
 
-    _lastCreatedSecret = result.Value.PlainTextSecretKey;
-    Snackbar.Add("Service account created", Severity.Success);
+    await ShowSecretDialog("Service Account Created", result.Value.PlainTextSecretKey, result.Value.ServiceAccount.Name);
     await Refresh();
   }
 
@@ -131,5 +129,26 @@ public partial class ServiceAccounts : ComponentBase
       _loading = false;
       StateHasChanged();
     }
+  }
+
+  private async Task ShowSecretDialog(string title, string secret, string subtitle)
+  {
+    var parameters = new DialogParameters<SecretDisplayDialog>
+    {
+      { x => x.Title, title },
+      { x => x.Secret, secret },
+      { x => x.SecretLabel, "Secret Key" },
+      { x => x.Subtitle, subtitle },
+      { x => x.SubtitleLabel, "Name" }
+    };
+
+    var options = new DialogOptions
+    {
+      BackdropClick = false,
+      FullWidth = true,
+      MaxWidth = MaxWidth.Small
+    };
+
+    await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
   }
 }

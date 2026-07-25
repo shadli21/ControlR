@@ -1,3 +1,4 @@
+using ControlR.Web.Client.Components.Shared;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace ControlR.Web.Client.Components.Pages;
@@ -35,11 +36,13 @@ public partial class PersonalAccessTokens
 
       if (result.IsSuccess)
       {
-        // Show the dialog with the new personal access token
-        var parameters = new DialogParameters
+        var parameters = new DialogParameters<SecretDisplayDialog>
         {
-          { nameof(PersonalAccessTokenDialog.PersonalAccessToken), result.Value.PersonalAccessToken },
-          { nameof(PersonalAccessTokenDialog.PlainTextKey), result.Value.PlainTextToken }
+          { x => x.Title, "Personal Access Token Created" },
+          { x => x.Secret, result.Value.PlainTextToken },
+          { x => x.SecretLabel, "Personal Access Token" },
+          { x => x.Subtitle, result.Value.PersonalAccessToken.Name },
+          { x => x.SubtitleLabel, "Token Name" }
         };
 
         var dialogOptions = new DialogOptions
@@ -49,7 +52,7 @@ public partial class PersonalAccessTokens
           MaxWidth = MaxWidth.Small
         };
 
-        await DialogService.ShowAsync<PersonalAccessTokenDialog>("Personal Access Token Created", parameters, dialogOptions);
+        await DialogService.ShowAsync<SecretDisplayDialog>("Personal Access Token Created", parameters, dialogOptions);
 
         // Refresh the list and clear the input
         await LoadPersonalAccessTokens();
