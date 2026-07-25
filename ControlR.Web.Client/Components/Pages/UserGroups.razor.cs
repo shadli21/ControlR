@@ -1,4 +1,5 @@
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Client.Services;
 using Microsoft.AspNetCore.Components;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
@@ -9,6 +10,9 @@ public partial class UserGroups : ComponentBase
   private IEnumerable<InternalDtos.UserGroupDto> _groups = [];
   private bool _loading;
   private string _searchString = string.Empty;
+
+  [Inject]
+  public required IClipboardManager ClipboardManager { get; init; }
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
@@ -33,6 +37,12 @@ public partial class UserGroups : ComponentBase
   protected override async Task OnInitializedAsync()
   {
     await Refresh();
+  }
+
+  private async Task CopyId(Guid id)
+  {
+    await ClipboardManager.SetText(id.ToString());
+    Snackbar.Add("Copied to clipboard", Severity.Success);
   }
 
   private async Task CreateGroup()

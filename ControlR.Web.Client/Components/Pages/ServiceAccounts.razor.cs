@@ -1,4 +1,5 @@
 using ControlR.Web.Client.Components.Shared;
+using ControlR.Web.Client.Services;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Pages;
@@ -8,6 +9,9 @@ public partial class ServiceAccounts : ComponentBase
   private IEnumerable<InternalDtos.TenantServiceAccountDto> _accounts = [];
   private bool _loading;
   private string _searchString = string.Empty;
+
+  [Inject]
+  public required IClipboardManager ClipboardManager { get; init; }
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
@@ -57,6 +61,12 @@ public partial class ServiceAccounts : ComponentBase
 
     await ShowSecretDialog("Credential Created", result.Value.PlainTextSecretKey, result.Value.Credential.Name);
     await Refresh();
+  }
+
+  private async Task CopyId(Guid id)
+  {
+    await ClipboardManager.SetText(id.ToString());
+    Snackbar.Add("Copied to clipboard", Severity.Success);
   }
 
   private async Task CreateAccount()
