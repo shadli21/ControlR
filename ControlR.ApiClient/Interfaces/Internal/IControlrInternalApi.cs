@@ -13,12 +13,13 @@ public interface IControlrInternalApi
   IInstallerKeysApi InstallerKeys { get; }
   IInvitesApi Invites { get; }
   ILogonTokensApi LogonTokens { get; }
-  IPersonalAccessTokensApi PersonalAccessTokens { get; }
   IPermissionAssignmentsApi PermissionAssignments { get; }
+  IPersonalAccessTokensApi PersonalAccessTokens { get; }
   IPublicServerSettingsApi PublicServerSettings { get; }
   IRolesApi Roles { get; }
   IServerAlertApi ServerAlert { get; }
   IServerLogsApi ServerLogs { get; }
+  IServerServiceAccountsApi ServerServiceAccounts { get; }
   IServerStatsApi ServerStats { get; }
   IServiceAccountsApi ServiceAccounts { get; }
   ITagsApi Tags { get; }

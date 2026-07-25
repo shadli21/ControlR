@@ -11,6 +11,9 @@ public static class PolicyNames
   public const string RequireDeviceGroupsWrite = "RequireDeviceGroupsWrite";
   public const string RequirePermissionAssignmentsRead = "RequirePermissionAssignmentsRead";
   public const string RequirePermissionAssignmentsWrite = "RequirePermissionAssignmentsWrite";
+  public const string RequireServerServiceAccountsRead = "RequireServerServiceAccountsRead";
+  public const string RequireServerServiceAccountsRotateCredentials = "RequireServerServiceAccountsRotateCredentials";
+  public const string RequireServerServiceAccountsWrite = "RequireServerServiceAccountsWrite";
   public const string RequireServiceAccountRead = "RequireServiceAccountRead";
   public const string RequireServiceAccountRotateCredentials = "RequireServiceAccountRotateCredentials";
   public const string RequireServiceAccountWrite = "RequireServiceAccountWrite";

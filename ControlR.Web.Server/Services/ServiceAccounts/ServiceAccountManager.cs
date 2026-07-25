@@ -88,6 +88,12 @@ public interface IServiceAccountManager
     Guid serviceAccountId, Guid credentialId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
+  /// Updates a server-scoped service account's name and description. Emits AuthorizationChangeLog.
+  /// </summary>
+  Task<HttpResult<ServiceAccountResult>> UpdateForServer(
+    Guid serviceAccountId, string name, string? description, Guid actorPrincipalId, CancellationToken cancellationToken);
+
+  /// <summary>
   /// Updates a tenant-scoped service account's name and description. Emits AuthorizationChangeLog.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> UpdateForTenant(
@@ -595,6 +601,47 @@ public class ServiceAccountManager(
 
     EvictCredentialFromCache(credentialId);
     return HttpResult.Ok();
+  }
+
+  public async Task<HttpResult<ServiceAccountResult>> UpdateForServer(
+    Guid serviceAccountId,
+    string name,
+    string? description,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken)
+  {
+    if (string.IsNullOrWhiteSpace(name))
+    {
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.BadRequest, "Name is required.");
+    }
+
+    var account = await appDb.ServiceAccounts
+      .Include(x => x.Credentials)
+      .FirstOrDefaultAsync(x => x.Id == serviceAccountId && x.Kind == ServiceAccountKind.Server, cancellationToken);
+
+    if (account is null)
+    {
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.NotFound, "Server service account not found.");
+    }
+
+    var before = new ServiceAccountSnapshot(account.Name, "Server", account.Description, account.IsEnabled);
+
+    account.Name = name;
+    account.Description = description;
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.ServiceAccountUpdated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.ServiceAccount,
+      serviceAccountId.ToString(),
+      null,
+      before: before,
+      after: new ServiceAccountSnapshot(name, "Server", description, account.IsEnabled)));
+
+    await appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok(MapToResult(account));
   }
 
   public async Task<HttpResult<ServiceAccountResult>> UpdateForTenant(

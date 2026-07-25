@@ -58,6 +58,18 @@ public static class AuthorizationRegistrationExtensions
       .AddPolicy(CombinedAuthorizationPolicies.RequireServerOrTenantAdminOrInstallerKeyManagerPolicy, CombinedAuthorizationPolicies.CreateServerOrTenantAdminOrInstallerKeyManager())
       .AddPolicy(RequireServerAdministratorPolicy.PolicyName, RequireServerAdministratorPolicy.Create())
       .AddPolicy(DeviceAccessByDeviceResourcePolicy.PolicyName, DeviceAccessByDeviceResourcePolicy.Create())
+      .AddPolicy(PolicyNames.RequireServerServiceAccountsRead, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.ServerServiceAccountsRead))
+      .AddPolicy(PolicyNames.RequireServerServiceAccountsWrite, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.ServerServiceAccountsWrite))
+      .AddPolicy(PolicyNames.RequireServerServiceAccountsRotateCredentials, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.ServerServiceAccountsRotateCredentials))
       .AddPolicy(PolicyNames.RequireServiceAccountRead, policy => policy
         .AddAuthenticationSchemes(CustomSchemes.Dynamic)
         .RequireAuthenticatedUser()
