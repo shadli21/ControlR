@@ -2439,6 +2439,86 @@
         ]
       }
     },
+    "/api/effective-permissions/query": {
+      "post": {
+        "tags": [
+          "EffectivePermissions"
+        ],
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EffectivePermissionQueryRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EffectivePermissionQueryRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EffectivePermissionQueryRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectivePermissionQueryResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectivePermissionQueryResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectivePermissionQueryResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
     "/api/effective-user-preferences": {
       "get": {
         "tags": [
@@ -3341,6 +3421,220 @@
           },
           "required": true
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
+    "/api/permission-assignments": {
+      "post": {
+        "tags": [
+          "PermissionAssignments"
+        ],
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePermissionAssignmentRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePermissionAssignmentRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePermissionAssignmentRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionAssignmentDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionAssignmentDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionAssignmentDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "PermissionAssignments"
+        ],
+        "parameters": [
+          {
+            "name": "principalKind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PermissionPrincipalKind"
+            }
+          },
+          {
+            "name": "principalId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionAssignmentDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionAssignmentDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionAssignmentDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
+    "/api/permission-assignments/{assignmentId}": {
+      "delete": {
+        "tags": [
+          "PermissionAssignments"
+        ],
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -5343,6 +5637,148 @@
         ]
       }
     },
+    "/api/user-groups/{userGroupId}/members": {
+      "post": {
+        "tags": [
+          "UserGroups"
+        ],
+        "parameters": [
+          {
+            "name": "userGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddUserGroupMembersRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddUserGroupMembersRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddUserGroupMembersRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "UserGroups"
+        ],
+        "parameters": [
+          {
+            "name": "userGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveUserGroupMembersRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveUserGroupMembersRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveUserGroupMembersRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
     "/api/user-groups": {
       "post": {
         "tags": [
@@ -5491,6 +5927,56 @@
       }
     },
     "/api/user-groups/{userGroupId}": {
+      "delete": {
+        "tags": [
+          "UserGroups"
+        ],
+        "parameters": [
+          {
+            "name": "userGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      },
       "get": {
         "tags": [
           "UserGroups"
@@ -5624,198 +6110,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Cookie": [ ]
-          },
-          {
-            "PersonalAccessToken": [ ]
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "UserGroups"
-        ],
-        "parameters": [
-          {
-            "name": "userGroupId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "description": "The requested API version",
-            "schema": {
-              "enum": [
-                "1.0"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Cookie": [ ]
-          },
-          {
-            "PersonalAccessToken": [ ]
-          }
-        ]
-      }
-    },
-    "/api/user-groups/{userGroupId}/members": {
-      "post": {
-        "tags": [
-          "UserGroups"
-        ],
-        "parameters": [
-          {
-            "name": "userGroupId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "description": "The requested API version",
-            "schema": {
-              "enum": [
-                "1.0"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddUserGroupMembersRequestDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddUserGroupMembersRequestDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddUserGroupMembersRequestDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Cookie": [ ]
-          },
-          {
-            "PersonalAccessToken": [ ]
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "UserGroups"
-        ],
-        "parameters": [
-          {
-            "name": "userGroupId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "description": "The requested API version",
-            "schema": {
-              "enum": [
-                "1.0"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RemoveUserGroupMembersRequestDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RemoveUserGroupMembersRequestDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RemoveUserGroupMembersRequestDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
           },
           "500": {
             "description": "Internal Server Error",
@@ -9107,6 +9401,53 @@
           }
         }
       },
+      "CreatePermissionAssignmentRequestDto": {
+        "required": [
+          "principalKind",
+          "principalId",
+          "permissionName",
+          "effect",
+          "scopeKind",
+          "scopeId",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "principalKind": {
+            "$ref": "#/components/schemas/PermissionPrincipalKind"
+          },
+          "principalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "permissionName": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effect": {
+            "$ref": "#/components/schemas/PermissionEffect"
+          },
+          "scopeKind": {
+            "$ref": "#/components/schemas/PermissionScopeKind"
+          },
+          "scopeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "CreatePersonalAccessTokenRequestDto": {
         "required": [
           "name"
@@ -9310,7 +9651,7 @@
             "type": "string"
           },
           "scopeKind": {
-            "type": "string"
+            "$ref": "#/components/schemas/PermissionScopeKind"
           },
           "scopeId": {
             "type": [
@@ -10012,6 +10353,58 @@
           "Ram"
         ]
       },
+      "EffectivePermissionQueryRequestDto": {
+        "required": [
+          "principalKind",
+          "principalId",
+          "permissionName",
+          "scopeKind",
+          "scopeId"
+        ],
+        "type": "object",
+        "properties": {
+          "principalKind": {
+            "$ref": "#/components/schemas/PermissionPrincipalKind"
+          },
+          "principalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "permissionName": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scopeKind": {
+            "$ref": "#/components/schemas/PermissionScopeKind"
+          },
+          "scopeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "EffectivePermissionQueryResponseDto": {
+        "required": [
+          "isAllowed",
+          "denyReason"
+        ],
+        "type": "object",
+        "properties": {
+          "isAllowed": {
+            "type": "boolean"
+          },
+          "denyReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "EffectiveUserPreferencesDto": {
         "required": [
           "notifyUserOnSessionStart",
@@ -10372,6 +10765,72 @@
         }
       },
       "MessageSeverity": {
+        "type": "integer"
+      },
+      "PermissionAssignmentDto": {
+        "required": [
+          "id",
+          "principalKind",
+          "principalId",
+          "permissionName",
+          "effect",
+          "scopeKind",
+          "scopeId",
+          "notes",
+          "isEnabled",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "principalKind": {
+            "$ref": "#/components/schemas/PermissionPrincipalKind"
+          },
+          "principalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "permissionName": {
+            "type": "string"
+          },
+          "effect": {
+            "$ref": "#/components/schemas/PermissionEffect"
+          },
+          "scopeKind": {
+            "$ref": "#/components/schemas/PermissionScopeKind"
+          },
+          "scopeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PermissionEffect": {
+        "type": "integer"
+      },
+      "PermissionPrincipalKind": {
+        "type": "integer"
+      },
+      "PermissionScopeKind": {
         "type": "integer"
       },
       "PersonalAccessTokenResponseDto": {
@@ -11530,6 +11989,9 @@
       "name": "DeviceTags"
     },
     {
+      "name": "EffectivePermissions"
+    },
+    {
       "name": "EffectiveUserPreferences"
     },
     {
@@ -11540,6 +12002,9 @@
     },
     {
       "name": "LogonTokens"
+    },
+    {
+      "name": "PermissionAssignments"
     },
     {
       "name": "PersonalAccessTokens"

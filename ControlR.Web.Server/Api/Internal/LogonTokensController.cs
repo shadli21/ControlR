@@ -102,7 +102,7 @@ public class LogonTokensController : ControllerBase
 
     var dtos = rows
       .Select(x => new InternalDtos.CredentialScopeDto(
-        x.PermissionName, x.ScopeKind.ToString(), x.ScopeId))
+        x.PermissionName, x.ScopeKind, x.ScopeId))
       .ToList();
 
     return Ok(dtos);
@@ -156,18 +156,13 @@ public class LogonTokensController : ControllerBase
 
     foreach (var scope in request.Scopes)
     {
-      if (!Enum.TryParse<PermissionScopeKind>(scope.ScopeKind, out var scopeKind))
-      {
-        return BadRequest($"Invalid scope kind: {scope.ScopeKind}");
-      }
-
       appDb.PermissionAssignments.Add(new PermissionAssignment
       {
         PrincipalKind = PermissionPrincipalKind.LogonToken,
         PrincipalId = tokenId,
         PermissionName = scope.PermissionName,
         Effect = PermissionEffect.Allow,
-        ScopeKind = scopeKind,
+        ScopeKind = scope.ScopeKind,
         ScopeId = scope.ScopeId ?? logonToken.DeviceId,
         IsEnabled = true,
         OwningTenantId = tenantId,
@@ -204,18 +199,13 @@ public class LogonTokensController : ControllerBase
   {
     foreach (var scope in scopes)
     {
-      if (!Enum.TryParse<PermissionScopeKind>(scope.ScopeKind, out var scopeKind))
-      {
-        continue;
-      }
-
       appDb.PermissionAssignments.Add(new PermissionAssignment
       {
         PrincipalKind = PermissionPrincipalKind.LogonToken,
         PrincipalId = tokenId,
         PermissionName = scope.PermissionName,
         Effect = PermissionEffect.Allow,
-        ScopeKind = scopeKind,
+        ScopeKind = scope.ScopeKind,
         ScopeId = scope.ScopeId ?? deviceId,
         IsEnabled = true,
         OwningTenantId = tenantId,

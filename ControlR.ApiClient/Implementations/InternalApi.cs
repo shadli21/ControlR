@@ -10,11 +10,13 @@ internal partial class InternalApi(ControlrApi client) :
   IDeviceGroupsApi,
   IDeviceTagsApi,
   IDevicesApi,
+  IEffectivePermissionsApi,
   IEffectiveUserPreferencesApi,
   IInstallerKeysApi,
   IInvitesApi,
   ILogonTokensApi,
   IPersonalAccessTokensApi,
+  IPermissionAssignmentsApi,
   IPublicServerSettingsApi,
   IRolesApi,
   IServerAlertApi,
@@ -41,10 +43,12 @@ internal partial class InternalApi(ControlrApi client) :
   public IDeviceGroupsApi DeviceGroups => this;
   public IDevicesApi Devices => this;
   public IDeviceTagsApi DeviceTags => this;
+  public IEffectivePermissionsApi EffectivePermissions => this;
   public IEffectiveUserPreferencesApi EffectiveUserPreferences => this;
   public IInstallerKeysApi InstallerKeys => this;
   public IInvitesApi Invites => this;
   public ILogonTokensApi LogonTokens => this;
+  public IPermissionAssignmentsApi PermissionAssignments => this;
   public IPersonalAccessTokensApi PersonalAccessTokens => this;
   public IPublicServerSettingsApi PublicServerSettings => this;
   public IRolesApi Roles => this;

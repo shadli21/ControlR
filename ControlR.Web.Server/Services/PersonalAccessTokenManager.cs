@@ -208,7 +208,7 @@ public class PersonalAccessTokenManager(
 
     var dtos = rows
       .Select(x => new InternalDtos.CredentialScopeDto(
-        x.PermissionName, x.ScopeKind.ToString(), x.ScopeId))
+        x.PermissionName, x.ScopeKind, x.ScopeId))
       .ToList();
 
     return Result.Ok<IReadOnlyList<InternalDtos.CredentialScopeDto>>(dtos);
@@ -269,18 +269,13 @@ public class PersonalAccessTokenManager(
 
     foreach (var scope in scopes)
     {
-      if (!Enum.TryParse<PermissionScopeKind>(scope.ScopeKind, out var scopeKind))
-      {
-        return Result.Fail($"Invalid scope kind: {scope.ScopeKind}");
-      }
-
       _appDb.PermissionAssignments.Add(new PermissionAssignment
       {
         PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
         PrincipalId = tokenId,
         PermissionName = scope.PermissionName,
         Effect = PermissionEffect.Allow,
-        ScopeKind = scopeKind,
+        ScopeKind = scope.ScopeKind,
         ScopeId = scope.ScopeId,
         IsEnabled = true,
         OwningTenantId = user?.TenantId,

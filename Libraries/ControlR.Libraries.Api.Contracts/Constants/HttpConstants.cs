@@ -18,10 +18,12 @@ public static class HttpConstants
     public const string DevicesEndpoint = "/api/devices";
     public const string DeviceTagsEndpoint = "/api/device-tags";
     public const string EffectiveUserPreferencesEndpoint = "/api/effective-user-preferences";
+    public const string EffectivePermissionsEndpoint = "/api/effective-permissions";
     public const string InstallerKeysEndpoint = "/api/installer-keys";
     public const string InvitesEndpoint = "/api/invites";
     public const string LogonTokensEndpoint = "/api/logon-tokens";
     public const string PersonalAccessTokensEndpoint = "/api/personal-access-tokens";
+    public const string PermissionAssignmentsEndpoint = "/api/permission-assignments";
     public const string PublicServerSettingsEndpoint = "/api/public-server-settings";
     public const string RolesEndpoint = "/api/roles";
     public const string ServerAlertEndpoint = "/api/server-alert";

@@ -14,6 +14,8 @@ public static class AuthorizationChangeLogActions
   public const string DeviceGroupMembersAdded = "device-group-members-added";
   public const string DeviceGroupMembersRemoved = "device-group-members-removed";
   public const string DeviceGroupUpdated = "device-group-updated";
+  public const string PermissionAssignmentCreated = "permission-assignment-created";
+  public const string PermissionAssignmentDeleted = "permission-assignment-deleted";
   public const string ServiceAccountCreated = "service-account-created";
   public const string ServiceAccountCredentialCreated = "service-account-credential-created";
   public const string ServiceAccountCredentialRevoked = "service-account-credential-revoked";

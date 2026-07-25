@@ -12,6 +12,7 @@ global using ControlR.Web.Server.Services;
 global using ControlR.Web.Server.Services.ServiceAccounts;
 global using ControlR.Web.Server.Services.DeviceGroups;
 global using ControlR.Web.Server.Services.UserGroups;
+global using ControlR.Web.Server.Services.PermissionAssignments;
 global using ControlR.Web.Client.Authz;
 global using ControlR.Web.Client.Authz.Policies;
 global using ControlR.Web.Server.Data.Entities;

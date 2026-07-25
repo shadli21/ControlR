@@ -8,11 +8,13 @@ public interface IControlrInternalApi
   IDeviceGroupsApi DeviceGroups { get; }
   IDevicesApi Devices { get; }
   IDeviceTagsApi DeviceTags { get; }
+  IEffectivePermissionsApi EffectivePermissions { get; }
   IEffectiveUserPreferencesApi EffectiveUserPreferences { get; }
   IInstallerKeysApi InstallerKeys { get; }
   IInvitesApi Invites { get; }
   ILogonTokensApi LogonTokens { get; }
   IPersonalAccessTokensApi PersonalAccessTokens { get; }
+  IPermissionAssignmentsApi PermissionAssignments { get; }
   IPublicServerSettingsApi PublicServerSettings { get; }
   IRolesApi Roles { get; }
   IServerAlertApi ServerAlert { get; }

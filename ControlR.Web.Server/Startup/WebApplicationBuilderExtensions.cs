@@ -261,6 +261,7 @@ public static class WebApplicationBuilderExtensions
     builder.Services.AddScoped<IServiceAccountManager, ServiceAccountManager>();
     builder.Services.AddScoped<IDeviceGroupManager, DeviceGroupManager>();
     builder.Services.AddScoped<IUserGroupManager, UserGroupManager>();
+    builder.Services.AddScoped<IPermissionAssignmentManager, PermissionAssignmentManager>();
 
     return builder;
   }

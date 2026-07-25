@@ -93,7 +93,15 @@ public static class AuthorizationRegistrationExtensions
       .AddPolicy(PolicyNames.RequireUserGroupAssignUsers, policy => policy
         .AddAuthenticationSchemes(CustomSchemes.Dynamic)
         .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.UserGroupAssignUsers));
+        .RequirePermission(PermissionNames.UserGroupAssignUsers))
+      .AddPolicy(PolicyNames.RequirePermissionAssignmentsRead, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.TenantPermissionsRead))
+      .AddPolicy(PolicyNames.RequirePermissionAssignmentsWrite, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.TenantPermissionsWrite));
 
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderRequirementHandler>();
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderAsyncRequirementHandler>();

@@ -135,7 +135,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     // Cascade: remove PermissionAssignment rows scoped to this device group.
     var scopeAssignments = await _appDb.PermissionAssignments
       .IgnoreQueryFilters()
-      .Where(x => x.ScopeKind == Data.Enums.PermissionScopeKind.DeviceGroup && x.ScopeId == deviceGroupId)
+      .Where(x => x.ScopeKind == PermissionScopeKind.DeviceGroup && x.ScopeId == deviceGroupId)
       .ToListAsync(cancellationToken);
 
     _appDb.PermissionAssignments.RemoveRange(scopeAssignments);

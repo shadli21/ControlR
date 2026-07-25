@@ -56,3 +56,13 @@ public sealed record UserGroupSnapshot(string Name, string? Description);
 /// Used for member add/remove audit entries.
 /// </summary>
 public sealed record UserGroupMembershipChange(int Count);
+
+/// <summary>
+/// Snapshot of a permission assignment's key fields.
+/// Used for create/delete audit entries.
+/// </summary>
+public sealed record PermissionAssignmentSnapshot(
+  string PermissionName,
+  string Effect,
+  string ScopeKind,
+  Guid? ScopeId);
