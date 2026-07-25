@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Web.Server.Extensions.Database;
+using ControlR.Web.Server.Extensions.Dtos.Internal;
 using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 
@@ -98,7 +99,7 @@ public class DevicesController(
     [FromServices] AppDb appDb,
     [FromServices] IAgentVersionProvider agentVersionProvider)
   {
-    IQueryable<Device> query = appDb.Devices.Include(x => x.Tags);
+    IQueryable<Device> query = appDb.Devices.Include(x => x.Tags).Include(x => x.Customer);
 
     if (!User.TryGetTenantId(out var tenantId))
     {
@@ -131,6 +132,7 @@ public class DevicesController(
   {
     var device = await appDb.Devices
       .AsNoTracking()
+      .Include(x => x.Customer)
       .FirstOrDefaultAsync(x => x.Id == deviceId);
       
     if (device is null)
@@ -207,6 +209,7 @@ public class DevicesController(
     var devices = await scopedQuery
       .ApplySorting(requestDto.SortDefinitions)
       .Include(x => x.Tags)
+      .Include(x => x.Customer)
       .AsSplitQuery()
       .Skip(requestDto.Page * requestDto.PageSize)
       .Take(requestDto.PageSize)

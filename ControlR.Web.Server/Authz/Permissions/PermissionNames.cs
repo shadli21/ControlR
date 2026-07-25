@@ -47,6 +47,8 @@ public static class PermissionNames
   public const string ServiceAccountRead = "service-account.read";
   public const string ServiceAccountRotateCredentials = "service-account.rotate-credentials";
   public const string ServiceAccountWrite = "service-account.write";
+  public const string TenantCustomersRead = "tenant.customers.read";
+  public const string TenantCustomersWrite = "tenant.customers.write";
   public const string TenantDeviceGroupsRead = "tenant.device-groups.read";
   public const string TenantDeviceGroupsWrite = "tenant.device-groups.write";
   public const string TenantPermissionsDeny = "tenant.permissions.deny";

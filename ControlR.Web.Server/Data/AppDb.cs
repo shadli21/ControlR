@@ -30,6 +30,7 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
   public DbSet<AgentInstallerKey> AgentInstallerKeys { get; init; }
   public DbSet<AgentInstallerKeyUsage> AgentInstallerKeyUsages { get; init; }
   public DbSet<AuthorizationChangeLog> AuthorizationChangeLogs { get; init; }
+  public DbSet<Customer> Customers { get; init; }
   public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
   public DbSet<DeviceGroupMember> DeviceGroupMembers { get; init; }
   public DbSet<DeviceGroup> DeviceGroups { get; init; }
@@ -77,6 +78,7 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
     ConfigureAgentInstallerKeyUsages(builder);
     ConfigureServiceAccounts(builder);
     ConfigureDeviceGroups(builder);
+    ConfigureCustomers(builder);
     ConfigureUserGroups(builder);
     ConfigurePermissionAssignments(builder);
     ConfigureAuthorizationChangeLogs(builder);
@@ -221,6 +223,28 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
     {
       builder
         .Entity<DeviceGroup>()
+        .HasQueryFilter(x => x.TenantId == _tenantId);
+    }
+  }
+
+  private void ConfigureCustomers(ModelBuilder builder)
+  {
+    builder
+      .Entity<Customer>()
+      .HasIndex(x => new { x.TenantId, x.Name })
+      .IsUnique();
+
+    builder
+      .Entity<Device>()
+      .HasOne(x => x.Customer)
+      .WithMany()
+      .HasForeignKey(x => x.CustomerId)
+      .OnDelete(DeleteBehavior.SetNull);
+
+    if (_tenantId is not null)
+    {
+      builder
+        .Entity<Customer>()
         .HasQueryFilter(x => x.TenantId == _tenantId);
     }
   }
@@ -400,6 +424,12 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
       .HasMany(t => t.TenantInvites)
       .WithOne(invite => invite.Tenant)
       .HasForeignKey(invite => invite.TenantId)
+      .OnDelete(DeleteBehavior.Cascade);
+
+    builder.Entity<Tenant>()
+      .HasMany(t => t.Customers)
+      .WithOne(c => c.Tenant)
+      .HasForeignKey(c => c.TenantId)
       .OnDelete(DeleteBehavior.Cascade);
 
     builder.Entity<Tenant>()

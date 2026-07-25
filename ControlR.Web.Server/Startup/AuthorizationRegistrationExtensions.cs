@@ -94,6 +94,14 @@ public static class AuthorizationRegistrationExtensions
         .AddAuthenticationSchemes(CustomSchemes.Dynamic)
         .RequireAuthenticatedUser()
         .RequirePermission(PermissionNames.DeviceGroupAssignDevices))
+      .AddPolicy(PolicyNames.RequireCustomersRead, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.TenantCustomersRead))
+      .AddPolicy(PolicyNames.RequireCustomersWrite, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.TenantCustomersWrite))
       .AddPolicy(PolicyNames.RequireUserGroupsRead, policy => policy
         .AddAuthenticationSchemes(CustomSchemes.Dynamic)
         .RequireAuthenticatedUser()

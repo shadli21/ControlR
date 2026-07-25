@@ -68,6 +68,8 @@ public class RoleBundleResolver : IRoleBundleResolver
         PermissionNames.TenantDeviceGroupsRead,
         PermissionNames.TenantDeviceGroupsWrite,
         PermissionNames.DeviceGroupAssignDevices,
+        PermissionNames.TenantCustomersRead,
+        PermissionNames.TenantCustomersWrite,
         PermissionNames.TenantPermissionsRead,
         PermissionNames.TenantPermissionsWrite,
         PermissionNames.TenantPermissionsDeny,

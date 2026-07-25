@@ -12,6 +12,7 @@ public static class HttpConstants
   public static class Internal
   {
     public const string AuthEndpoint = "/api/auth";
+    public const string CustomersEndpoint = "/api/customers";
     public const string DesktopPreviewEndpoint = "/api/desktop-preview";
     public const string DeviceFileSystemEndpoint = "/api/device-file-system";
     public const string DeviceGroupsEndpoint = "/api/device-groups";

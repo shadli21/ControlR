@@ -16,6 +16,8 @@ public class Device : TenantEntityBase
   public string ConnectionId { get; set; } = string.Empty;
   public double CpuUtilization { get; set; }
   public string[] CurrentUsers { get; set; } = [];
+  public Customer? Customer { get; set; }
+  public Guid? CustomerId { get; set; }
   public Guid? DeviceGroupId { get; set; }
   public List<DeviceGroupMember>? DeviceGroupMembers { get; set; }
 

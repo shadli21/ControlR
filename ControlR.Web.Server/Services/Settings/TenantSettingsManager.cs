@@ -1,5 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Settings;
-using ControlR.Web.Server.Extensions.Database;
+using ControlR.Web.Server.Extensions.Dtos.Internal;
 using ControlR.Web.Server.Primitives;
 
 namespace ControlR.Web.Server.Services.Settings;

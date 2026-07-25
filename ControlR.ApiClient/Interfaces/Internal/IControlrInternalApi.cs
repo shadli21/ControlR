@@ -3,6 +3,7 @@ namespace ControlR.ApiClient.Interfaces.Internal;
 public interface IControlrInternalApi
 {
   IAuthApi Auth { get; }
+  ICustomersApi Customers { get; }
   IDesktopPreviewApi DesktopPreview { get; }
   IDeviceFileSystemApi DeviceFileSystem { get; }
   IDeviceGroupsApi DeviceGroups { get; }

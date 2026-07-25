@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.SignalR;
 using ControlR.Web.Server.Services.DeviceManagement;
 using ControlR.Libraries.Shared.Services.Encryption;
+using ControlR.Web.Server.Extensions.Dtos.Internal;
 
 namespace ControlR.Web.Server.Hubs;
 

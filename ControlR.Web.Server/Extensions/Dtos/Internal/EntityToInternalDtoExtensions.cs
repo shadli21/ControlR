@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace ControlR.Web.Server.Extensions;
+namespace ControlR.Web.Server.Extensions.Dtos.Internal;
 
 public static class EntityToInternalDtoExtensions
 {
@@ -48,6 +48,8 @@ public static class EntityToInternalDtoExtensions
       device.DnsHostName)
     {
       Alias = device.Alias,
+      CustomerId = device.CustomerId,
+      CustomerName = device.Customer?.Name,
       TagIds = device.Tags?.Select(x => x.Id).ToImmutableArray()
     };
   }

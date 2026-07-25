@@ -5,6 +5,7 @@ namespace ControlR.Web.Server.Data.Entities;
 
 public class Tenant : EntityBase
 {
+  public List<Customer>? Customers { get; set; }
   public List<DeviceGroup>? DeviceGroups { get; set; }
   public List<Device>? Devices { get; set; }
   public List<LogonToken>? LogonTokens { get; set; }

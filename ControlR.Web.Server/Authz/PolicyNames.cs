@@ -6,6 +6,8 @@ namespace ControlR.Web.Server.Authz;
 /// </summary>
 public static class PolicyNames
 {
+  public const string RequireCustomersRead = "RequireCustomersRead";
+  public const string RequireCustomersWrite = "RequireCustomersWrite";
   public const string RequireDeviceGroupAssignDevices = "RequireDeviceGroupAssignDevices";
   public const string RequireDeviceGroupsRead = "RequireDeviceGroupsRead";
   public const string RequireDeviceGroupsWrite = "RequireDeviceGroupsWrite";

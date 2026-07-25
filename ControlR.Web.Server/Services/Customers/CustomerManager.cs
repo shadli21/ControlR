@@ -1,0 +1,193 @@
+using ControlR.Web.Server.Primitives;
+using ControlR.Web.Server.Services.Authorization;
+
+namespace ControlR.Web.Server.Services.Customers;
+
+/// <summary>
+/// Manages customers: CRUD with tenant-scoped name uniqueness. Devices reference a
+/// customer through a nullable foreign key; deleting a customer unassigns its devices.
+/// All writes emit AuthorizationChangeLog entries.
+/// </summary>
+public interface ICustomerManager
+{
+  Task<HttpResult<InternalDtos.CustomerDto>> Create(
+    string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+  Task<HttpResult> Delete(
+    Guid customerId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+  Task<HttpResult<InternalDtos.CustomerDto>> Get(
+    Guid customerId, Guid tenantId, CancellationToken cancellationToken = default);
+  Task<IReadOnlyList<InternalDtos.CustomerDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default);
+  Task<HttpResult<InternalDtos.CustomerDto>> Update(
+    Guid customerId, string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+}
+
+public class CustomerManager(AppDb appDb) : ICustomerManager
+{
+  private readonly AppDb _appDb = appDb;
+
+  public async Task<HttpResult<InternalDtos.CustomerDto>> Create(
+    string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+  {
+    if (string.IsNullOrWhiteSpace(name))
+    {
+      return HttpResult.Fail<InternalDtos.CustomerDto>(HttpResultErrorCode.BadRequest, "Name is required.");
+    }
+
+    var nameConflict = await _appDb.Customers
+      .AnyAsync(x => x.TenantId == tenantId && x.Name == name, cancellationToken);
+
+    if (nameConflict)
+    {
+      return HttpResult.Fail<InternalDtos.CustomerDto>(HttpResultErrorCode.Conflict, "A customer with that name already exists.");
+    }
+
+    var customer = new Customer
+    {
+      Name = name,
+      Description = description,
+      Notes = notes,
+      TenantId = tenantId
+    };
+
+    _appDb.Customers.Add(customer);
+
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.CustomerCreated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.Customer,
+      customer.Id.ToString(),
+      tenantId,
+      after: new CustomerSnapshot(name, description, notes)));
+
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok(MapToDto(customer, 0));
+  }
+
+  public async Task<HttpResult> Delete(
+    Guid customerId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+  {
+    var customer = await _appDb.Customers
+      .FirstOrDefaultAsync(x => x.Id == customerId && x.TenantId == tenantId, cancellationToken);
+
+    if (customer is null)
+    {
+      return HttpResult.Fail(HttpResultErrorCode.NotFound, "Customer not found.");
+    }
+
+    var devices = await _appDb.Devices
+      .Where(x => x.TenantId == tenantId && x.CustomerId == customerId)
+      .ToListAsync(cancellationToken);
+
+    foreach (var device in devices)
+    {
+      device.CustomerId = null;
+    }
+
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.CustomerDeleted,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.Customer,
+      customerId.ToString(),
+      tenantId,
+      before: new CustomerSnapshot(customer.Name, customer.Description, customer.Notes)));
+
+    _appDb.Customers.Remove(customer);
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok();
+  }
+
+  public async Task<HttpResult<InternalDtos.CustomerDto>> Get(
+    Guid customerId, Guid tenantId, CancellationToken cancellationToken = default)
+  {
+    var customer = await _appDb.Customers
+      .AsNoTracking()
+      .FirstOrDefaultAsync(x => x.Id == customerId && x.TenantId == tenantId, cancellationToken);
+
+    if (customer is null)
+    {
+      return HttpResult.Fail<InternalDtos.CustomerDto>(HttpResultErrorCode.NotFound, "Customer not found.");
+    }
+
+    var deviceCount = await _appDb.Devices
+      .CountAsync(x => x.TenantId == tenantId && x.CustomerId == customerId, cancellationToken);
+
+    return HttpResult.Ok(MapToDto(customer, deviceCount));
+  }
+
+  public async Task<IReadOnlyList<InternalDtos.CustomerDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default)
+  {
+    var customers = await _appDb.Customers
+      .Where(x => x.TenantId == tenantId)
+      .AsNoTracking()
+      .OrderBy(x => x.Name)
+      .ToListAsync(cancellationToken);
+
+    var customerIds = customers.Select(x => x.Id).ToList();
+
+    var deviceCounts = await _appDb.Devices
+      .Where(x => x.CustomerId.HasValue && customerIds.Contains(x.CustomerId.Value))
+      .GroupBy(x => x.CustomerId!.Value)
+      .Select(g => new { CustomerId = g.Key, Count = g.Count() })
+      .ToDictionaryAsync(x => x.CustomerId, x => x.Count, cancellationToken);
+
+    return [.. customers.Select(c => MapToDto(c, deviceCounts.GetValueOrDefault(c.Id, 0)))];
+  }
+
+  public async Task<HttpResult<InternalDtos.CustomerDto>> Update(
+    Guid customerId, string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+  {
+    if (string.IsNullOrWhiteSpace(name))
+    {
+      return HttpResult.Fail<InternalDtos.CustomerDto>(HttpResultErrorCode.BadRequest, "Name is required.");
+    }
+
+    var customer = await _appDb.Customers
+      .FirstOrDefaultAsync(x => x.Id == customerId && x.TenantId == tenantId, cancellationToken);
+
+    if (customer is null)
+    {
+      return HttpResult.Fail<InternalDtos.CustomerDto>(HttpResultErrorCode.NotFound, "Customer not found.");
+    }
+
+    var nameConflict = await _appDb.Customers
+      .AnyAsync(x => x.TenantId == tenantId && x.Name == name && x.Id != customerId, cancellationToken);
+
+    if (nameConflict)
+    {
+      return HttpResult.Fail<InternalDtos.CustomerDto>(HttpResultErrorCode.Conflict, "A customer with that name already exists.");
+    }
+
+    var before = new CustomerSnapshot(customer.Name, customer.Description, customer.Notes);
+
+    customer.Name = name;
+    customer.Description = description;
+    customer.Notes = notes;
+
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.CustomerUpdated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.Customer,
+      customerId.ToString(),
+      tenantId,
+      before: before,
+      after: new CustomerSnapshot(name, description, notes)));
+
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    var deviceCount = await _appDb.Devices
+      .CountAsync(x => x.TenantId == tenantId && x.CustomerId == customerId, cancellationToken);
+
+    return HttpResult.Ok(MapToDto(customer, deviceCount));
+  }
+
+  private static InternalDtos.CustomerDto MapToDto(Customer customer, int deviceCount)
+  {
+    return new InternalDtos.CustomerDto(
+      customer.Id, customer.Name, customer.Description, customer.Notes, customer.CreatedAt, deviceCount);
+  }
+}

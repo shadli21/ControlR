@@ -5,6 +5,7 @@ namespace ControlR.ApiClient;
 internal partial class InternalApi(ControlrApi client) :
   IControlrInternalApi,
   IAuthApi,
+  ICustomersApi,
   IDesktopPreviewApi,
   IDeviceFileSystemApi,
   IDeviceGroupsApi,
@@ -39,6 +40,7 @@ internal partial class InternalApi(ControlrApi client) :
   private readonly ControlrApi _client = client;
 
   public IAuthApi Auth => this;
+  public ICustomersApi Customers => this;
   public IDesktopPreviewApi DesktopPreview => this;
   public IDeviceFileSystemApi DeviceFileSystem => this;
   public IDeviceGroupsApi DeviceGroups => this;

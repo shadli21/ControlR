@@ -47,6 +47,8 @@ public static class PermissionCatalog
     Add(PermissionNames.TenantUserGroupsWrite, "Manage User Groups", "Create, update, and delete user groups within the tenant.", tenant);
     Add(PermissionNames.TenantDeviceGroupsRead, "Read Device Groups", "View device groups within the tenant.", tenant);
     Add(PermissionNames.TenantDeviceGroupsWrite, "Manage Device Groups", "Create, update, and delete device groups within the tenant.", tenant);
+    Add(PermissionNames.TenantCustomersRead, "Read Customers", "View customers within the tenant.", tenant);
+    Add(PermissionNames.TenantCustomersWrite, "Manage Customers", "Create, update, and delete customers within the tenant.", tenant);
     Add(PermissionNames.TenantPermissionsRead, "Read Permissions", "View permission assignments within the tenant.", tenant);
     Add(PermissionNames.TenantPermissionsWrite, "Manage Permissions", "Create and update allow permission assignments within the tenant.", tenant);
     Add(PermissionNames.TenantPermissionsDeny, "Manage Deny Permissions", "Create and update deny permission assignments within the tenant.", tenant);

@@ -34,6 +34,12 @@ public sealed record CredentialScopeSnapshot(
 public sealed record CredentialScopeSetSummary(int ScopeCount);
 
 /// <summary>
+/// Snapshot of a customer's state at a point in time.
+/// Used for create/update/delete audit entries.
+/// </summary>
+public sealed record CustomerSnapshot(string Name, string? Description, string? Notes);
+
+/// <summary>
 /// Snapshot of a device group's state at a point in time.
 /// Used for create/update/delete audit entries.
 /// </summary>
