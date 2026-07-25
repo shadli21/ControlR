@@ -6,7 +6,7 @@ public partial class PermissionAssignments : ComponentBase
 {
   private InternalDtos.PermissionAssignmentDto[]? _assignments;
   private bool _loading;
-  private string _principalKind = "User";
+  private PermissionPrincipalKind _principalKind = PermissionPrincipalKind.User;
   private Guid? _selectedPrincipalId;
 
   [Inject]
@@ -18,8 +18,6 @@ public partial class PermissionAssignments : ComponentBase
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
-  private PermissionPrincipalKind _parsedPrincipalKind => Enum.Parse<PermissionPrincipalKind>(_principalKind);
-
   private async Task CreateAssignment()
   {
     if (_selectedPrincipalId is not Guid principalId)
@@ -30,7 +28,7 @@ public partial class PermissionAssignments : ComponentBase
 
     var parameters = new DialogParameters<CreatePermissionAssignmentDialog>
     {
-      { x => x.PrincipalKind, _parsedPrincipalKind },
+      { x => x.PrincipalKind, _principalKind },
       { x => x.PrincipalId, principalId }
     };
 
@@ -79,7 +77,7 @@ public partial class PermissionAssignments : ComponentBase
 
     try
     {
-      var result = await ControlrApi.Internal.PermissionAssignments.GetByPrincipal(_principalKind, principalId);
+      var result = await ControlrApi.Internal.PermissionAssignments.GetByPrincipal(_principalKind.ToString(), principalId);
       if (result.IsSuccess)
       {
         _assignments = result.Value;
