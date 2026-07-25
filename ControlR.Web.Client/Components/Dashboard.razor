@@ -33,6 +33,20 @@
           <UserTagsSelector @bind-SelectedTags:get="_selectedTags" @bind-SelectedTags:set="@OnSelectedTagsChanged" />
         </div>
 
+        <div class="dashboard-customer-filter">
+          <MudSelect T="Guid" MultiSelection="true"
+                     SelectedValues="_selectedCustomerIds"
+                     SelectedValuesChanged="OnSelectedCustomersChanged"
+                     Label="Filter by customer"
+                     Dense="true"
+                     Clearable="true">
+            @foreach (var customer in _customers)
+            {
+              <MudSelectItem T="Guid" Value="@customer.Id">@customer.Name</MudSelectItem>
+            }
+          </MudSelect>
+        </div>
+
         <div class="dashboard-toolbar-options">
           <MudCheckBox T="bool" Value="_includeUntaggedDevices" ValueChanged="IncludeUntaggedDevicesChanged"
                        Label="Include untagged" Class="dashboard-checkbox" />

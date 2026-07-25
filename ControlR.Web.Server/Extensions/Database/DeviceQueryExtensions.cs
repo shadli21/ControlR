@@ -98,6 +98,18 @@ public static class DeviceQueryExtensions
     return query;
   }
 
+  public static IQueryable<Device> FilterByCustomerIds(
+    this IQueryable<Device> query,
+    List<Guid>? customerIds)
+  {
+    if (customerIds is not { Count: > 0 })
+    {
+      return query;
+    }
+
+    return query.Where(d => d.CustomerId.HasValue && customerIds.Contains(d.CustomerId.Value));
+  }
+
   public static IQueryable<Device> FilterByOnlineOffline(
     this IQueryable<Device> query,
     bool hideOfflineDevices)

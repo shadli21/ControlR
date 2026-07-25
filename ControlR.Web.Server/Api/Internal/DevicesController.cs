@@ -196,7 +196,8 @@ public class DevicesController(
     var filteredQuery = authorizedQuery
       .FilterBySearchText(requestDto.SearchText, isRelationalDatabase)
       .FilterByOnlineOffline(requestDto.HideOfflineDevices)
-      .FilterByColumnFilters(requestDto.FilterDefinitions, isRelationalDatabase, logger);
+      .FilterByColumnFilters(requestDto.FilterDefinitions, isRelationalDatabase, logger)
+      .FilterByCustomerIds(requestDto.CustomerIds);
 
     var hiddenUntaggedDevices = requestDto.IncludeUntaggedDevices
       ? 0

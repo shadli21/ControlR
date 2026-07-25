@@ -11226,6 +11226,16 @@
       "DeviceSearchRequestDto": {
         "type": "object",
         "properties": {
+          "customerIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           "filterDefinitions": {
             "type": [
               "null",

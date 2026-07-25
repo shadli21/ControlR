@@ -4,6 +4,7 @@ namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 public class DeviceSearchRequestDto
 {
+  public List<Guid>? CustomerIds { get; set; }
   public List<DeviceColumnFilter>? FilterDefinitions { get; set; }
   public bool HideOfflineDevices { get; set; }
   public bool IncludeUntaggedDevices { get; set; }

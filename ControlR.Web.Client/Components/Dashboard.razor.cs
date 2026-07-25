@@ -17,6 +17,7 @@ public partial class Dashboard : IDisposable
   };
 
   private bool? _anyDevicesForUser;
+  private List<CustomerDto> _customers = [];
   private MudDataGrid<DeviceViewModel>? _dataGrid;
   private DeviceSearchFilterCountsDto _filterCounts = new();
   private int _hiddenUntaggedDevices;
@@ -27,6 +28,7 @@ public partial class Dashboard : IDisposable
   private bool _openDeviceInNewTab;
   private int _rowsPerPage = 25;
   private string? _searchText;
+  private HashSet<Guid> _selectedCustomerIds = [];
   private ImmutableArray<TagViewModel> _selectedTags = [];
   private int _totalFilteredDevices;
 
@@ -96,6 +98,12 @@ public partial class Dashboard : IDisposable
       {
         _selectedTags = [.. UserTagStore.Items];
         _includeUntaggedDevices = preferences.IncludeUntaggedDevices;
+      }
+
+      var customersResult = await ControlrApi.Internal.Customers.GetAll();
+      if (customersResult.IsSuccess)
+      {
+        _customers = [.. customersResult.Value];
       }
 
       _disposables.AddRange(
@@ -218,6 +226,7 @@ public partial class Dashboard : IDisposable
       HideOfflineDevices = _hideOfflineDevices && !ShouldBypassHideOfflineDevices,
       IncludeUntaggedDevices = _includeUntaggedDevices,
       TagIds = tagIds,
+      CustomerIds = _selectedCustomerIds.Count > 0 ? [.. _selectedCustomerIds] : null,
       Page = state.Page,
       PageSize = state.PageSize,
       SortDefinitions = [.. state.SortDefinitions
@@ -276,6 +285,12 @@ public partial class Dashboard : IDisposable
   private async Task OnSearch(string text)
   {
     _searchText = text;
+    await ReloadGridData();
+  }
+
+  private async Task OnSelectedCustomersChanged(IEnumerable<Guid> customerIds)
+  {
+    _selectedCustomerIds = [.. customerIds];
     await ReloadGridData();
   }
 

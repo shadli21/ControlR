@@ -5,6 +5,7 @@
                    Value="_selected"
                    ValueChanged="HandleValueChanged"
                    SearchFunc="Search"
+                   DebounceInterval="250"
                    Label="@Label"
                    ToStringFunc="@(x => x?.DisplayName ?? string.Empty)"
                    Dense="true"
