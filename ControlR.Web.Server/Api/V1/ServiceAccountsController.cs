@@ -26,7 +26,13 @@ public class ServiceAccountsController(
     [FromBody] CreateServiceAccountCredentialRequestDto request,
     CancellationToken cancellationToken)
   {
-    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, cancellationToken);
+    var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
+    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
+    {
+      return Unauthorized();
+    }
+
+    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, principalId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -98,7 +104,7 @@ public class ServiceAccountsController(
   }
 
   [HttpGet]
-  public async Task<ActionResult<List<ServiceAccountDto>>> GetAll(CancellationToken cancellationToken)
+  public async Task<ActionResult<IReadOnlyList<ServiceAccountDto>>> GetAll(CancellationToken cancellationToken)
   {
     var accounts = await _serviceAccountManager.GetAllForServer(cancellationToken);
     return Ok(accounts.Select(x => x.ToDto()).ToList());
@@ -112,7 +118,13 @@ public class ServiceAccountsController(
     Guid credentialId,
     CancellationToken cancellationToken)
   {
-    var result = await _serviceAccountManager.RevokeCredential(serviceAccountId, credentialId, cancellationToken);
+    var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
+    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
+    {
+      return Unauthorized();
+    }
+
+    var result = await _serviceAccountManager.RevokeCredential(serviceAccountId, credentialId, principalId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();

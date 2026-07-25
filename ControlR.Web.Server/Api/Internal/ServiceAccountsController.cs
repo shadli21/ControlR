@@ -119,7 +119,7 @@ public class ServiceAccountsController(IServiceAccountManager serviceAccountMana
 
   [HttpGet]
   [Authorize(Policy = PolicyNames.RequireServiceAccountRead)]
-  public async Task<ActionResult<List<InternalDtos.TenantServiceAccountDto>>> GetAll(
+  public async Task<ActionResult<IReadOnlyList<InternalDtos.TenantServiceAccountDto>>> GetAll(
     CancellationToken cancellationToken)
   {
     if (!User.TryGetTenantId(out var tenantId))

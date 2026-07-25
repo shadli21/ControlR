@@ -31,11 +31,12 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var addCredResult = await manager.AddCredential(
       accountId,
       "Secondary key",
+      Guid.NewGuid(),
       TestContext.Current.CancellationToken);
     Assert.True(addCredResult.IsSuccess);
     var secondApiKey = addCredResult.Value.PlainTextSecretKey;
 
-    await manager.RevokeCredential(accountId, credentialId, TestContext.Current.CancellationToken);
+    await manager.RevokeCredential(accountId, credentialId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
     var shouldFail = await manager.ValidateCredential(apiKey, TestContext.Current.CancellationToken);
     Assert.False(shouldFail.IsSuccess);

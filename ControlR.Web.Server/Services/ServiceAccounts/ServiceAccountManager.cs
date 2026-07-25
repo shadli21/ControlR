@@ -17,9 +17,10 @@ public interface IServiceAccountManager
 {
   /// <summary>
   /// Adds a new credential to an existing server service account. Returns the credential
-  /// metadata and the plaintext secret, which is only exposed this once.
+  /// metadata and the plaintext secret, which is only exposed this once. Emits AuthorizationChangeLog.
   /// </summary>
-  Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredential(Guid serviceAccountId, string name, CancellationToken cancellationToken);
+  Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredential(
+    Guid serviceAccountId, string name, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Adds a new credential to a tenant-scoped service account. Emits AuthorizationChangeLog.
@@ -47,7 +48,8 @@ public interface IServiceAccountManager
     string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Deletes a server service account. Credentials cascade-delete.
+  /// Deletes a server service account. Credentials cascade-delete. Emits AuthorizationChangeLog
+  /// and removes orphaned PermissionAssignment rows where this account is the principal.
   /// </summary>
   Task<HttpResult> Delete(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken);
 
@@ -78,8 +80,10 @@ public interface IServiceAccountManager
 
   /// <summary>
   /// Revokes a credential by setting <see cref="ServiceAccountCredential.RevokedAt"/>.
+  /// Emits AuthorizationChangeLog.
   /// </summary>
-  Task<HttpResult> RevokeCredential(Guid serviceAccountId, Guid credentialId, CancellationToken cancellationToken);
+  Task<HttpResult> RevokeCredential(
+    Guid serviceAccountId, Guid credentialId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Revokes a credential on a tenant-scoped service account. Emits AuthorizationChangeLog.
@@ -129,6 +133,7 @@ public class ServiceAccountManager(
   public async Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredential(
     Guid serviceAccountId,
     string name,
+    Guid actorPrincipalId,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
@@ -159,6 +164,16 @@ public class ServiceAccountManager(
       HashedSecret = hashedSecret
     };
     account.Credentials.Add(credential);
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
+      credential.Id.ToString(),
+      null,
+      after: new ServiceAccountCredentialSnapshot(name, serviceAccountId)));
+
     await appDb.SaveChangesAsync(cancellationToken);
 
     var apiKey = FormatApiKey(credential.Id, plainTextSecret);
@@ -434,6 +449,23 @@ public class ServiceAccountManager(
 
     await EvictAccountFromCacheAsync(serviceAccountId, cancellationToken);
 
+    // Cascade: remove PermissionAssignment rows where this service account is the principal.
+    var principalAssignments = await appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.ServiceAccount && x.PrincipalId == serviceAccountId)
+      .ToListAsync(cancellationToken);
+
+    appDb.PermissionAssignments.RemoveRange(principalAssignments);
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.ServiceAccountDeleted,
+      AuthorizationChangeLogActorTypes.User,
+      requestingPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.ServiceAccount,
+      serviceAccountId.ToString(),
+      null,
+      before: new ServiceAccountSnapshot(account.Name, "Server", account.Description, account.IsEnabled)));
+
     appDb.ServiceAccounts.Remove(account);
     await appDb.SaveChangesAsync(cancellationToken);
 
@@ -536,6 +568,7 @@ public class ServiceAccountManager(
   public async Task<HttpResult> RevokeCredential(
     Guid serviceAccountId,
     Guid credentialId,
+    Guid actorPrincipalId,
     CancellationToken cancellationToken)
   {
     var credential = await appDb.ServiceAccountCredentials
@@ -554,6 +587,16 @@ public class ServiceAccountManager(
     }
 
     credential.RevokedAt = timeProvider.GetUtcNow();
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
+      credentialId.ToString(),
+      null,
+      before: new ServiceAccountCredentialSnapshot(credential.Name, serviceAccountId)));
+
     await appDb.SaveChangesAsync(cancellationToken);
 
     EvictCredentialFromCache(credentialId);

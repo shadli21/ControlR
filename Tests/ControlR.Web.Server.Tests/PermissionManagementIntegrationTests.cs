@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using ControlR.Libraries.Api.Contracts.Enums;
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.Tenants;
@@ -289,7 +290,7 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
       new InternalDtos.CreatePermissionAssignmentRequestDto(
         PermissionPrincipalKind.User,
         userId,
-        "device.write",
+        PermissionNames.DeviceRead,
         PermissionEffect.Deny,
         PermissionScopeKind.Tenant,
         tenantId,

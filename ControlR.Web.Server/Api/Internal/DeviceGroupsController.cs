@@ -113,7 +113,7 @@ public class DeviceGroupsController(IDeviceGroupManager deviceGroupManager) : Co
 
   [HttpGet]
   [Authorize(Policy = PolicyNames.RequireDeviceGroupsRead)]
-  public async Task<ActionResult<List<InternalDtos.DeviceGroupDto>>> GetAll(
+  public async Task<ActionResult<IReadOnlyList<InternalDtos.DeviceGroupDto>>> GetAll(
     CancellationToken cancellationToken)
   {
     if (!User.TryGetTenantId(out var tenantId))

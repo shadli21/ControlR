@@ -123,6 +123,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
     await serviceAccountManager.RevokeCredential(
       accountId,
       credentialId,
+      Guid.NewGuid(),
       TestContext.Current.CancellationToken);
 
     var apiKey = createResult.Value.PlainTextSecretKey;

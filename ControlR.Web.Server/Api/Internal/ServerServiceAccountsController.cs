@@ -18,7 +18,12 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromBody] InternalDtos.CreateServerServiceAccountCredentialRequestDto request,
     CancellationToken cancellationToken)
   {
-    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, cancellationToken);
+    if (!User.TryGetUserId(out var userId))
+    {
+      return BadRequest("User ID not found.");
+    }
+
+    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, userId, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -85,7 +90,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
 
   [HttpGet]
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsRead)]
-  public async Task<ActionResult<List<InternalDtos.ServerServiceAccountDto>>> GetAll(
+  public async Task<ActionResult<IReadOnlyList<InternalDtos.ServerServiceAccountDto>>> GetAll(
     CancellationToken cancellationToken)
   {
     var accounts = await _serviceAccountManager.GetAllForServer(cancellationToken);
@@ -99,7 +104,12 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromRoute] Guid credentialId,
     CancellationToken cancellationToken)
   {
-    var result = await _serviceAccountManager.RevokeCredential(serviceAccountId, credentialId, cancellationToken);
+    if (!User.TryGetUserId(out var userId))
+    {
+      return BadRequest("User ID not found.");
+    }
+
+    var result = await _serviceAccountManager.RevokeCredential(serviceAccountId, credentialId, userId, cancellationToken);
 
     if (!result.IsSuccess)
     {
