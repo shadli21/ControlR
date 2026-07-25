@@ -31,7 +31,7 @@ internal static class TestPrincipalHelper
   /// Creates a server service account, resolves it from the database, and returns
   /// a <see cref="ClaimsPrincipal"/> configured with the required claims.
   /// </summary>
-  public static async Task<(ClaimsPrincipal Principal, CreateServiceAccountResponseDto Account)> CreateServerServiceAccountAsync(
+  public static async Task<(ClaimsPrincipal Principal, CreateServiceAccountResult Account)> CreateServerServiceAccountAsync(
     IServiceProvider services,
     string? accountName = null,
     CancellationToken cancellationToken = default)
@@ -50,7 +50,7 @@ internal static class TestPrincipalHelper
   /// <summary>
   /// Builds a <see cref="ClaimsPrincipal"/> for a server service account from an existing account.
   /// </summary>
-  public static ClaimsPrincipal CreateServerServiceAccountPrincipal(CreateServiceAccountResponseDto account)
+  public static ClaimsPrincipal CreateServerServiceAccountPrincipal(CreateServiceAccountResult account)
   {
     var credential = account.ServiceAccount.Credentials[0];
     return new ClaimsPrincipal(new ClaimsIdentity([

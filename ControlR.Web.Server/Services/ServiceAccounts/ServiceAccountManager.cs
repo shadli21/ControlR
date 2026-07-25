@@ -1,16 +1,17 @@
-using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.ServiceAccounts;
 using ControlR.Libraries.Shared.Helpers;
 using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Primitives;
+using ControlR.Web.Server.Services.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ControlR.Web.Server.Services.ServiceAccounts;
 
 /// <summary>
-/// Manages server-scoped service accounts and their credentials: bootstrap from
-/// configuration, CRUD, credential creation/revocation, and credential validation for the
-/// service-account authentication handler.
+/// Manages service accounts and their credentials: bootstrap from configuration,
+/// CRUD for both server-scoped and tenant-scoped accounts, credential creation/revocation,
+/// and credential validation for the service-account authentication handler.
+/// Returns business-layer records; controllers map to API DTOs at the boundary.
 /// </summary>
 public interface IServiceAccountManager
 {
@@ -18,7 +19,13 @@ public interface IServiceAccountManager
   /// Adds a new credential to an existing server service account. Returns the credential
   /// metadata and the plaintext secret, which is only exposed this once.
   /// </summary>
-  Task<HttpResult<CreateServiceAccountCredentialResponseDto>> AddCredential(Guid serviceAccountId, string name, CancellationToken cancellationToken);
+  Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredential(Guid serviceAccountId, string name, CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Adds a new credential to a tenant-scoped service account. Emits AuthorizationChangeLog.
+  /// </summary>
+  Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForTenant(
+    Guid serviceAccountId, Guid tenantId, string name, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Creates the bootstrapped server service account and its initial credential when the
@@ -31,30 +38,60 @@ public interface IServiceAccountManager
   /// Creates a new server-scoped service account and its first credential. Returns the new
   /// account and the plaintext secret, which is only exposed this once.
   /// </summary>
-  Task<HttpResult<CreateServiceAccountResponseDto>> CreateForServer(string name, string? description, CancellationToken cancellationToken);
+  Task<HttpResult<CreateServiceAccountResult>> CreateForServer(string name, string? description, CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Creates a new tenant-scoped service account and its first credential. Emits AuthorizationChangeLog.
+  /// </summary>
+  Task<HttpResult<CreateServiceAccountResult>> CreateForTenant(
+    string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Deletes a server service account. Credentials cascade-delete.
   /// </summary>
-  /// <param name="serviceAccountId">The ID of the service account to delete.</param>
-  /// <param name="requestingPrincipalId">The ID of the authenticated principal making the request. Used to prevent self-deletion.</param>
-  /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
   Task<HttpResult> Delete(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Deletes a tenant-scoped service account. Emits AuthorizationChangeLog.
+  /// </summary>
+  Task<HttpResult> DeleteForTenant(Guid serviceAccountId, Guid tenantId, Guid requestingPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Returns a single server-scoped service account with its credential metadata.
   /// </summary>
-  Task<HttpResult<ServiceAccountDto>> Get(Guid serviceAccountId, CancellationToken cancellationToken);
+  Task<HttpResult<ServiceAccountResult>> Get(Guid serviceAccountId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Returns all server-scoped service accounts with their credential metadata.
   /// </summary>
-  Task<List<ServiceAccountDto>> GetAllForServer(CancellationToken cancellationToken);
+  Task<List<ServiceAccountResult>> GetAllForServer(CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Returns all tenant-scoped service accounts for a given tenant.
+  /// </summary>
+  Task<List<ServiceAccountResult>> GetAllForTenant(Guid tenantId, CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Returns a single tenant-scoped service account with its credential metadata.
+  /// </summary>
+  Task<HttpResult<ServiceAccountResult>> GetForTenant(Guid serviceAccountId, Guid tenantId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Revokes a credential by setting <see cref="ServiceAccountCredential.RevokedAt"/>.
   /// </summary>
   Task<HttpResult> RevokeCredential(Guid serviceAccountId, Guid credentialId, CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Revokes a credential on a tenant-scoped service account. Emits AuthorizationChangeLog.
+  /// </summary>
+  Task<HttpResult> RevokeCredentialForTenant(
+    Guid serviceAccountId, Guid credentialId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Updates a tenant-scoped service account's name and description. Emits AuthorizationChangeLog.
+  /// </summary>
+  Task<HttpResult<ServiceAccountResult>> UpdateForTenant(
+    Guid serviceAccountId, Guid tenantId, string name, string? description, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Validates a <c>{hex_id}:{plaintext_secret}</c> API key against a service account credential.
@@ -83,14 +120,14 @@ public class ServiceAccountManager(
 
   private static readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(30);
 
-  public async Task<HttpResult<CreateServiceAccountCredentialResponseDto>> AddCredential(
+  public async Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredential(
     Guid serviceAccountId,
     string name,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
-      return HttpResult.Fail<CreateServiceAccountCredentialResponseDto>(HttpResultErrorCode.BadRequest, "Credential name is required.");
+      return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.BadRequest, "Credential name is required.");
     }
 
     var account = await appDb.ServiceAccounts
@@ -99,12 +136,12 @@ public class ServiceAccountManager(
 
     if (account is null)
     {
-      return HttpResult.Fail<CreateServiceAccountCredentialResponseDto>(HttpResultErrorCode.NotFound, "Server service account not found.");
+      return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.NotFound, "Server service account not found.");
     }
 
     if (!account.IsEnabled)
     {
-      return HttpResult.Fail<CreateServiceAccountCredentialResponseDto>(HttpResultErrorCode.Forbidden, "Service account is disabled.");
+      return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.Forbidden, "Service account is disabled.");
     }
 
     var plainTextSecret = RandomGenerator.CreateApiKey();
@@ -119,7 +156,58 @@ public class ServiceAccountManager(
     await appDb.SaveChangesAsync(cancellationToken);
 
     var apiKey = FormatApiKey(credential.Id, plainTextSecret);
-    return HttpResult.Ok(new CreateServiceAccountCredentialResponseDto(MapCredentialToDto(credential), apiKey));
+    return HttpResult.Ok(new CreateServiceAccountCredentialResult(MapCredentialToResult(credential), apiKey));
+  }
+
+  public async Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForTenant(
+    Guid serviceAccountId,
+    Guid tenantId,
+    string name,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken)
+  {
+    if (string.IsNullOrWhiteSpace(name))
+    {
+      return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.BadRequest, "Credential name is required.");
+    }
+
+    var account = await appDb.ServiceAccounts
+      .Include(x => x.Credentials)
+      .FirstOrDefaultAsync(x => x.Id == serviceAccountId && x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId, cancellationToken);
+
+    if (account is null)
+    {
+      return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.NotFound, "Service account not found.");
+    }
+
+    if (!account.IsEnabled)
+    {
+      return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.Forbidden, "Service account is disabled.");
+    }
+
+    var plainTextSecret = RandomGenerator.CreateApiKey();
+    var hashedSecret = passwordHasher.HashPassword(string.Empty, plainTextSecret);
+
+    var credential = new ServiceAccountCredential
+    {
+      Name = name,
+      HashedSecret = hashedSecret
+    };
+    account.Credentials.Add(credential);
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
+      credential.Id.ToString(),
+      tenantId,
+      after: new ServiceAccountCredentialSnapshot(name, serviceAccountId)));
+
+    await appDb.SaveChangesAsync(cancellationToken);
+
+    var apiKey = FormatApiKey(credential.Id, plainTextSecret);
+    return HttpResult.Ok(new CreateServiceAccountCredentialResult(MapCredentialToResult(credential), apiKey));
   }
 
   public async Task<HttpResult> BootstrapServerServiceAccount(
@@ -210,21 +298,21 @@ public class ServiceAccountManager(
     return HttpResult.Ok();
   }
 
-  public async Task<HttpResult<CreateServiceAccountResponseDto>> CreateForServer(
+  public async Task<HttpResult<CreateServiceAccountResult>> CreateForServer(
     string name,
     string? description,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
-      return HttpResult.Fail<CreateServiceAccountResponseDto>(HttpResultErrorCode.BadRequest, "Name is required.");
+      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.BadRequest, "Name is required.");
     }
 
     var nameConflict = await appDb.ServiceAccounts
       .AnyAsync(x => x.Kind == ServiceAccountKind.Server && x.Name == name, cancellationToken);
     if (nameConflict)
     {
-      return HttpResult.Fail<CreateServiceAccountResponseDto>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
+      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
     }
 
     var plainTextSecret = RandomGenerator.CreateApiKey();
@@ -254,11 +342,73 @@ public class ServiceAccountManager(
 
     if (saveResult == SaveChangesResult.ConflictDetected)
     {
-      return HttpResult.Fail<CreateServiceAccountResponseDto>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
+      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
     }
 
     var apiKey = FormatApiKey(credential.Id, plainTextSecret);
-    return HttpResult.Ok(new CreateServiceAccountResponseDto(MapToDto(account), apiKey));
+    return HttpResult.Ok(new CreateServiceAccountResult(MapToResult(account), apiKey));
+  }
+
+  public async Task<HttpResult<CreateServiceAccountResult>> CreateForTenant(
+    string name,
+    string? description,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken)
+  {
+    if (string.IsNullOrWhiteSpace(name))
+    {
+      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.BadRequest, "Name is required.");
+    }
+
+    var nameConflict = await appDb.ServiceAccounts
+      .AnyAsync(x => x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId && x.Name == name, cancellationToken);
+    if (nameConflict)
+    {
+      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.Conflict, "A service account with that name already exists in this tenant.");
+    }
+
+    var plainTextSecret = RandomGenerator.CreateApiKey();
+    var hashedSecret = passwordHasher.HashPassword(string.Empty, plainTextSecret);
+
+    var account = new ServiceAccount
+    {
+      Kind = ServiceAccountKind.Tenant,
+      TenantId = tenantId,
+      Name = name,
+      Description = description,
+      IsEnabled = true
+    };
+
+    var credential = new ServiceAccountCredential
+    {
+      Name = "Initial Credential",
+      HashedSecret = hashedSecret
+    };
+    account.Credentials.Add(credential);
+
+    appDb.ServiceAccounts.Add(account);
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.ServiceAccountCreated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.ServiceAccount,
+      account.Id.ToString(),
+      tenantId,
+      after: new ServiceAccountSnapshot(name, "Tenant", description, true)));
+
+    var saveResult = await appDb.SaveChangesOrConfirmConflictAsync<ServiceAccount>(
+      x => x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId && x.Name == name,
+      cancellationToken);
+
+    if (saveResult == SaveChangesResult.ConflictDetected)
+    {
+      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.Conflict, "A service account with that name already exists in this tenant.");
+    }
+
+    var apiKey = FormatApiKey(credential.Id, plainTextSecret);
+    return HttpResult.Ok(new CreateServiceAccountResult(MapToResult(account), apiKey));
   }
 
   public async Task<HttpResult> Delete(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken)
@@ -284,7 +434,43 @@ public class ServiceAccountManager(
     return HttpResult.Ok();
   }
 
-  public async Task<HttpResult<ServiceAccountDto>> Get(
+  public async Task<HttpResult> DeleteForTenant(
+    Guid serviceAccountId,
+    Guid tenantId,
+    Guid requestingPrincipalId,
+    CancellationToken cancellationToken)
+  {
+    if (serviceAccountId.Equals(requestingPrincipalId))
+    {
+      return HttpResult.Fail(HttpResultErrorCode.Forbidden, "A service account cannot delete itself.");
+    }
+
+    var account = await appDb.ServiceAccounts
+      .FirstOrDefaultAsync(x => x.Id == serviceAccountId && x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId, cancellationToken);
+
+    if (account is null)
+    {
+      return HttpResult.Fail(HttpResultErrorCode.NotFound, "Service account not found.");
+    }
+
+    await EvictAccountFromCacheAsync(serviceAccountId, cancellationToken);
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.ServiceAccountDeleted,
+      AuthorizationChangeLogActorTypes.User,
+      requestingPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.ServiceAccount,
+      serviceAccountId.ToString(),
+      tenantId,
+      before: new ServiceAccountSnapshot(account.Name, "Tenant", account.Description, account.IsEnabled)));
+
+    appDb.ServiceAccounts.Remove(account);
+    await appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok();
+  }
+
+  public async Task<HttpResult<ServiceAccountResult>> Get(
     Guid serviceAccountId,
     CancellationToken cancellationToken)
   {
@@ -294,13 +480,13 @@ public class ServiceAccountManager(
 
     if (account is null)
     {
-      return HttpResult.Fail<ServiceAccountDto>(HttpResultErrorCode.NotFound, "Server service account not found.");
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.NotFound, "Server service account not found.");
     }
 
-    return HttpResult.Ok(MapToDto(account));
+    return HttpResult.Ok(MapToResult(account));
   }
 
-  public async Task<List<ServiceAccountDto>> GetAllForServer(CancellationToken cancellationToken)
+  public async Task<List<ServiceAccountResult>> GetAllForServer(CancellationToken cancellationToken)
   {
     var accounts = await appDb.ServiceAccounts
       .Where(x => x.Kind == ServiceAccountKind.Server)
@@ -309,7 +495,36 @@ public class ServiceAccountManager(
       .OrderBy(x => x.Name)
       .ToListAsync(cancellationToken);
 
-    return [.. accounts.Select(MapToDto)];
+    return [.. accounts.Select(MapToResult)];
+  }
+
+  public async Task<List<ServiceAccountResult>> GetAllForTenant(Guid tenantId, CancellationToken cancellationToken)
+  {
+    var accounts = await appDb.ServiceAccounts
+      .Where(x => x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId)
+      .Include(x => x.Credentials)
+      .AsNoTracking()
+      .OrderBy(x => x.Name)
+      .ToListAsync(cancellationToken);
+
+    return [.. accounts.Select(MapToResult)];
+  }
+
+  public async Task<HttpResult<ServiceAccountResult>> GetForTenant(
+    Guid serviceAccountId,
+    Guid tenantId,
+    CancellationToken cancellationToken)
+  {
+    var account = await appDb.ServiceAccounts
+      .Include(x => x.Credentials)
+      .FirstOrDefaultAsync(x => x.Id == serviceAccountId && x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId, cancellationToken);
+
+    if (account is null)
+    {
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.NotFound, "Service account not found.");
+    }
+
+    return HttpResult.Ok(MapToResult(account));
   }
 
   public async Task<HttpResult> RevokeCredential(
@@ -337,6 +552,91 @@ public class ServiceAccountManager(
 
     EvictCredentialFromCache(credentialId);
     return HttpResult.Ok();
+  }
+
+  public async Task<HttpResult> RevokeCredentialForTenant(
+    Guid serviceAccountId,
+    Guid credentialId,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken)
+  {
+    var credential = await appDb.ServiceAccountCredentials
+      .Include(x => x.ServiceAccount)
+      .FirstOrDefaultAsync(
+        x => x.Id == credentialId &&
+             x.ServiceAccountId == serviceAccountId &&
+             x.ServiceAccount!.Kind == ServiceAccountKind.Tenant &&
+             x.ServiceAccount.TenantId == tenantId,
+        cancellationToken);
+
+    if (credential is null)
+    {
+      return HttpResult.Fail(HttpResultErrorCode.NotFound, "Credential not found.");
+    }
+
+    if (credential.RevokedAt is not null)
+    {
+      return HttpResult.Ok();
+    }
+
+    credential.RevokedAt = timeProvider.GetUtcNow();
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
+      credentialId.ToString(),
+      tenantId,
+      before: new ServiceAccountCredentialSnapshot(credential.Name, serviceAccountId)));
+
+    await appDb.SaveChangesAsync(cancellationToken);
+
+    EvictCredentialFromCache(credentialId);
+    return HttpResult.Ok();
+  }
+
+  public async Task<HttpResult<ServiceAccountResult>> UpdateForTenant(
+    Guid serviceAccountId,
+    Guid tenantId,
+    string name,
+    string? description,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken)
+  {
+    if (string.IsNullOrWhiteSpace(name))
+    {
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.BadRequest, "Name is required.");
+    }
+
+    var account = await appDb.ServiceAccounts
+      .Include(x => x.Credentials)
+      .FirstOrDefaultAsync(x => x.Id == serviceAccountId && x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId, cancellationToken);
+
+    if (account is null)
+    {
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.NotFound, "Service account not found.");
+    }
+
+    var before = new ServiceAccountSnapshot(account.Name, "Tenant", account.Description, account.IsEnabled);
+
+    account.Name = name;
+    account.Description = description;
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.ServiceAccountUpdated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.ServiceAccount,
+      serviceAccountId.ToString(),
+      tenantId,
+      before: before,
+      after: new ServiceAccountSnapshot(name, "Tenant", description, account.IsEnabled)));
+
+    await appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok(MapToResult(account));
   }
 
   public async Task<HttpResult<ServiceAccountCredentialValidationResult>> ValidateCredential(
@@ -442,9 +742,9 @@ public class ServiceAccountManager(
     return $"{hexId}:{plainTextSecret}";
   }
 
-  private static ServiceAccountCredentialDto MapCredentialToDto(ServiceAccountCredential credential)
+  private static ServiceAccountCredentialResult MapCredentialToResult(ServiceAccountCredential credential)
   {
-    return new ServiceAccountCredentialDto(
+    return new ServiceAccountCredentialResult(
       credential.Id,
       credential.Name,
       credential.CreatedAt,
@@ -453,9 +753,9 @@ public class ServiceAccountManager(
       credential.LastUsedAt);
   }
 
-  private static ServiceAccountDto MapToDto(ServiceAccount account)
+  private static ServiceAccountResult MapToResult(ServiceAccount account)
   {
-    return new ServiceAccountDto(
+    return new ServiceAccountResult(
       account.Id,
       account.Name,
       account.Description,
@@ -465,7 +765,7 @@ public class ServiceAccountManager(
       account.Credentials
         .OrderBy(c => c.CreatedAt)
         .ThenBy(c => c.Id)
-        .Select(MapCredentialToDto)
+        .Select(MapCredentialToResult)
         .ToList());
   }
 

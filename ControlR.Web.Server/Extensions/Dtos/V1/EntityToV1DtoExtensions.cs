@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace ControlR.Web.Server.Extensions;
+namespace ControlR.Web.Server.Extensions.Dtos.V1;
 
 public static class EntityToV1DtoExtensions
 {

@@ -2,6 +2,7 @@ using Asp.Versioning;
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.ServiceAccounts;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Extensions.Dtos.V1;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.V1;
@@ -28,10 +29,10 @@ public class ServiceAccountsController(
     var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, cancellationToken);
     if (!result.IsSuccess)
     {
-      return result.ToActionResult();
+      return result.ToHttpResult().ToActionResult();
     }
 
-    return Ok(result.Value);
+    return Ok(result.Value.ToDto());
   }
 
   [HttpPost]
@@ -45,10 +46,10 @@ public class ServiceAccountsController(
     var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, cancellationToken);
     if (!result.IsSuccess)
     {
-      return result.ToActionResult();
+      return result.ToHttpResult().ToActionResult();
     }
 
-    return CreatedAtAction(nameof(Get), new { serviceAccountId = result.Value.ServiceAccount.Id }, result.Value);
+    return CreatedAtAction(nameof(Get), new { serviceAccountId = result.Value.ServiceAccount.Id }, result.Value.ToDto());
   }
 
   [HttpDelete("{serviceAccountId:guid}")]
@@ -90,17 +91,17 @@ public class ServiceAccountsController(
     var result = await _serviceAccountManager.Get(serviceAccountId, cancellationToken);
     if (!result.IsSuccess)
     {
-      return result.ToActionResult();
+      return result.ToHttpResult().ToActionResult();
     }
 
-    return Ok(result.Value);
+    return Ok(result.Value.ToDto());
   }
 
   [HttpGet]
   public async Task<ActionResult<List<ServiceAccountDto>>> GetAll(CancellationToken cancellationToken)
   {
     var accounts = await _serviceAccountManager.GetAllForServer(cancellationToken);
-    return Ok(accounts);
+    return Ok(accounts.Select(x => x.ToDto()).ToList());
   }
 
   [HttpDelete("{serviceAccountId:guid}/credentials/{credentialId:guid}")]
