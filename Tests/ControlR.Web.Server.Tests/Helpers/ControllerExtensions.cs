@@ -1,4 +1,5 @@
 ﻿using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -35,6 +36,9 @@ internal static class ControllerExtensions
       new(ClaimTypes.Email, $"{user.Email}"),
       new(UserClaimTypes.TenantId, user.TenantId.ToString()),
       new(UserClaimTypes.UserId, user.Id.ToString()),
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.User),
+      new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
+      new(UserClaimTypes.AuthenticationMethod, "cookie"),
       ..roleClaims,
       ..userClaims
     ];

@@ -349,8 +349,11 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task LogonTokenGrants_WhenZeroRows_Denies()
+  public async Task LogonTokenGrants_WhenZeroRows_FallsThroughToUserPermissions()
   {
+    // BRIDGE (deleted in PR 13): Until PR 7 adds scope management, no credential scope
+    // rows exist yet. Zero scope rows falls through to the user's effective permissions
+    // instead of denying. After PR 13, this test should assert deny.
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
@@ -378,8 +381,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken);
 
-    Assert.False(result.Allowed);
-    Assert.Contains("no scope grants", result.DenialReason);
+    Assert.True(result.Allowed);
   }
 
   [Fact]
@@ -509,8 +511,11 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task PatScopeGrants_WhenZeroRows_Denies()
+  public async Task PatScopeGrants_WhenZeroRows_FallsThroughToUserPermissions()
   {
+    // BRIDGE (deleted in PR 13): Until PR 7 adds scope management, no credential scope
+    // rows exist yet. Zero scope rows falls through to the user's effective permissions
+    // instead of denying. After PR 13, this test should assert deny.
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
@@ -537,8 +542,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
 
-    Assert.False(result.Allowed);
-    Assert.Contains("no scope grants", result.DenialReason);
+    Assert.True(result.Allowed);
   }
 
   [Fact]

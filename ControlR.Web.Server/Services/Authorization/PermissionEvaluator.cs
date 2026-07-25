@@ -81,10 +81,14 @@ public class PermissionEvaluator(
     }
 
     // Step 6: Resolve seeded role-bundle permissions from role claims (interim bridge,
-    // deleted in PR 13). Each role maps to a static set of permission names treated as
-    // server-scoped allows at the lowest source priority.
+    // deleted in PR 13). Each role maps to a static set of permission names. Scoped to
+    // the principal's tenant to preserve tenant isolation.
     if (principal.Roles is { Count: > 0 })
     {
+      var bundleScopeKind = principal.TenantId.HasValue
+        ? PermissionScopeKind.Tenant
+        : PermissionScopeKind.Server;
+
       foreach (var roleName in principal.Roles)
       {
         var bundlePermissions = _roleBundleResolver.ResolvePermissions([roleName]);
@@ -95,7 +99,8 @@ public class PermissionEvaluator(
             {
               PermissionName = perm,
               Effect = PermissionEffect.Allow,
-              ScopeKind = PermissionScopeKind.Server,
+              ScopeKind = bundleScopeKind,
+              ScopeId = principal.TenantId,
               PrincipalKind = PermissionPrincipalKind.User,
               PrincipalId = principal.PrincipalId,
               IsEnabled = true
@@ -106,9 +111,31 @@ public class PermissionEvaluator(
       }
     }
 
+    // Logon token device-scope enforcement: a logon token session is always restricted
+    // to the device it was created for. This is a hard security boundary that applies
+    // regardless of scope rows or bridge mode.
+    if (principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType)
+    {
+      if (!principal.DeviceScopeId.HasValue)
+      {
+        return PermissionEvaluationResult.Deny("Logon token principal is missing required device scope.");
+      }
+
+      if (resource.Kind == PermissionScopeKind.Device &&
+          resource.Id.HasValue &&
+          resource.Id.Value != principal.DeviceScopeId.Value)
+      {
+        return PermissionEvaluationResult.Deny("Logon token session is restricted to its scoped device.");
+      }
+    }
+
     // Steps 7-8: Credential-scoped principals (PAT / logon token) use the granting model.
     // The credential's scope rows define what it can do, bounded by the user's effective
     // permissions. Zero scope rows grants nothing.
+    // BRIDGE (deleted in PR 13): Until PR 7 adds scope management, no scope rows exist yet.
+    // During the bridge period, zero scope rows falls through to the user's effective
+    // permissions (preserving pre-rework behavior where PATs/logon tokens inherit full
+    // user authority). After PR 13, zero rows will deny.
     if (principal.IsCredentialScoped && principal.CredentialId.HasValue)
     {
       var credentialKind = principal.CredentialType == PrincipalClaimTypes.PersonalAccessTokenCredentialType
@@ -118,56 +145,66 @@ public class PermissionEvaluator(
       var credentialAssignments = await LoadAssignments(
         db, credentialKind, principal.CredentialId.Value, cancellationToken);
 
-      if (credentialAssignments.Count == 0)
+      if (credentialAssignments.Count > 0)
       {
-        return PermissionEvaluationResult.Deny("Credential has no scope grants.");
-      }
+        // Bounded constraint: intersect credential grants with the user's effective
+        // permissions computed above. A user cannot grant a credential permissions they
+        // do not themselves hold.
+        var userEffectivePermissions = rules
+          .Where(r => r.Assignment.Effect == PermissionEffect.Allow)
+          .Select(r => r.Assignment.PermissionName)
+          .ToHashSet();
 
-      // Bounded constraint: intersect credential grants with the user's effective
-      // permissions computed above. A user cannot grant a credential permissions they
-      // do not themselves hold.
-      var userEffectivePermissions = rules
-        .Where(r => r.Assignment.Effect == PermissionEffect.Allow)
-        .Select(r => r.Assignment.PermissionName)
-        .ToHashSet();
-
-      var boundedAssignments = credentialAssignments
-        .Where(a => userEffectivePermissions.Contains(a.PermissionName))
-        .ToList();
-
-      if (boundedAssignments.Count == 0)
-      {
-        return PermissionEvaluationResult.Deny("Credential scope grants are outside the user's effective permissions.");
-      }
-
-      // Logon tokens are additionally device-scoped: grants must target the specific
-      // device the token was created for, preventing cross-device access.
-      if (principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType &&
-          principal.DeviceScopeId.HasValue)
-      {
-        boundedAssignments = boundedAssignments
-          .Where(a => a.ScopeKind == PermissionScopeKind.Device && a.ScopeId == principal.DeviceScopeId.Value)
+        var boundedAssignments = credentialAssignments
+          .Where(a => userEffectivePermissions.Contains(a.PermissionName))
           .ToList();
 
         if (boundedAssignments.Count == 0)
         {
-          return PermissionEvaluationResult.Deny("Logon token grants do not match the device scope.");
+          return PermissionEvaluationResult.Deny("Credential scope grants are outside the user's effective permissions.");
+        }
+
+        // Logon tokens are additionally device-scoped: grants must target the specific
+        // device the token was created for, preventing cross-device access.
+        if (principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType &&
+            principal.DeviceScopeId.HasValue)
+        {
+          boundedAssignments = boundedAssignments
+            .Where(a => a.ScopeKind == PermissionScopeKind.Device && a.ScopeId == principal.DeviceScopeId.Value)
+            .ToList();
+
+          if (boundedAssignments.Count == 0)
+          {
+            return PermissionEvaluationResult.Deny("Logon token grants do not match the device scope.");
+          }
+        }
+
+        // Replace the user's rules entirely with the bounded credential grants.
+        // The credential's scope is the exclusive permission set for this request.
+        rules.Clear();
+        var priority = credentialKind == PermissionPrincipalKind.PersonalAccessToken
+          ? SourcePriority.CredentialPat
+          : SourcePriority.CredentialLogonToken;
+        var source = credentialKind == PermissionPrincipalKind.PersonalAccessToken
+          ? RuleSource.PatGrant
+          : RuleSource.LogonTokenGrant;
+
+        foreach (var assignment in boundedAssignments)
+        {
+          rules.Add(new EvaluationRule(assignment, source, priority));
         }
       }
-
-      // Replace the user's rules entirely with the bounded credential grants.
-      // The credential's scope is the exclusive permission set for this request.
-      rules.Clear();
-      var priority = credentialKind == PermissionPrincipalKind.PersonalAccessToken
-        ? SourcePriority.CredentialPat
-        : SourcePriority.CredentialLogonToken;
-      var source = credentialKind == PermissionPrincipalKind.PersonalAccessToken
-        ? RuleSource.PatGrant
-        : RuleSource.LogonTokenGrant;
-
-      foreach (var assignment in boundedAssignments)
+      else if (principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType &&
+               principal.DeviceScopeId.HasValue &&
+               resource.Kind == PermissionScopeKind.Device &&
+               resource.Id == principal.DeviceScopeId.Value)
       {
-        rules.Add(new EvaluationRule(assignment, source, priority));
+        // BRIDGE (deleted in PR 13): Logon token sessions accessing their scoped device
+        // are allowed unconditionally when no scope rows exist. This preserves the old
+        // DeviceAccessScopeKind.SingleDevice behavior for external/transient users who
+        // have no roles or explicit assignments. After PR 7 adds scope management and
+        // PR 13 removes the bridge, zero rows will deny.
+        return PermissionEvaluationResult.Allow("logon-token-device-scope-bridge", "Device");
       }
     }
 
