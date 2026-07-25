@@ -1,0 +1,539 @@
+using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Data;
+using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Data.Enums;
+using ControlR.Web.Server.Services.Authorization;
+using ControlR.Web.Server.Tests.Helpers;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace ControlR.Web.Server.Tests;
+
+public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
+{
+  private readonly ITestOutputHelper _testOutput = testOutput;
+
+  [Fact]
+  public async Task DefaultDeny_WhenNoRules_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("default deny", result.DenialReason);
+  }
+
+  [Fact]
+  public async Task DenyOverridesAllow_WhenBothExist_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceDelete,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceDelete,
+      Effect = PermissionEffect.Deny,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("Explicit deny", result.DenialReason);
+  }
+
+  [Fact]
+  public async Task DirectAllow_WhenAssignmentExists_Allows()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+    Assert.Equal("Direct", result.MatchedRuleSource);
+  }
+
+  [Fact]
+  public async Task LogonTokenGrants_WhenDeviceScopeMismatch_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var tokenId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRemoteControlConnect,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.LogonToken,
+      PrincipalId = tokenId,
+      PermissionName = PermissionNames.DeviceRemoteControlConnect,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = deviceA.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: tokenId,
+      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      deviceScopeId: deviceB.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("device scope", result.DenialReason);
+  }
+
+  [Fact]
+  public async Task LogonTokenGrants_WhenMatchingAllow_Allows()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var tokenId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRemoteControlConnect,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.LogonToken,
+      PrincipalId = tokenId,
+      PermissionName = PermissionNames.DeviceRemoteControlConnect,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: tokenId,
+      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      deviceScopeId: device.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+    Assert.Equal("LogonTokenGrant", result.MatchedRuleSource);
+  }
+
+  [Fact]
+  public async Task PatScopeGrants_WhenMatchingAllow_Allows()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var patId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
+      PrincipalId = patId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: patId,
+      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+    Assert.Equal("PatGrant", result.MatchedRuleSource);
+  }
+
+  [Fact]
+  public async Task PatScopeGrants_WhenOutsideUserPermissions_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var patId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
+      PrincipalId = patId,
+      PermissionName = PermissionNames.DeviceDelete,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: patId,
+      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("outside the user's effective permissions", result.DenialReason);
+  }
+
+  [Fact]
+  public async Task PatScopeGrants_WhenZeroRows_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var patId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: patId,
+      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("no scope grants", result.DenialReason);
+  }
+
+  [Fact]
+  public async Task RoleBundleAllow_WhenRoleGrantsPermission_Allows()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    var evaluator = GetEvaluator(testApp, rolePermissions: [PermissionNames.DeviceRead]);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id, roles: ["TenantAdministrator"]);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Tenant, null, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+    Assert.Equal("RoleBundle", result.MatchedRuleSource);
+  }
+
+  [Fact]
+  public async Task ServerServiceAccount_WithAssignments_EvaluatesNormally()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var serviceAccountId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.ServiceAccount,
+      PrincipalId = serviceAccountId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = new PrincipalDescriptor(
+      PrincipalClaimTypes.ServerServiceAccount,
+      serviceAccountId,
+      TenantId: null,
+      AuthMethod: PrincipalClaimTypes.ServiceAccountCredentialMethod);
+
+    var allowedResource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+    var allowedResult = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, allowedResource, TestContext.Current.CancellationToken);
+    Assert.True(allowedResult.Allowed);
+
+    var otherDevice = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deniedResource = new ResourceDescriptor(PermissionScopeKind.Device, otherDevice.Id, tenant.Id);
+    var deniedResult = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, deniedResource, TestContext.Current.CancellationToken);
+    Assert.False(deniedResult.Allowed);
+  }
+
+  [Fact]
+  public async Task ServerServiceAccount_WithNoAssignments_Bypasses()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var serviceAccountId = Guid.NewGuid();
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = new PrincipalDescriptor(
+      PrincipalClaimTypes.ServerServiceAccount,
+      serviceAccountId,
+      TenantId: null,
+      AuthMethod: PrincipalClaimTypes.ServiceAccountCredentialMethod);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, Guid.NewGuid());
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+    Assert.Equal("server-service-account-bypass", result.MatchedRuleSource);
+  }
+
+  [Fact]
+  public async Task TenantIsolation_WhenAssignmentInDifferentTenant_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenantA = await testApp.App.Services.CreateTestTenant("Tenant A");
+    var tenantB = await testApp.App.Services.CreateTestTenant("Tenant B");
+    var userA = await testApp.App.Services.CreateTestUser(tenantA.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenantB.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = userA.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenantA.Id,
+      OwningTenantId = tenantA.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(userA.Id, tenantA.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenantB.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+  }
+
+  [Fact]
+  public async Task TenantServiceAccount_WithAssignment_Allows()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var serviceAccountId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.ServiceAccount,
+      PrincipalId = serviceAccountId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = new PrincipalDescriptor(
+      PrincipalClaimTypes.TenantServiceAccount,
+      serviceAccountId,
+      TenantId: tenant.Id,
+      AuthMethod: PrincipalClaimTypes.ServiceAccountCredentialMethod);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+    Assert.Equal("Direct", result.MatchedRuleSource);
+  }
+
+  [Fact]
+  public async Task UserGroupAllow_WhenGroupHasAssignment_Allows()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    var groupId = Guid.NewGuid();
+    await SeedUserGroup(testApp, groupId, tenant.Id, user.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.UserGroup,
+      PrincipalId = groupId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+    Assert.Equal("UserGroup", result.MatchedRuleSource);
+  }
+
+  private static PrincipalDescriptor CreateUserPrincipal(
+    Guid userId,
+    Guid tenantId,
+    Guid? credentialId = null,
+    string? credentialType = null,
+    Guid? deviceScopeId = null,
+    string[]? roles = null)
+  {
+    return new PrincipalDescriptor(
+      PrincipalClaimTypes.User,
+      userId,
+      tenantId,
+      AuthMethod: credentialType is not null
+        ? (credentialType == PrincipalClaimTypes.PersonalAccessTokenCredentialType
+          ? PrincipalClaimTypes.PersonalAccessTokenMethod
+          : PrincipalClaimTypes.LogonTokenMethod)
+        : "cookie",
+      CredentialId: credentialId,
+      CredentialType: credentialType,
+      DeviceScopeId: deviceScopeId,
+      Roles: roles);
+  }
+
+  private static IPermissionEvaluator GetEvaluator(TestApp testApp, string[]? rolePermissions = null)
+  {
+    if (rolePermissions is not null)
+    {
+      var resolver = new TestRoleBundleResolver(rolePermissions);
+      return ActivatorUtilities.CreateInstance<PermissionEvaluator>(
+        testApp.App.Services, resolver);
+    }
+
+    return testApp.App.Services.GetRequiredService<IPermissionEvaluator>();
+  }
+
+  private static async Task SeedAssignment(TestApp testApp, PermissionAssignment assignment)
+  {
+    using var scope = testApp.App.Services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    db.PermissionAssignments.Add(assignment);
+    await db.SaveChangesAsync();
+  }
+
+  private static async Task SeedUserGroup(TestApp testApp, Guid groupId, Guid tenantId, Guid userId)
+  {
+    using var scope = testApp.App.Services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    db.UserGroups.Add(new UserGroup { Id = groupId, Name = $"group-{groupId:N}", TenantId = tenantId });
+    db.UserGroupMembers.Add(new UserGroupMember { UserGroupId = groupId, UserId = userId });
+    await db.SaveChangesAsync();
+  }
+
+  private class TestRoleBundleResolver(string[] permissions) : IRoleBundleResolver
+  {
+    public IReadOnlySet<string> ResolvePermissions(IEnumerable<string> roleNames)
+    {
+      return permissions.ToHashSet();
+    }
+  }
+}
