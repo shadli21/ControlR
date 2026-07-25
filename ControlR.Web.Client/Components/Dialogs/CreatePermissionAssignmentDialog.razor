@@ -1,5 +1,6 @@
 @using ControlR.Libraries.Api.Contracts.Enums
 @using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal
+@using ControlR.Web.Client.Components.Shared
 
 <MudDialog>
   <DialogContent>
@@ -28,7 +29,10 @@
         </MudSelect>
       </MudItem>
       <MudItem xs="12">
-        <MudTextField T="string" @bind-Value="_scopeId" Label="Scope ID (optional GUID)" />
+        <ScopeAutocomplete ScopeKind="_scopeKind"
+                           @bind-SelectedId="_scopeId"
+                           Label="Scope"
+                           Class="mb-2" />
       </MudItem>
       <MudItem xs="12">
         <MudTextField T="string" @bind-Value="_notes" Label="Notes (optional)" Lines="2" />

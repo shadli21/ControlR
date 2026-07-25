@@ -9,7 +9,7 @@ public partial class EffectivePermissions : ComponentBase
   private string _permissionName = string.Empty;
   private string _principalKind = "User";
   private InternalDtos.EffectivePermissionQueryResponseDto? _result;
-  private string _scopeId = string.Empty;
+  private Guid? _scopeId;
   private string _scopeKind = "Tenant";
   private Guid? _selectedPrincipalId;
 
@@ -20,6 +20,8 @@ public partial class EffectivePermissions : ComponentBase
   public required ISnackbar Snackbar { get; init; }
 
   private PermissionPrincipalKind _parsedPrincipalKind => Enum.Parse<PermissionPrincipalKind>(_principalKind);
+
+  private PermissionScopeKind _parsedScopeKind => Enum.Parse<PermissionScopeKind>(_scopeKind);
 
   protected override async Task OnInitializedAsync()
   {
@@ -44,23 +46,12 @@ public partial class EffectivePermissions : ComponentBase
       return;
     }
 
-    Guid? scopeId = null;
-    if (!string.IsNullOrWhiteSpace(_scopeId))
-    {
-      if (!Guid.TryParse(_scopeId, out var parsed))
-      {
-        Snackbar.Add("Invalid scope ID format", Severity.Error);
-        return;
-      }
-      scopeId = parsed;
-    }
-
     var request = new InternalDtos.EffectivePermissionQueryRequestDto(
       _parsedPrincipalKind,
       principalId,
       _permissionName,
-      Enum.Parse<PermissionScopeKind>(_scopeKind),
-      scopeId);
+      _parsedScopeKind,
+      _scopeId);
 
     var result = await ControlrApi.Internal.EffectivePermissions.Query(request);
     if (!result.IsSuccess)

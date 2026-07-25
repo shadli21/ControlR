@@ -10,7 +10,7 @@ public partial class CreatePermissionAssignmentDialog : ComponentBase
   private PermissionEffect _effect = PermissionEffect.Allow;
   private string _notes = string.Empty;
   private string _permissionName = string.Empty;
-  private string _scopeId = string.Empty;
+  private Guid? _scopeId;
   private PermissionScopeKind _scopeKind = PermissionScopeKind.Tenant;
 
   [Inject]
@@ -47,15 +47,10 @@ public partial class CreatePermissionAssignmentDialog : ComponentBase
       return;
     }
 
-    Guid? scopeId = null;
-    if (!string.IsNullOrWhiteSpace(_scopeId))
+    if (_scopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup && _scopeId is null)
     {
-      if (!Guid.TryParse(_scopeId, out var parsed))
-      {
-        Snackbar.Add("Invalid Scope ID format", Severity.Error);
-        return;
-      }
-      scopeId = parsed;
+      Snackbar.Add("Select a scope target", Severity.Error);
+      return;
     }
 
     var request = new CreatePermissionAssignmentRequestDto(
@@ -64,7 +59,7 @@ public partial class CreatePermissionAssignmentDialog : ComponentBase
       _permissionName,
       _effect,
       _scopeKind,
-      scopeId,
+      _scopeId,
       string.IsNullOrWhiteSpace(_notes) ? null : _notes);
 
     var result = await ControlrApi.Internal.PermissionAssignments.Create(request);

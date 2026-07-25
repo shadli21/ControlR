@@ -1,0 +1,22 @@
+
+@if (RequiresTarget)
+{
+  <MudAutocomplete T="ScopeOption"
+                   Value="_selected"
+                   ValueChanged="HandleValueChanged"
+                   SearchFunc="Search"
+                   Label="@Label"
+                   ToStringFunc="@(x => x?.DisplayName ?? string.Empty)"
+                   Dense="true"
+                   Clearable="true"
+                   ResetValueOnEmptyText="true"
+                   CoerceText="true"
+                   CoerceValue="false"
+                   Class="@Class" />
+}
+else
+{
+  <MudAlert Severity="Severity.Info" Dense="true" Class="@Class">
+    @ImplicitScopeMessage
+  </MudAlert>
+}

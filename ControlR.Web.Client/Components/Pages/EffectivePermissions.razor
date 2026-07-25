@@ -33,7 +33,10 @@
         <MudSelectItem Value="@("Device")">Device</MudSelectItem>
         <MudSelectItem Value="@("DeviceGroup")">Device Group</MudSelectItem>
       </MudSelect>
-      <MudTextField T="string" @bind-Value="_scopeId" Label="Scope ID (optional GUID)" Class="mb-3" />
+      <ScopeAutocomplete ScopeKind="_parsedScopeKind"
+                         @bind-SelectedId="_scopeId"
+                         Label="Scope"
+                         Class="mb-3" />
       <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Query" FullWidth="true">
         Evaluate
       </MudButton>
