@@ -16,6 +16,9 @@ public static class DeviceAccessQueryExtensions
       DeviceAccessScopeKind.TenantWide => query,
       DeviceAccessScopeKind.SingleDevice => query.Where(x => x.Id == accessScope.DeviceId),
       DeviceAccessScopeKind.TaggedDevices => query.Where(x => x.Tags!.Any(tag => accessScope.TagIds.Contains(tag.Id))),
+      DeviceAccessScopeKind.SpecificDevices => query.Where(x => accessScope.DeviceIds.Contains(x.Id)),
+      DeviceAccessScopeKind.DeviceGroups => query.Where(x =>
+        x.DeviceGroupMembers!.Any(m => accessScope.DeviceGroupIds.Contains(m.DeviceGroupId))),
       _ => query.Take(0)
     };
   }
