@@ -22,9 +22,7 @@ jobs:
       github.event_name == 'pull_request' ||
       ((github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment') && (
         contains(github.event.comment.body, '/bb') ||
-        contains(github.event.comment.body, '/bbb') ||
-        contains(github.event.comment.body, '@bb') ||
-        contains(github.event.comment.body, '@bbb')
+        contains(github.event.comment.body, '/bbb')
       ))
 
     steps:
@@ -42,6 +40,7 @@ jobs:
           private-key: ${{ secrets.BBB_PRIVATE_KEY }}
 
       - uses: anomalyco/opencode/github@latest
+        timeout-minutes: 30
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
