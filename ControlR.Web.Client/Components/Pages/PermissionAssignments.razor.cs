@@ -1,6 +1,3 @@
-using ControlR.Libraries.Api.Contracts.Enums;
-using ControlR.Web.Client.Authz;
-using Microsoft.AspNetCore.Components;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Pages;
@@ -9,8 +6,8 @@ public partial class PermissionAssignments : ComponentBase
 {
   private InternalDtos.PermissionAssignmentDto[]? _assignments;
   private bool _loading;
-  private string _principalId = string.Empty;
   private string _principalKind = "User";
+  private Guid? _selectedPrincipalId;
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
@@ -21,17 +18,19 @@ public partial class PermissionAssignments : ComponentBase
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
+  private PermissionPrincipalKind _parsedPrincipalKind => Enum.Parse<PermissionPrincipalKind>(_principalKind);
+
   private async Task CreateAssignment()
   {
-    if (!Guid.TryParse(_principalId, out var principalId))
+    if (_selectedPrincipalId is not Guid principalId)
     {
-      Snackbar.Add("Invalid principal ID", Severity.Error);
+      Snackbar.Add("Select a principal first", Severity.Error);
       return;
     }
 
     var parameters = new DialogParameters<CreatePermissionAssignmentDialog>
     {
-      { x => x.PrincipalKind, Enum.Parse<PermissionPrincipalKind>(_principalKind) },
+      { x => x.PrincipalKind, _parsedPrincipalKind },
       { x => x.PrincipalId, principalId }
     };
 
@@ -69,9 +68,9 @@ public partial class PermissionAssignments : ComponentBase
 
   private async Task LoadAssignments()
   {
-    if (!Guid.TryParse(_principalId, out var principalId))
+    if (_selectedPrincipalId is not Guid principalId)
     {
-      Snackbar.Add("Invalid principal ID format", Severity.Error);
+      Snackbar.Add("Select a principal first", Severity.Error);
       return;
     }
 

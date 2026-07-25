@@ -16,7 +16,10 @@
         <MudSelectItem Value="@("UserGroup")">User Group</MudSelectItem>
         <MudSelectItem Value="@("ServiceAccount")">Service Account</MudSelectItem>
       </MudSelect>
-      <MudTextField T="string" @bind-Value="_principalId" Label="Principal ID (GUID)" Class="mb-2" />
+      <PrincipalAutocomplete PrincipalKind="_parsedPrincipalKind"
+                             @bind-SelectedId="_selectedPrincipalId"
+                             Label="Search Principal"
+                             Class="mb-2" />
       <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadAssignments" FullWidth="true">
         Load Assignments
       </MudButton>

@@ -1,0 +1,13 @@
+@using ControlR.Libraries.Api.Contracts.Enums
+
+<MudAutocomplete T="PrincipalOption"
+                 Value="_selected"
+                 ValueChanged="HandleValueChanged"
+                 SearchFunc="Search"
+                 Label="@Label"
+                 ToStringFunc="@(x => x?.DisplayName ?? string.Empty)"
+                 Dense="true"
+                 Clearable="true"
+                 ResetValueOnEmptyText="true"
+                 CoerceText="true"
+                 CoerceValue="false" />
