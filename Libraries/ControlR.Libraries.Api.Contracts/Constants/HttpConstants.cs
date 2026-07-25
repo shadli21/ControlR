@@ -26,6 +26,7 @@ public static class HttpConstants
     public const string ServerAlertEndpoint = "/api/server-alert";
     public const string ServerLogsEndpoint = "/api/server-logs";
     public const string ServerStatsEndpoint = "/api/server-stats";
+    public const string ServiceAccountsEndpoint = "/api/service-accounts";
     public const string TagsEndpoint = "/api/tags";
     public const string TenantsEndpoint = "/api/tenants";
     public const string TenantSettingsEndpoint = "/api/tenant-settings";

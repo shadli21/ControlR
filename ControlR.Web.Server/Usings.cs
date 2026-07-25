@@ -15,6 +15,7 @@ global using ControlR.Web.Client.Authz.Policies;
 global using ControlR.Web.Server.Data.Entities;
 global using V1Dtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 global using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
+global using ControlR.Web.Server.Authz;
 global using ControlR.Web.Server.Authz.Policies;
 global using ControlR.Web.Server.Data;
 global using Microsoft.AspNetCore.Identity;

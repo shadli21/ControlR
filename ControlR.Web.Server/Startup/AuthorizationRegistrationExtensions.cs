@@ -57,7 +57,19 @@ public static class AuthorizationRegistrationExtensions
       .AddPolicy(CombinedAuthorizationPolicies.RequireServerOrTenantAdminPolicy, CombinedAuthorizationPolicies.CreateServerOrTenantAdmin())
       .AddPolicy(CombinedAuthorizationPolicies.RequireServerOrTenantAdminOrInstallerKeyManagerPolicy, CombinedAuthorizationPolicies.CreateServerOrTenantAdminOrInstallerKeyManager())
       .AddPolicy(RequireServerAdministratorPolicy.PolicyName, RequireServerAdministratorPolicy.Create())
-      .AddPolicy(DeviceAccessByDeviceResourcePolicy.PolicyName, DeviceAccessByDeviceResourcePolicy.Create());
+      .AddPolicy(DeviceAccessByDeviceResourcePolicy.PolicyName, DeviceAccessByDeviceResourcePolicy.Create())
+      .AddPolicy(PolicyNames.RequireServiceAccountRead, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.ServiceAccountRead))
+      .AddPolicy(PolicyNames.RequireServiceAccountWrite, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.ServiceAccountWrite))
+      .AddPolicy(PolicyNames.RequireServiceAccountRotateCredentials, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.ServiceAccountRotateCredentials));
 
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderRequirementHandler>();
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderAsyncRequirementHandler>();
