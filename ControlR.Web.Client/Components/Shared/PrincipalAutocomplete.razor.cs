@@ -6,6 +6,9 @@ public partial class PrincipalAutocomplete
 {
   private PrincipalOption? _selected;
 
+  [Parameter]
+  public string? Class { get; set; }
+
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
 
