@@ -4,11 +4,12 @@ using ControlR.Web.Server.Authn;
 namespace ControlR.Web.Server.Extensions;
 
 /// <summary>
-/// Extension methods for identifying server service account principals.
+/// Extension methods for reading canonical <c>controlr:*</c> claims from a
+/// <see cref="ClaimsPrincipal"/>. These claims are emitted by all authentication
+/// handlers (PAT, logon token, service account credential, cookie, interactive bearer).
 /// </summary>
 public static class ServerPrincipalExtensions
 {
-
   /// <summary>
   /// Gets the principal type value from the <c>controlr:principal:type</c> claim, or null.
   /// </summary>

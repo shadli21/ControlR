@@ -2,6 +2,12 @@ using System.Security.Claims;
 
 namespace ControlR.Web.Server.Authn;
 
+/// <summary>
+/// Extends the default Identity claims principal factory to emit the canonical
+/// <c>controlr:principal:type</c> and <c>controlr:principal:id</c> claims on every
+/// cookie and interactive-bearer principal. These claims are the canonical identity
+/// source for the permission evaluator.
+/// </summary>
 public class AppUserClaimsPrincipalFactory(
   UserManager<AppUser> userManager,
   RoleManager<AppRole> roleManager,
