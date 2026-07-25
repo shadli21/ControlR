@@ -5,7 +5,13 @@
   <DialogContent>
     <MudGrid Spacing="2">
       <MudItem xs="12">
-        <MudTextField T="string" @bind-Value="_permissionName" Label="Permission Name" Required="true" />
+        <MudSelect T="string" @bind-Value="_permissionName" Label="Permission" Required="true"
+                   Dense="true" MaxHeight="400">
+          @foreach (var entry in _catalog)
+          {
+            <MudSelectItem T="string" Value="@entry.Name">@entry.DisplayName (@entry.Name)</MudSelectItem>
+          }
+        </MudSelect>
       </MudItem>
       <MudItem xs="6">
         <MudSelect T="PermissionEffect" @bind-Value="_effect" Label="Effect">

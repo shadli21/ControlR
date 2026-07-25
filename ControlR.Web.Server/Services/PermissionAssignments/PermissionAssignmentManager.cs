@@ -55,6 +55,12 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.BadRequest, $"Principal not found: {request.PrincipalKind}/{request.PrincipalId}");
     }
 
+    if (!PermissionCatalog.Exists(request.PermissionName))
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
+        HttpResultErrorCode.BadRequest, $"Unknown permission name: {request.PermissionName}");
+    }
+
     if (request.ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup && !request.ScopeId.HasValue)
     {
       return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(

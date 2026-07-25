@@ -17,8 +17,13 @@
         <MudSelectItem Value="@("ServiceAccount")">Service Account</MudSelectItem>
       </MudSelect>
       <MudTextField T="string" @bind-Value="_principalId" Label="Principal ID (GUID)" Class="mb-2" />
-      <MudTextField T="string" @bind-Value="_permissionName" Label="Permission Name" Class="mb-2"
-                    Placeholder="e.g. device.read" />
+      <MudSelect T="string" @bind-Value="_permissionName" Label="Permission" Class="mb-2"
+                 Dense="true" MaxHeight="400">
+        @foreach (var entry in _catalog)
+        {
+          <MudSelectItem T="string" Value="@entry.Name">@entry.DisplayName (@entry.Name)</MudSelectItem>
+        }
+      </MudSelect>
       <MudSelect T="string" @bind-Value="_scopeKind" Label="Scope Kind" Class="mb-2">
         <MudSelectItem Value="@("Server")">Server</MudSelectItem>
         <MudSelectItem Value="@("Tenant")">Tenant</MudSelectItem>

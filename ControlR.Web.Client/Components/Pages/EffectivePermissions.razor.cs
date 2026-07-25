@@ -4,6 +4,7 @@ namespace ControlR.Web.Client.Components.Pages;
 
 public partial class EffectivePermissions : ComponentBase
 {
+  private List<InternalDtos.PermissionCatalogEntryDto> _catalog = [];
   private string _permissionName = string.Empty;
   private string _principalId = string.Empty;
   private string _principalKind = "User";
@@ -16,6 +17,15 @@ public partial class EffectivePermissions : ComponentBase
 
   [Inject]
   public required ISnackbar Snackbar { get; init; }
+
+  protected override async Task OnInitializedAsync()
+  {
+    var result = await ControlrApi.Internal.PermissionAssignments.GetCatalog();
+    if (result.IsSuccess)
+    {
+      _catalog = [.. result.Value];
+    }
+  }
 
   private async Task Query()
   {

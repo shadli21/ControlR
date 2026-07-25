@@ -6,6 +6,7 @@ namespace ControlR.Web.Client.Components.Dialogs;
 
 public partial class CreatePermissionAssignmentDialog : ComponentBase
 {
+  private List<PermissionCatalogEntryDto> _catalog = [];
   private PermissionEffect _effect = PermissionEffect.Allow;
   private string _notes = string.Empty;
   private string _permissionName = string.Empty;
@@ -26,6 +27,15 @@ public partial class CreatePermissionAssignmentDialog : ComponentBase
 
   [Inject]
   public required ISnackbar Snackbar { get; init; }
+
+  protected override async Task OnInitializedAsync()
+  {
+    var result = await ControlrApi.Internal.PermissionAssignments.GetCatalog();
+    if (result.IsSuccess)
+    {
+      _catalog = [.. result.Value];
+    }
+  }
 
   private void Cancel() => MudDialog.Cancel();
 

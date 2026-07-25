@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services.PermissionAssignments;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,6 +12,19 @@ namespace ControlR.Web.Server.Api.Internal;
 public class PermissionAssignmentsController(IPermissionAssignmentManager permissionAssignmentManager) : ControllerBase
 {
   private readonly IPermissionAssignmentManager _permissionAssignmentManager = permissionAssignmentManager;
+
+  [HttpGet("catalog")]
+  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
+  public ActionResult<IReadOnlyList<InternalDtos.PermissionCatalogEntryDto>> GetCatalog()
+  {
+    var entries = PermissionCatalog.All.Values
+      .Select(x => new InternalDtos.PermissionCatalogEntryDto(
+        x.Name, x.DisplayName, x.Description, x.DefaultScopeKinds, x.IsAssignable))
+      .OrderBy(x => x.DisplayName)
+      .ToList();
+
+    return Ok(entries);
+  }
 
   [HttpPost]
   [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
