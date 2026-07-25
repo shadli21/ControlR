@@ -12,6 +12,7 @@ public static class ClientRoutes
   public const string DeviceAccessTerminal = $"{DeviceAccess}/terminal";
   public const string DeviceAccessVncRelay = $"{DeviceAccess}/vnc-relay";
   public const string DeviceGroups = "/device-groups";
+  public const string DeviceGroupDetail = "/device-groups/{Id:guid}";
   public const string EffectivePermissions = "/effective-permissions";
   public const string Home = "/";
   public const string InstallerKeys = "/installer-keys";
@@ -31,4 +32,5 @@ public static class ClientRoutes
   public const string TenantServiceAccounts = "/tenant-service-accounts";
   public const string TenantSettings = "/tenant-settings";
   public const string UserGroups = "/user-groups";
+  public const string UserGroupDetail = "/user-groups/{Id:guid}";
 }

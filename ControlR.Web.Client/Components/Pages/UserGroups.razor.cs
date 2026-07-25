@@ -21,6 +21,9 @@ public partial class UserGroups : ComponentBase
   public required IDialogService DialogService { get; init; }
 
   [Inject]
+  public required NavigationManager Navigation { get; init; }
+
+  [Inject]
   public required ISnackbar Snackbar { get; init; }
 
   private Func<InternalDtos.UserGroupDto, bool> _quickFilter => group =>
@@ -93,21 +96,9 @@ public partial class UserGroups : ComponentBase
     await Refresh();
   }
 
-  private async Task ManageMembers(InternalDtos.UserGroupDto group)
+  private void ViewGroup(InternalDtos.UserGroupDto group)
   {
-    var parameters = new DialogParameters<UserGroupMembersDialog>
-    {
-      { x => x.GroupId, group.Id },
-      { x => x.GroupName, group.Name }
-    };
-
-    var dialog = await DialogService.ShowAsync<UserGroupMembersDialog>("Manage Members", parameters);
-    var result = await dialog.Result;
-
-    if (result is not null && !result.Canceled)
-    {
-      await Refresh();
-    }
+    Navigation.NavigateTo($"/user-groups/{group.Id}");
   }
 
   private async Task Refresh()

@@ -48,7 +48,7 @@
     <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
       <CellTemplate>
         <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-          <MudMenuItem OnClick="@(() => ManageMembers(context.Item))">Manage Members</MudMenuItem>
+          <MudMenuItem OnClick="@(() => ViewGroup(context.Item))">View Members</MudMenuItem>
           <MudMenuItem OnClick="@(() => DeleteGroup(context.Item))" Class="mud-text-error">Delete</MudMenuItem>
         </MudMenu>
       </CellTemplate>

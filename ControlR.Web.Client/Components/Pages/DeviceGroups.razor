@@ -37,7 +37,7 @@
     <TemplateColumn Title="ID" Sortable="false" Filterable="false">
       <CellTemplate>
         <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
-          <MudText Typo="Typo.body2">@context.Item.Id.ToString()[..8]</MudText>
+          <MudText Typo="Typo.body2">@(TruncateId(context.Item.Id))</MudText>
           <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
                          Size="Size.Small"
                          OnClick="@(() => CopyId(context.Item.Id))" />
@@ -48,7 +48,7 @@
     <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
       <CellTemplate>
         <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-          <MudMenuItem OnClick="@(() => ManageMembers(context.Item))">Manage Members</MudMenuItem>
+          <MudMenuItem OnClick="@(() => ViewGroup(context.Item))">View Members</MudMenuItem>
           <MudMenuItem OnClick="@(() => DeleteGroup(context.Item))" Class="mud-text-error">Delete</MudMenuItem>
         </MudMenu>
       </CellTemplate>

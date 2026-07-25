@@ -1,0 +1,45 @@
+@using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal
+
+<MudDialog>
+  <DialogContent>
+    <MudStack Spacing="2">
+      <MudTextField T="string"
+                    @bind-Value="_searchText"
+                    Label="Search users"
+                    Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search"
+                    Immediate="true"
+                    Clearable="true" />
+
+      @if (_loading)
+      {
+        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+      }
+      else
+      {
+        <MudPaper MaxHeight="350px" Class="overflow-y-auto pa-2">
+          @foreach (var user in _filteredUsers)
+          {
+            <MudCheckBox T="bool"
+                         Value="_selectedIds.Contains(user.Id)"
+                         ValueChanged="@(v => ToggleSelection(user.Id, v))"
+                         Color="Color.Primary"
+                         Dense="true">
+              @(user.UserName ?? user.Email ?? user.Id.ToString())
+            </MudCheckBox>
+          }
+          @if (_filteredUsers.Count == 0)
+          {
+            <MudText Typo="Typo.body2" Class="pa-4 mud-text-secondary">No users found.</MudText>
+          }
+        </MudPaper>
+      }
+    </MudStack>
+  </DialogContent>
+  <DialogActions>
+    <MudButton OnClick="Cancel">Cancel</MudButton>
+    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Add" Disabled="@(_selectedIds.Count == 0)">
+      Add (@_selectedIds.Count)
+    </MudButton>
+  </DialogActions>
+</MudDialog>

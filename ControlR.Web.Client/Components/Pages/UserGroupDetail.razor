@@ -1,0 +1,66 @@
+@attribute [Route(ClientRoutes.UserGroupDetail)]
+@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+
+<PageTitle>@(_group?.Name ?? "User Group")</PageTitle>
+
+<PrimaryTitle>
+  <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo(ClientRoutes.UserGroups))" />
+    <MudText Typo="Typo.h5">@(_group?.Name ?? "Loading...")</MudText>
+  </MudStack>
+</PrimaryTitle>
+
+@if (_loading)
+{
+  <MudProgressCircular Indeterminate="true" />
+}
+else if (_group is null)
+{
+  <MudAlert Severity="Severity.Error">User group not found.</MudAlert>
+}
+else
+{
+  <MudPaper Class="pa-4 mb-4">
+    <MudStack Spacing="2">
+      <MudText Typo="Typo.subtitle1" Color="Color.Secondary">@_group.Description</MudText>
+      <MudStack Row="true" Spacing="1">
+        <MudText Typo="Typo.caption">ID: @_group.Id</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopyGroupId" />
+      </MudStack>
+      <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" OnClick="EditGroup">
+        Edit
+      </MudButton>
+    </MudStack>
+  </MudPaper>
+
+  <MudDataGrid T="UserGroupMemberDto"
+               Items="_group.Members"
+               Hover="true"
+               Breakpoint="Breakpoint.Sm">
+    <ToolBarContent>
+      <MudText Typo="Typo.subtitle1">Members (@_group.Members.Count)</MudText>
+      <MudSpacer />
+      <MudButton Variant="Variant.Filled"
+                 Color="Color.Primary"
+                 Size="Size.Small"
+                 StartIcon="@Icons.Material.Filled.Add"
+                 OnClick="AddMembers">
+        Add Members
+      </MudButton>
+    </ToolBarContent>
+    <Columns>
+      <PropertyColumn Property="x => x.UserName" Title="User" />
+      <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+        <CellTemplate>
+          <MudIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline"
+                         Size="Size.Small"
+                         Color="Color.Error"
+                         OnClick="@(() => RemoveMember(context.Item))" />
+        </CellTemplate>
+      </TemplateColumn>
+    </Columns>
+    <PagerContent>
+      <MudDataGridPager T="UserGroupMemberDto" />
+    </PagerContent>
+  </MudDataGrid>
+}

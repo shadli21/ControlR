@@ -21,6 +21,9 @@ public partial class DeviceGroups : ComponentBase
   public required IDialogService DialogService { get; init; }
 
   [Inject]
+  public required NavigationManager Navigation { get; init; }
+
+  [Inject]
   public required ISnackbar Snackbar { get; init; }
 
   private Func<InternalDtos.DeviceGroupDto, bool> _quickFilter => group =>
@@ -93,23 +96,6 @@ public partial class DeviceGroups : ComponentBase
     await Refresh();
   }
 
-  private async Task ManageMembers(InternalDtos.DeviceGroupDto group)
-  {
-    var parameters = new DialogParameters<DeviceGroupMembersDialog>
-    {
-      { x => x.GroupId, group.Id },
-      { x => x.GroupName, group.Name }
-    };
-
-    var dialog = await DialogService.ShowAsync<DeviceGroupMembersDialog>("Manage Members", parameters);
-    var result = await dialog.Result;
-
-    if (result is not null && !result.Canceled)
-    {
-      await Refresh();
-    }
-  }
-
   private async Task Refresh()
   {
     _loading = true;
@@ -132,5 +118,15 @@ public partial class DeviceGroups : ComponentBase
       _loading = false;
       StateHasChanged();
     }
+  }
+
+  private string TruncateId(Guid id)
+  {
+    return $"{id.ToString()[..8]}...";
+  }
+
+  private void ViewGroup(InternalDtos.DeviceGroupDto group)
+  {
+    Navigation.NavigateTo($"/device-groups/{group.Id}");
   }
 }

@@ -1,5 +1,3 @@
-using ControlR.Libraries.Api.Contracts.Enums;
-
 namespace ControlR.Web.Client.Components.Shared;
 
 public sealed record PrincipalOption(Guid Id, string DisplayName, PermissionPrincipalKind Kind);
