@@ -3,16 +3,14 @@ using System.Diagnostics.CodeAnalysis;
 using ControlR.Web.Client.DataValidation;
 using Microsoft.AspNetCore.Components.Web;
 
-namespace ControlR.Web.Client.Components.Permissions;
+namespace ControlR.Web.Client.Components.Tags;
 
 public partial class TagsTabContent : ComponentBase, IDisposable
 {
   private ImmutableArray<IDisposable>? _changeHandlers;
-  private string _deviceSearchPattern = string.Empty;
   private string? _newTagName;
   private TagViewModel? _selectedTag;
   private string _tagSearchPattern = string.Empty;
-  private string _userSearchPattern = string.Empty;
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
@@ -33,25 +31,12 @@ public partial class TagsTabContent : ComponentBase, IDisposable
   public required IAdminTagStore TagStore { get; init; }
 
   [Inject]
-  public required IUserStore UserStore { get; init; }
-
-  [Inject]
   public required IUserTagStore UserTagStore { get; init; }
-
-  private IOrderedEnumerable<DeviceResponseDto> FilteredDevices =>
-    DeviceStore.Items
-      .Where(x => x.Name.Contains(_deviceSearchPattern, StringComparison.OrdinalIgnoreCase))
-      .OrderBy(x => x.Name);
 
   private IOrderedEnumerable<TagViewModel> FilteredTags =>
     TagStore.Items
       .Where(x => x.Name.Contains(_tagSearchPattern, StringComparison.OrdinalIgnoreCase))
       .OrderBy(x => x.Name);
-
-  private IOrderedEnumerable<UserResponseDto> FilteredUsers =>
-    UserStore.Items
-      .Where(x => x.UserName?.Contains(_userSearchPattern, StringComparison.OrdinalIgnoreCase) == true)
-      .OrderBy(x => x.UserName);
 
   public void Dispose()
   {
@@ -65,7 +50,6 @@ public partial class TagsTabContent : ComponentBase, IDisposable
     _changeHandlers =
     [
       TagStore.RegisterChangeHandler(this, async () => await InvokeAsync(StateHasChanged)),
-      UserStore.RegisterChangeHandler(this, async () => await InvokeAsync(StateHasChanged)),
       DeviceStore.RegisterChangeHandler(this, async () => await InvokeAsync(StateHasChanged))
     ];
   }
@@ -138,6 +122,7 @@ public partial class TagsTabContent : ComponentBase, IDisposable
 
     await SetDeviceTag(args.isToggled, _selectedTag, args.device.Id);
   }
+
   private async Task HandleNewTagKeyDown(KeyboardEventArgs args)
   {
     if (args.Key == "Enter")
@@ -151,6 +136,7 @@ public partial class TagsTabContent : ComponentBase, IDisposable
   {
     return ValidateNewTagName(_newTagName) == null;
   }
+
   private async Task RenameSelectedTag()
   {
     if (_selectedTag is null)
@@ -213,46 +199,6 @@ public partial class TagsTabContent : ComponentBase, IDisposable
           return;
         }
         tag.DeviceIds.Remove(deviceId);
-      }
-
-      await TagStore.InvokeItemsChanged();
-      await UserTagStore.InvokeItemsChanged();
-
-      Snackbar.Add(isToggled
-        ? "Tag added"
-        : "Tag removed", Severity.Success);
-    }
-    catch (Exception ex)
-    {
-      Logger.LogError(ex, "Error while setting tag.");
-      Snackbar.Add("An error occurred while setting tag", Severity.Error);
-    }
-  }
-
-  private async Task SetUserTag(bool isToggled, TagViewModel tag, Guid userId)
-  {
-    try
-    {
-      if (isToggled)
-      {
-        var addRequest = new UserTagAddRequestDto(userId, tag.Id);
-        var addResult = await ControlrApi.Internal.UserTags.AddUserTag(addRequest);
-        if (!addResult.IsSuccess)
-        {
-          Snackbar.Add(addResult.Reason, Severity.Error);
-          return;
-        }
-        tag.UserIds.Add(userId);
-      }
-      else
-      {
-        var removeResult = await ControlrApi.Internal.UserTags.RemoveUserTag(userId, tag.Id);
-        if (!removeResult.IsSuccess)
-        {
-          Snackbar.Add(removeResult.Reason, Severity.Error);
-          return;
-        }
-        tag.UserIds.Remove(userId);
       }
 
       await TagStore.InvokeItemsChanged();

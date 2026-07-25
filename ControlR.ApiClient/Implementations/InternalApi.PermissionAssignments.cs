@@ -18,13 +18,6 @@ internal partial class InternalApi
     });
   }
 
-  async Task<ApiResult<InternalDtos.PermissionAssignmentDto[]>> IPermissionAssignmentsApi.GetByPrincipal(string principalKind, Guid principalId, CancellationToken cancellationToken)
-  {
-    return await _client.ExecuteApiCall(async () =>
-      await _client.HttpClient.GetFromJsonAsync<InternalDtos.PermissionAssignmentDto[]>(
-        $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}?principalKind={principalKind}&principalId={principalId}", cancellationToken));
-  }
-
   async Task<ApiResult> IPermissionAssignmentsApi.Delete(Guid assignmentId, CancellationToken cancellationToken)
   {
     return await _client.ExecuteApiCall(async () =>
@@ -33,6 +26,13 @@ internal partial class InternalApi
         $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/{assignmentId}", cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
     });
+  }
+
+  async Task<ApiResult<InternalDtos.PermissionAssignmentDto[]>> IPermissionAssignmentsApi.GetByPrincipal(string principalKind, Guid principalId, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+      await _client.HttpClient.GetFromJsonAsync<InternalDtos.PermissionAssignmentDto[]>(
+        $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}?principalKind={principalKind}&principalId={principalId}", cancellationToken));
   }
 
   async Task<ApiResult<InternalDtos.EffectivePermissionQueryResponseDto>> IEffectivePermissionsApi.Query(InternalDtos.EffectivePermissionQueryRequestDto request, CancellationToken cancellationToken)

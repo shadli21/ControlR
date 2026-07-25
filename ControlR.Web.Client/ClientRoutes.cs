@@ -11,6 +11,8 @@ public static class ClientRoutes
   public const string DeviceAccessRemoteLogs = $"{DeviceAccess}/remote-logs";
   public const string DeviceAccessTerminal = $"{DeviceAccess}/terminal";
   public const string DeviceAccessVncRelay = $"{DeviceAccess}/vnc-relay";
+  public const string DeviceGroups = "/device-groups";
+  public const string EffectivePermissions = "/effective-permissions";
   public const string Home = "/";
   public const string InstallerKeys = "/installer-keys";
   public const string Invite = "/invite";
@@ -21,8 +23,12 @@ public static class ClientRoutes
   public const string Permissions = "/permissions";
   public const string PersonalAccessTokens = "/personal-access-tokens";
   public const string ServerLogs = "/server-logs";
+  public const string ServerServiceAccounts = "/server-service-accounts";
   public const string ServerSettings = "/server-settings";
   public const string ServerStats = "/server-stats";
   public const string Settings = "/settings";
+  public const string Tags = "/tags";
+  public const string TenantServiceAccounts = "/tenant-service-accounts";
   public const string TenantSettings = "/tenant-settings";
+  public const string UserGroups = "/user-groups";
 }

@@ -36,8 +36,20 @@
         Tenant Admin
       </MudText>
     </div>
-    <MudNavLink Href="@(ClientRoutes.Permissions)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupervisedUserCircle">
+    <MudNavLink Href="@(ClientRoutes.Permissions)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">
       Permissions
+    </MudNavLink>
+    <MudNavLink Href="@(ClientRoutes.UserGroups)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">
+      User Groups
+    </MudNavLink>
+    <MudNavLink Href="@(ClientRoutes.DeviceGroups)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DeviceHub">
+      Device Groups
+    </MudNavLink>
+    <MudNavLink Href="@(ClientRoutes.Tags)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.NewLabel">
+      Device Tags
+    </MudNavLink>
+    <MudNavLink Href="@(ClientRoutes.TenantServiceAccounts)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Badge">
+      Tenant Service Accounts
     </MudNavLink>
     <MudNavLink Href="@(ClientRoutes.Invite)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Email">
       Invite
@@ -53,6 +65,12 @@
           Server Admin
         </MudText>
       </div>
+      <MudNavLink Href="@(ClientRoutes.ServerServiceAccounts)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings">
+        Server Service Accounts
+      </MudNavLink>
+      <MudNavLink Href="@(ClientRoutes.EffectivePermissions)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FactCheck">
+        Effective Permissions
+      </MudNavLink>
       <MudNavLink Href="@(ClientRoutes.ServerSettings)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">
         Server Settings
       </MudNavLink>

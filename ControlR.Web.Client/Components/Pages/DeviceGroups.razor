@@ -1,0 +1,50 @@
+@attribute [Route(ClientRoutes.DeviceGroups)]
+@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+
+<PageTitle>Device Groups</PageTitle>
+
+<PrimaryTitle>
+  Device Groups
+</PrimaryTitle>
+
+<MudDataGrid T="DeviceGroupDto"
+             Items="_groups"
+             Hover="true"
+             Loading="_loading"
+             QuickFilter="_quickFilter"
+             Breakpoint="Breakpoint.Sm">
+  <ToolBarContent>
+    <MudTextField T="string"
+                  @bind-Value="_searchString"
+                  Placeholder="Search"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Immediate="true"
+                  Class="mr-4" />
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="CreateGroup">
+      New Group
+    </MudButton>
+    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="Refresh" />
+  </ToolBarContent>
+  <Columns>
+    <PropertyColumn Property="x => x.Name" Title="Name" />
+    <PropertyColumn Property="x => x.Description" Title="Description" />
+    <PropertyColumn Property="x => x.MemberCount" Title="Devices" />
+    <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="yyyy-MM-dd HH:mm" />
+    <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+      <CellTemplate>
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+          <MudMenuItem OnClick="@(() => ManageMembers(context.Item))">Manage Members</MudMenuItem>
+          <MudMenuItem OnClick="@(() => DeleteGroup(context.Item))" Class="mud-text-error">Delete</MudMenuItem>
+        </MudMenu>
+      </CellTemplate>
+    </TemplateColumn>
+  </Columns>
+  <PagerContent>
+    <MudDataGridPager T="DeviceGroupDto" />
+  </PagerContent>
+</MudDataGrid>

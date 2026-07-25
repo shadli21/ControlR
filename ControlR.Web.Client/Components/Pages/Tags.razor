@@ -1,18 +1,16 @@
-@attribute [Route(ClientRoutes.Permissions)]
+@using ControlR.Web.Client.Components.Tags
+@attribute [Route(ClientRoutes.Tags)]
 @attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
 
-<PageTitle>Permissions</PageTitle>
+<PageTitle>Tags</PageTitle>
 
 <PrimaryTitle>
-  Permissions
+  Tags
 </PrimaryTitle>
 
 <MudTabs TabPanelsClass="pa-4">
   <MudTabPanel Text="Tags" Icon="@(Icons.Material.Filled.Label)" IconColor="Color.Secondary">
     <TagsTabContent />
-  </MudTabPanel>
-  <MudTabPanel Text="Users" Icon="@(Icons.Material.Filled.AccountCircle)" IconColor="Color.Secondary">
-    <UsersTabContent />
   </MudTabPanel>
   <MudTabPanel Text="Devices" Icon="@(Icons.Material.Filled.Devices)" IconColor="Color.Secondary">
     <DevicesTabContent />

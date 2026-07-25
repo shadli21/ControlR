@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components;
 namespace ControlR.Web.Client.Components.Pages;
 
 // ReSharper disable once ClassNeverInstantiated.Global
-public partial class Permissions : ComponentBase
+public partial class Tags : ComponentBase
 {
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
@@ -13,28 +13,15 @@ public partial class Permissions : ComponentBase
   public required IDeviceStore DeviceStore { get; init; }
 
   [Inject]
-  public required IRoleStore RoleStore { get; init; }
-
-  [Inject]
   public required ISnackbar Snackbar { get; init; }
 
   [Inject]
   public required IAdminTagStore TagStore { get; init; }
 
-  [Inject]
-  public required IUserStore UserStore { get; init; }
-
   protected override async Task OnInitializedAsync()
   {
     await base.OnInitializedAsync();
-    await Refresh();
-  }
-
-  private async Task Refresh()
-  {
     await DeviceStore.Refresh();
     await TagStore.Refresh();
-    await UserStore.Refresh();
-    await RoleStore.Refresh();
   }
 }

@@ -1,8 +1,6 @@
 ﻿using System.Collections.Immutable;
-using ControlR.Web.Client.StateManagement.Stores;
-using Microsoft.AspNetCore.Components;
 
-namespace ControlR.Web.Client.Components.Permissions;
+namespace ControlR.Web.Client.Components.Tags;
 
 public partial class DevicesTabContent : ComponentBase, IDisposable
 {

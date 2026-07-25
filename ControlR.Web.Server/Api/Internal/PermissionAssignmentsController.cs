@@ -37,24 +37,6 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     return Ok(result.Value);
   }
 
-  [HttpGet]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
-  public async Task<ActionResult<IReadOnlyList<InternalDtos.PermissionAssignmentDto>>> GetByPrincipal(
-    [FromQuery] PermissionPrincipalKind principalKind,
-    [FromQuery] Guid principalId,
-    CancellationToken cancellationToken)
-  {
-    if (!User.TryGetTenantId(out var tenantId))
-    {
-      return BadRequest("User tenant not found.");
-    }
-
-    var assignments = await _permissionAssignmentManager.GetByPrincipal(
-      principalKind, principalId, tenantId, cancellationToken);
-
-    return Ok(assignments);
-  }
-
   [HttpDelete("{assignmentId:guid}")]
   [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<IActionResult> Delete(
@@ -78,5 +60,23 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     }
 
     return NoContent();
+  }
+
+  [HttpGet]
+  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
+  public async Task<ActionResult<IReadOnlyList<InternalDtos.PermissionAssignmentDto>>> GetByPrincipal(
+    [FromQuery] PermissionPrincipalKind principalKind,
+    [FromQuery] Guid principalId,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryGetTenantId(out var tenantId))
+    {
+      return BadRequest("User tenant not found.");
+    }
+
+    var assignments = await _permissionAssignmentManager.GetByPrincipal(
+      principalKind, principalId, tenantId, cancellationToken);
+
+    return Ok(assignments);
   }
 }
