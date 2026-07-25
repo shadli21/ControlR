@@ -6,6 +6,9 @@ namespace ControlR.ApiClient.Interfaces.Internal;
 
 public interface ICustomersApi
 {
+  [ApiRoute($"{HttpConstants.Internal.CustomersEndpoint}/{{customerId}}/devices", "POST")]
+  Task<ApiResult> AssignDevices(Guid customerId, InternalDtos.AssignCustomerDevicesRequestDto request, CancellationToken cancellationToken = default);
+
   [ApiRoute($"{HttpConstants.Internal.CustomersEndpoint}", "POST")]
   Task<ApiResult<InternalDtos.CustomerDto>> Create(InternalDtos.CreateCustomerRequestDto request, CancellationToken cancellationToken = default);
 

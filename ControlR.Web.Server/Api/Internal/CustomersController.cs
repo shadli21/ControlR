@@ -11,6 +11,34 @@ public class CustomersController(ICustomerManager customerManager) : ControllerB
 {
   private readonly ICustomerManager _customerManager = customerManager;
 
+  [HttpPost("{customerId:guid}/devices")]
+  [Authorize(Policy = PolicyNames.RequireCustomersWrite)]
+  public async Task<IActionResult> AssignDevices(
+    [FromRoute] Guid customerId,
+    [FromBody] InternalDtos.AssignCustomerDevicesRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryGetTenantId(out var tenantId))
+    {
+      return BadRequest("User tenant not found.");
+    }
+
+    if (!User.TryGetUserId(out var userId))
+    {
+      return BadRequest("User ID not found.");
+    }
+
+    var result = await _customerManager.AssignDevices(
+      customerId, request.DeviceIds, tenantId, userId, cancellationToken);
+
+    if (!result.IsSuccess)
+    {
+      return result.ToActionResult();
+    }
+
+    return NoContent();
+  }
+
   [HttpPost]
   [Authorize(Policy = PolicyNames.RequireCustomersWrite)]
   public async Task<ActionResult<InternalDtos.CustomerDto>> Create(

@@ -11,6 +11,7 @@ public static class AuthorizationChangeLogActions
   public const string CredentialScopeTrim = "credential-scope-trim";
   public const string CustomerCreated = "customer-created";
   public const string CustomerDeleted = "customer-deleted";
+  public const string CustomerDevicesAssigned = "customer-devices-assigned";
   public const string CustomerUpdated = "customer-updated";
   public const string DeviceGroupCreated = "device-group-created";
   public const string DeviceGroupDeleted = "device-group-deleted";

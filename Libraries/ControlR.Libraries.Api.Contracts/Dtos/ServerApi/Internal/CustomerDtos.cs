@@ -31,3 +31,6 @@ public record CustomerDto(
   string? Notes,
   DateTimeOffset CreatedAt,
   int DeviceCount);
+
+public record AssignCustomerDevicesRequestDto(
+  List<Guid> DeviceIds);

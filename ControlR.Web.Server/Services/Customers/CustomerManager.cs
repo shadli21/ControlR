@@ -10,6 +10,8 @@ namespace ControlR.Web.Server.Services.Customers;
 /// </summary>
 public interface ICustomerManager
 {
+  Task<HttpResult> AssignDevices(
+    Guid customerId, List<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.CustomerDto>> Create(
     string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult> Delete(
@@ -24,6 +26,50 @@ public interface ICustomerManager
 public class CustomerManager(AppDb appDb) : ICustomerManager
 {
   private readonly AppDb _appDb = appDb;
+
+  public async Task<HttpResult> AssignDevices(
+    Guid customerId, List<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+  {
+    var customerExists = await _appDb.Customers
+      .AnyAsync(x => x.Id == customerId && x.TenantId == tenantId, cancellationToken);
+
+    if (!customerExists)
+    {
+      return HttpResult.Fail(HttpResultErrorCode.NotFound, "Customer not found.");
+    }
+
+    if (deviceIds.Count == 0)
+    {
+      return HttpResult.Ok();
+    }
+
+    var devices = await _appDb.Devices
+      .Where(x => x.TenantId == tenantId && deviceIds.Contains(x.Id))
+      .ToListAsync(cancellationToken);
+
+    if (devices.Count != deviceIds.Count)
+    {
+      return HttpResult.Fail(HttpResultErrorCode.BadRequest, "One or more devices were not found in this tenant.");
+    }
+
+    foreach (var device in devices)
+    {
+      device.CustomerId = customerId;
+    }
+
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.CustomerDevicesAssigned,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.Customer,
+      customerId.ToString(),
+      tenantId,
+      after: new CustomerDeviceAssignmentChange(devices.Count)));
+
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok();
+  }
 
   public async Task<HttpResult<InternalDtos.CustomerDto>> Create(
     string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)

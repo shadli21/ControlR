@@ -8,6 +8,16 @@ namespace ControlR.ApiClient;
 
 internal partial class InternalApi
 {
+  async Task<ApiResult> ICustomersApi.AssignDevices(Guid customerId, InternalDtos.AssignCustomerDevicesRequestDto request, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+    {
+      using var response = await _client.HttpClient.PostAsJsonAsync(
+        $"{HttpConstants.Internal.CustomersEndpoint}/{customerId}/devices", request, cancellationToken);
+      await response.EnsureSuccessStatusCodeWithDetails();
+    });
+  }
+
   async Task<ApiResult<InternalDtos.CustomerDto>> ICustomersApi.Create(InternalDtos.CreateCustomerRequestDto request, CancellationToken cancellationToken)
   {
     return await _client.ExecuteApiCall(async () =>

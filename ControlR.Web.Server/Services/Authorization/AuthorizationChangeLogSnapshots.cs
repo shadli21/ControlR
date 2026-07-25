@@ -40,6 +40,12 @@ public sealed record CredentialScopeSetSummary(int ScopeCount);
 public sealed record CustomerSnapshot(string Name, string? Description, string? Notes);
 
 /// <summary>
+/// Summary of a customer device-assignment change.
+/// Used for device assignment audit entries.
+/// </summary>
+public sealed record CustomerDeviceAssignmentChange(int Count);
+
+/// <summary>
 /// Snapshot of a device group's state at a point in time.
 /// Used for create/update/delete audit entries.
 /// </summary>
