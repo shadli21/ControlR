@@ -161,4 +161,9 @@ public partial class ServerServiceAccounts : ComponentBase
 
     await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
   }
+
+  private string TruncateId(Guid id)
+  {
+    return $"{id.ToString()[..8]}...";
+  }
 }

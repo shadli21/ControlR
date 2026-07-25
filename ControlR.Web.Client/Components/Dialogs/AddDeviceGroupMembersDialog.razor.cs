@@ -7,11 +7,12 @@ namespace ControlR.Web.Client.Components.Dialogs;
 public partial class AddDeviceGroupMembersDialog : ComponentBase
 {
   private const int PageSize = 10;
+
   private int _currentPage = 1;
   private List<DeviceResponseDto> _devices = [];
   private bool _loading;
-  private HashSet<Guid> _selectedIds = [];
   private string _searchText = string.Empty;
+  private HashSet<Guid> _selectedIds = [];
   private int _totalPages = 1;
 
   [Inject]

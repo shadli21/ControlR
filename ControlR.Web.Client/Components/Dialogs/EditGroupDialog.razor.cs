@@ -7,11 +7,11 @@ public partial class EditGroupDialog : ComponentBase
   private string _description = string.Empty;
   private string _name = string.Empty;
 
-  [CascadingParameter]
-  public required IMudDialogInstance MudDialog { get; init; }
-
   [Parameter]
   public string? Description { get; set; }
+
+  [CascadingParameter]
+  public required IMudDialogInstance MudDialog { get; init; }
 
   [Parameter]
   public required string Name { get; set; }

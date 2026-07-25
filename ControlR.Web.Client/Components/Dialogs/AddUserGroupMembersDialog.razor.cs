@@ -6,8 +6,8 @@ public partial class AddUserGroupMembersDialog : ComponentBase
 {
   private List<InternalDtos.UserResponseDto> _allUsers = [];
   private bool _loading;
-  private HashSet<Guid> _selectedIds = [];
   private string _searchText = string.Empty;
+  private HashSet<Guid> _selectedIds = [];
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }

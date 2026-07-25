@@ -13,19 +13,6 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
 {
   private readonly IPermissionAssignmentManager _permissionAssignmentManager = permissionAssignmentManager;
 
-  [HttpGet("catalog")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
-  public ActionResult<IReadOnlyList<InternalDtos.PermissionCatalogEntryDto>> GetCatalog()
-  {
-    var entries = PermissionCatalog.All.Values
-      .Select(x => new InternalDtos.PermissionCatalogEntryDto(
-        x.Name, x.DisplayName, x.Description, x.DefaultScopeKinds, x.IsAssignable))
-      .OrderBy(x => x.DisplayName)
-      .ToList();
-
-    return Ok(entries);
-  }
-
   [HttpPost]
   [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<ActionResult<InternalDtos.PermissionAssignmentDto>> Create(
@@ -92,5 +79,18 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
       principalKind, principalId, tenantId, cancellationToken);
 
     return Ok(assignments);
+  }
+
+  [HttpGet("catalog")]
+  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
+  public ActionResult<IReadOnlyList<InternalDtos.PermissionCatalogEntryDto>> GetCatalog()
+  {
+    var entries = PermissionCatalog.All.Values
+      .Select(x => new InternalDtos.PermissionCatalogEntryDto(
+        x.Name, x.DisplayName, x.Description, x.DefaultScopeKinds, x.IsAssignable))
+      .OrderBy(x => x.DisplayName)
+      .ToList();
+
+    return Ok(entries);
   }
 }

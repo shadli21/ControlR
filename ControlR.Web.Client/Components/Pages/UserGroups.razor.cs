@@ -96,11 +96,6 @@ public partial class UserGroups : ComponentBase
     await Refresh();
   }
 
-  private void ViewGroup(InternalDtos.UserGroupDto group)
-  {
-    Navigation.NavigateTo($"/user-groups/{group.Id}");
-  }
-
   private async Task Refresh()
   {
     _loading = true;
@@ -123,5 +118,15 @@ public partial class UserGroups : ComponentBase
       _loading = false;
       StateHasChanged();
     }
+  }
+
+  private string TruncateId(Guid id)
+  {
+    return $"{id.ToString()[..8]}...";
+  }
+
+  private void ViewGroup(InternalDtos.UserGroupDto group)
+  {
+    Navigation.NavigateTo($"/user-groups/{group.Id}");
   }
 }
