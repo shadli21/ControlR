@@ -44,3 +44,15 @@ public sealed record DeviceGroupSnapshot(string Name, string? Description);
 /// Used for member add/remove audit entries.
 /// </summary>
 public sealed record DeviceGroupMembershipChange(int Count);
+
+/// <summary>
+/// Snapshot of a user group's state at a point in time.
+/// Used for create/update/delete audit entries.
+/// </summary>
+public sealed record UserGroupSnapshot(string Name, string? Description);
+
+/// <summary>
+/// Summary of a user group membership change.
+/// Used for member add/remove audit entries.
+/// </summary>
+public sealed record UserGroupMembershipChange(int Count);

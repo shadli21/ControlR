@@ -32,6 +32,7 @@ public static class HttpConstants
     public const string TenantsEndpoint = "/api/tenants";
     public const string TenantSettingsEndpoint = "/api/tenant-settings";
     public const string TestEmailEndpoint = "/api/test-email";
+    public const string UserGroupsEndpoint = "/api/user-groups";
     public const string UserPreferencesEndpoint = "/api/user-preferences";
     public const string UserRolesEndpoint = "/api/user-roles";
     public const string UsersEndpoint = "/api/users";

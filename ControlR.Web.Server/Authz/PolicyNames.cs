@@ -12,4 +12,7 @@ public static class PolicyNames
   public const string RequireServiceAccountRead = "RequireServiceAccountRead";
   public const string RequireServiceAccountRotateCredentials = "RequireServiceAccountRotateCredentials";
   public const string RequireServiceAccountWrite = "RequireServiceAccountWrite";
+  public const string RequireUserGroupAssignUsers = "RequireUserGroupAssignUsers";
+  public const string RequireUserGroupsRead = "RequireUserGroupsRead";
+  public const string RequireUserGroupsWrite = "RequireUserGroupsWrite";
 }

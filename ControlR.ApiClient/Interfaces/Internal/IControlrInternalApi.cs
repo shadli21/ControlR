@@ -22,6 +22,7 @@ public interface IControlrInternalApi
   ITagsApi Tags { get; }
   ITenantSettingsApi TenantSettings { get; }
   ITestEmailApi TestEmail { get; }
+  IUserGroupsApi UserGroups { get; }
   IUserPreferencesApi UserPreferences { get; }
   IUserRolesApi UserRoles { get; }
   IUsersApi Users { get; }

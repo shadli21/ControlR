@@ -30,6 +30,7 @@ internal partial class InternalApi(ControlrApi client) :
   IUserServerSettingsApi,
   IUserStorageApi,
   IUserTagsApi,
+  IUserGroupsApi,
   IVersionApi
 {
   private readonly ControlrApi _client = client;
@@ -54,6 +55,7 @@ internal partial class InternalApi(ControlrApi client) :
   public ITagsApi Tags => this;
   public ITenantSettingsApi TenantSettings => this;
   public ITestEmailApi TestEmail => this;
+  public IUserGroupsApi UserGroups => this;
   public IUserPreferencesApi UserPreferences => this;
   public IUserRolesApi UserRoles => this;
   public IUsersApi Users => this;

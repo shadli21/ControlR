@@ -19,6 +19,11 @@ public static class AuthorizationChangeLogActions
   public const string ServiceAccountCredentialRevoked = "service-account-credential-revoked";
   public const string ServiceAccountDeleted = "service-account-deleted";
   public const string ServiceAccountUpdated = "service-account-updated";
+  public const string UserGroupCreated = "user-group-created";
+  public const string UserGroupDeleted = "user-group-deleted";
+  public const string UserGroupMembersAdded = "user-group-members-added";
+  public const string UserGroupMembersRemoved = "user-group-members-removed";
+  public const string UserGroupUpdated = "user-group-updated";
 }
 
 /// <summary>
@@ -43,4 +48,5 @@ public static class AuthorizationChangeLogTargetTypes
   public const string PersonalAccessToken = "PersonalAccessToken";
   public const string ServiceAccount = "ServiceAccount";
   public const string ServiceAccountCredential = "ServiceAccountCredential";
+  public const string UserGroup = "UserGroup";
 }
