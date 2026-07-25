@@ -10,6 +10,7 @@ global using ControlR.Web.Server.Extensions;
 global using ControlR.Web.Server.Options;
 global using ControlR.Web.Server.Services;
 global using ControlR.Web.Server.Services.ServiceAccounts;
+global using ControlR.Web.Server.Services.DeviceGroups;
 global using ControlR.Web.Client.Authz;
 global using ControlR.Web.Client.Authz.Policies;
 global using ControlR.Web.Server.Data.Entities;

@@ -69,7 +69,19 @@ public static class AuthorizationRegistrationExtensions
       .AddPolicy(PolicyNames.RequireServiceAccountRotateCredentials, policy => policy
         .AddAuthenticationSchemes(CustomSchemes.Dynamic)
         .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.ServiceAccountRotateCredentials));
+        .RequirePermission(PermissionNames.ServiceAccountRotateCredentials))
+      .AddPolicy(PolicyNames.RequireDeviceGroupsRead, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.TenantDeviceGroupsRead))
+      .AddPolicy(PolicyNames.RequireDeviceGroupsWrite, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.TenantDeviceGroupsWrite))
+      .AddPolicy(PolicyNames.RequireDeviceGroupAssignDevices, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(PermissionNames.DeviceGroupAssignDevices));
 
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderRequirementHandler>();
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderAsyncRequirementHandler>();

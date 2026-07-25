@@ -9,6 +9,11 @@ public static class AuthorizationChangeLogActions
   public const string CredentialScopeRemoved = "credential-scope-removed";
   public const string CredentialScopeSet = "credential-scope-set";
   public const string CredentialScopeTrim = "credential-scope-trim";
+  public const string DeviceGroupCreated = "device-group-created";
+  public const string DeviceGroupDeleted = "device-group-deleted";
+  public const string DeviceGroupMembersAdded = "device-group-members-added";
+  public const string DeviceGroupMembersRemoved = "device-group-members-removed";
+  public const string DeviceGroupUpdated = "device-group-updated";
   public const string ServiceAccountCreated = "service-account-created";
   public const string ServiceAccountCredentialCreated = "service-account-credential-created";
   public const string ServiceAccountCredentialRevoked = "service-account-credential-revoked";
@@ -32,6 +37,7 @@ public static class AuthorizationChangeLogActorTypes
 /// </summary>
 public static class AuthorizationChangeLogTargetTypes
 {
+  public const string DeviceGroup = "DeviceGroup";
   public const string LogonToken = "LogonToken";
   public const string PermissionAssignment = "PermissionAssignment";
   public const string PersonalAccessToken = "PersonalAccessToken";

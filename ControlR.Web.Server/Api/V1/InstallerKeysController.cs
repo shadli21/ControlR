@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Extensions.Dtos.V1;
 using ControlR.Web.Server.Services.AgentInstaller;
 using Microsoft.AspNetCore.Mvc;
 using CreateInstallerKeyRequestDto = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.CreateInstallerKeyRequestDto;
@@ -27,7 +28,7 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
         request.Expiration,
         request.FriendlyName);
 
-    var dto = V1Dtos.CreateInstallerKeyResponseDto.From(internalDto);
+    var dto = internalDto.ToV1Dto();
 
     return Ok(dto);
   }

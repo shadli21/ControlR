@@ -14,6 +14,7 @@ public static class HttpConstants
     public const string AuthEndpoint = "/api/auth";
     public const string DesktopPreviewEndpoint = "/api/desktop-preview";
     public const string DeviceFileSystemEndpoint = "/api/device-file-system";
+    public const string DeviceGroupsEndpoint = "/api/device-groups";
     public const string DevicesEndpoint = "/api/devices";
     public const string DeviceTagsEndpoint = "/api/device-tags";
     public const string EffectiveUserPreferencesEndpoint = "/api/effective-user-preferences";

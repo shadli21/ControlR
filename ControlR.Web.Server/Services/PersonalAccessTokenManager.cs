@@ -378,6 +378,15 @@ public class PersonalAccessTokenManager(
     }
   }
 
+  private static InternalDtos.PersonalAccessTokenResponseDto MapToDto(PersonalAccessToken personalAccessToken)
+  {
+    return new InternalDtos.PersonalAccessTokenResponseDto(
+      personalAccessToken.Id,
+      personalAccessToken.Name,
+      personalAccessToken.CreatedAt,
+      personalAccessToken.LastUsed);
+  }
+
   private async Task<HashSet<string>> ResolveUserEffectivePermissions(Guid userId)
   {
     var permissions = new HashSet<string>();
@@ -426,14 +435,5 @@ public class PersonalAccessTokenManager(
     }
 
     return permissions;
-  }
-
-  private static InternalDtos.PersonalAccessTokenResponseDto MapToDto(PersonalAccessToken personalAccessToken)
-  {
-    return new InternalDtos.PersonalAccessTokenResponseDto(
-      personalAccessToken.Id,
-      personalAccessToken.Name,
-      personalAccessToken.CreatedAt,
-      personalAccessToken.LastUsed);
   }
 }

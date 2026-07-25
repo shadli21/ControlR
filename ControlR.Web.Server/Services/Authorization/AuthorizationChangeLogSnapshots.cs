@@ -32,3 +32,15 @@ public sealed record CredentialScopeSnapshot(
 /// Used for scope-set audit entries where individual rows are not enumerated.
 /// </summary>
 public sealed record CredentialScopeSetSummary(int ScopeCount);
+
+/// <summary>
+/// Snapshot of a device group's state at a point in time.
+/// Used for create/update/delete audit entries.
+/// </summary>
+public sealed record DeviceGroupSnapshot(string Name, string? Description);
+
+/// <summary>
+/// Summary of a device group membership change.
+/// Used for member add/remove audit entries.
+/// </summary>
+public sealed record DeviceGroupMembershipChange(int Count);

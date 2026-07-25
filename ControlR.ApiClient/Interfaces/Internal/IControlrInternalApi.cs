@@ -5,6 +5,7 @@ public interface IControlrInternalApi
   IAuthApi Auth { get; }
   IDesktopPreviewApi DesktopPreview { get; }
   IDeviceFileSystemApi DeviceFileSystem { get; }
+  IDeviceGroupsApi DeviceGroups { get; }
   IDevicesApi Devices { get; }
   IDeviceTagsApi DeviceTags { get; }
   IEffectiveUserPreferencesApi EffectiveUserPreferences { get; }

@@ -7,6 +7,7 @@ internal partial class InternalApi(ControlrApi client) :
   IAuthApi,
   IDesktopPreviewApi,
   IDeviceFileSystemApi,
+  IDeviceGroupsApi,
   IDeviceTagsApi,
   IDevicesApi,
   IEffectiveUserPreferencesApi,
@@ -36,6 +37,7 @@ internal partial class InternalApi(ControlrApi client) :
   public IAuthApi Auth => this;
   public IDesktopPreviewApi DesktopPreview => this;
   public IDeviceFileSystemApi DeviceFileSystem => this;
+  public IDeviceGroupsApi DeviceGroups => this;
   public IDevicesApi Devices => this;
   public IDeviceTagsApi DeviceTags => this;
   public IEffectiveUserPreferencesApi EffectiveUserPreferences => this;
