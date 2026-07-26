@@ -1,4 +1,3 @@
-using ControlR.Libraries.Api.Contracts.Dtos;
 using ControlR.Libraries.Api.Contracts.FilterSort;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
@@ -52,7 +51,7 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
   private async Task LoadDevices()
   {
     _loading = true;
-    StateHasChanged();
+    await InvokeAsync(StateHasChanged);
 
     try
     {
@@ -72,7 +71,7 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
         return;
       }
 
-      _devices = [.. (response.Value.Items ?? [])];
+      _devices = [.. response.Value.Items ?? []];
       _totalPages = Math.Max(1, (int)Math.Ceiling(response.Value.TotalItems / (double)PageSize));
     }
     finally

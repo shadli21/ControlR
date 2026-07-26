@@ -193,6 +193,28 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
     }
   }
 
+  private void ConfigureCustomers(ModelBuilder builder)
+  {
+    builder
+      .Entity<Customer>()
+      .HasIndex(x => new { x.TenantId, x.Name })
+      .IsUnique();
+
+    builder
+      .Entity<Device>()
+      .HasOne(x => x.Customer)
+      .WithMany()
+      .HasForeignKey(x => x.CustomerId)
+      .OnDelete(DeleteBehavior.SetNull);
+
+    if (_tenantId is not null)
+    {
+      builder
+        .Entity<Customer>()
+        .HasQueryFilter(x => x.TenantId == _tenantId);
+    }
+  }
+
   private void ConfigureDeviceGroups(ModelBuilder builder)
   {
     builder
@@ -223,28 +245,6 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
     {
       builder
         .Entity<DeviceGroup>()
-        .HasQueryFilter(x => x.TenantId == _tenantId);
-    }
-  }
-
-  private void ConfigureCustomers(ModelBuilder builder)
-  {
-    builder
-      .Entity<Customer>()
-      .HasIndex(x => new { x.TenantId, x.Name })
-      .IsUnique();
-
-    builder
-      .Entity<Device>()
-      .HasOne(x => x.Customer)
-      .WithMany()
-      .HasForeignKey(x => x.CustomerId)
-      .OnDelete(DeleteBehavior.SetNull);
-
-    if (_tenantId is not null)
-    {
-      builder
-        .Entity<Customer>()
         .HasQueryFilter(x => x.TenantId == _tenantId);
     }
   }

@@ -33,7 +33,7 @@ public partial class CreatePermissionAssignmentDialog : ComponentBase
     var result = await ControlrApi.Internal.PermissionAssignments.GetCatalog();
     if (result.IsSuccess)
     {
-      _catalog = [.. result.Value];
+      _catalog = [.. result.Value.OrderBy(x => x.Name)];
     }
   }
 

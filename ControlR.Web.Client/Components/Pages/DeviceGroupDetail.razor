@@ -5,8 +5,9 @@
 
 <PrimaryTitle>
   <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo(ClientRoutes.DeviceGroups))" />
-    <MudText Typo="Typo.h5">@(_group?.Name ?? "Loading...")</MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo(ClientRoutes.DeviceGroups))" />
+    <MudText Typo="Typo.h4" Color="Color.Primary">@(_group?.Name ?? "Loading...")</MudText>
   </MudStack>
 </PrimaryTitle>
 
@@ -21,29 +22,38 @@ else if (_group is null)
 else
 {
   <MudPaper Class="pa-4 mb-4">
-    <MudStack Spacing="2">
-      <MudText Typo="Typo.subtitle1" Color="Color.Secondary">@_group.Description</MudText>
-      <MudStack Row="true" Spacing="1">
-        <MudText Typo="Typo.caption">ID: @_group.Id</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopyGroupId" />
-      </MudStack>
-      <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Edit" OnClick="EditGroup">
+    <div class="group-detail-top">
+      <div class="group-info-grid">
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Group ID:</MudText>
+        <div class="d-flex align-center gap-2">
+          <MudText Typo="Typo.body1">
+            @_group.Id
+          </MudText>
+          <MudTooltip Text="Copy ID">
+            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Default" Size="Size.Small"
+                           OnClick="CopyGroupId" />
+          </MudTooltip>
+        </div>
+
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Description:</MudText>
+        <MudText Typo="Typo.body1">@(string.IsNullOrWhiteSpace(_group.Description) ? "—" : _group.Description)</MudText>
+
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Created:</MudText>
+        <MudText Typo="Typo.body1">@_group.CreatedAt.ToLocalTime()</MudText>
+      </div>
+
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                 StartIcon="@Icons.Material.Filled.Edit" OnClick="EditGroup" Class="group-detail-edit">
         Edit
       </MudButton>
-    </MudStack>
+    </div>
   </MudPaper>
 
-  <MudDataGrid T="DeviceGroupMemberDto"
-               Items="_group.Members"
-               Hover="true"
-               Breakpoint="Breakpoint.Sm">
+  <MudDataGrid T="DeviceGroupMemberDto" Items="_group.Members" Hover="true" Breakpoint="Breakpoint.Sm">
     <ToolBarContent>
       <MudText Typo="Typo.subtitle1">Members (@_group.Members.Count)</MudText>
       <MudSpacer />
-      <MudButton Variant="Variant.Outlined"
-                 Color="Color.Primary"
-                 Size="Size.Small"
-                 StartIcon="@Icons.Material.Filled.Add"
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
                  OnClick="AddMembers">
         Add Members
       </MudButton>
@@ -52,10 +62,10 @@ else
       <PropertyColumn Property="x => x.DeviceName" Title="Device" />
       <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
         <CellTemplate>
-          <MudIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline"
-                         Size="Size.Small"
-                         Color="Color.Error"
-                         OnClick="@(() => RemoveMember(context.Item))" />
+          <MudTooltip Text="Remove member">
+            <MudIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline" Color="Color.Error"
+                           OnClick="@(() => RemoveMember(context.Item))" />
+          </MudTooltip>
         </CellTemplate>
       </TemplateColumn>
     </Columns>

@@ -48,10 +48,10 @@
     <PropertyColumn Property="x => x.CreatedAt" Title="Created" />
     <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
       <CellTemplate>
-        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-          <MudMenuItem OnClick="@(() => EditCustomer(context.Item))">Edit</MudMenuItem>
-          <MudMenuItem OnClick="@(() => AssignDevices(context.Item))">Assign Devices</MudMenuItem>
-          <MudMenuItem OnClick="@(() => DeleteCustomer(context.Item))" Class="mud-text-error">Delete</MudMenuItem>
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
+          <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info" OnClick="@(() => EditCustomer(context.Item))">Edit</MudMenuItem>
+          <MudMenuItem Icon="@Icons.Material.Filled.AddToPhotos" IconColor="Color.Info" OnClick="@(() => AssignDevices(context.Item))">Assign Devices</MudMenuItem>
+          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteCustomer(context.Item))">Delete</MudMenuItem>
         </MudMenu>
       </CellTemplate>
     </TemplateColumn>

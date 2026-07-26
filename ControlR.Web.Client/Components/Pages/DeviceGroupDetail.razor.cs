@@ -85,7 +85,8 @@ public partial class DeviceGroupDetail : ComponentBase
       { x => x.Description, _group.Description }
     };
 
-    var dialog = await DialogService.ShowAsync<EditGroupDialog>("Edit Device Group", parameters);
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+    var dialog = await DialogService.ShowAsync<EditGroupDialog>("Edit Device Group", parameters, options);
     var result = await dialog.Result;
 
     if (result is null || result.Canceled || result.Data is not EditGroupDialogResult editResult)

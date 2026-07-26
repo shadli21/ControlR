@@ -1,5 +1,3 @@
-@using ControlR.Libraries.Api.Contracts.Dtos
-
 <MudDialog>
   <DialogContent>
     <MudStack Spacing="2">
@@ -22,9 +20,11 @@
         <MudPaper MaxHeight="350px" Class="overflow-y-auto pa-2">
           @foreach (var device in _devices)
           {
+            var isAssigned = device.CustomerId == CustomerId;
             <MudCheckBox T="bool"
-                         Value="_selectedIds.Contains(device.Id)"
+                         Value="@(isAssigned || _selectedIds.Contains(device.Id))"
                          ValueChanged="@(v => ToggleSelection(device.Id, v))"
+                         Disabled="@isAssigned"
                          Color="Color.Primary"
                          Dense="true">
               @device.Name
@@ -42,7 +42,7 @@
   </DialogContent>
   <DialogActions>
     <MudButton OnClick="Cancel">Cancel</MudButton>
-    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Assign" Disabled="@(_selectedIds.Count == 0)">
+    <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="Assign" Disabled="@(_selectedIds.Count == 0)">
       Assign (@_selectedIds.Count)
     </MudButton>
   </DialogActions>

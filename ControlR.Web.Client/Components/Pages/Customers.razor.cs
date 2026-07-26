@@ -70,7 +70,8 @@ public partial class Customers : ComponentBase
 
   private async Task CreateCustomer()
   {
-    var dialog = await DialogService.ShowAsync<CustomerDialog>("Create Customer");
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+    var dialog = await DialogService.ShowAsync<CustomerDialog>("Create Customer", options);
     var result = await dialog.Result;
 
     if (result is null || result.Canceled || result.Data is not CustomerDialogResult dialogResult)
@@ -123,7 +124,8 @@ public partial class Customers : ComponentBase
       { x => x.Notes, customer.Notes }
     };
 
-    var dialog = await DialogService.ShowAsync<CustomerDialog>("Edit Customer", parameters);
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+    var dialog = await DialogService.ShowAsync<CustomerDialog>("Edit Customer", parameters, options);
     var result = await dialog.Result;
 
     if (result is null || result.Canceled || result.Data is not CustomerDialogResult dialogResult)

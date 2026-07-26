@@ -47,9 +47,9 @@
     <PropertyColumn Property="x => x.CreatedAt" Title="Created" />
     <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
       <CellTemplate>
-        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-          <MudMenuItem OnClick="@(() => ViewGroup(context.Item))">View Members</MudMenuItem>
-          <MudMenuItem OnClick="@(() => DeleteGroup(context.Item))" Class="mud-text-error">Delete</MudMenuItem>
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
+          <MudMenuItem Icon="@Icons.Material.Filled.Group" IconColor="Color.Info" OnClick="@(() => ViewGroup(context.Item))">View Members</MudMenuItem>
+          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteGroup(context.Item))">Delete</MudMenuItem>
         </MudMenu>
       </CellTemplate>
     </TemplateColumn>
