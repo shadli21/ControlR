@@ -39,7 +39,11 @@
                      SelectedValuesChanged="OnSelectedCustomersChanged"
                      Label="Filter by customer"
                      Dense="true"
+                     MultiSelectionTextFunc="@GetCustomerMultiSelectText"
+                     Text="@GetCustomerSelectText()"
+                     AdornmentIcon="@Icons.Material.Filled.Business" Adornment="Adornment.End"
                      Clearable="true">
+
             @foreach (var customer in _customers)
             {
               <MudSelectItem T="Guid" Value="@customer.Id">@customer.Name</MudSelectItem>

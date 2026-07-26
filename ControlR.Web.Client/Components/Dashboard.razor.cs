@@ -23,7 +23,6 @@ public partial class Dashboard : IDisposable
   private int _hiddenUntaggedDevices;
   private bool _hideOfflineDevices;
   private bool _includeUntaggedDevices;
-
   private bool _loading = true;
   private bool _openDeviceInNewTab;
   private int _rowsPerPage = 25;
@@ -34,26 +33,37 @@ public partial class Dashboard : IDisposable
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
+
   [Inject]
   public required IDialogService DialogService { get; init; }
+
   [Inject]
   public required IJsInterop JsInterop { get; init; }
+
   [Inject]
   public required ILogger<Dashboard> Logger { get; init; }
+
   [Inject]
   public required IHubConnection<IViewerHub> MainHub { get; init; }
+
   [Inject]
   public required IMessenger Messenger { get; init; }
+
   [Inject]
   public required NavigationManager NavMan { get; init; }
+
   [Inject]
   public required IPersistentStateAccessor ServerSettings { get; init; }
+
   [Inject]
   public required ISnackbar Snackbar { get; init; }
+
   [Inject]
   public required IUserPreferencesProvider UserPreferences { get; init; }
+
   [Inject]
   public required IUserTagStore UserTagStore { get; init; }
+
   [Inject]
   public required IDeviceContentWindowStore WindowStore { get; init; }
 
@@ -120,6 +130,26 @@ public partial class Dashboard : IDisposable
       Logger.LogError(ex, "Error during dashboard initialization.");
       Snackbar.Add("An error occurred during dashboard initialization.", Severity.Error);
     }
+  }
+
+  private string GetCustomerMultiSelectText(IReadOnlyList<string> customers)
+  {
+    if (customers.Count == 0)
+    {
+      return string.Empty;
+    }
+    var tagNoun = customers.Count > 1 ? "customers" : "customer";
+    return $"{customers.Count} {tagNoun} selected";
+  }
+
+  private string GetCustomerSelectText()
+  {
+    if (_selectedCustomerIds.Count == 0)
+    {
+      return string.Empty;
+    }
+    var tagNoun = _selectedCustomerIds.Count > 1 ? "customers" : "customer";
+    return $"{_selectedCustomerIds.Count} {tagNoun} selected";
   }
 
   private async Task HandleDeviceDtoReceived(object subscriber, DtoReceivedMessage<DeviceResponseDto> message)
