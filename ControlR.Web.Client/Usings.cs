@@ -39,5 +39,6 @@ global using ControlR.Web.Client.Models.Messages;
 global using ControlR.Libraries.WebSocketRelay.Client;
 global using Microsoft.AspNetCore.Components;
 global using ControlR.Web.Client.Extensions;
+global using ControlR.Web.Client.Helpers;
 global using ControlR.ApiClient;
 global using SharedValidators = ControlR.Libraries.Shared.DataValidation.Validators;

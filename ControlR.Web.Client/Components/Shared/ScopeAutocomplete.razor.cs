@@ -1,5 +1,4 @@
 using ControlR.Libraries.Api.Contracts.Dtos;
-using ControlR.Libraries.Api.Contracts.FilterSort;
 
 namespace ControlR.Web.Client.Components.Shared;
 
@@ -9,12 +8,16 @@ public partial class ScopeAutocomplete
 {
   private PermissionScopeKind _previousScopeKind;
   private ScopeOption? _selected;
+  private DeviceResponseDto? _selectedDevice;
 
   [Parameter]
   public string? Class { get; set; }
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
+
+  [Inject]
+  public required IDialogService DialogService { get; init; }
 
   [Parameter]
   public string Label { get; set; } = "Scope";
@@ -28,11 +31,17 @@ public partial class ScopeAutocomplete
   [Parameter]
   public EventCallback<Guid?> SelectedIdChanged { get; set; }
 
+  private string DeviceDisplayText =>
+    _selectedDevice is null ? string.Empty : DeviceDisplay.GetDisplayName(_selectedDevice);
+
   private string ImplicitScopeMessage => ScopeKind switch
   {
     PermissionScopeKind.Server => "Server-wide scope. No specific target is required.",
     _ => "Tenant-wide scope. No specific target is required."
   };
+
+  private bool IsDeviceScope => ScopeKind == PermissionScopeKind.Device;
+
   private bool RequiresTarget => ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup;
 
   protected override void OnParametersSet()
@@ -44,7 +53,14 @@ public partial class ScopeAutocomplete
 
     _previousScopeKind = ScopeKind;
     _selected = null;
+    _selectedDevice = null;
     _ = SelectedIdChanged.InvokeAsync(null);
+  }
+
+  private async Task ClearDevice()
+  {
+    _selectedDevice = null;
+    await SelectedIdChanged.InvokeAsync(null);
   }
 
   private async Task HandleValueChanged(ScopeOption? value)
@@ -53,23 +69,28 @@ public partial class ScopeAutocomplete
     await SelectedIdChanged.InvokeAsync(value?.Id);
   }
 
-  private async Task<IEnumerable<ScopeOption>> Search(string query, CancellationToken cancellationToken)
+  private async Task OpenDevicePicker()
+  {
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium };
+    var dialog = await DialogService.ShowAsync<DevicePickerDialog>("Select Device", options);
+    var result = await dialog.Result;
+
+    if (result is null || result.Canceled || result.Data is not DeviceResponseDto device)
+    {
+      return;
+    }
+
+    _selectedDevice = device;
+    await SelectedIdChanged.InvokeAsync(device.Id);
+  }
+
+  private async Task<IEnumerable<ScopeOption>> SearchDeviceGroups(string query, CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
     {
       return [];
     }
 
-    return ScopeKind switch
-    {
-      PermissionScopeKind.Device => await SearchDevices(query, cancellationToken),
-      PermissionScopeKind.DeviceGroup => await SearchDeviceGroups(query, cancellationToken),
-      _ => []
-    };
-  }
-
-  private async Task<IEnumerable<ScopeOption>> SearchDeviceGroups(string query, CancellationToken cancellationToken)
-  {
     var result = await ControlrApi.Internal.DeviceGroups.GetAll(cancellationToken);
     if (!result.IsSuccess)
     {
@@ -78,27 +99,6 @@ public partial class ScopeAutocomplete
 
     return result.Value
       .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-      .Select(x => new ScopeOption(x.Id, x.Name));
-  }
-
-  private async Task<IEnumerable<ScopeOption>> SearchDevices(string query, CancellationToken cancellationToken)
-  {
-    var request = new DeviceSearchRequestDto
-    {
-      SearchText = query,
-      HideOfflineDevices = false,
-      Page = 0,
-      PageSize = 10,
-      SortDefinitions = [new DeviceColumnSort { PropertyName = nameof(DeviceResponseDto.Name), Descending = false, SortOrder = 0 }]
-    };
-
-    var response = await ControlrApi.Internal.Devices.SearchDevices(request, cancellationToken);
-    if (!response.IsSuccess)
-    {
-      return [];
-    }
-
-    return (response.Value.Items ?? [])
       .Select(x => new ScopeOption(x.Id, x.Name));
   }
 }

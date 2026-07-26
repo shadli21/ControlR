@@ -27,7 +27,7 @@
                          ValueChanged="@(v => ToggleSelection(device.Id, v))"
                          Color="Color.Primary"
                          Dense="true">
-              @device.Name
+              @DeviceDisplay.GetDisplayName(device)
             </MudCheckBox>
           }
           @if (_devices.Count == 0)

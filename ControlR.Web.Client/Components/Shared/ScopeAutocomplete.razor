@@ -1,19 +1,44 @@
 
 @if (RequiresTarget)
 {
-  <MudAutocomplete T="ScopeOption"
-                   Value="_selected"
-                   ValueChanged="HandleValueChanged"
-                   SearchFunc="Search"
-                   DebounceInterval="250"
-                   Label="@Label"
-                   ToStringFunc="@(x => x?.DisplayName ?? string.Empty)"
-                   Dense="true"
-                   Clearable="true"
-                   ResetValueOnEmptyText="true"
-                   CoerceText="true"
-                   CoerceValue="false"
-                   Class="@Class" />
+  @if (IsDeviceScope)
+  {
+    <div class="d-flex align-center gap-2 @Class">
+      <MudTextField T="string"
+                    Value="@DeviceDisplayText"
+                    Label="@Label"
+                    ReadOnly="true"
+                    Class="flex-grow-1" />
+      <MudButton Variant="Variant.Outlined"
+                 Color="Color.Primary"
+                 StartIcon="@Icons.Material.Filled.Search"
+                 OnClick="OpenDevicePicker">
+        Select device
+      </MudButton>
+      @if (_selectedDevice is not null)
+      {
+        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                       Size="Size.Small"
+                       OnClick="ClearDevice" />
+      }
+    </div>
+  }
+  else
+  {
+    <MudAutocomplete T="ScopeOption"
+                     Value="_selected"
+                     ValueChanged="HandleValueChanged"
+                     SearchFunc="SearchDeviceGroups"
+                     DebounceInterval="250"
+                     Label="@Label"
+                     ToStringFunc="@(x => x?.DisplayName ?? string.Empty)"
+                     Dense="true"
+                     Clearable="true"
+                     ResetValueOnEmptyText="true"
+                     CoerceText="true"
+                     CoerceValue="false"
+                     Class="@Class" />
+  }
 }
 else
 {

@@ -12,7 +12,7 @@
     @foreach (var device in _devices)
     {
       <MudListItem T="DeviceResponseDto" Value="@device">
-        @device.Name
+        @DeviceDisplay.GetDisplayName(device)
       </MudListItem>
     }
 

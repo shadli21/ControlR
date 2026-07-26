@@ -17,19 +17,19 @@
       }
       else
       {
-        <MudPaper MaxHeight="350px" Class="overflow-y-auto pa-2">
-          @foreach (var device in _devices)
-          {
-            var isAssigned = device.CustomerId == CustomerId;
-            <MudCheckBox T="bool"
-                         Value="@(isAssigned || _selectedIds.Contains(device.Id))"
-                         ValueChanged="@(v => ToggleSelection(device.Id, v))"
-                         Disabled="@isAssigned"
-                         Color="Color.Primary"
-                         Dense="true">
-              @DeviceDisplay.GetDisplayName(device)
-            </MudCheckBox>
-          }
+        <MudPaper MaxHeight="350px" Class="overflow-y-auto">
+          <MudList T="DeviceResponseDto"
+                   SelectedValue="_selectedDevice"
+                   SelectedValueChanged="HandleSelectedChanged"
+                   SelectionMode="SelectionMode.SingleSelection"
+                   Color="Color.Primary">
+            @foreach (var device in _devices)
+            {
+              <MudListItem T="DeviceResponseDto" Value="@device">
+                @DeviceDisplay.GetDisplayName(device)
+              </MudListItem>
+            }
+          </MudList>
           @if (_devices.Count == 0)
           {
             <MudText Typo="Typo.body2" Class="pa-4 mud-text-secondary">No devices found.</MudText>
@@ -42,8 +42,8 @@
   </DialogContent>
   <DialogActions>
     <MudButton OnClick="Cancel">Cancel</MudButton>
-    <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="Assign" Disabled="@(_selectedIds.Count == 0)">
-      Assign (@_selectedIds.Count)
+    <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="Select" Disabled="@(_selectedDevice is null)">
+      Select
     </MudButton>
   </DialogActions>
 </MudDialog>
