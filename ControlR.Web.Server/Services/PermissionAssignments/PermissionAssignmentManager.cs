@@ -61,7 +61,7 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.BadRequest, $"Unknown permission name: {request.PermissionName}");
     }
 
-    if (request.ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup && !request.ScopeId.HasValue)
+    if (request.ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant && !request.ScopeId.HasValue)
     {
       return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
         HttpResultErrorCode.BadRequest, $"ScopeId is required for scope kind: {request.ScopeKind}");

@@ -28,7 +28,7 @@
     <MudAutocomplete T="ScopeOption"
                      Value="_selected"
                      ValueChanged="HandleValueChanged"
-                     SearchFunc="SearchDeviceGroups"
+                     SearchFunc="Search"
                      DebounceInterval="250"
                      Label="@Label"
                      ToStringFunc="@(x => x?.DisplayName ?? string.Empty)"

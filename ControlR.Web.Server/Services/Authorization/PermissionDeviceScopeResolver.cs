@@ -155,6 +155,18 @@ public class PermissionDeviceScopeResolver(
       return DeviceAccessScope.ForDeviceGroups(deviceGroupIds);
     }
 
+    // CustomerTenant scope: collect customer IDs for query filtering by device customer.
+    var customerIds = allAssignments
+      .Where(x => x.ScopeKind == PermissionScopeKind.CustomerTenant && x.ScopeId.HasValue)
+      .Select(x => x.ScopeId!.Value)
+      .Distinct()
+      .ToList();
+
+    if (customerIds.Count > 0)
+    {
+      return DeviceAccessScope.ForCustomers(customerIds);
+    }
+
     // Device scope: collect specific device IDs.
     var deviceIds = allAssignments
       .Where(x => x.ScopeKind == PermissionScopeKind.Device && x.ScopeId.HasValue)

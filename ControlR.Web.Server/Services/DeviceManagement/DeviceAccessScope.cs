@@ -7,7 +7,8 @@ public enum DeviceAccessScopeKind
   SingleDevice,
   TaggedDevices,
   SpecificDevices,
-  DeviceGroups
+  DeviceGroups,
+  Customers
 }
 
 /// <summary>
@@ -22,15 +23,18 @@ public sealed record DeviceAccessScope
     Guid? deviceId,
     IReadOnlyCollection<Guid>? tagIds,
     IReadOnlyCollection<Guid>? deviceIds,
-    IReadOnlyCollection<Guid>? deviceGroupIds)
+    IReadOnlyCollection<Guid>? deviceGroupIds,
+    IReadOnlyCollection<Guid>? customerIds = null)
   {
     Kind = kind;
     DeviceId = deviceId;
     TagIds = tagIds ?? [];
     DeviceIds = deviceIds ?? [];
     DeviceGroupIds = deviceGroupIds ?? [];
+    CustomerIds = customerIds ?? [];
   }
 
+  public IReadOnlyCollection<Guid> CustomerIds { get; }
   public Guid? DeviceId { get; }
   public IReadOnlyCollection<Guid> DeviceGroupIds { get; }
   public IReadOnlyCollection<Guid> DeviceIds { get; }
@@ -52,4 +56,7 @@ public sealed record DeviceAccessScope
 
   public static DeviceAccessScope ForDeviceGroups(IReadOnlyCollection<Guid> deviceGroupIds) =>
     new(DeviceAccessScopeKind.DeviceGroups, null, [], [], deviceGroupIds);
+
+  public static DeviceAccessScope ForCustomers(IReadOnlyCollection<Guid> customerIds) =>
+    new(DeviceAccessScopeKind.Customers, null, [], [], [], customerIds);
 }

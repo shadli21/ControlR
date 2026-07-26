@@ -281,6 +281,15 @@ public class PermissionEvaluator(
       return true;
     }
 
+    // A CustomerTenant-scoped assignment covers individual devices that belong to that
+    // customer. Membership is checked precisely here via the device's CustomerId (carried
+    // on the resource descriptor), so no deferred validation is needed.
+    if (assignment.ScopeKind == PermissionScopeKind.CustomerTenant &&
+        resource.Kind == PermissionScopeKind.Device)
+    {
+      return resource.CustomerId.HasValue && assignment.ScopeId == resource.CustomerId.Value;
+    }
+
     return false;
   }
 

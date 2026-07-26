@@ -24,8 +24,8 @@ public static class PermissionCatalog
 
     var server = new[] { PermissionScopeKind.Server };
     var tenant = new[] { PermissionScopeKind.Tenant };
-    var device = new[] { PermissionScopeKind.Device };
-    var deviceAndGroup = new[] { PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup };
+    var device = new[] { PermissionScopeKind.Device, PermissionScopeKind.CustomerTenant };
+    var deviceAndGroup = new[] { PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup, PermissionScopeKind.CustomerTenant };
 
     Add(PermissionNames.ServerAdmin, "Server Admin", "Full administrative access to server-wide settings and operations.", server);
     Add(PermissionNames.ServerAlertsRead, "Read Server Alerts", "View server alerts and notifications.", server);

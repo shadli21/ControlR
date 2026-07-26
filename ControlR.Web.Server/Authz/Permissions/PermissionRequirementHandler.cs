@@ -102,7 +102,7 @@ public class PermissionRequirementHandler(
   {
     if (resource is Device device)
     {
-      return new ResourceDescriptor(PermissionScopeKind.Device, device.Id, device.TenantId);
+      return new ResourceDescriptor(PermissionScopeKind.Device, device.Id, device.TenantId, device.CustomerId);
     }
 
     if (requirementResource.TenantId is null && principal.TenantId.HasValue)

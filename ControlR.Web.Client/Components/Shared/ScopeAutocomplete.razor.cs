@@ -42,7 +42,7 @@ public partial class ScopeAutocomplete
 
   private bool IsDeviceScope => ScopeKind == PermissionScopeKind.Device;
 
-  private bool RequiresTarget => ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup;
+  private bool RequiresTarget => ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant;
 
   protected override void OnParametersSet()
   {
@@ -84,6 +84,16 @@ public partial class ScopeAutocomplete
     await SelectedIdChanged.InvokeAsync(device.Id);
   }
 
+  private async Task<IEnumerable<ScopeOption>> Search(string query, CancellationToken cancellationToken)
+  {
+    return ScopeKind switch
+    {
+      PermissionScopeKind.DeviceGroup => await SearchDeviceGroups(query, cancellationToken),
+      PermissionScopeKind.CustomerTenant => await SearchCustomers(query, cancellationToken),
+      _ => []
+    };
+  }
+
   private async Task<IEnumerable<ScopeOption>> SearchDeviceGroups(string query, CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
@@ -92,6 +102,24 @@ public partial class ScopeAutocomplete
     }
 
     var result = await ControlrApi.Internal.DeviceGroups.GetAll(cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return [];
+    }
+
+    return result.Value
+      .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+      .Select(x => new ScopeOption(x.Id, x.Name));
+  }
+
+  private async Task<IEnumerable<ScopeOption>> SearchCustomers(string query, CancellationToken cancellationToken)
+  {
+    if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+    {
+      return [];
+    }
+
+    var result = await ControlrApi.Internal.Customers.GetAll(cancellationToken);
     if (!result.IsSuccess)
     {
       return [];
