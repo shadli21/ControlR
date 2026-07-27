@@ -96,7 +96,13 @@ public class UsersController : ControllerBase
       return BadRequest("User creation failed");
     }
 
-    var response = new InternalDtos.UserResponseDto(user.Id, user.UserName, user.Email);
+    var createdAt = await appDb.Users
+      .Where(x => x.Id == user.Id)
+      .Select(x => x.CreatedAt)
+      .FirstOrDefaultAsync();
+    var roleNames = await userManager.GetRolesAsync(user);
+
+    var response = new InternalDtos.UserResponseDto(user.Id, user.UserName, user.Email, createdAt, [.. roleNames]);
     return CreatedAtAction(nameof(GetAll), new { id = user.Id }, response);
   }
 
@@ -196,10 +202,29 @@ public class UsersController : ControllerBase
       return BadRequest("User tenant not found.");
     }
 
-    return await appDb.Users
+    var users = await appDb.Users
       .Where(x => x.TenantId == tenantId)
-      .Select(x => new InternalDtos.UserResponseDto(x.Id, x.UserName, x.Email))
+      .Select(x => new { x.Id, x.UserName, x.Email, x.CreatedAt })
       .ToListAsync();
+
+    var userIds = users.Select(x => x.Id).ToList();
+
+    var rolesByUser = await appDb.UserRoles
+      .Where(x => userIds.Contains(x.UserId))
+      .Join(appDb.Roles,
+        userRole => userRole.RoleId,
+        role => role.Id,
+        (userRole, role) => new { userRole.UserId, RoleName = role.Name ?? string.Empty })
+      .ToListAsync();
+
+    var rolesLookup = rolesByUser
+      .GroupBy(x => x.UserId)
+      .ToDictionary(group => group.Key, group => group.Select(x => x.RoleName).ToList());
+
+    return users
+      .Select(x => new InternalDtos.UserResponseDto(
+        x.Id, x.UserName, x.Email, x.CreatedAt, rolesLookup.GetValueOrDefault(x.Id) ?? []))
+      .ToList();
   }
 
   [HttpGet("{userId:guid}/personal-access-tokens")]

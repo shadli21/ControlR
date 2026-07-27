@@ -1,0 +1,62 @@
+@attribute [Route(ClientRoutes.Users)]
+@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+
+<PageTitle>Users</PageTitle>
+
+<PrimaryTitle>
+  Users
+</PrimaryTitle>
+
+<MudDataGrid T="UserResponseDto"
+             Items="_users"
+             Hover="true"
+             Loading="_loading"
+             QuickFilter="QuickFilter"
+             Breakpoint="Breakpoint.Sm">
+  <ToolBarContent>
+    <MudTextField T="string"
+                  @bind-Value="_searchString"
+                  Placeholder="Search"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Immediate="true"
+                  Class="mr-4" />
+    <MudSpacer />
+    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="Refresh" />
+  </ToolBarContent>
+  <Columns>
+    <PropertyColumn Property="x => x.UserName" Title="Username" />
+    <PropertyColumn Property="x => x.Email" Title="Email" />
+    <TemplateColumn Title="Roles" Sortable="false" Filterable="false">
+      <CellTemplate>
+        <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+          @foreach (var role in context.Item.Roles)
+          {
+            <MudChip T="string" Size="Size.Small" Color="Color.Default">@role</MudChip>
+          }
+        </MudStack>
+      </CellTemplate>
+    </TemplateColumn>
+    <PropertyColumn Property="x => x.CreatedAt" Title="Created" />
+    <TemplateColumn Title="ID" Sortable="false" Filterable="false">
+      <CellTemplate>
+        <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
+          <MudText Typo="Typo.body2">@(TruncateId(context.Item.Id))</MudText>
+          <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                         Size="Size.Small"
+                         OnClick="@(() => CopyId(context.Item.Id))" />
+        </MudStack>
+      </CellTemplate>
+    </TemplateColumn>
+    <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+      <CellTemplate>
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
+          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteUser(context.Item))">Delete</MudMenuItem>
+        </MudMenu>
+      </CellTemplate>
+    </TemplateColumn>
+  </Columns>
+  <PagerContent>
+    <MudDataGridPager T="UserResponseDto" />
+  </PagerContent>
+</MudDataGrid>

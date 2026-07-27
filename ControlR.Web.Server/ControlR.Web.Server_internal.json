@@ -13169,7 +13169,9 @@
         "required": [
           "id",
           "userName",
-          "email"
+          "email",
+          "createdAt",
+          "roles"
         ],
         "type": "object",
         "properties": {
@@ -13188,6 +13190,16 @@
               "null",
               "string"
             ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

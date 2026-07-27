@@ -34,4 +34,5 @@ public static class ClientRoutes
   public const string TenantSettings = "/tenant-settings";
   public const string UserGroupDetail = "/user-groups/{Id:guid}";
   public const string UserGroups = "/user-groups";
+  public const string Users = "/users";
 }
