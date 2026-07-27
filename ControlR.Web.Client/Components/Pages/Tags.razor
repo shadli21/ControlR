@@ -1,6 +1,6 @@
 @using ControlR.Web.Client.Components.Tags
 @attribute [Route(ClientRoutes.Tags)]
-@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequireTagsRead)]
 
 <PageTitle>Tags</PageTitle>
 

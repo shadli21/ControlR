@@ -1,5 +1,5 @@
 @attribute [Route(ClientRoutes.UserGroups)]
-@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequireUserGroupsRead)]
 
 <PageTitle>User Groups</PageTitle>
 

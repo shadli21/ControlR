@@ -1,6 +1,6 @@
 @using ControlR.Web.Client.StateManagement.Stores
 @attribute [Route(ClientRoutes.Invite)]
-@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequireTenantUsersWrite)]
 @inject ILogger<Invite> Logger
 @inject IInviteStore InviteStore
 @inject IControlrInternalApi ControlrApi

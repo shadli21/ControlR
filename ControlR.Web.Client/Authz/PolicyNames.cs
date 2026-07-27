@@ -7,20 +7,28 @@ namespace ControlR.Web.Client.Authz;
 /// </summary>
 public static class PolicyNames
 {
+  public const string RequireAgentInstall = "RequireAgentInstall";
   public const string RequireCustomersRead = "RequireCustomersRead";
   public const string RequireCustomersWrite = "RequireCustomersWrite";
   public const string RequireDeviceGroupAssignDevices = "RequireDeviceGroupAssignDevices";
   public const string RequireDeviceGroupsRead = "RequireDeviceGroupsRead";
   public const string RequireDeviceGroupsWrite = "RequireDeviceGroupsWrite";
+  public const string RequireInstallerKeyRead = "RequireInstallerKeyRead";
   public const string RequirePermissionAssignmentsRead = "RequirePermissionAssignmentsRead";
   public const string RequirePermissionAssignmentsWrite = "RequirePermissionAssignmentsWrite";
+  public const string RequireServerAdmin = "RequireServerAdmin";
   public const string RequireServerServiceAccountsRead = "RequireServerServiceAccountsRead";
   public const string RequireServerServiceAccountsRotateCredentials = "RequireServerServiceAccountsRotateCredentials";
   public const string RequireServerServiceAccountsWrite = "RequireServerServiceAccountsWrite";
+  public const string RequireServerTelemetryRead = "RequireServerTelemetryRead";
   public const string RequireServiceAccountRead = "RequireServiceAccountRead";
   public const string RequireServiceAccountRotateCredentials = "RequireServiceAccountRotateCredentials";
   public const string RequireServiceAccountWrite = "RequireServiceAccountWrite";
+  public const string RequireTagsRead = "RequireTagsRead";
+  public const string RequireTenantSettingsRead = "RequireTenantSettingsRead";
+  public const string RequireTenantUsersWrite = "RequireTenantUsersWrite";
   public const string RequireUserGroupAssignUsers = "RequireUserGroupAssignUsers";
   public const string RequireUserGroupsRead = "RequireUserGroupsRead";
   public const string RequireUserGroupsWrite = "RequireUserGroupsWrite";
+  public const string RequireUsersRead = "RequireUsersRead";
 }

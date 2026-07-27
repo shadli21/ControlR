@@ -1,6 +1,6 @@
 ﻿@using Microsoft.Extensions.Options
 @attribute [Route(ClientRoutes.ServerLogs)]
-@attribute [Authorize(Roles = RoleNames.ServerAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequireServerTelemetryRead)]
 @inject IControlrInternalApi ControlrApi
 @inject ILogger<ServerLogs> Logger
 

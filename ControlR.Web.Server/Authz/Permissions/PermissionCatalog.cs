@@ -30,7 +30,7 @@ public static class PermissionCatalog
     Add(PermissionNames.ServerAdmin, "Server Admin", "Full administrative access to server-wide settings and operations.", server);
     Add(PermissionNames.ServerAlertsRead, "Read Server Alerts", "View server alerts and notifications.", server);
     Add(PermissionNames.ServerAlertsWrite, "Manage Server Alerts", "Create, update, and dismiss server alerts.", server);
-    Add(PermissionNames.ServerDashboardRead, "Read Server Dashboard", "View the Aspire dashboard (logs and metrics).", server);
+    Add(PermissionNames.ServerTelemetryRead, "Read Server Telemetry", "View server telemetry (logs and metrics).", server);
     Add(PermissionNames.ServerServiceAccountsRead, "Read Server Service Accounts", "View server-scoped service accounts and credentials.", server);
     Add(PermissionNames.ServerServiceAccountsWrite, "Manage Server Service Accounts", "Create and delete server-scoped service accounts.", server);
     Add(PermissionNames.ServerServiceAccountsRotateCredentials, "Rotate Server Service Account Credentials", "Create and revoke credentials for server-scoped service accounts.", server);
@@ -49,6 +49,8 @@ public static class PermissionCatalog
     Add(PermissionNames.TenantDeviceGroupsWrite, "Manage Device Groups", "Create, update, and delete device groups within the tenant.", tenant);
     Add(PermissionNames.TenantCustomersRead, "Read Customers", "View customers within the tenant.", tenant);
     Add(PermissionNames.TenantCustomersWrite, "Manage Customers", "Create, update, and delete customers within the tenant.", tenant);
+    Add(PermissionNames.TenantTagsRead, "Read Tags", "View tag definitions within the tenant.", tenant);
+    Add(PermissionNames.TenantTagsWrite, "Manage Tags", "Create, update, and delete tag definitions within the tenant.", tenant);
     Add(PermissionNames.TenantPermissionsRead, "Read Permissions", "View permission assignments within the tenant.", tenant);
     Add(PermissionNames.TenantPermissionsWrite, "Manage Permissions", "Create and update allow permission assignments within the tenant.", tenant);
     Add(PermissionNames.TenantPermissionsDeny, "Manage Deny Permissions", "Create and update deny permission assignments within the tenant.", tenant);

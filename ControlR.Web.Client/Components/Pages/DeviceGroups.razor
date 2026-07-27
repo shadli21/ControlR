@@ -1,5 +1,5 @@
 @attribute [Route(ClientRoutes.DeviceGroups)]
-@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequireDeviceGroupsRead)]
 
 <PageTitle>Device Groups</PageTitle>
 

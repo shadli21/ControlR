@@ -1,5 +1,5 @@
 @attribute [Route(ClientRoutes.EffectivePermissions)]
-@attribute [Authorize(Roles = RoleNames.ServerAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequireServerAdmin)]
 
 <PageTitle>Effective Permissions</PageTitle>
 

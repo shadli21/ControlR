@@ -1,5 +1,5 @@
 @attribute [Route(ClientRoutes.Deploy)]
-@attribute [Authorize(Roles = RoleNames.AgentInstaller)]
+@attribute [Authorize(Policy = PolicyNames.RequireAgentInstall)]
 
 <PageTitle>Deploy</PageTitle>
 

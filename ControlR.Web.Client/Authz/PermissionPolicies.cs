@@ -14,21 +14,29 @@ public static class PermissionPolicies
   public static IReadOnlyDictionary<string, string> PolicyToPermission { get; } =
     new Dictionary<string, string>
     {
+      [PolicyNames.RequireAgentInstall] = PermissionNames.AgentInstall,
       [PolicyNames.RequireCustomersRead] = PermissionNames.TenantCustomersRead,
       [PolicyNames.RequireCustomersWrite] = PermissionNames.TenantCustomersWrite,
       [PolicyNames.RequireDeviceGroupAssignDevices] = PermissionNames.DeviceGroupAssignDevices,
       [PolicyNames.RequireDeviceGroupsRead] = PermissionNames.TenantDeviceGroupsRead,
       [PolicyNames.RequireDeviceGroupsWrite] = PermissionNames.TenantDeviceGroupsWrite,
+      [PolicyNames.RequireInstallerKeyRead] = PermissionNames.InstallerKeyRead,
       [PolicyNames.RequirePermissionAssignmentsRead] = PermissionNames.TenantPermissionsRead,
       [PolicyNames.RequirePermissionAssignmentsWrite] = PermissionNames.TenantPermissionsWrite,
+      [PolicyNames.RequireServerAdmin] = PermissionNames.ServerAdmin,
       [PolicyNames.RequireServerServiceAccountsRead] = PermissionNames.ServerServiceAccountsRead,
       [PolicyNames.RequireServerServiceAccountsRotateCredentials] = PermissionNames.ServerServiceAccountsRotateCredentials,
       [PolicyNames.RequireServerServiceAccountsWrite] = PermissionNames.ServerServiceAccountsWrite,
+      [PolicyNames.RequireServerTelemetryRead] = PermissionNames.ServerTelemetryRead,
       [PolicyNames.RequireServiceAccountRead] = PermissionNames.ServiceAccountRead,
       [PolicyNames.RequireServiceAccountRotateCredentials] = PermissionNames.ServiceAccountRotateCredentials,
       [PolicyNames.RequireServiceAccountWrite] = PermissionNames.ServiceAccountWrite,
+      [PolicyNames.RequireTagsRead] = PermissionNames.TenantTagsRead,
+      [PolicyNames.RequireTenantSettingsRead] = PermissionNames.TenantSettingsRead,
+      [PolicyNames.RequireTenantUsersWrite] = PermissionNames.TenantUsersWrite,
       [PolicyNames.RequireUserGroupAssignUsers] = PermissionNames.UserGroupAssignUsers,
       [PolicyNames.RequireUserGroupsRead] = PermissionNames.TenantUserGroupsRead,
       [PolicyNames.RequireUserGroupsWrite] = PermissionNames.TenantUserGroupsWrite,
+      [PolicyNames.RequireUsersRead] = PermissionNames.TenantUsersRead,
     };
 }

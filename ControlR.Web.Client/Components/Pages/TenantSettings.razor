@@ -1,5 +1,5 @@
 @attribute [Route(ClientRoutes.TenantSettings)]
-@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequireTenantSettingsRead)]
 
 @inject ITenantSettingsProvider TenantSettingsProvider
 @inject ISnackbar Snackbar

@@ -1,5 +1,5 @@
 @attribute [Route(ClientRoutes.Permissions)]
-@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
 
 <PageTitle>Permission Assignments</PageTitle>
 

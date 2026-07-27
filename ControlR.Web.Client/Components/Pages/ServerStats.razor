@@ -1,5 +1,5 @@
 ﻿@attribute [Route(ClientRoutes.ServerStats)]
-@attribute [Authorize(Roles = RoleNames.ServerAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequireServerTelemetryRead)]
 
 @inject IMessenger Messenger;
 @inject IControlrInternalApi ControlrApi;
