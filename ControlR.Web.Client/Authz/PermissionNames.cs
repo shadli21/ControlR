@@ -1,4 +1,4 @@
-namespace ControlR.Web.Server.Authz.Permissions;
+namespace ControlR.Web.Client.Authz;
 
 public static class PermissionNames
 {

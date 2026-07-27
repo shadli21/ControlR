@@ -16,6 +16,10 @@ public interface IPermissionEvaluator
     string permissionName,
     ResourceDescriptor resource,
     CancellationToken cancellationToken);
+
+  Task<IReadOnlySet<string>> GetEffectivePermissionNames(
+    PrincipalDescriptor principal,
+    CancellationToken cancellationToken);
 }
 
 public class PermissionEvaluator(
@@ -247,6 +251,87 @@ public class PermissionEvaluator(
 
     // Step 13: Default deny.
     return PermissionEvaluationResult.Deny("No matching allow rule found (default deny).");
+  }
+
+  /// <summary>
+  /// Returns the set of permission names the principal effectively holds (allow rules not
+  /// overridden by deny), evaluated at the name level without regard to resource scope. Used
+  /// to emit permission claims for client-side policy evaluation. Considers direct assignments,
+  /// user-group assignments, and the interim role-bundle bridge. Credential-scoping and the
+  /// server-service-account bypass do not apply to interactive UI sessions, which are the only
+  /// consumers of this method.
+  /// </summary>
+  public async Task<IReadOnlySet<string>> GetEffectivePermissionNames(
+    PrincipalDescriptor principal,
+    CancellationToken cancellationToken)
+  {
+    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+    var principalKind = principal.PrincipalType is PrincipalClaimTypes.TenantServiceAccount
+        or PrincipalClaimTypes.ServerServiceAccount
+      ? PermissionPrincipalKind.ServiceAccount
+      : PermissionPrincipalKind.User;
+
+    var rules = new List<EvaluationRule>();
+
+    var directAssignments = await LoadAssignments(db, principalKind, principal.PrincipalId, cancellationToken);
+    foreach (var assignment in directAssignments)
+    {
+      rules.Add(new EvaluationRule(assignment, RuleSource.Direct, SourcePriority.Direct));
+    }
+
+    if (principal.PrincipalType == PrincipalClaimTypes.User)
+    {
+      var groupAssignments = await LoadUserGroupAssignments(db, principal, cancellationToken);
+      foreach (var assignment in groupAssignments)
+      {
+        rules.Add(new EvaluationRule(assignment, RuleSource.UserGroup, SourcePriority.UserGroup));
+      }
+    }
+
+    if (principal.Roles is { Count: > 0 })
+    {
+      var bundleScopeKind = principal.TenantId.HasValue
+        ? PermissionScopeKind.Tenant
+        : PermissionScopeKind.Server;
+
+      foreach (var roleName in principal.Roles)
+      {
+        var bundlePermissions = _roleBundleResolver.ResolvePermissions([roleName]);
+        foreach (var permission in bundlePermissions)
+        {
+          rules.Add(new EvaluationRule(
+            new PermissionAssignment
+            {
+              PermissionName = permission,
+              Effect = PermissionEffect.Allow,
+              ScopeKind = bundleScopeKind,
+              ScopeId = principal.TenantId,
+              PrincipalKind = PermissionPrincipalKind.User,
+              PrincipalId = principal.PrincipalId,
+              IsEnabled = true
+            },
+            RuleSource.RoleBundle,
+            SourcePriority.RoleBundle));
+        }
+      }
+    }
+
+    var effective = new HashSet<string>();
+    foreach (var group in rules.GroupBy(rule => rule.Assignment.PermissionName))
+    {
+      if (group.Any(rule => rule.Assignment.Effect == PermissionEffect.Deny))
+      {
+        continue;
+      }
+
+      if (group.Any(rule => rule.Assignment.Effect == PermissionEffect.Allow))
+      {
+        effective.Add(group.Key);
+      }
+    }
+
+    return effective;
   }
 
   /// <summary>

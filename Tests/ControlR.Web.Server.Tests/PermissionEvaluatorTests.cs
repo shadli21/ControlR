@@ -909,6 +909,117 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     Assert.Equal("UserGroup", result.MatchedRuleSource);
   }
 
+  [Fact]
+  public async Task GetEffectivePermissionNames_IncludesDirectAllow()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.TenantCustomersRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+
+    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+
+    Assert.Contains(PermissionNames.TenantCustomersRead, result);
+  }
+
+  [Fact]
+  public async Task GetEffectivePermissionNames_DenyOverridesAllow()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.TenantCustomersRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.TenantCustomersRead,
+      Effect = PermissionEffect.Deny,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+
+    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+
+    Assert.DoesNotContain(PermissionNames.TenantCustomersRead, result);
+  }
+
+  [Fact]
+  public async Task GetEffectivePermissionNames_IncludesUserGroupAllow()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    var groupId = Guid.NewGuid();
+    await SeedUserGroup(testApp, groupId, tenant.Id, user.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.UserGroup,
+      PrincipalId = groupId,
+      PermissionName = PermissionNames.TenantUserGroupsRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+
+    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+
+    Assert.Contains(PermissionNames.TenantUserGroupsRead, result);
+  }
+
+  [Fact]
+  public async Task GetEffectivePermissionNames_IncludesRoleBundlePermissions()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    var evaluator = GetEvaluator(testApp, [PermissionNames.TenantCustomersRead]);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id, roles: ["TestRole"]);
+
+    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+
+    Assert.Contains(PermissionNames.TenantCustomersRead, result);
+  }
+
   private static PrincipalDescriptor CreateUserPrincipal(
     Guid userId,
     Guid tenantId,

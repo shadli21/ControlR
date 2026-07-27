@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using System.Security.Claims;
 using ControlR.Web.Client.StateManagement;
+using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
@@ -110,6 +113,21 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider : Revalida
 
       userInfo.Claims.AddRange(userClaims);
       userInfo.Roles.AddRange(userRoles);
+
+      var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+      var principalDescriptor = new PrincipalDescriptor(
+        PrincipalClaimTypes.User,
+        user.Id,
+        user.TenantId,
+        principal.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? string.Empty,
+        Roles: userRoles.ToList());
+      var effectivePermissions = await evaluator.GetEffectivePermissionNames(principalDescriptor, CancellationToken.None);
+      var permissionClaims = effectivePermissions.Select(permission => new UserClaim
+      {
+        Type = PermissionPolicies.PermissionClaimType,
+        Value = permission
+      });
+      userInfo.Claims.AddRange(permissionClaims);
     }
     else
     {

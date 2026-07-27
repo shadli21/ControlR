@@ -15,6 +15,13 @@ builder.Services
   .AddAuthorizationCore(options =>
   {
     options.AddPolicy(RequireServerAdministratorPolicy.PolicyName, RequireServerAdministratorPolicy.Create());
+
+    foreach (var (policyName, permissionName) in PermissionPolicies.PolicyToPermission)
+    {
+      options.AddPolicy(policyName, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim(PermissionPolicies.PermissionClaimType, permissionName));
+    }
   });
 
 builder.Services.AddCascadingAuthenticationState();

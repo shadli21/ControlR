@@ -9,3 +9,4 @@ global using ControlR.ApiClient.Interfaces.Agent;
 global using Microsoft.AspNetCore.Mvc.Testing;
 global using ControlR.Libraries.Api.Contracts.FilterSort;
 global using ControlR.Libraries.Api.Contracts.Constants;
+global using ControlR.Web.Client.Authz;

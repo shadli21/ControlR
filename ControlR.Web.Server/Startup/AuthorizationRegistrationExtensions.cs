@@ -47,7 +47,7 @@ public static class AuthorizationRegistrationExtensions
       };
     });
 
-    hostBuilder.Services
+    var authorizationBuilder = hostBuilder.Services
       .AddAuthorizationBuilder()
       .SetDefaultPolicy(new AuthorizationPolicyBuilder()
         .AddAuthenticationSchemes(CustomSchemes.Dynamic)
@@ -57,71 +57,15 @@ public static class AuthorizationRegistrationExtensions
       .AddPolicy(CombinedAuthorizationPolicies.RequireServerOrTenantAdminPolicy, CombinedAuthorizationPolicies.CreateServerOrTenantAdmin())
       .AddPolicy(CombinedAuthorizationPolicies.RequireServerOrTenantAdminOrInstallerKeyManagerPolicy, CombinedAuthorizationPolicies.CreateServerOrTenantAdminOrInstallerKeyManager())
       .AddPolicy(RequireServerAdministratorPolicy.PolicyName, RequireServerAdministratorPolicy.Create())
-      .AddPolicy(DeviceAccessByDeviceResourcePolicy.PolicyName, DeviceAccessByDeviceResourcePolicy.Create())
-      .AddPolicy(PolicyNames.RequireServerServiceAccountsRead, policy => policy
+      .AddPolicy(DeviceAccessByDeviceResourcePolicy.PolicyName, DeviceAccessByDeviceResourcePolicy.Create());
+
+    foreach (var (policyName, permissionName) in PermissionPolicies.PolicyToPermission)
+    {
+      authorizationBuilder.AddPolicy(policyName, policy => policy
         .AddAuthenticationSchemes(CustomSchemes.Dynamic)
         .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.ServerServiceAccountsRead))
-      .AddPolicy(PolicyNames.RequireServerServiceAccountsWrite, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.ServerServiceAccountsWrite))
-      .AddPolicy(PolicyNames.RequireServerServiceAccountsRotateCredentials, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.ServerServiceAccountsRotateCredentials))
-      .AddPolicy(PolicyNames.RequireServiceAccountRead, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.ServiceAccountRead))
-      .AddPolicy(PolicyNames.RequireServiceAccountWrite, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.ServiceAccountWrite))
-      .AddPolicy(PolicyNames.RequireServiceAccountRotateCredentials, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.ServiceAccountRotateCredentials))
-      .AddPolicy(PolicyNames.RequireDeviceGroupsRead, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.TenantDeviceGroupsRead))
-      .AddPolicy(PolicyNames.RequireDeviceGroupsWrite, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.TenantDeviceGroupsWrite))
-      .AddPolicy(PolicyNames.RequireDeviceGroupAssignDevices, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.DeviceGroupAssignDevices))
-      .AddPolicy(PolicyNames.RequireCustomersRead, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.TenantCustomersRead))
-      .AddPolicy(PolicyNames.RequireCustomersWrite, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.TenantCustomersWrite))
-      .AddPolicy(PolicyNames.RequireUserGroupsRead, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.TenantUserGroupsRead))
-      .AddPolicy(PolicyNames.RequireUserGroupsWrite, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.TenantUserGroupsWrite))
-      .AddPolicy(PolicyNames.RequireUserGroupAssignUsers, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.UserGroupAssignUsers))
-      .AddPolicy(PolicyNames.RequirePermissionAssignmentsRead, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.TenantPermissionsRead))
-      .AddPolicy(PolicyNames.RequirePermissionAssignmentsWrite, policy => policy
-        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
-        .RequireAuthenticatedUser()
-        .RequirePermission(PermissionNames.TenantPermissionsWrite));
+        .RequirePermission(permissionName));
+    }
 
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderRequirementHandler>();
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderAsyncRequirementHandler>();
