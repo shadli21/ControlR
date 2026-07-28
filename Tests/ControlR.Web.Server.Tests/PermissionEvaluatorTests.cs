@@ -275,12 +275,117 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id, DeviceGroupIds: [deviceGroupId]);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
 
     Assert.True(result.Allowed);
     Assert.Equal("Direct", result.MatchedRuleSource);
+  }
+
+  [Fact]
+  public async Task DeviceGroupScopeAssignment_DeniesDeviceNotInGroup()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deviceGroupId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.DeviceGroup,
+      ScopeId = deviceGroupId,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id, DeviceGroupIds: [Guid.NewGuid()]);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("default deny", result.DenialReason);
+  }
+
+  [Fact]
+  public async Task DeviceGroupScopeAssignment_DeniesDeviceWithUnknownMembership()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deviceGroupId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.DeviceGroup,
+      ScopeId = deviceGroupId,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("default deny", result.DenialReason);
+  }
+
+  [Fact]
+  public async Task DeviceGroupScopeDeny_OverridesTenantAllow()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deviceGroupId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Deny,
+      ScopeKind = PermissionScopeKind.DeviceGroup,
+      ScopeId = deviceGroupId,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id, DeviceGroupIds: [deviceGroupId]);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("Explicit deny", result.DenialReason);
   }
 
   [Fact]
@@ -341,6 +446,117 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     Assert.False(result.Allowed);
     Assert.Contains("default deny", result.DenialReason);
+  }
+
+  [Fact]
+  public async Task GetEffectivePermissionNames_DenyOverridesAllow()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.TenantCustomersRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.TenantCustomersRead,
+      Effect = PermissionEffect.Deny,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+
+    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+
+    Assert.DoesNotContain(PermissionNames.TenantCustomersRead, result);
+  }
+
+  [Fact]
+  public async Task GetEffectivePermissionNames_IncludesDirectAllow()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.TenantCustomersRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+
+    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+
+    Assert.Contains(PermissionNames.TenantCustomersRead, result);
+  }
+
+  [Fact]
+  public async Task GetEffectivePermissionNames_IncludesRoleBundlePermissions()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    var evaluator = GetEvaluator(testApp, [PermissionNames.TenantCustomersRead]);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id, roles: ["TestRole"]);
+
+    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+
+    Assert.Contains(PermissionNames.TenantCustomersRead, result);
+  }
+
+  [Fact]
+  public async Task GetEffectivePermissionNames_IncludesUserGroupAllow()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    var groupId = Guid.NewGuid();
+    await SeedUserGroup(testApp, groupId, tenant.Id, user.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.UserGroup,
+      PrincipalId = groupId,
+      PermissionName = PermissionNames.TenantUserGroupsRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+
+    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+
+    Assert.Contains(PermissionNames.TenantUserGroupsRead, result);
   }
 
   [Fact]
@@ -907,117 +1123,6 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     Assert.True(result.Allowed);
     Assert.Equal("UserGroup", result.MatchedRuleSource);
-  }
-
-  [Fact]
-  public async Task GetEffectivePermissionNames_IncludesDirectAllow()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.User,
-      PrincipalId = user.Id,
-      PermissionName = PermissionNames.TenantCustomersRead,
-      Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.Tenant,
-      ScopeId = tenant.Id,
-      OwningTenantId = tenant.Id,
-      IsEnabled = true
-    });
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id);
-
-    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
-
-    Assert.Contains(PermissionNames.TenantCustomersRead, result);
-  }
-
-  [Fact]
-  public async Task GetEffectivePermissionNames_DenyOverridesAllow()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.User,
-      PrincipalId = user.Id,
-      PermissionName = PermissionNames.TenantCustomersRead,
-      Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.Tenant,
-      ScopeId = tenant.Id,
-      OwningTenantId = tenant.Id,
-      IsEnabled = true
-    });
-
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.User,
-      PrincipalId = user.Id,
-      PermissionName = PermissionNames.TenantCustomersRead,
-      Effect = PermissionEffect.Deny,
-      ScopeKind = PermissionScopeKind.Tenant,
-      ScopeId = tenant.Id,
-      OwningTenantId = tenant.Id,
-      IsEnabled = true
-    });
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id);
-
-    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
-
-    Assert.DoesNotContain(PermissionNames.TenantCustomersRead, result);
-  }
-
-  [Fact]
-  public async Task GetEffectivePermissionNames_IncludesUserGroupAllow()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-
-    var groupId = Guid.NewGuid();
-    await SeedUserGroup(testApp, groupId, tenant.Id, user.Id);
-
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.UserGroup,
-      PrincipalId = groupId,
-      PermissionName = PermissionNames.TenantUserGroupsRead,
-      Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.Tenant,
-      ScopeId = tenant.Id,
-      OwningTenantId = tenant.Id,
-      IsEnabled = true
-    });
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id);
-
-    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
-
-    Assert.Contains(PermissionNames.TenantUserGroupsRead, result);
-  }
-
-  [Fact]
-  public async Task GetEffectivePermissionNames_IncludesRoleBundlePermissions()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-
-    var evaluator = GetEvaluator(testApp, [PermissionNames.TenantCustomersRead]);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id, roles: ["TestRole"]);
-
-    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
-
-    Assert.Contains(PermissionNames.TenantCustomersRead, result);
   }
 
   private static PrincipalDescriptor CreateUserPrincipal(

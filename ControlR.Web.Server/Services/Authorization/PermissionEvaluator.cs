@@ -356,13 +356,15 @@ public class PermissionEvaluator(
       return assignment.ScopeId == resource.Id;
     }
 
-    // A DeviceGroup-scoped assignment also covers individual devices within that group.
-    // Membership validation is deferred to the caller; here we allow the match so the
-    // evaluator doesn't need a second DB round-trip for group membership.
+    // A DeviceGroup-scoped assignment covers individual devices that belong to that group.
+    // Membership is checked precisely here via the device's group IDs (carried on the resource
+    // descriptor), mirroring the CustomerTenant check, so no deferred validation is needed.
     if (assignment.ScopeKind == PermissionScopeKind.DeviceGroup &&
         resource.Kind == PermissionScopeKind.Device)
     {
-      return true;
+      return assignment.ScopeId.HasValue &&
+             resource.DeviceGroupIds is not null &&
+             resource.DeviceGroupIds.Contains(assignment.ScopeId.Value);
     }
 
     // A CustomerTenant-scoped assignment covers individual devices that belong to that

@@ -13,9 +13,11 @@ namespace ControlR.Web.Server.Authz.Permissions;
 /// </summary>
 public class PermissionRequirementHandler(
   IPermissionEvaluator evaluator,
+  IDbContextFactory<AppDb> dbContextFactory,
   ILogger<PermissionRequirementHandler> logger)
   : AuthorizationHandler<PermissionRequirement, object>
 {
+  private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly IPermissionEvaluator _evaluator = evaluator;
   private readonly ILogger<PermissionRequirementHandler> _logger = logger;
 
@@ -32,7 +34,7 @@ public class PermissionRequirementHandler(
       return;
     }
 
-    var resourceDescriptor = ResolveResource(requirement.Resource, resource, principal);
+    var resourceDescriptor = await ResolveResource(requirement.Resource, resource, principal, CancellationToken.None);
 
     var result = await _evaluator.Evaluate(
       principal, requirement.PermissionName, resourceDescriptor, CancellationToken.None);
@@ -95,14 +97,35 @@ public class PermissionRequirementHandler(
       roles);
   }
 
-  private static ResourceDescriptor ResolveResource(
+  private async Task<IReadOnlyCollection<Guid>> ResolveDeviceGroupIds(
+    Device device,
+    CancellationToken cancellationToken)
+  {
+    if (device.DeviceGroupMembers is not null)
+    {
+      return [.. device.DeviceGroupMembers.Select(member => member.DeviceGroupId)];
+    }
+
+    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+    return await db.DeviceGroupMembers
+      .IgnoreQueryFilters()
+      .AsNoTracking()
+      .Where(member => member.DeviceId == device.Id)
+      .Select(member => member.DeviceGroupId)
+      .ToListAsync(cancellationToken);
+  }
+
+  private async Task<ResourceDescriptor> ResolveResource(
     ResourceDescriptor requirementResource,
     object resource,
-    PrincipalDescriptor principal)
+    PrincipalDescriptor principal,
+    CancellationToken cancellationToken)
   {
     if (resource is Device device)
     {
-      return new ResourceDescriptor(PermissionScopeKind.Device, device.Id, device.TenantId, device.CustomerId);
+      var deviceGroupIds = await ResolveDeviceGroupIds(device, cancellationToken);
+      return new ResourceDescriptor(
+        PermissionScopeKind.Device, device.Id, device.TenantId, device.CustomerId, deviceGroupIds);
     }
 
     if (requirementResource.TenantId is null && principal.TenantId.HasValue)
