@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using ControlR.Libraries.Api.Contracts.Constants;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -14,7 +13,6 @@ public class DeviceTagsController : ControllerBase
   [Authorize(Roles = RoleNames.TenantAdministrator)]
   public async Task<IActionResult> AddTag(
     [FromServices] AppDb appDb,
-    [FromServices] IHubContext<AgentHub> agentHub,
     [FromBody] InternalDtos.DeviceTagAddRequestDto dto)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -42,10 +40,6 @@ public class DeviceTagsController : ControllerBase
     device.Tags.Add(tag);
     await appDb.SaveChangesAsync();
 
-    await agentHub.Groups.RemoveFromGroupAsync(
-        device.ConnectionId,
-        HubGroupNames.GetTagGroupName(dto.TagId, tag.TenantId));
-
     return NoContent();
   }
 
@@ -53,7 +47,6 @@ public class DeviceTagsController : ControllerBase
   [Authorize(Roles = RoleNames.TenantAdministrator)]
   public async Task<ActionResult<InternalDtos.TagResponseDto>> RemoveTag(
     [FromServices] AppDb appDb,
-    [FromServices] IHubContext<AgentHub> agentHub,
     [FromRoute] Guid deviceId,
     [FromRoute] Guid tagId)
   {
@@ -79,10 +72,6 @@ public class DeviceTagsController : ControllerBase
     }
     device.Tags.Remove(tag);
     await appDb.SaveChangesAsync();
-
-    await agentHub.Groups.RemoveFromGroupAsync(
-      device.ConnectionId,
-      HubGroupNames.GetTagGroupName(tagId, tag.TenantId));
 
     return NoContent();
   }

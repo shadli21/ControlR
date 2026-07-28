@@ -594,19 +594,45 @@ public class ViewerHub(
         return;
       }
 
-      var tagsIds = await _appDb.Devices
-        .Include(x => x.Tags)
-        .Where(x => x.Id == deviceId)
-        .SelectMany(x => x.Tags!)
-        .Select(x => x.Id)
+      var target = authResult.Value;
+
+      var groupIds = await _appDb.DeviceGroupMembers
+        .Where(member => member.DeviceId == deviceId)
+        .Select(member => member.DeviceGroupId)
         .ToListAsync();
 
-      var tagGroupNames = tagsIds.Select(tagId =>
-        HubGroupNames.GetTagGroupName(tagId, authResult.Value.TenantId));
+      var tagIds = await _appDb.Devices
+        .Where(device => device.Id == deviceId)
+        .SelectMany(device => device.Tags!)
+        .Select(tag => tag.Id)
+        .ToListAsync();
+
+      if (groupIds.Count == 0 && tagIds.Count == 0)
+      {
+        return;
+      }
+
+      // Fan the wake command out to online devices that share the target's customer and a
+      // device group or tag (a network-proximity heuristic), sending directly to their connections.
+      var connectionIds = await _appDb.Devices
+        .Where(device => device.Id != deviceId &&
+                         device.TenantId == target.TenantId &&
+                         device.CustomerId == target.CustomerId &&
+                         device.IsOnline &&
+                         device.ConnectionId != string.Empty &&
+                         (device.DeviceGroupMembers!.Any(member => groupIds.Contains(member.DeviceGroupId)) ||
+                          device.Tags!.Any(tag => tagIds.Contains(tag.Id))))
+        .Select(device => device.ConnectionId)
+        .ToListAsync();
+
+      if (connectionIds.Count == 0)
+      {
+        return;
+      }
 
       var dto = new WakeDeviceDto(macAddresses);
       await _agentHub.Clients
-        .Groups(tagGroupNames)
+        .Clients(connectionIds)
         .InvokeWakeDevice(dto);
     }
     catch (Exception ex)

@@ -294,7 +294,6 @@ public class AgentHub(
       }
 
       var deviceEntity = updateResult.Value;
-      await AddToGroups(deviceEntity);
 
       var isOutdated = await GetIsAgentOutdated(deviceEntity);
       Device = deviceEntity.ToInternalResponseDto(isOutdated);
@@ -404,8 +403,6 @@ public class AgentHub(
 
       var deviceEntity = updateResult.Value;
 
-      await AddToGroups(deviceEntity);
-
       var isOutdated = await GetIsAgentOutdated(deviceEntity);
       Device = deviceEntity.ToInternalResponseDto(isOutdated);
 
@@ -433,25 +430,6 @@ public class AgentHub(
     catch
     {
       // Ignore errors while draining
-    }
-  }
-
-  private async Task AddToGroups(Device deviceEntity)
-  {
-    if (Device is not null)
-    {
-      return;
-    }
-
-    // Tag-group membership is retained until Chunk 43b migrates wake-by-tag to targeted
-    // connections. The tenant-devices and per-device groups had no live publisher and were removed.
-    if (deviceEntity.Tags is { Count: > 0 } tags)
-    {
-      foreach (var tag in tags)
-      {
-        await Groups.AddToGroupAsync(Context.ConnectionId,
-          HubGroupNames.GetTagGroupName(tag.Id, deviceEntity.TenantId));
-      }
     }
   }
 
