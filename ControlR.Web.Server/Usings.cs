@@ -15,7 +15,6 @@ global using ControlR.Web.Server.Services.Customers;
 global using ControlR.Web.Server.Services.UserGroups;
 global using ControlR.Web.Server.Services.PermissionAssignments;
 global using ControlR.Web.Client.Authz;
-global using ControlR.Web.Client.Authz.Policies;
 global using ControlR.Web.Server.Data.Entities;
 global using V1Dtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 global using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;

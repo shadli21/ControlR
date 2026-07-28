@@ -14,8 +14,6 @@ if (builder.HostEnvironment.IsDevelopment())
 builder.Services
   .AddAuthorizationCore(options =>
   {
-    options.AddPolicy(RequireServerAdministratorPolicy.PolicyName, RequireServerAdministratorPolicy.Create());
-
     foreach (var (policyName, permissionName) in PermissionPolicies.PolicyToPermission)
     {
       options.AddPolicy(policyName, policy => policy
