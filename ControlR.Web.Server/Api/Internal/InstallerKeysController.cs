@@ -113,7 +113,7 @@ public class InstallerKeysController(
     var result = await _permissionEvaluator.Evaluate(
       principal,
       PermissionNames.InstallerKeyManageAll,
-      new ResourceDescriptor(PermissionScopeKind.Tenant),
+      new ResourceDescriptor(PermissionScopeKind.Tenant, TenantId: principal.TenantId),
       cancellationToken);
     return result.Allowed;
   }

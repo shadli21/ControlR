@@ -15,7 +15,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   private readonly ITenantSettingsManager _tenantSettingsManager = tenantSettingsManager;
 
   [HttpDelete("{name}")]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsWrite)]
   public async Task<ActionResult> DeleteSetting(string name)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -86,7 +86,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   }
 
   [HttpPost]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsWrite)]
   public async Task<ActionResult<InternalDtos.TenantSettingResponseDto>> SetSetting([FromBody] InternalDtos.TenantSettingRequestDto setting)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -99,7 +99,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   }
 
   [HttpPut]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsWrite)]
   public async Task<ActionResult<InternalDtos.TenantSettingsDto>> SetSettings(
     [FromBody] InternalDtos.TenantSettingsDto settings,
     CancellationToken cancellationToken)

@@ -195,8 +195,30 @@ public class DeviceManagerTests(ITestOutputHelper testOutput)
 
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-    await userManager.AddToRoleAsync(installerUser, RoleNames.AgentInstaller);
-    await userManager.AddToRoleAsync(differentTenantUser, RoleNames.AgentInstaller);
+    db.PermissionAssignments.AddRange(
+      new PermissionAssignment
+      {
+        PrincipalKind = PermissionPrincipalKind.User,
+        PrincipalId = installerUser.Id,
+        PermissionName = PermissionNames.AgentInstall,
+        Effect = PermissionEffect.Allow,
+        ScopeKind = PermissionScopeKind.Tenant,
+        ScopeId = tenantId,
+        IsEnabled = true,
+        OwningTenantId = tenantId
+      },
+      new PermissionAssignment
+      {
+        PrincipalKind = PermissionPrincipalKind.User,
+        PrincipalId = differentTenantUser.Id,
+        PermissionName = PermissionNames.AgentInstall,
+        Effect = PermissionEffect.Allow,
+        ScopeKind = PermissionScopeKind.Tenant,
+        ScopeId = otherTenantId,
+        IsEnabled = true,
+        OwningTenantId = otherTenantId
+      });
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
     // Act & Assert
 

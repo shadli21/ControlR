@@ -4,6 +4,10 @@ using System.Collections.Immutable;
 using System.Reflection;
 using System.Net.Sockets;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos;
+using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Data.Enums;
+using ControlR.Web.Server.Services.Authorization;
 
 namespace ControlR.Web.Server.Services.DeviceManagement;
 
@@ -65,7 +69,7 @@ public interface IDeviceManager
 
 public class DeviceManager(
   AppDb appDb,
-  UserManager<AppUser> userManager,
+  IPermissionEvaluator permissionEvaluator,
   ILogger<DeviceManager> logger) : IDeviceManager
 {
   private const BindingFlags PropertiesBindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
@@ -74,7 +78,7 @@ public class DeviceManager(
 
   private readonly AppDb _appDb = appDb;
   private readonly ILogger<DeviceManager> _logger = logger;
-  private readonly UserManager<AppUser> _userManager = userManager;
+  private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
 
   public async Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, Guid[]? tagIds = null, string? publicKeyBase64 = null)
   {
@@ -99,7 +103,14 @@ public class DeviceManager(
     {
       return false;
     }
-    return await _userManager.IsInRoleAsync(user, RoleNames.AgentInstaller);
+
+    var principal = new PrincipalDescriptor(PrincipalClaimTypes.User, user.Id, user.TenantId, AuthMethod: "cookie");
+    var result = await _permissionEvaluator.Evaluate(
+      principal,
+      PermissionNames.AgentInstall,
+      new ResourceDescriptor(PermissionScopeKind.Tenant, TenantId: user.TenantId),
+      CancellationToken.None);
+    return result.Allowed;
   }
 
   public async Task<Result<Device>> MarkDeviceOffline(Guid deviceId, DateTimeOffset lastSeen)

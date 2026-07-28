@@ -39,6 +39,7 @@ public static class PermissionPolicies
       [PolicyNames.RequireTagsRead] = PermissionNames.TenantTagsRead,
       [PolicyNames.RequireTagsWrite] = PermissionNames.TenantTagsWrite,
       [PolicyNames.RequireTenantSettingsRead] = PermissionNames.TenantSettingsRead,
+      [PolicyNames.RequireTenantSettingsWrite] = PermissionNames.TenantSettingsWrite,
       [PolicyNames.RequireTenantUsersDelete] = PermissionNames.TenantUsersDelete,
       [PolicyNames.RequireTenantUsersWrite] = PermissionNames.TenantUsersWrite,
       [PolicyNames.RequireUserGroupAssignUsers] = PermissionNames.UserGroupAssignUsers,
