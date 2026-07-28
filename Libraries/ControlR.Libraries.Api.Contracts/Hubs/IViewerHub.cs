@@ -26,7 +26,6 @@ public interface IViewerHub
   Task SendAgentUpdateTrigger(Guid deviceId);
   Task<HubResult> SendChatMessage(Guid deviceId, ChatMessageHubDto dto);
   Task SendDtoToAgent(Guid deviceId, DtoWrapper wrapper);
-  Task SendDtoToUserGroups(DtoWrapper wrapper);
   Task SendPowerStateChange(Guid deviceId, PowerStateChangeType changeType);
   Task<HubResult> SendTerminalInput(Guid deviceId, TerminalInputDto dto);
   Task SendWakeDevice(Guid deviceId, string[] macAddresses);

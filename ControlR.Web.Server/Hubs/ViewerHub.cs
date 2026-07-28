@@ -566,39 +566,6 @@ public class ViewerHub(
     }
   }
 
-  public async Task SendDtoToUserGroups(DtoWrapper wrapper)
-  {
-    if (!TryGetUserId(out var userId) ||
-        !TryGetTenantId(out var tenantId))
-    {
-      return;
-    }
-
-    if (Context.User!.IsInRole(RoleNames.DeviceSuperUser))
-    {
-      await _agentHub
-        .Clients
-        .Group(HubGroupNames.GetTenantDevicesGroupName(tenantId))
-        .ReceiveDto(wrapper);
-      return;
-    }
-
-    var user = await _userManager
-      .Users
-      .AsNoTracking()
-      .Include(x => x.Tags!)
-      .ThenInclude(x => x.Devices)
-      .FirstOrDefaultAsync(x => x.Id == userId);
-
-    if (user?.Tags is null)
-    {
-      return;
-    }
-
-    var groupNames = user.Tags.Select(x => HubGroupNames.GetTagGroupName(x.Id, x.TenantId));
-    await _agentHub.Clients.Groups(groupNames).ReceiveDto(wrapper);
-  }
-
   public async Task SendPowerStateChange(Guid deviceId, PowerStateChangeType changeType)
   {
     try

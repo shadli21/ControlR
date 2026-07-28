@@ -443,10 +443,8 @@ public class AgentHub(
       return;
     }
 
-    await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.GetTenantDevicesGroupName(deviceEntity.TenantId));
-    await Groups.AddToGroupAsync(Context.ConnectionId,
-      HubGroupNames.GetDeviceGroupName(deviceEntity.Id, deviceEntity.TenantId));
-
+    // Tag-group membership is retained until Chunk 43b migrates wake-by-tag to targeted
+    // connections. The tenant-devices and per-device groups had no live publisher and were removed.
     if (deviceEntity.Tags is { Count: > 0 } tags)
     {
       foreach (var tag in tags)
@@ -535,20 +533,12 @@ public class AgentHub(
   private async Task SendDeviceUpdate(Device device, InternalDtos.DeviceResponseDto dto)
   {
     await _viewerHub.Clients
-      .Group(HubGroupNames.GetUserRoleGroupName(RoleNames.DeviceSuperUser, device.TenantId))
+      .Group(HubGroupNames.DeviceHeartbeat(device.Id))
       .ReceiveDeviceUpdate(dto);
 
     // Invalidate the device grid cache using the extension method.
     await _outputCacheStore.InvalidateDeviceCacheAsync(device.Id);
     _logger.LogDebug("Invalidated device grid cache after device update: {DeviceId}", device.Id);
-
-    if (device.Tags is null)
-    {
-      return;
-    }
-
-    var groupNames = device.Tags.Select(x => HubGroupNames.GetTagGroupName(x.Id, x.TenantId));
-    await _viewerHub.Clients.Groups(groupNames).ReceiveDeviceUpdate(dto);
   }
 
   private async Task<HubResult<Device>> UpdateDeviceEntity(
