@@ -3,8 +3,7 @@ namespace ControlR.Web.Server.Authz.Policies;
 /// <summary>
 /// Resource-based authorization policies scoped to a specific device. Each policy requires a
 /// single device permission evaluated against the target device (passed as the authorization
-/// resource via <c>AuthorizeAsync(user, device, DeviceResourcePolicies.X)</c>). Replaces the
-/// single-purpose <c>DeviceAccessByDeviceResourcePolicy</c> (device.read) with granular policies.
+/// resource via <c>AuthorizeAsync(user, device, DeviceResourcePolicies.X)</c>).
 /// </summary>
 public static class DeviceResourcePolicies
 {

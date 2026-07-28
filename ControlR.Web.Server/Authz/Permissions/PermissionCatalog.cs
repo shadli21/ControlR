@@ -94,6 +94,7 @@ public static class PermissionCatalog
 
     Add(PermissionNames.InstallerKeyRead, "Read Installer Keys", "View agent installer keys.", tenant);
     Add(PermissionNames.InstallerKeyWrite, "Manage Installer Keys", "Create and delete agent installer keys.", tenant);
+    Add(PermissionNames.InstallerKeyManageAll, "Manage All Installer Keys", "View and manage installer keys created by any user in the tenant.", tenant);
     Add(PermissionNames.AgentInstall, "Install Agent", "Generate agent installation commands and scripts.", tenant);
 
     Add(PermissionNames.CustomerTenantRead, "Read Customer Tenant", "View customer tenant details.", [PermissionScopeKind.CustomerTenant], isAssignable: false);

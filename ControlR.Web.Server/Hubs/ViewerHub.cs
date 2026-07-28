@@ -703,7 +703,7 @@ public class ViewerHub(
       }
 
       var authResult = await _authorizationService.AuthorizeAsync(
-        Context.User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+        Context.User, device, DeviceResourcePolicies.Read);
 
       if (authResult.Succeeded)
       {
@@ -965,7 +965,7 @@ public class ViewerHub(
     var authResult = await _authorizationService.AuthorizeAsync(
       Context.User,
       device,
-      policyName ?? DeviceAccessByDeviceResourcePolicy.PolicyName);
+      policyName ?? DeviceResourcePolicies.Read);
 
     if (authResult.Succeeded)
     {

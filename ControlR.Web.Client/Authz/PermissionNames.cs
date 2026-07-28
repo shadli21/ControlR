@@ -31,6 +31,7 @@ public static class PermissionNames
   public const string DeviceTagsWrite = "device.tags.write";
   public const string DeviceTerminalUse = "device.terminal.use";
   public const string DeviceWakeSend = "device.wake.send";
+  public const string InstallerKeyManageAll = "installer-key.manage-all";
   public const string InstallerKeyRead = "installer-key.read";
   public const string InstallerKeyWrite = "installer-key.write";
   public const string PersonalAccessTokenOthersRead = "personal-access-token.others.read";

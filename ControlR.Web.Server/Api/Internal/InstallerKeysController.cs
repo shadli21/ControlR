@@ -1,5 +1,7 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services.AgentInstaller;
+using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using CreateInstallerKeyRequestDto = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal.CreateInstallerKeyRequestDto;
 
@@ -9,9 +11,12 @@ namespace ControlR.Web.Server.Api.Internal;
 [ApiController]
 [Authorize]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
-public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManager) : ControllerBase
+public class InstallerKeysController(
+  IAgentInstallerKeyManager installerKeyManager,
+  IPermissionEvaluator permissionEvaluator) : ControllerBase
 {
   private readonly IAgentInstallerKeyManager _installerKeyManager = installerKeyManager;
+  private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
 
   [HttpPost]
   [Authorize(Policy = PolicyNames.RequireInstallerKeyWrite)]
@@ -46,7 +51,7 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
       return BadRequest("User tenant or id not found.");
     }
 
-    var isAdmin = User.IsInRole(RoleNames.TenantAdministrator);
+    var isAdmin = await CanManageAllKeys(HttpContext.RequestAborted);
     var result = await _installerKeyManager.DeleteKey(id, userId, tenantId, isAdmin);
     return result.ToActionResult();
   }
@@ -61,7 +66,7 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
       return BadRequest("User tenant or id not found.");
     }
 
-    var isAdmin = User.IsInRole(RoleNames.TenantAdministrator);
+    var isAdmin = await CanManageAllKeys(HttpContext.RequestAborted);
     var keys = await _installerKeyManager.GetAllKeys(tenantId, userId, isAdmin);
     return keys.ToList();
   }
@@ -76,7 +81,7 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
       return BadRequest("User tenant or id not found.");
     }
 
-    var isAdmin = User.IsInRole(RoleNames.TenantAdministrator);
+    var isAdmin = await CanManageAllKeys(HttpContext.RequestAborted);
     var result = await _installerKeyManager.GetKeyUsages(keyId, userId, tenantId, isAdmin);
     return result.ToActionResult();
   }
@@ -92,8 +97,24 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
       return BadRequest("User tenant or id not found.");
     }
 
-    var isAdmin = User.IsInRole(RoleNames.TenantAdministrator);
+    var isAdmin = await CanManageAllKeys(HttpContext.RequestAborted);
     var result = await _installerKeyManager.RenameKey(request.Id, request.FriendlyName, userId, tenantId, isAdmin);
     return result.ToActionResult();
+  }
+
+  private async Task<bool> CanManageAllKeys(CancellationToken cancellationToken)
+  {
+    var principal = PrincipalDescriptorBuilder.FromClaims(User);
+    if (principal is null)
+    {
+      return false;
+    }
+
+    var result = await _permissionEvaluator.Evaluate(
+      principal,
+      PermissionNames.InstallerKeyManageAll,
+      new ResourceDescriptor(PermissionScopeKind.Tenant),
+      cancellationToken);
+    return result.Allowed;
   }
 }

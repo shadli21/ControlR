@@ -107,6 +107,7 @@ public static class PermissionPresets
         PermissionNames.ServiceAccountRotateCredentials,
         PermissionNames.InstallerKeyRead,
         PermissionNames.InstallerKeyWrite,
+        PermissionNames.InstallerKeyManageAll,
         PermissionNames.AgentInstall,
       ],
 

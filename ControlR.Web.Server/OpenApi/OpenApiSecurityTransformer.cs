@@ -54,18 +54,12 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
       return Task.CompletedTask;
     }
 
-    var policyNames = authorizeData
-      .Select(ad => ad.Policy)
-      .Where(p => !string.IsNullOrEmpty(p))
-      .Select(p => p!)
-      .ToHashSet();
-
     var groupName = context.Description.ActionDescriptor.EndpointMetadata
       .OfType<EndpointGroupNameAttribute>()
       .Select(e => e.EndpointGroupName)
       .FirstOrDefault();
 
-    var schemes = ResolveSecuritySchemes(policyNames, groupName, context.DocumentName);
+    var schemes = ResolveSecuritySchemes(groupName, context.DocumentName);
     if (schemes.Count == 0)
     {
       return Task.CompletedTask;
@@ -84,25 +78,12 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
     return Task.CompletedTask;
   }
 
-  private static HashSet<string> ResolveSecuritySchemes(HashSet<string> policyNames, string? groupName, string documentName)
+  private static HashSet<string> ResolveSecuritySchemes(string? groupName, string documentName)
   {
     var schemes = new HashSet<string>();
 
-    if (policyNames.Contains(RequireServerServiceAccountPolicy.PolicyName))
-    {
-      schemes.Add(ServiceAccountScheme);
-    }
-
     if (groupName == OpenApiConstants.InternalGroupName)
     {
-      schemes.Add(CookieScheme);
-      schemes.Add(PatScheme);
-    }
-
-    if (policyNames.Contains(CombinedAuthorizationPolicies.RequireServerOrTenantAdminPolicy) ||
-        policyNames.Contains(CombinedAuthorizationPolicies.RequireServerOrTenantAdminOrInstallerKeyManagerPolicy))
-    {
-      schemes.Add(ServiceAccountScheme);
       schemes.Add(CookieScheme);
       schemes.Add(PatScheme);
     }
