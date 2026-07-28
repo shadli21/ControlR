@@ -66,6 +66,14 @@ public static class AuthorizationRegistrationExtensions
         .RequirePermission(permissionName));
     }
 
+    foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)
+    {
+      authorizationBuilder.AddPolicy(policyName, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(permissionName, PermissionScopeKind.Device));
+    }
+
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderRequirementHandler>();
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderAsyncRequirementHandler>();
     hostBuilder.Services.AddScoped<IAuthorizationHandler, PermissionRequirementHandler>();

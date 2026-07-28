@@ -14,9 +14,14 @@ public static class PolicyNames
   public const string RequireDeviceGroupsRead = "RequireDeviceGroupsRead";
   public const string RequireDeviceGroupsWrite = "RequireDeviceGroupsWrite";
   public const string RequireInstallerKeyRead = "RequireInstallerKeyRead";
+  public const string RequireInstallerKeyWrite = "RequireInstallerKeyWrite";
   public const string RequirePermissionAssignmentsRead = "RequirePermissionAssignmentsRead";
   public const string RequirePermissionAssignmentsWrite = "RequirePermissionAssignmentsWrite";
+  public const string RequirePersonalAccessTokensOthersRead = "RequirePersonalAccessTokensOthersRead";
+  public const string RequirePersonalAccessTokensOthersWrite = "RequirePersonalAccessTokensOthersWrite";
+  public const string RequireRolesRead = "RequireRolesRead";
   public const string RequireServerAdmin = "RequireServerAdmin";
+  public const string RequireServerAlertsWrite = "RequireServerAlertsWrite";
   public const string RequireServerServiceAccountsRead = "RequireServerServiceAccountsRead";
   public const string RequireServerServiceAccountsRotateCredentials = "RequireServerServiceAccountsRotateCredentials";
   public const string RequireServerServiceAccountsWrite = "RequireServerServiceAccountsWrite";
@@ -25,7 +30,9 @@ public static class PolicyNames
   public const string RequireServiceAccountRotateCredentials = "RequireServiceAccountRotateCredentials";
   public const string RequireServiceAccountWrite = "RequireServiceAccountWrite";
   public const string RequireTagsRead = "RequireTagsRead";
+  public const string RequireTagsWrite = "RequireTagsWrite";
   public const string RequireTenantSettingsRead = "RequireTenantSettingsRead";
+  public const string RequireTenantUsersDelete = "RequireTenantUsersDelete";
   public const string RequireTenantUsersWrite = "RequireTenantUsersWrite";
   public const string RequireUserGroupAssignUsers = "RequireUserGroupAssignUsers";
   public const string RequireUserGroupsRead = "RequireUserGroupsRead";
