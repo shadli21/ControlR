@@ -10,9 +10,9 @@ namespace ControlR.Web.Server.Api.Internal;
 public class DeviceTagsController : ControllerBase
 {
   [HttpPost]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
   public async Task<IActionResult> AddTag(
     [FromServices] AppDb appDb,
+    [FromServices] IAuthorizationService authorizationService,
     [FromBody] InternalDtos.DeviceTagAddRequestDto dto)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -27,6 +27,12 @@ public class DeviceTagsController : ControllerBase
     if (device is null)
     {
       return NotFound("Device not found.");
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.TagsWrite);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     var tag = await appDb.Tags.FirstOrDefaultAsync(x => x.Id == dto.TagId && x.TenantId == tenantId);
@@ -44,9 +50,9 @@ public class DeviceTagsController : ControllerBase
   }
 
   [HttpDelete("{deviceId:guid}/{tagId:guid}")]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
   public async Task<ActionResult<InternalDtos.TagResponseDto>> RemoveTag(
     [FromServices] AppDb appDb,
+    [FromServices] IAuthorizationService authorizationService,
     [FromRoute] Guid deviceId,
     [FromRoute] Guid tagId)
   {
@@ -62,6 +68,12 @@ public class DeviceTagsController : ControllerBase
     if (device is null)
     {
       return NotFound("Device not found.");
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.TagsWrite);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     device.Tags ??= [];

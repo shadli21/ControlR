@@ -44,7 +44,7 @@ public class DesktopPreviewController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.DesktopPreviewRead);
 
     if (!authResult.Succeeded)
     {

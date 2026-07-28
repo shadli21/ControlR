@@ -38,7 +38,7 @@ public class DevicesController(
 
     // Single-device operations use the resource policy directly.
     var authResult =
-      await authorizationService.AuthorizeAsync(User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+      await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
     if (!authResult.Succeeded)
     {
       return Forbid();
@@ -52,6 +52,7 @@ public class DevicesController(
   [HttpPost("delete-many")]
   public async Task<ActionResult<InternalDtos.DeleteManyDevicesResponseDto>> DeleteMany(
     [FromServices] AppDb appDb,
+    [FromServices] IAuthorizationService authorizationService,
     [FromBody] InternalDtos.DeleteDevicesRequestDto requestDto,
     CancellationToken cancellationToken)
   {
@@ -60,26 +61,32 @@ public class DevicesController(
       return BadRequest("Tenant ID not found.");
     }
 
-    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId, cancellationToken);
-
-    // Authorized + existing devices (subset of input that user can delete).
-    var authorizedDeviceIds = await appDb.Devices
-      .ApplyAccessScope(tenantId, accessScope)
-      .Where(d => requestDto.DeviceIds.Contains(d.Id))
-      .Select(d => d.Id)
+    var candidateDevices = await appDb.Devices
+      .AsNoTracking()
+      .Include(x => x.DeviceGroupMembers)
+      .Where(d => d.TenantId == tenantId && requestDto.DeviceIds.Contains(d.Id))
       .ToListAsync(cancellationToken);
 
-    var authorizedIdSet = authorizedDeviceIds.ToHashSet();
+    var authorizedIdSet = new HashSet<Guid>();
+    foreach (var device in candidateDevices)
+    {
+      var authResult =
+        await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
+      if (authResult.Succeeded)
+      {
+        authorizedIdSet.Add(device.Id);
+      }
+    }
 
     var deletedCount = await appDb.Devices
       .Where(x => x.TenantId == tenantId && authorizedIdSet.Contains(x.Id))
       .ExecuteDeleteAsync(cancellationToken);
 
-    if (deletedCount == authorizedDeviceIds.Count)
+    if (deletedCount == authorizedIdSet.Count)
     {
       // All authorized devices were deleted.
       return new InternalDtos.DeleteManyDevicesResponseDto(
-        SuccessIds: [.. authorizedDeviceIds],
+        SuccessIds: [.. authorizedIdSet],
         FailureIds: [.. requestDto.DeviceIds.Except(authorizedIdSet)]);
     }
 
@@ -141,7 +148,7 @@ public class DevicesController(
     }
 
     var authResult =
-      await authorizationService.AuthorizeAsync(User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+      await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
 
     if (!authResult.Succeeded)
     {
@@ -266,7 +273,7 @@ public class DevicesController(
     }
 
     var authResult =
-      await authorizationService.AuthorizeAsync(User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+      await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.AliasWrite);
     if (!authResult.Succeeded)
     {
       logger.LogWarning("User {UserName} denied access to update alias for device {DeviceId}.", User.Identity?.Name, deviceId);

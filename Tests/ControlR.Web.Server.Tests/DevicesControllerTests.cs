@@ -78,7 +78,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Act
     var request = new InternalDtos.DeleteDevicesRequestDto([.. nonExistentIds, existingId]);
-    var result = await controller.DeleteMany(db, request, TestContext.Current.CancellationToken);
+    var result = await controller.DeleteMany(db, services.GetRequiredService<IAuthorizationService>(), request, TestContext.Current.CancellationToken);
 
     // Assert
     var response = result.Value;
@@ -182,7 +182,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
       // Act — request 10 existing + 3 non-existent
       var request = new InternalDtos.DeleteDevicesRequestDto([.. deleteRequestIds, .. nonExistentIds]);
-      var result = await controller.DeleteMany(db, request, TestContext.Current.CancellationToken);
+      var result = await controller.DeleteMany(db, services.GetRequiredService<IAuthorizationService>(), request, TestContext.Current.CancellationToken);
 
       // Assert
       var response = result.Value;
@@ -237,6 +237,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     // Act
     var result = await controller.DeleteMany(
       scope.ServiceProvider.GetRequiredService<AppDb>(),
+      scope.ServiceProvider.GetRequiredService<IAuthorizationService>(),
       request,
       TestContext.Current.CancellationToken);
 
@@ -307,7 +308,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Act
     var request = new InternalDtos.DeleteDevicesRequestDto(deleteIds);
-    var result = await controller.DeleteMany(db, request, TestContext.Current.CancellationToken);
+    var result = await controller.DeleteMany(db, services.GetRequiredService<IAuthorizationService>(), request, TestContext.Current.CancellationToken);
 
     // Assert
     var response = result.Value;

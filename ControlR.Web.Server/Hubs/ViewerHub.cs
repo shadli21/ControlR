@@ -87,7 +87,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.TerminalUse) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -108,7 +108,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.TerminalUse) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Forbidden.");
       }
@@ -562,7 +562,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.TerminalUse) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -943,6 +943,7 @@ public class ViewerHub(
 
   private async Task<HubResult<Device>> TryAuthorizeAgainstDevice(
     Guid deviceId,
+    string? policyName = null,
     [CallerMemberName] string? callerName = null)
   {
     if (Context.User is null)
@@ -964,7 +965,7 @@ public class ViewerHub(
     var authResult = await _authorizationService.AuthorizeAsync(
       Context.User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      policyName ?? DeviceAccessByDeviceResourcePolicy.PolicyName);
 
     if (authResult.Succeeded)
     {

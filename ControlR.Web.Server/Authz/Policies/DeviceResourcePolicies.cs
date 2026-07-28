@@ -17,6 +17,7 @@ public static class DeviceResourcePolicies
   public const string FileSystemTransferUpload = "DeviceFileSystemTransferUpload";
   public const string FileSystemWrite = "DeviceFileSystemWrite";
   public const string LogonTokenCreate = "DeviceLogonTokenCreate";
+  public const string LogsRead = "DeviceLogsRead";
   public const string Read = "DeviceRead";
   public const string TagsRead = "DeviceTagsRead";
   public const string TagsWrite = "DeviceTagsWrite";
@@ -31,6 +32,7 @@ public static class DeviceResourcePolicies
       [DesktopPreviewRead] = PermissionNames.DeviceDesktopPreviewRead,
       [TerminalUse] = PermissionNames.DeviceTerminalUse,
       [LogonTokenCreate] = PermissionNames.DeviceLogonTokenCreate,
+      [LogsRead] = PermissionNames.DeviceLogsRead,
       [TagsRead] = PermissionNames.DeviceTagsRead,
       [TagsWrite] = PermissionNames.DeviceTagsWrite,
       [FileSystemRead] = PermissionNames.DeviceFileSystemRead,

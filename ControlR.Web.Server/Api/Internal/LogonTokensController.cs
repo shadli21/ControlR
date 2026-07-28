@@ -41,7 +41,7 @@ public class LogonTokensController : ControllerBase
       return BadRequest("Device not found.");
     }
 
-    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.LogonTokenCreate);
     if (!authResult.Succeeded)
     {
       return Forbid();
