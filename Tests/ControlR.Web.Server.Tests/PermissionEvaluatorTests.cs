@@ -1152,9 +1152,11 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   {
     if (rolePermissions is not null)
     {
-      var resolver = new TestRoleBundleResolver(rolePermissions);
+      var roleBundleResolver = new TestRoleBundleResolver(rolePermissions);
+      var ruleResolver = ActivatorUtilities.CreateInstance<PermissionRuleResolver>(
+        testApp.App.Services, roleBundleResolver);
       return ActivatorUtilities.CreateInstance<PermissionEvaluator>(
-        testApp.App.Services, resolver);
+        testApp.App.Services, ruleResolver);
     }
 
     return testApp.App.Services.GetRequiredService<IPermissionEvaluator>();

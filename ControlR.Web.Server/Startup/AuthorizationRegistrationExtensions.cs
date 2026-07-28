@@ -70,6 +70,7 @@ public static class AuthorizationRegistrationExtensions
     hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderAsyncRequirementHandler>();
     hostBuilder.Services.AddScoped<IAuthorizationHandler, PermissionRequirementHandler>();
     hostBuilder.Services.AddScoped<IDeviceAccessScopeResolver, PermissionDeviceScopeResolver>();
+    hostBuilder.Services.AddScoped<IPermissionRuleResolver, PermissionRuleResolver>();
     hostBuilder.Services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
     hostBuilder.Services.AddSingleton<IRoleBundleResolver, RoleBundleResolver>();
   }

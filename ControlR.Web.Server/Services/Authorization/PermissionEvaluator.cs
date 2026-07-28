@@ -5,9 +5,10 @@ namespace ControlR.Web.Server.Services.Authorization;
 
 /// <summary>
 /// Centralized permission evaluator implementing the deterministic evaluation algorithm
-/// defined in the permission rework plan. All authorization decisions flow through this
-/// class. Uses unfiltered AppDb queries (IgnoreQueryFilters) because the evaluator must
-/// see all assignment rows regardless of the requesting principal's tenant context.
+/// defined in the permission rework plan. All point-authorization decisions flow through this
+/// class. <see cref="PermissionAssignment"/> rows are interpreted by <see cref="IPermissionRuleResolver"/>;
+/// this class adds credential-grant bounding, logon-token device enforcement, per-resource scope
+/// matching, and deny/allow resolution.
 /// </summary>
 public interface IPermissionEvaluator
 {
@@ -22,12 +23,9 @@ public interface IPermissionEvaluator
     CancellationToken cancellationToken);
 }
 
-public class PermissionEvaluator(
-  IDbContextFactory<AppDb> dbContextFactory,
-  IRoleBundleResolver roleBundleResolver) : IPermissionEvaluator
+public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermissionEvaluator
 {
-  private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
-  private readonly IRoleBundleResolver _roleBundleResolver = roleBundleResolver;
+  private readonly IPermissionRuleResolver _ruleResolver = ruleResolver;
 
   public async Task<PermissionEvaluationResult> Evaluate(
     PrincipalDescriptor principal,
@@ -35,84 +33,14 @@ public class PermissionEvaluator(
     ResourceDescriptor resource,
     CancellationToken cancellationToken)
   {
-    // Server-scoped service accounts bypass evaluation when they have no explicit
-    // permission assignments (the zero-config RMM use case). Once an admin attaches
-    // assignments to a server service account, it opts into fine-grained evaluation
-    // while retaining cross-tenant reach (no tenant filter on its assignments).
-    if (principal.PrincipalType == PrincipalClaimTypes.ServerServiceAccount)
-    {
-      await using var bypassDb = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-      var hasAssignments = await bypassDb.PermissionAssignments
-        .IgnoreQueryFilters()
-        .AnyAsync(x => x.PrincipalKind == PermissionPrincipalKind.ServiceAccount &&
-                       x.PrincipalId == principal.PrincipalId &&
-                       x.IsEnabled, cancellationToken);
+    var resolved = await _ruleResolver.Resolve(principal, cancellationToken);
 
-      if (!hasAssignments)
-      {
-        return PermissionEvaluationResult.Allow("server-service-account-bypass", "Server");
-      }
+    if (resolved.ServerBypass)
+    {
+      return PermissionEvaluationResult.Allow("server-service-account-bypass", "Server");
     }
 
-    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-    var rules = new List<EvaluationRule>();
-
-    // Step 4: Load explicit (direct) permission assignments for the principal.
-    // Service accounts (both server and tenant scoped) use PrincipalKind.ServiceAccount.
-    var principalKind = principal.PrincipalType is PrincipalClaimTypes.TenantServiceAccount
-        or PrincipalClaimTypes.ServerServiceAccount
-      ? PermissionPrincipalKind.ServiceAccount
-      : PermissionPrincipalKind.User;
-
-    var directAssignments = await LoadAssignments(
-      db, principalKind, principal.PrincipalId, cancellationToken);
-
-    foreach (var assignment in directAssignments)
-    {
-      rules.Add(new EvaluationRule(assignment, RuleSource.Direct, SourcePriority.Direct));
-    }
-
-    // Step 5: Load indirect assignments through user group membership (users only).
-    if (principal.PrincipalType == PrincipalClaimTypes.User)
-    {
-      var groupAssignments = await LoadUserGroupAssignments(db, principal, cancellationToken);
-      foreach (var assignment in groupAssignments)
-      {
-        rules.Add(new EvaluationRule(assignment, RuleSource.UserGroup, SourcePriority.UserGroup));
-      }
-    }
-
-    // Step 6: Resolve seeded role-bundle permissions from role claims (interim bridge,
-    // deleted in PR 13). Each role maps to a static set of permission names. Scoped to
-    // the principal's tenant to preserve tenant isolation.
-    if (principal.Roles is { Count: > 0 })
-    {
-      var bundleScopeKind = principal.TenantId.HasValue
-        ? PermissionScopeKind.Tenant
-        : PermissionScopeKind.Server;
-
-      foreach (var roleName in principal.Roles)
-      {
-        var bundlePermissions = _roleBundleResolver.ResolvePermissions([roleName]);
-        foreach (var perm in bundlePermissions)
-        {
-          rules.Add(new EvaluationRule(
-            new PermissionAssignment
-            {
-              PermissionName = perm,
-              Effect = PermissionEffect.Allow,
-              ScopeKind = bundleScopeKind,
-              ScopeId = principal.TenantId,
-              PrincipalKind = PermissionPrincipalKind.User,
-              PrincipalId = principal.PrincipalId,
-              IsEnabled = true
-            },
-            RuleSource.RoleBundle,
-            SourcePriority.RoleBundle));
-        }
-      }
-    }
+    var rules = resolved.Rules.ToList();
 
     // Logon token device-scope enforcement: a logon token session is always restricted
     // to the device it was created for. This is a hard security boundary that applies
@@ -145,8 +73,8 @@ public class PermissionEvaluator(
         ? PermissionPrincipalKind.PersonalAccessToken
         : PermissionPrincipalKind.LogonToken;
 
-      var credentialAssignments = await LoadAssignments(
-        db, credentialKind, principal.CredentialId.Value, cancellationToken);
+      var credentialAssignments = await _ruleResolver.LoadAssignments(
+        credentialKind, principal.CredentialId.Value, cancellationToken);
 
       if (credentialAssignments.Count > 0)
       {
@@ -194,7 +122,7 @@ public class PermissionEvaluator(
 
         foreach (var assignment in boundedAssignments)
         {
-          rules.Add(new EvaluationRule(assignment, source, priority));
+          rules.Add(new PermissionRule(assignment, source, priority));
         }
       }
       else if (principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType &&
@@ -256,69 +184,19 @@ public class PermissionEvaluator(
   /// <summary>
   /// Returns the set of permission names the principal effectively holds (allow rules not
   /// overridden by deny), evaluated at the name level without regard to resource scope. Used
-  /// to emit permission claims for client-side policy evaluation. Considers direct assignments,
-  /// user-group assignments, and the interim role-bundle bridge. Credential-scoping and the
-  /// server-service-account bypass do not apply to interactive UI sessions, which are the only
-  /// consumers of this method.
+  /// to emit permission claims for client-side policy evaluation. Assignment rows are interpreted
+  /// by <see cref="IPermissionRuleResolver"/> (direct, user-group, and the interim role-bundle
+  /// bridge). Credential-scoping and the server-service-account bypass do not apply to interactive
+  /// UI sessions, which are the only consumers of this method.
   /// </summary>
   public async Task<IReadOnlySet<string>> GetEffectivePermissionNames(
     PrincipalDescriptor principal,
     CancellationToken cancellationToken)
   {
-    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-    var principalKind = principal.PrincipalType is PrincipalClaimTypes.TenantServiceAccount
-        or PrincipalClaimTypes.ServerServiceAccount
-      ? PermissionPrincipalKind.ServiceAccount
-      : PermissionPrincipalKind.User;
-
-    var rules = new List<EvaluationRule>();
-
-    var directAssignments = await LoadAssignments(db, principalKind, principal.PrincipalId, cancellationToken);
-    foreach (var assignment in directAssignments)
-    {
-      rules.Add(new EvaluationRule(assignment, RuleSource.Direct, SourcePriority.Direct));
-    }
-
-    if (principal.PrincipalType == PrincipalClaimTypes.User)
-    {
-      var groupAssignments = await LoadUserGroupAssignments(db, principal, cancellationToken);
-      foreach (var assignment in groupAssignments)
-      {
-        rules.Add(new EvaluationRule(assignment, RuleSource.UserGroup, SourcePriority.UserGroup));
-      }
-    }
-
-    if (principal.Roles is { Count: > 0 })
-    {
-      var bundleScopeKind = principal.TenantId.HasValue
-        ? PermissionScopeKind.Tenant
-        : PermissionScopeKind.Server;
-
-      foreach (var roleName in principal.Roles)
-      {
-        var bundlePermissions = _roleBundleResolver.ResolvePermissions([roleName]);
-        foreach (var permission in bundlePermissions)
-        {
-          rules.Add(new EvaluationRule(
-            new PermissionAssignment
-            {
-              PermissionName = permission,
-              Effect = PermissionEffect.Allow,
-              ScopeKind = bundleScopeKind,
-              ScopeId = principal.TenantId,
-              PrincipalKind = PermissionPrincipalKind.User,
-              PrincipalId = principal.PrincipalId,
-              IsEnabled = true
-            },
-            RuleSource.RoleBundle,
-            SourcePriority.RoleBundle));
-        }
-      }
-    }
+    var resolved = await _ruleResolver.Resolve(principal, cancellationToken);
 
     var effective = new HashSet<string>();
-    foreach (var group in rules.GroupBy(rule => rule.Assignment.PermissionName))
+    foreach (var group in resolved.Rules.GroupBy(rule => rule.Assignment.PermissionName))
     {
       if (group.Any(rule => rule.Assignment.Effect == PermissionEffect.Deny))
       {
@@ -392,67 +270,4 @@ public class PermissionEvaluator(
     PermissionScopeKind.Server => 4,
     _ => 5
   };
-
-  private async Task<List<PermissionAssignment>> LoadAssignments(
-    AppDb db,
-    PermissionPrincipalKind principalKind,
-    Guid principalId,
-    CancellationToken cancellationToken)
-  {
-    return await db.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == principalKind && x.PrincipalId == principalId && x.IsEnabled)
-      .ToListAsync(cancellationToken);
-  }
-
-  private async Task<List<PermissionAssignment>> LoadUserGroupAssignments(
-    AppDb db,
-    PrincipalDescriptor principal,
-    CancellationToken cancellationToken)
-  {
-    var groupIds = await db.UserGroupMembers
-      .IgnoreQueryFilters()
-      .Where(x => x.UserId == principal.PrincipalId)
-      .Select(x => x.UserGroupId)
-      .ToListAsync(cancellationToken);
-
-    if (groupIds.Count == 0)
-    {
-      return [];
-    }
-
-    return await db.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == PermissionPrincipalKind.UserGroup &&
-                  groupIds.Contains(x.PrincipalId) &&
-                  x.IsEnabled)
-      .ToListAsync(cancellationToken);
-  }
-
-  private enum RuleSource
-  {
-    Direct,
-    UserGroup,
-    RoleBundle,
-    PatGrant,
-    LogonTokenGrant
-  }
-
-  /// <summary>
-  /// Source priority for tie-breaking. Lower values win. Credential grants are highest
-  /// priority because they represent the narrowest, most intentional grant.
-  /// </summary>
-  private enum SourcePriority
-  {
-    CredentialPat = 0,
-    CredentialLogonToken = 1,
-    Direct = 2,
-    UserGroup = 3,
-    RoleBundle = 4
-  }
-
-  private sealed record EvaluationRule(
-    PermissionAssignment Assignment,
-    RuleSource Source,
-    SourcePriority Priority);
 }

@@ -6,18 +6,19 @@ using ControlR.Web.Server.Services.DeviceManagement;
 namespace ControlR.Web.Server.Services.Authorization;
 
 /// <summary>
-/// Permission-based device access scope resolver. Replaces the legacy role-based
-/// <see cref="DeviceAccessScopeResolver"/> by querying <c>PermissionAssignment</c> rows
-/// and the interim role-bundle bridge to determine which devices a principal may access.
-/// Registered as the <see cref="IDeviceAccessScopeResolver"/> implementation during the
-/// PR-sequencing period; the old resolver is deleted in PR 13.
+/// Permission-based device access scope resolver. Produces the <see cref="DeviceAccessScope"/>
+/// query filter describing which devices a principal may enumerate. It performs no authorization
+/// decisions of its own: <see cref="PermissionAssignment"/> rows are interpreted by
+/// <see cref="IPermissionRuleResolver"/> (the same component the point-authorization evaluator
+/// uses), and this class only projects the resolved <c>device.read</c> allow rules into a scope.
+/// The role and tag bridges below are interim pre-rework behavior retired in PR 12/13.
 /// </summary>
 public class PermissionDeviceScopeResolver(
-  IDbContextFactory<AppDb> dbContextFactory,
-  IRoleBundleResolver roleBundleResolver) : IDeviceAccessScopeResolver
+  IPermissionRuleResolver ruleResolver,
+  IDbContextFactory<AppDb> dbContextFactory) : IDeviceAccessScopeResolver
 {
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
-  private readonly IRoleBundleResolver _roleBundleResolver = roleBundleResolver;
+  private readonly IPermissionRuleResolver _ruleResolver = ruleResolver;
 
   public async Task<DeviceAccessScope> Resolve(
     ClaimsPrincipal user,
@@ -30,100 +31,44 @@ public class PermissionDeviceScopeResolver(
       return DeviceAccessScope.SingleDevice(scopedDeviceId);
     }
 
-    var principalType = user.FindFirst(PrincipalClaimTypes.PrincipalType)?.Value;
-    var principalIdClaim = user.FindFirst(PrincipalClaimTypes.PrincipalId)?.Value;
-
-    if (principalType is null || !Guid.TryParse(principalIdClaim, out var principalId))
+    var principal = PrincipalDescriptorBuilder.FromClaims(user);
+    if (principal is null)
     {
       return DeviceAccessScope.None();
     }
 
-    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+    var resolved = await _ruleResolver.Resolve(principal, cancellationToken);
 
     // Server service account bypass: zero assignments means unrestricted access.
-    if (principalType == PrincipalClaimTypes.ServerServiceAccount)
+    if (resolved.ServerBypass)
     {
-      var hasAssignments = await db.PermissionAssignments
-        .IgnoreQueryFilters()
-        .AnyAsync(x => x.PrincipalKind == PermissionPrincipalKind.ServiceAccount &&
-                       x.PrincipalId == principalId &&
-                       x.IsEnabled, cancellationToken);
-
-      if (!hasAssignments)
-      {
-        return DeviceAccessScope.TenantWide();
-      }
+      return DeviceAccessScope.TenantWide();
     }
 
-    // Role-bundle bridge (deleted in PR 13): TenantAdministrator and DeviceSuperUser
-    // roles grant tenant-wide device access, preserving pre-rework behavior.
+    // Bridge (deleted in PR 13): TenantAdministrator and DeviceSuperUser roles grant tenant-wide
+    // device access. TenantAdministrator's role-bundle does not include device.read, so this
+    // hardcoded bridge preserves pre-rework list behavior that the rule set alone would not.
     if (user.IsInRole(RoleNames.TenantAdministrator) || user.IsInRole(RoleNames.DeviceSuperUser))
     {
       return DeviceAccessScope.TenantWide();
     }
 
-    // Resolve the principal kind for assignment lookups.
-    var principalKind = principalType is PrincipalClaimTypes.TenantServiceAccount
-        or PrincipalClaimTypes.ServerServiceAccount
-      ? PermissionPrincipalKind.ServiceAccount
-      : PermissionPrincipalKind.User;
+    var deviceReadAllows = resolved.Rules
+      .Where(rule => rule.Assignment.PermissionName == PermissionNames.DeviceRead &&
+                     rule.Assignment.Effect == PermissionEffect.Allow)
+      .Select(rule => rule.Assignment)
+      .ToList();
 
-    // Load direct assignments for device.read.
-    var directAssignments = await db.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == principalKind &&
-                  x.PrincipalId == principalId &&
-                  x.IsEnabled &&
-                  x.PermissionName == PermissionNames.DeviceRead &&
-                  x.Effect == PermissionEffect.Allow)
-      .ToListAsync(cancellationToken);
-
-    // Load user-group assignments for device.read (users only).
-    var groupAssignments = new List<PermissionAssignment>();
-    if (principalKind == PermissionPrincipalKind.User)
-    {
-      var userGroupIds = await db.UserGroupMembers
-        .IgnoreQueryFilters()
-        .Where(x => x.UserId == principalId)
-        .Select(x => x.UserGroupId)
-        .ToListAsync(cancellationToken);
-
-      if (userGroupIds.Count > 0)
-      {
-        groupAssignments = await db.PermissionAssignments
-          .IgnoreQueryFilters()
-          .Where(x => x.PrincipalKind == PermissionPrincipalKind.UserGroup &&
-                      userGroupIds.Contains(x.PrincipalId) &&
-                      x.IsEnabled &&
-                      x.PermissionName == PermissionNames.DeviceRead &&
-                      x.Effect == PermissionEffect.Allow)
-          .ToListAsync(cancellationToken);
-      }
-    }
-
-    var allAssignments = directAssignments.Concat(groupAssignments).ToList();
-
-    // Role-bundle bridge: if the user's roles grant device.read via the static bundle,
-    // treat it as a tenant-scoped allow (same as the evaluator's role-bundle step).
-    var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-    if (roles.Count > 0)
-    {
-      var bundlePermissions = _roleBundleResolver.ResolvePermissions(roles);
-      if (bundlePermissions.Contains(PermissionNames.DeviceRead))
-      {
-        return DeviceAccessScope.TenantWide();
-      }
-    }
-
-    if (allAssignments.Count == 0)
+    if (deviceReadAllows.Count == 0)
     {
       // Bridge fallback (deleted in PR 13): users with tag associations but no permission
-      // assignments retain tag-based device access, preserving pre-rework behavior until
-      // the backfill (PR 12) creates assignment rows and tags are removed.
-      if (principalKind == PermissionPrincipalKind.User)
+      // assignments retain tag-based device access, preserving pre-rework behavior until the
+      // backfill (PR 12) creates assignment rows and tags are removed.
+      if (PermissionRuleResolver.ResolvePrincipalKind(principal.PrincipalType) == PermissionPrincipalKind.User)
       {
+        await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         var tagIds = await db.Users
-          .Where(x => x.Id == principalId && x.TenantId == tenantId)
+          .Where(x => x.Id == principal.PrincipalId && x.TenantId == tenantId)
           .SelectMany(x => x.Tags!.Select(tag => tag.Id))
           .ToListAsync(cancellationToken);
 
@@ -135,15 +80,13 @@ public class PermissionDeviceScopeResolver(
       return DeviceAccessScope.None();
     }
 
-    // Determine the broadest scope from matching assignments.
     // Server or Tenant scope grants access to all tenant devices.
-    if (allAssignments.Any(x => x.ScopeKind is PermissionScopeKind.Server or PermissionScopeKind.Tenant))
+    if (deviceReadAllows.Any(x => x.ScopeKind is PermissionScopeKind.Server or PermissionScopeKind.Tenant))
     {
       return DeviceAccessScope.TenantWide();
     }
 
-    // DeviceGroup scope: collect group IDs for query filtering via group membership.
-    var deviceGroupIds = allAssignments
+    var deviceGroupIds = deviceReadAllows
       .Where(x => x.ScopeKind == PermissionScopeKind.DeviceGroup && x.ScopeId.HasValue)
       .Select(x => x.ScopeId!.Value)
       .Distinct()
@@ -154,8 +97,7 @@ public class PermissionDeviceScopeResolver(
       return DeviceAccessScope.ForDeviceGroups(deviceGroupIds);
     }
 
-    // CustomerTenant scope: collect customer IDs for query filtering by device customer.
-    var customerIds = allAssignments
+    var customerIds = deviceReadAllows
       .Where(x => x.ScopeKind == PermissionScopeKind.CustomerTenant && x.ScopeId.HasValue)
       .Select(x => x.ScopeId!.Value)
       .Distinct()
@@ -166,8 +108,7 @@ public class PermissionDeviceScopeResolver(
       return DeviceAccessScope.ForCustomers(customerIds);
     }
 
-    // Device scope: collect specific device IDs.
-    var deviceIds = allAssignments
+    var deviceIds = deviceReadAllows
       .Where(x => x.ScopeKind == PermissionScopeKind.Device && x.ScopeId.HasValue)
       .Select(x => x.ScopeId!.Value)
       .Distinct()

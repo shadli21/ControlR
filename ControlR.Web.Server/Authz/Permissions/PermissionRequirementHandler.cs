@@ -1,5 +1,3 @@
-using System.Security.Claims;
-using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.Authorization;
 
@@ -26,7 +24,7 @@ public class PermissionRequirementHandler(
     PermissionRequirement requirement,
     object resource)
   {
-    var principal = BuildPrincipalDescriptor(context.User);
+    var principal = PrincipalDescriptorBuilder.FromClaims(context.User);
     if (principal is null)
     {
       _logger.LogWarning("Cannot build principal descriptor from claims. Denying {Permission}.", requirement.PermissionName);
@@ -49,52 +47,6 @@ public class PermissionRequirementHandler(
       "Permission denied: {Permission} on {Resource} for principal {PrincipalId}. Reason: {Reason}",
       requirement.PermissionName, resourceDescriptor, principal.PrincipalId, result.DenialReason);
     context.Fail(new AuthorizationFailureReason(this, result.DenialReason ?? "Permission denied."));
-  }
-
-  private static PrincipalDescriptor? BuildPrincipalDescriptor(ClaimsPrincipal user)
-  {
-    var principalType = user.FindFirst(PrincipalClaimTypes.PrincipalType)?.Value;
-    var principalIdClaim = user.FindFirst(PrincipalClaimTypes.PrincipalId)?.Value;
-
-    if (principalType is null || !Guid.TryParse(principalIdClaim, out var principalId))
-    {
-      return null;
-    }
-
-    Guid? tenantId = null;
-    var tenantClaim = user.FindFirst(UserClaimTypes.TenantId)?.Value;
-    if (Guid.TryParse(tenantClaim, out var parsedTenantId))
-    {
-      tenantId = parsedTenantId;
-    }
-
-    Guid? credentialId = null;
-    var credentialIdClaim = user.FindFirst(PrincipalClaimTypes.CredentialId)?.Value;
-    if (Guid.TryParse(credentialIdClaim, out var parsedCredentialId))
-    {
-      credentialId = parsedCredentialId;
-    }
-
-    Guid? deviceScopeId = null;
-    var deviceScopeClaim = user.FindFirst(UserClaimTypes.DeviceSessionScope)?.Value;
-    if (Guid.TryParse(deviceScopeClaim, out var parsedDeviceScopeId))
-    {
-      deviceScopeId = parsedDeviceScopeId;
-    }
-
-    var authMethod = user.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? "unknown";
-    var credentialType = user.FindFirst(PrincipalClaimTypes.CredentialType)?.Value;
-    var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-
-    return new PrincipalDescriptor(
-      principalType,
-      principalId,
-      tenantId,
-      authMethod,
-      credentialId,
-      credentialType,
-      deviceScopeId,
-      roles);
   }
 
   private async Task<IReadOnlyCollection<Guid>> ResolveDeviceGroupIds(
