@@ -7,7 +7,7 @@ namespace ControlR.Web.Server.Api.V1;
 
 [Route(HttpConstants.V1.LogonTokensEndpoint)]
 [ApiController]
-[Authorize(Policy = RequireServerServiceAccountPolicy.PolicyName)]
+[Authorize]
 [ApiVersion(ApiVersions.V1)]
 public class LogonTokensController : ControllerBase
 {
@@ -18,12 +18,19 @@ public class LogonTokensController : ControllerBase
   public async Task<ActionResult<V1Dtos.LogonTokenResponseDto>> CreateForExternal(
     [FromServices] AppDb appDb,
     [FromServices] ILogonTokenProvider logonTokenProvider,
+    [FromServices] IAuthorizationService authorizationService,
     [FromBody] V1Dtos.CreateLogonTokenForExternalRequestDto request)
   {
     var device = await appDb.Devices.FindAsync(request.DeviceId);
     if (device is null || device.TenantId != request.TenantId)
     {
       return BadRequest("Device not found");
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.LogonTokenCreate);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     var result = await logonTokenProvider.CreateTokenForExternal(
@@ -49,12 +56,19 @@ public class LogonTokensController : ControllerBase
   public async Task<ActionResult<V1Dtos.LogonTokenResponseDto>> CreateForUser(
     [FromServices] AppDb appDb,
     [FromServices] ILogonTokenProvider logonTokenProvider,
+    [FromServices] IAuthorizationService authorizationService,
     [FromBody] V1Dtos.CreateLogonTokenForUserRequestDto request)
   {
     var device = await appDb.Devices.FindAsync(request.DeviceId);
     if (device is null || device.TenantId != request.TenantId)
     {
       return BadRequest("Device not found");
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.LogonTokenCreate);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     var result = await logonTokenProvider.CreateToken(

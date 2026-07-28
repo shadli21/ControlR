@@ -93,12 +93,13 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public void Create_RequiresServerServiceAccountPolicy()
+  public void Create_RequiresServerServiceAccountsWritePolicy()
   {
     var attribute = typeof(ServiceAccountsController)
+      .GetMethod(nameof(ServiceAccountsController.Create))!
       .GetCustomAttribute<AuthorizeAttribute>();
     Assert.NotNull(attribute);
-    Assert.Equal(RequireServerServiceAccountPolicy.PolicyName, attribute.Policy);
+    Assert.Equal(PolicyNames.RequireServerServiceAccountsWrite, attribute.Policy);
   }
 
   [Fact]

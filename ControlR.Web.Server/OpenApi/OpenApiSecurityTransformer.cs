@@ -9,6 +9,7 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
   private const string CookieScheme = "Cookie";
   private const string PatScheme = PersonalAccessTokenAuthenticationSchemeOptions.DefaultScheme;
   private const string ServiceAccountScheme = ServiceAccountCredentialAuthenticationSchemeOptions.DefaultScheme;
+  private const string V1DocumentName = "v1";
 
   public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
   {
@@ -64,7 +65,7 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
       .Select(e => e.EndpointGroupName)
       .FirstOrDefault();
 
-    var schemes = ResolveSecuritySchemes(policyNames, groupName);
+    var schemes = ResolveSecuritySchemes(policyNames, groupName, context.DocumentName);
     if (schemes.Count == 0)
     {
       return Task.CompletedTask;
@@ -83,7 +84,7 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
     return Task.CompletedTask;
   }
 
-  private static HashSet<string> ResolveSecuritySchemes(HashSet<string> policyNames, string? groupName)
+  private static HashSet<string> ResolveSecuritySchemes(HashSet<string> policyNames, string? groupName, string documentName)
   {
     var schemes = new HashSet<string>();
 
@@ -100,6 +101,13 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
 
     if (policyNames.Contains(CombinedAuthorizationPolicies.RequireServerOrTenantAdminPolicy) ||
         policyNames.Contains(CombinedAuthorizationPolicies.RequireServerOrTenantAdminOrInstallerKeyManagerPolicy))
+    {
+      schemes.Add(ServiceAccountScheme);
+      schemes.Add(CookieScheme);
+      schemes.Add(PatScheme);
+    }
+
+    if (documentName == V1DocumentName)
     {
       schemes.Add(ServiceAccountScheme);
       schemes.Add(CookieScheme);

@@ -71,6 +71,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       },
@@ -155,6 +161,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -232,6 +244,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -298,6 +316,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -413,6 +437,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -479,6 +509,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -556,6 +592,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -682,6 +724,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -759,6 +807,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -849,6 +903,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -966,6 +1026,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -1112,6 +1178,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -1229,6 +1301,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       },
@@ -1293,6 +1371,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -1402,6 +1486,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       },
@@ -1486,6 +1576,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -1564,6 +1660,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -1654,6 +1756,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }
@@ -1716,6 +1824,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       },
@@ -1800,6 +1914,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       },
@@ -1917,6 +2037,12 @@
         "security": [
           {
             "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
           }
         ]
       }

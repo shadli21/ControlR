@@ -5,6 +5,7 @@ using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Hubs.Clients;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Extensions.Dtos.V1;
+using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using DeviceResponseDto = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.DeviceResponseDto;
@@ -13,15 +14,18 @@ namespace ControlR.Web.Server.Api.V1;
 
 [Route(HttpConstants.V1.DevicesEndpoint)]
 [ApiController]
-[Authorize(Policy = RequireServerServiceAccountPolicy.PolicyName)]
+[Authorize]
 [ApiVersion(ApiVersions.V1)]
-public class DevicesController() : ControllerBase
+public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResolver) : ControllerBase
 {
+  private readonly IDeviceAccessScopeResolver _deviceAccessScopeResolver = deviceAccessScopeResolver;
+
   [HttpDelete("{deviceId:guid}")]
   [ProducesResponseType(StatusCodes.Status204NoContent)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   public async Task<IActionResult> DeleteDevice(
     [FromServices] AppDb appDb,
+    [FromServices] IAuthorizationService authorizationService,
     [FromRoute] Guid deviceId,
     CancellationToken cancellationToken)
   {
@@ -29,6 +33,12 @@ public class DevicesController() : ControllerBase
     if (device is null)
     {
       return NotFound();
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     appDb.Devices.Remove(device);
@@ -39,24 +49,34 @@ public class DevicesController() : ControllerBase
   [HttpPost("delete-many")]
   public async Task<ActionResult<V1Dtos.DeleteManyDevicesResponseDto>> DeleteMany(
     [FromServices] AppDb appDb,
+    [FromServices] IAuthorizationService authorizationService,
     [FromBody] V1Dtos.DeleteDevicesRequestDto requestDto,
     CancellationToken cancellationToken)
   {
-    var authorizedDeviceIds = await appDb.Devices
+    var candidateDevices = await appDb.Devices
+      .AsNoTracking()
+      .Include(x => x.DeviceGroupMembers)
       .Where(d => requestDto.DeviceIds.Contains(d.Id))
-      .Select(d => d.Id)
       .ToListAsync(cancellationToken);
 
-    var authorizedIdSet = authorizedDeviceIds.ToHashSet();
+    var authorizedIdSet = new HashSet<Guid>();
+    foreach (var device in candidateDevices)
+    {
+      var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
+      if (authResult.Succeeded)
+      {
+        authorizedIdSet.Add(device.Id);
+      }
+    }
 
     var deletedCount = await appDb.Devices
       .Where(x => authorizedIdSet.Contains(x.Id))
       .ExecuteDeleteAsync(cancellationToken);
 
-    if (deletedCount == authorizedDeviceIds.Count)
+    if (deletedCount == authorizedIdSet.Count)
     {
       return new V1Dtos.DeleteManyDevicesResponseDto(
-        SuccessIds: [.. authorizedDeviceIds],
+        SuccessIds: [.. authorizedIdSet],
         FailureIds: [.. requestDto.DeviceIds.Except(authorizedIdSet)]);
     }
 
@@ -77,12 +97,10 @@ public class DevicesController() : ControllerBase
     [FromServices] IAgentVersionProvider agentVersionProvider,
     [EnumeratorCancellation] CancellationToken cancellationToken)
   {
-    var query = appDb.Devices
-      .Include(x => x.Tags)
-      .AsSplitQuery()
-      .OrderBy(x => x.CreatedAt);
+    var query = await ApplyDeviceScopeAsync(
+      appDb.Devices.Include(x => x.Tags).AsSplitQuery(), cancellationToken);
 
-    await foreach (var device in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+    await foreach (var device in query.OrderBy(x => x.CreatedAt).AsAsyncEnumerable().WithCancellation(cancellationToken))
     {
       var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion, cancellationToken);
       yield return device.ToV1ResponseDto(isOutdated);
@@ -97,6 +115,7 @@ public class DevicesController() : ControllerBase
     [FromRoute] Guid deviceId,
     [FromServices] AppDb appDb,
     [FromServices] IHubContext<AgentHub, IAgentHubClient> agentHub,
+    [FromServices] IAuthorizationService authorizationService,
     [FromServices] ILogger<DevicesController> logger,
     CancellationToken cancellationToken)
   {
@@ -107,6 +126,12 @@ public class DevicesController() : ControllerBase
     if (device is null)
     {
       return NotFound();
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     if (!device.IsOnline || string.IsNullOrWhiteSpace(device.ConnectionId))
@@ -139,6 +164,7 @@ public class DevicesController() : ControllerBase
   public async Task<ActionResult<DeviceResponseDto>> GetDevice(
     [FromServices] AppDb appDb,
     [FromServices] IAgentVersionProvider agentVersionProvider,
+    [FromServices] IAuthorizationService authorizationService,
     [FromRoute] Guid deviceId,
     CancellationToken cancellationToken)
   {
@@ -146,6 +172,12 @@ public class DevicesController() : ControllerBase
     if (device is null)
     {
       return NotFound();
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion, cancellationToken);
@@ -157,9 +189,9 @@ public class DevicesController() : ControllerBase
     [FromServices] AppDb appDb,
     [EnumeratorCancellation] CancellationToken cancellationToken)
   {
-    var query = appDb.Devices.OrderBy(x => x.CreatedAt);
+    var query = await ApplyDeviceScopeAsync(appDb.Devices, cancellationToken);
 
-    await foreach (var device in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+    await foreach (var device in query.OrderBy(x => x.CreatedAt).AsAsyncEnumerable().WithCancellation(cancellationToken))
     {
       yield return device.ToV1SummaryDto();
     }
@@ -174,7 +206,7 @@ public class DevicesController() : ControllerBase
     CancellationToken cancellationToken)
   {
     var isRelationalDatabase = appDb.Database.IsRelational();
-    var authorizedQuery = appDb.Devices.AsQueryable();
+    var authorizedQuery = await ApplyDeviceScopeAsync(appDb.Devices.AsQueryable(), cancellationToken);
 
     var filteredQuery = authorizedQuery
       .FilterBySearchText(requestDto.SearchText, isRelationalDatabase)
@@ -217,6 +249,7 @@ public class DevicesController() : ControllerBase
     [FromBody] V1Dtos.UpdateDeviceAliasRequestDto requestDto,
     [FromServices] AppDb appDb,
     [FromServices] IAgentVersionProvider agentVersionProvider,
+    [FromServices] IAuthorizationService authorizationService,
     [FromServices] ILogger<DevicesController> logger,
     CancellationToken cancellationToken)
   {
@@ -237,10 +270,34 @@ public class DevicesController() : ControllerBase
       return NotFound();
     }
 
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.AliasWrite);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
+    }
+
     device.Alias = requestDto.Alias ?? string.Empty;
     await appDb.SaveChangesAsync(cancellationToken);
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion, cancellationToken);
     return device.ToV1ResponseDto(isOutdated);
+  }
+
+  private async Task<IQueryable<Device>> ApplyDeviceScopeAsync(
+    IQueryable<Device> query,
+    CancellationToken cancellationToken)
+  {
+    if (User.IsServerPrincipal())
+    {
+      return query;
+    }
+
+    if (!User.TryGetTenantId(out var tenantId))
+    {
+      return query.Take(0);
+    }
+
+    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId, cancellationToken);
+    return query.ApplyAccessScope(tenantId, accessScope);
   }
 }

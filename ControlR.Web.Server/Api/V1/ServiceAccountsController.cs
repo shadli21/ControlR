@@ -9,7 +9,7 @@ namespace ControlR.Web.Server.Api.V1;
 
 [Route(HttpConstants.V1.ServiceAccountsEndpoint)]
 [ApiController]
-[Authorize(Policy = RequireServerServiceAccountPolicy.PolicyName)]
+[Authorize]
 [ApiVersion(ApiVersions.V1)]
 public class ServiceAccountsController(
   IServiceAccountManager serviceAccountManager) : ControllerBase
@@ -17,6 +17,7 @@ public class ServiceAccountsController(
   private readonly IServiceAccountManager _serviceAccountManager = serviceAccountManager;
 
   [HttpPost("{serviceAccountId:guid}/credentials")]
+  [Authorize(Policy = PolicyNames.RequireServerServiceAccountsRotateCredentials)]
   [ProducesResponseType<CreateServiceAccountCredentialResponseDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -42,6 +43,7 @@ public class ServiceAccountsController(
   }
 
   [HttpPost]
+  [Authorize(Policy = PolicyNames.RequireServerServiceAccountsWrite)]
   [ProducesResponseType<CreateServiceAccountResponseDto>(StatusCodes.Status201Created)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -59,6 +61,7 @@ public class ServiceAccountsController(
   }
 
   [HttpDelete("{serviceAccountId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServerServiceAccountsWrite)]
   [ProducesResponseType(StatusCodes.Status204NoContent)]
   [ProducesResponseType(StatusCodes.Status401Unauthorized)]
   [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -88,6 +91,7 @@ public class ServiceAccountsController(
   }
 
   [HttpGet("{serviceAccountId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServerServiceAccountsRead)]
   [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   public async Task<ActionResult<ServiceAccountDto>> Get(
@@ -104,6 +108,7 @@ public class ServiceAccountsController(
   }
 
   [HttpGet]
+  [Authorize(Policy = PolicyNames.RequireServerServiceAccountsRead)]
   public async Task<ActionResult<IReadOnlyList<ServiceAccountDto>>> GetAll(CancellationToken cancellationToken)
   {
     var accounts = await _serviceAccountManager.GetAllForServer(cancellationToken);
@@ -111,6 +116,7 @@ public class ServiceAccountsController(
   }
 
   [HttpDelete("{serviceAccountId:guid}/credentials/{credentialId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServerServiceAccountsRotateCredentials)]
   [ProducesResponseType(StatusCodes.Status204NoContent)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   public async Task<IActionResult> RevokeCredential(
