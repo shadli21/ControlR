@@ -7,13 +7,14 @@ namespace ControlR.Web.Server.Api.Internal;
 
 [Route(HttpConstants.Internal.InstallerKeysEndpoint)]
 [ApiController]
-[Authorize(Roles = $"{RoleNames.TenantAdministrator},{RoleNames.InstallerKeyManager}")]
+[Authorize]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManager) : ControllerBase
 {
   private readonly IAgentInstallerKeyManager _installerKeyManager = installerKeyManager;
 
   [HttpPost]
+  [Authorize(Policy = PolicyNames.RequireInstallerKeyWrite)]
   public async Task<ActionResult<InternalDtos.CreateInstallerKeyResponseDto>> Create(
       [FromBody] CreateInstallerKeyRequestDto request)
   {
@@ -36,6 +37,7 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
   }
 
   [HttpDelete("{id:guid}")]
+  [Authorize(Policy = PolicyNames.RequireInstallerKeyWrite)]
   public async Task<IActionResult> Delete([FromRoute] Guid id)
   {
     if (!User.TryGetTenantId(out var tenantId) ||
@@ -50,6 +52,7 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
   }
 
   [HttpGet]
+  [Authorize(Policy = PolicyNames.RequireInstallerKeyRead)]
   public async Task<ActionResult<IEnumerable<InternalDtos.AgentInstallerKeyDto>>> GetAll()
   {
     if (!User.TryGetTenantId(out var tenantId) ||
@@ -64,6 +67,7 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
   }
 
   [HttpGet("usages/{keyId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireInstallerKeyRead)]
   public async Task<ActionResult<IReadOnlyList<InternalDtos.AgentInstallerKeyUsageDto>>> GetUsages([FromRoute] Guid keyId)
   {
     if (!User.TryGetTenantId(out var tenantId) ||
@@ -78,6 +82,7 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
   }
 
   [HttpPut("rename")]
+  [Authorize(Policy = PolicyNames.RequireInstallerKeyWrite)]
   public async Task<IActionResult> Rename(
       [FromBody] InternalDtos.RenameInstallerKeyRequestDto request)
   {

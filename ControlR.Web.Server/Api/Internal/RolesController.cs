@@ -5,7 +5,7 @@ namespace ControlR.Web.Server.Api.Internal;
  
 [Route(HttpConstants.Internal.RolesEndpoint)]
 [ApiController]
-[Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireRolesRead)]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class RolesController : ControllerBase
 {

@@ -5,7 +5,7 @@ namespace ControlR.Web.Server.Api.Internal;
 
 [Route(HttpConstants.Internal.InvitesEndpoint)]
 [ApiController]
-[Authorize(Roles = RoleNames.TenantAdministrator)]
+[Authorize]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class InvitesController : ControllerBase
 {
@@ -26,6 +26,7 @@ public class InvitesController : ControllerBase
   }
 
   [HttpPost]
+  [Authorize(Policy = PolicyNames.RequireTenantUsersWrite)]
   public async Task<ActionResult<InternalDtos.TenantInviteResponseDto>> Create(
     [FromBody] InternalDtos.TenantInviteRequestDto dto,
     [FromServices] ITenantInvitesProvider tenantInvitesProvider)
@@ -46,6 +47,7 @@ public class InvitesController : ControllerBase
   }
 
   [HttpDelete("{inviteId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireTenantUsersWrite)]
   public async Task<IActionResult> Delete(
     [FromRoute] Guid inviteId,
     [FromServices] ITenantInvitesProvider tenantInvitesProvider)
@@ -61,6 +63,7 @@ public class InvitesController : ControllerBase
   }
 
   [HttpGet]
+  [Authorize(Policy = PolicyNames.RequireUsersRead)]
   public async Task<ActionResult<InternalDtos.TenantInviteResponseDto[]>> GetAll(
     [FromServices] ITenantInvitesProvider tenantInvitesProvider)
   {

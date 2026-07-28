@@ -11,7 +11,7 @@ namespace ControlR.Web.Server.Api.Internal;
 public class TagsController : ControllerBase
 {
   [HttpPost]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTagsWrite)]
   public async Task<ActionResult<InternalDtos.TagResponseDto>> CreateTag(
     [FromServices] AppDb appDb,
     [FromBody] InternalDtos.TagCreateRequestDto dto)
@@ -35,7 +35,7 @@ public class TagsController : ControllerBase
   }
 
   [HttpDelete("{tagId:guid}")]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTagsWrite)]
   public async Task<ActionResult> DeleteTag(
     [FromServices] AppDb appDb,
     [FromRoute] Guid tagId)
@@ -61,7 +61,7 @@ public class TagsController : ControllerBase
   }
 
   [HttpGet]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTagsRead)]
   public async Task<ActionResult<InternalDtos.TagResponseDto[]>> GetAllTags(
     [FromServices] AppDb appDb,
     [FromQuery] bool includeLinkedIds = false)
@@ -94,7 +94,7 @@ public class TagsController : ControllerBase
   }
 
   [HttpPut]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTagsWrite)]
   public async Task<ActionResult<InternalDtos.TagResponseDto>> RenameTag(
     [FromServices] AppDb appDb,
     [FromBody] InternalDtos.TagRenameRequestDto dto)

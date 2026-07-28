@@ -6,11 +6,12 @@ namespace ControlR.Web.Server.Api.Internal;
 
 [Route(HttpConstants.Internal.UsersEndpoint)]
 [ApiController]
-[Authorize(Roles = RoleNames.TenantAdministrator)]
+[Authorize]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class UsersController : ControllerBase
 {
   [HttpPost("{userId:guid}/reset-password")]
+  [Authorize(Policy = PolicyNames.RequireTenantUsersWrite)]
   public async Task<ActionResult<InternalDtos.AdminResetPasswordResponseDto>> AdminResetPassword(
     [FromRoute] Guid userId,
     [FromServices] IPasswordManager passwordManager)
@@ -35,6 +36,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpPost]
+  [Authorize(Policy = PolicyNames.RequireTenantUsersWrite)]
   public async Task<ActionResult<InternalDtos.UserResponseDto>> Create(
     [FromServices] AppDb appDb,
     [FromServices] UserManager<AppUser> userManager,
@@ -107,6 +109,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpPost("{userId:guid}/personal-access-tokens")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokensOthersWrite)]
   public async Task<ActionResult<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateUserPersonalAccessToken(
     [FromRoute] Guid userId,
     [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
@@ -136,6 +139,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpDelete("{userId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireTenantUsersDelete)]
   public async Task<IActionResult> Delete(
     [FromRoute] Guid userId,
     [FromServices] UserManager<AppUser> userManager,
@@ -165,6 +169,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpDelete("{userId:guid}/personal-access-tokens/{tokenId:guid}")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokensOthersWrite)]
   public async Task<IActionResult> DeleteUserPersonalAccessToken(
     [FromRoute] Guid userId,
     [FromRoute] Guid tokenId,
@@ -194,6 +199,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpGet]
+  [Authorize(Policy = PolicyNames.RequireUsersRead)]
   public async Task<ActionResult<List<InternalDtos.UserResponseDto>>> GetAll(
     [FromServices] AppDb appDb)
   {
@@ -228,6 +234,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpGet("{userId:guid}/personal-access-tokens")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokensOthersRead)]
   public async Task<ActionResult<IEnumerable<InternalDtos.PersonalAccessTokenResponseDto>>> GetUserPersonalAccessTokens(
     [FromRoute] Guid userId,
     [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
@@ -251,6 +258,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpPut("{userId:guid}/personal-access-tokens/{tokenId:guid}")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokensOthersWrite)]
   public async Task<ActionResult<InternalDtos.PersonalAccessTokenResponseDto>> UpdateUserPersonalAccessToken(
     [FromRoute] Guid userId,
     [FromRoute] Guid tokenId,
