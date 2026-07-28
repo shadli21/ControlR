@@ -164,20 +164,6 @@ public class PatScopeTrimBackgroundService(
       permissions.UnionWith(groupPermissions);
     }
 
-    // Role-bundle bridge: include permissions from the user's roles.
-    var roleNames = await db.UserRoles
-      .IgnoreQueryFilters()
-      .Where(x => x.UserId == userId)
-      .Join(db.Roles.IgnoreQueryFilters(), ur => ur.RoleId, r => r.Id, (_, r) => r.Name!)
-      .ToListAsync(cancellationToken);
-
-    if (roleNames.Count > 0)
-    {
-      var roleBundleResolver = new RoleBundleResolver();
-      var bundlePermissions = roleBundleResolver.ResolvePermissions(roleNames);
-      permissions.UnionWith(bundlePermissions);
-    }
-
     return permissions;
   }
 }

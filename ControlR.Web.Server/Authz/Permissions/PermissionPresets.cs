@@ -1,47 +1,70 @@
-using ControlR.Web.Server.Authz.Permissions;
-
-namespace ControlR.Web.Server.Services.Authorization;
+namespace ControlR.Web.Server.Authz.Permissions;
 
 /// <summary>
-/// Resolves the set of permission names granted by a collection of role names.
-/// Roles are demoted to static permission bundles in the permission rework; this
-/// resolver maps role claims to their seeded permission sets for the evaluator.
+/// Named permission presets: curated permission sets used to seed principals (the first/bootstrap
+/// user, test users, and the role-to-permission backfill). These are the assignable templates that
+/// replaced the legacy role bundles; roles no longer participate in authorization, but the curated
+/// sets remain the canonical groupings of related permissions.
 /// </summary>
-public interface IRoleBundleResolver
+public static class PermissionPresets
 {
+  public const string AgentInstaller = "Agent Installer";
+  public const string DeviceSuperUser = "Device Superuser";
+  public const string InstallerKeyManager = "Installer Key Manager";
+  public const string ServerAdministrator = "Server Administrator";
+  public const string TenantAdministrator = "Tenant Administrator";
+
+  public static IReadOnlyDictionary<string, IReadOnlyList<string>> All { get; } = BuildPresets();
+
+  public static IReadOnlyList<string> GetPermissions(string presetName) =>
+    All.TryGetValue(presetName, out var permissions) ? permissions : [];
+
   /// <summary>
-  /// Returns the union of permission names granted by the given role names.
+  /// Seeds tenant-scoped allow assignments for every permission in the given presets, granting the
+  /// user the preset's permissions across their tenant.
   /// </summary>
-  IReadOnlySet<string> ResolvePermissions(IEnumerable<string> roleNames);
-}
-
-/// <summary>
-/// Interim role-to-permission bridge. Maps each built-in role to its equivalent
-/// permission set so the evaluator can treat role claims as allow rules during
-/// the PR-sequencing period. Deleted in PR 13 (Final Cleanup).
-/// </summary>
-public class RoleBundleResolver : IRoleBundleResolver
-{
-  private static readonly Dictionary<string, HashSet<string>> _roleBundles = BuildRoleBundles();
-
-  public IReadOnlySet<string> ResolvePermissions(IEnumerable<string> roleNames)
+  public static async Task SeedAssignmentsAsync(
+    AppDb appDb,
+    Guid userId,
+    Guid tenantId,
+    IEnumerable<string> presetNames,
+    CancellationToken cancellationToken = default)
   {
-    var result = new HashSet<string>();
-    foreach (var roleName in roleNames)
+    var permissions = presetNames
+      .SelectMany(GetPermissions)
+      .Distinct()
+      .ToList();
+
+    if (permissions.Count == 0)
     {
-      if (_roleBundles.TryGetValue(roleName, out var permissions))
-      {
-        result.UnionWith(permissions);
-      }
+      return;
     }
-    return result;
+
+    foreach (var permission in permissions)
+    {
+      appDb.PermissionAssignments.Add(new PermissionAssignment
+      {
+        PrincipalKind = PermissionPrincipalKind.User,
+        PrincipalId = userId,
+        PermissionName = permission,
+        Effect = PermissionEffect.Allow,
+        ScopeKind = PermissionScopeKind.Tenant,
+        ScopeId = tenantId,
+        IsEnabled = true,
+        OwningTenantId = tenantId,
+        CreatedByPrincipalType = "system",
+        CreatedByPrincipalId = userId.ToString()
+      });
+    }
+
+    await appDb.SaveChangesAsync(cancellationToken);
   }
 
-  private static Dictionary<string, HashSet<string>> BuildRoleBundles()
+  private static Dictionary<string, IReadOnlyList<string>> BuildPresets()
   {
-    return new Dictionary<string, HashSet<string>>
+    return new Dictionary<string, IReadOnlyList<string>>
     {
-      [RoleNames.ServerAdministrator] =
+      [ServerAdministrator] =
       [
         PermissionNames.ServerAdmin,
         PermissionNames.ServerAlertsRead,
@@ -52,7 +75,7 @@ public class RoleBundleResolver : IRoleBundleResolver
         PermissionNames.ServerServiceAccountsRotateCredentials,
       ],
 
-      [RoleNames.TenantAdministrator] =
+      [TenantAdministrator] =
       [
         PermissionNames.TenantRead,
         PermissionNames.TenantSettingsRead,
@@ -87,7 +110,7 @@ public class RoleBundleResolver : IRoleBundleResolver
         PermissionNames.AgentInstall,
       ],
 
-      [RoleNames.DeviceSuperUser] =
+      [DeviceSuperUser] =
       [
         PermissionNames.DeviceRead,
         PermissionNames.DeviceDelete,
@@ -116,12 +139,12 @@ public class RoleBundleResolver : IRoleBundleResolver
         PermissionNames.DeviceAgentUpdate,
       ],
 
-      [RoleNames.AgentInstaller] =
+      [AgentInstaller] =
       [
         PermissionNames.AgentInstall,
       ],
 
-      [RoleNames.InstallerKeyManager] =
+      [InstallerKeyManager] =
       [
         PermissionNames.InstallerKeyRead,
         PermissionNames.InstallerKeyWrite,

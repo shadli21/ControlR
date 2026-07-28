@@ -11,7 +11,6 @@ namespace ControlR.Web.Server.Services.Authorization;
 /// decisions of its own: <see cref="PermissionAssignment"/> rows are interpreted by
 /// <see cref="IPermissionRuleResolver"/> (the same component the point-authorization evaluator
 /// uses), and this class only projects the resolved <c>device.read</c> allow rules into a scope.
-/// The role and tag bridges below are interim pre-rework behavior retired in PR 12/13.
 /// </summary>
 public class PermissionDeviceScopeResolver(
   IPermissionRuleResolver ruleResolver,
@@ -45,14 +44,6 @@ public class PermissionDeviceScopeResolver(
       return DeviceAccessScope.TenantWide();
     }
 
-    // Bridge (deleted in PR 13): TenantAdministrator and DeviceSuperUser roles grant tenant-wide
-    // device access. TenantAdministrator's role-bundle does not include device.read, so this
-    // hardcoded bridge preserves pre-rework list behavior that the rule set alone would not.
-    if (user.IsInRole(RoleNames.TenantAdministrator) || user.IsInRole(RoleNames.DeviceSuperUser))
-    {
-      return DeviceAccessScope.TenantWide();
-    }
-
     var deviceReadAllows = resolved.Rules
       .Where(rule => rule.Assignment.PermissionName == PermissionNames.DeviceRead &&
                      rule.Assignment.Effect == PermissionEffect.Allow)
@@ -61,9 +52,8 @@ public class PermissionDeviceScopeResolver(
 
     if (deviceReadAllows.Count == 0)
     {
-      // Bridge fallback (deleted in PR 13): users with tag associations but no permission
-      // assignments retain tag-based device access, preserving pre-rework behavior until the
-      // backfill (PR 12) creates assignment rows and tags are removed.
+      // Bridge fallback (removed with the tag model in Increment B): users with tag associations
+      // but no permission assignments retain tag-based device access until tags are deleted.
       if (PermissionRuleResolver.ResolvePrincipalKind(principal.PrincipalType) == PermissionPrincipalKind.User)
       {
         await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);

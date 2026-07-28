@@ -66,11 +66,9 @@ public interface IPermissionRuleResolver
 }
 
 public class PermissionRuleResolver(
-  IDbContextFactory<AppDb> dbContextFactory,
-  IRoleBundleResolver roleBundleResolver) : IPermissionRuleResolver
+  IDbContextFactory<AppDb> dbContextFactory) : IPermissionRuleResolver
 {
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
-  private readonly IRoleBundleResolver _roleBundleResolver = roleBundleResolver;
 
   public async Task<List<PermissionAssignment>> LoadAssignments(
     PermissionPrincipalKind principalKind,
@@ -121,37 +119,6 @@ public class PermissionRuleResolver(
       foreach (var assignment in groupAssignments)
       {
         rules.Add(new PermissionRule(assignment, RuleSource.UserGroup, SourcePriority.UserGroup));
-      }
-    }
-
-    // Interim role-bundle bridge (deleted in PR 13): each role maps to a static set of
-    // permission names, synthesized as allow rules scoped to the principal's tenant to
-    // preserve tenant isolation.
-    if (principal.Roles is { Count: > 0 })
-    {
-      var bundleScopeKind = principal.TenantId.HasValue
-        ? PermissionScopeKind.Tenant
-        : PermissionScopeKind.Server;
-
-      foreach (var roleName in principal.Roles)
-      {
-        var bundlePermissions = _roleBundleResolver.ResolvePermissions([roleName]);
-        foreach (var permission in bundlePermissions)
-        {
-          rules.Add(new PermissionRule(
-            new PermissionAssignment
-            {
-              PermissionName = permission,
-              Effect = PermissionEffect.Allow,
-              ScopeKind = bundleScopeKind,
-              ScopeId = principal.TenantId,
-              PrincipalKind = PermissionPrincipalKind.User,
-              PrincipalId = principal.PrincipalId,
-              IsEnabled = true
-            },
-            RuleSource.RoleBundle,
-            SourcePriority.RoleBundle));
-        }
       }
     }
 

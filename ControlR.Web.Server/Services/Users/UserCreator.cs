@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using ControlR.Web.Client.Services;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Authz.Roles;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.WebUtilities;
@@ -309,6 +310,8 @@ public interface IUserCreator
           "First user created. User: {UserName}. Assigning server administrator role.",
           user.UserName);
         await _userManager.AddToRoleAsync(user, RoleNames.ServerAdministrator);
+        await PermissionPresets.SeedAssignmentsAsync(
+          _appDb, user.Id, user.TenantId, [PermissionPresets.ServerAdministrator], cancellationToken);
       }
 
       await _userManager.AddClaimAsync(user, new Claim(UserClaimTypes.UserId, $"{user.Id}"));
@@ -329,6 +332,18 @@ public interface IUserCreator
         await _userManager.AddToRolesAsync(user, rolesToAdd);
         var rolesString = string.Join(", ", rolesToAdd);
         _logger.LogInformation("Assigned default roles for newly-created tenant admin user: {Roles}.", rolesString);
+
+        await PermissionPresets.SeedAssignmentsAsync(
+          _appDb,
+          user.Id,
+          user.TenantId,
+          [
+            PermissionPresets.TenantAdministrator,
+            PermissionPresets.DeviceSuperUser,
+            PermissionPresets.AgentInstaller,
+            PermissionPresets.InstallerKeyManager,
+          ],
+          cancellationToken);
       }
 
       if (externalLoginInfo is not null)

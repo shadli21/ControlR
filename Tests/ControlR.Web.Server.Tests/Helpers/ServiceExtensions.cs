@@ -1,6 +1,8 @@
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Services.Users;
 using Microsoft.AspNetCore.Http;
@@ -206,6 +208,7 @@ internal static class ServiceExtensions
 
     var user = userResult.User;
     await AddRolesIfMissingAsync(userManager, user, roles);
+    await SeedPresetAssignmentsAsync(scope.ServiceProvider, user, roles);
     return user;
   }
 
@@ -233,6 +236,7 @@ internal static class ServiceExtensions
 
     var user = userResult.User;
     await AddRolesIfMissingAsync(userManager, user, roles);
+    await SeedPresetAssignmentsAsync(scope.ServiceProvider, user, roles);
     return user;
   }
 
@@ -251,5 +255,14 @@ internal static class ServiceExtensions
         existingRoles.Add(role);
       }
     }
+  }
+
+  private static async Task SeedPresetAssignmentsAsync(
+    IServiceProvider provider,
+    AppUser user,
+    IEnumerable<string> presetNames)
+  {
+    await using var db = provider.GetRequiredService<AppDb>();
+    await PermissionPresets.SeedAssignmentsAsync(db, user.Id, user.TenantId, presetNames);
   }
 }

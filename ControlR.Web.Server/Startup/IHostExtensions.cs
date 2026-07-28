@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using ControlR.Libraries.Shared.Helpers;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Authz.Roles;
 
 namespace ControlR.Web.Server.Startup;
@@ -123,6 +124,18 @@ public static class HostExtensions
       }
       throw new InvalidOperationException($"Bootstrap admin role assignment failed: {string.Join("; ", roleResult.Errors.Select(e => e.Description))}");
     }
+
+    await PermissionPresets.SeedAssignmentsAsync(
+      sp.GetRequiredService<AppDb>(),
+      user.Id,
+      user.TenantId,
+      [
+        PermissionPresets.ServerAdministrator,
+        PermissionPresets.TenantAdministrator,
+        PermissionPresets.DeviceSuperUser,
+        PermissionPresets.AgentInstaller,
+        PermissionPresets.InstallerKeyManager,
+      ]);
 
     var claimResult = await userManager.AddClaimsAsync(user, [
       new Claim(UserClaimTypes.UserId, $"{user.Id}"),

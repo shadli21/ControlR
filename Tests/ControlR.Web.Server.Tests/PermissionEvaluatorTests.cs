@@ -515,21 +515,6 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task GetEffectivePermissionNames_IncludesRoleBundlePermissions()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-
-    var evaluator = GetEvaluator(testApp, [PermissionNames.TenantCustomersRead]);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id, roles: ["TestRole"]);
-
-    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
-
-    Assert.Contains(PermissionNames.TenantCustomersRead, result);
-  }
-
-  [Fact]
   public async Task GetEffectivePermissionNames_IncludesUserGroupAllow()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -896,23 +881,6 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task RoleBundleAllow_WhenRoleGrantsPermission_Allows()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-
-    var evaluator = GetEvaluator(testApp, rolePermissions: [PermissionNames.DeviceRead]);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id, roles: ["TenantAdministrator"]);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Tenant, null, tenant.Id);
-
-    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-
-    Assert.True(result.Allowed);
-    Assert.Equal("RoleBundle", result.MatchedRuleSource);
-  }
-
-  [Fact]
   public async Task ServerScopedAssignment_CoversAnyTenantResource()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -1148,17 +1116,8 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       Roles: roles);
   }
 
-  private static IPermissionEvaluator GetEvaluator(TestApp testApp, string[]? rolePermissions = null)
+  private static IPermissionEvaluator GetEvaluator(TestApp testApp)
   {
-    if (rolePermissions is not null)
-    {
-      var roleBundleResolver = new TestRoleBundleResolver(rolePermissions);
-      var ruleResolver = ActivatorUtilities.CreateInstance<PermissionRuleResolver>(
-        testApp.App.Services, roleBundleResolver);
-      return ActivatorUtilities.CreateInstance<PermissionEvaluator>(
-        testApp.App.Services, ruleResolver);
-    }
-
     return testApp.App.Services.GetRequiredService<IPermissionEvaluator>();
   }
 
@@ -1177,13 +1136,5 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     db.UserGroups.Add(new UserGroup { Id = groupId, Name = $"group-{groupId:N}", TenantId = tenantId });
     db.UserGroupMembers.Add(new UserGroupMember { UserGroupId = groupId, UserId = userId });
     await db.SaveChangesAsync();
-  }
-
-  private class TestRoleBundleResolver(string[] permissions) : IRoleBundleResolver
-  {
-    public IReadOnlySet<string> ResolvePermissions(IEnumerable<string> roleNames)
-    {
-      return permissions.ToHashSet();
-    }
   }
 }

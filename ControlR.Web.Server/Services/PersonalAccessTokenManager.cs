@@ -78,12 +78,10 @@ public interface IPersonalAccessTokenManager
 public class PersonalAccessTokenManager(
   AppDb appDb,
   TimeProvider timeProvider,
-  IPasswordHasher<string> passwordHasher,
-  IRoleBundleResolver roleBundleResolver) : IPersonalAccessTokenManager
+  IPasswordHasher<string> passwordHasher) : IPersonalAccessTokenManager
 {
   private readonly AppDb _appDb = appDb;
   private readonly IPasswordHasher<string> _passwordHasher = passwordHasher;
-  private readonly IRoleBundleResolver _roleBundleResolver = roleBundleResolver;
   private readonly TimeProvider _timeProvider = timeProvider;
 
   public async Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId)
@@ -415,18 +413,6 @@ public class PersonalAccessTokenManager(
         .ToListAsync();
 
       permissions.UnionWith(groupPermissions);
-    }
-
-    var roleNames = await _appDb.UserRoles
-      .IgnoreQueryFilters()
-      .Where(x => x.UserId == userId)
-      .Join(_appDb.Roles.IgnoreQueryFilters(), ur => ur.RoleId, r => r.Id, (_, r) => r.Name!)
-      .ToListAsync();
-
-    if (roleNames.Count > 0)
-    {
-      var bundlePermissions = _roleBundleResolver.ResolvePermissions(roleNames);
-      permissions.UnionWith(bundlePermissions);
     }
 
     return permissions;
