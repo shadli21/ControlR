@@ -6,8 +6,11 @@ using System.Runtime.Versioning;
 namespace ControlR.Web.Client.Components;
 
 [SupportedOSPlatform("browser")]
-public partial class Dashboard : IDisposable
+public partial class Dashboard : IAsyncDisposable
 {
+  // Must not exceed the server's per-call subscription cap (ViewerHub.MaxHeartbeatSubscriptionBatch).
+  private const int SubscriptionBatchSize = 100;
+
   private readonly ManualResetEventAsync _componentLoadedSignal = new(false);
   private readonly DisposableCollection _disposables = [];
   private readonly Dictionary<string, SortDefinition<DeviceViewModel>> _sortDefinitions = new()
@@ -29,6 +32,7 @@ public partial class Dashboard : IDisposable
   private string? _searchText;
   private HashSet<Guid> _selectedCustomerIds = [];
   private ImmutableArray<TagViewModel> _selectedTags = [];
+  private HashSet<Guid> _subscribedDeviceIds = [];
   private int _totalFilteredDevices;
 
   [Inject]
@@ -78,8 +82,20 @@ public partial class Dashboard : IDisposable
   private bool ShouldBypassHideOfflineDevices =>
     !string.IsNullOrWhiteSpace(_searchText);
 
-  public void Dispose()
+  public async ValueTask DisposeAsync()
   {
+    try
+    {
+      if (MainHub.IsConnected && _subscribedDeviceIds.Count > 0)
+      {
+        await MainHub.Server.UnsubscribeFromDeviceHeartbeats([.. _subscribedDeviceIds]);
+      }
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Error unsubscribing from device heartbeats during disposal.");
+    }
+
     _disposables.Dispose();
     GC.SuppressFinalize(this);
   }
@@ -166,6 +182,8 @@ public partial class Dashboard : IDisposable
   {
     if (message.NewState == HubConnectionState.Connected)
     {
+      // Server-side group memberships reset on (re)connect; re-subscribe during the refresh.
+      _subscribedDeviceIds = [];
       await RefreshDevices();
     }
   }
@@ -240,6 +258,7 @@ public partial class Dashboard : IDisposable
       _hiddenUntaggedDevices = 0;
       _totalFilteredDevices = 0;
       await InvokeAsync(StateHasChanged);
+      await SyncHeartbeatSubscriptions([]);
 
       return new GridData<DeviceViewModel>
       {
@@ -283,6 +302,7 @@ public partial class Dashboard : IDisposable
       _totalFilteredDevices = 0;
       await InvokeAsync(StateHasChanged);
       Snackbar.Add("Failed to load devices", Severity.Error);
+      await SyncHeartbeatSubscriptions([]);
       return new GridData<DeviceViewModel> { TotalItems = 0, Items = [] };
     }
 
@@ -294,6 +314,7 @@ public partial class Dashboard : IDisposable
 
     if (result.Value.Items is null)
     {
+      await SyncHeartbeatSubscriptions([]);
       return new GridData<DeviceViewModel> { TotalItems = 0, Items = [] };
     }
 
@@ -304,6 +325,8 @@ public partial class Dashboard : IDisposable
           return viewModel;
         })
         .ToArray();
+
+    await SyncHeartbeatSubscriptions(viewModels.Select(viewModel => viewModel.Id));
 
     return new GridData<DeviceViewModel>
     {
@@ -457,6 +480,42 @@ public partial class Dashboard : IDisposable
     {
       Logger.LogError(ex, "Error while shutting down device.");
     }
+  }
+
+  private async Task SyncHeartbeatSubscriptions(IEnumerable<Guid> visibleDeviceIds)
+  {
+    if (!MainHub.IsConnected)
+    {
+      // Subscriptions are (re)established when the hub connects and triggers a grid refresh.
+      return;
+    }
+
+    var visible = visibleDeviceIds.ToHashSet();
+    var toSubscribe = visible.Except(_subscribedDeviceIds).ToArray();
+    var toUnsubscribe = _subscribedDeviceIds.Except(visible).ToArray();
+    var subscribed = new HashSet<Guid>(_subscribedDeviceIds);
+
+    foreach (var batch in toSubscribe.Chunk(SubscriptionBatchSize))
+    {
+      var result = await MainHub.Server.SubscribeToDeviceHeartbeats(batch);
+      if (result.IsSuccess)
+      {
+        subscribed.UnionWith(batch);
+      }
+      else
+      {
+        Logger.LogWarning("Failed to subscribe to device heartbeats: {Reason}", result.Reason);
+        Snackbar.Add($"Failed to subscribe to device heartbeats: {result.Reason}", Severity.Warning);
+      }
+    }
+
+    if (toUnsubscribe.Length > 0)
+    {
+      await MainHub.Server.UnsubscribeFromDeviceHeartbeats(toUnsubscribe);
+      subscribed.ExceptWith(toUnsubscribe);
+    }
+
+    _subscribedDeviceIds = subscribed;
   }
 
   private async Task UninstallAgent(DeviceViewModel device)

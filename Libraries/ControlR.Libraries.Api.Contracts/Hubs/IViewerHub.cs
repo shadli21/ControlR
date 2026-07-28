@@ -30,7 +30,9 @@ public interface IViewerHub
   Task<HubResult> SendTerminalInput(Guid deviceId, TerminalInputDto dto);
   Task SendWakeDevice(Guid deviceId, string[] macAddresses);
   Task<HubResult> StartDeviceAccessActivity(Guid deviceId);
+  Task<HubResult> SubscribeToDeviceHeartbeats(Guid[] deviceIds);
   Task<HubResult> TestVncConnection(Guid guid, int port);
   Task UninstallAgent(Guid deviceId, string reason);
+  Task UnsubscribeFromDeviceHeartbeats(Guid[] deviceIds);
   Task<HubResult> UploadFile(FileUploadMetadata metadata, ChannelReader<byte[]> fileStream);
 }

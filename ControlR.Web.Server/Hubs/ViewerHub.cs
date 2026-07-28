@@ -8,6 +8,8 @@ using ControlR.Libraries.Shared.Helpers;
 using ControlR.Libraries.Api.Contracts.Hubs.Clients;
 using Microsoft.AspNetCore.SignalR;
 using ControlR.Web.Server.Services.Settings;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Services.Authorization;
 using System.Diagnostics;
 using System.Security.Claims;
 
@@ -19,6 +21,7 @@ public class ViewerHub(
   UserManager<AppUser> userManager,
   AppDb appDb,
   IAuthorizationService authorizationService,
+  IPermissionEvaluator permissionEvaluator,
   IHubContext<AgentHub, IAgentHubClient> agentHub,
   IEffectiveUserPreferencesResolver effectiveUserPreferencesResolver,
   IHubStreamStore hubStreamStore,
@@ -26,6 +29,8 @@ public class ViewerHub(
   ILogger<ViewerHub> logger)
   : HubWithItems<IViewerHubClient>, IViewerHub
 {
+  private const int MaxHeartbeatSubscriptionBatch = 100;
+
   private readonly IHubContext<AgentHub, IAgentHubClient> _agentHub = agentHub;
   private readonly AppDb _appDb = appDb;
   private readonly IOptionsMonitor<AppOptions> _appOptions = appOptions;
@@ -33,6 +38,7 @@ public class ViewerHub(
   private readonly IEffectiveUserPreferencesResolver _effectiveUserPreferencesResolver = effectiveUserPreferencesResolver;
   private readonly IHubStreamStore _hubStreamStore = hubStreamStore;
   private readonly ILogger<ViewerHub> _logger = logger;
+  private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
   private readonly TimeProvider _timeProvider = timeProvider;
   private readonly UserManager<AppUser> _userManager = userManager;
 
@@ -226,16 +232,7 @@ public class ViewerHub(
         return;
       }
 
-      if (!Context.User.TryGetTenantId(out var tenantId))
-      {
-        _logger.LogCritical("Failed to get tenant ID.");
-        return;
-      }
-
-      var user = await _appDb.Users
-        .Include(x => x.Tags)
-        .FirstOrDefaultAsync(x => x.Id == userId);
-
+      var user = await _appDb.Users.FirstOrDefaultAsync(x => x.Id == userId);
       if (user is null)
       {
         _logger.LogCritical("Failed to find user from UserManager.");
@@ -246,31 +243,7 @@ public class ViewerHub(
       user.LastLogin = _timeProvider.GetUtcNow();
       await _appDb.SaveChangesAsync();
 
-      if (Context.User.IsInRole(RoleNames.ServerAdministrator))
-      {
-        await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerAdministrators);
-      }
-
-      if (Context.User.IsInRole(RoleNames.TenantAdministrator))
-      {
-        await Groups.AddToGroupAsync(Context.ConnectionId,
-          HubGroupNames.GetUserRoleGroupName(RoleNames.TenantAdministrator, tenantId));
-      }
-
-      if (Context.User.IsInRole(RoleNames.DeviceSuperUser))
-      {
-        await Groups.AddToGroupAsync(Context.ConnectionId,
-          HubGroupNames.GetUserRoleGroupName(RoleNames.DeviceSuperUser, tenantId));
-      }
-
-      if (user.Tags is { Count: > 0 } tags)
-      {
-        foreach (var tag in tags)
-        {
-          await Groups.AddToGroupAsync(Context.ConnectionId,
-            HubGroupNames.GetTagGroupName(tag.Id, tenantId));
-        }
-      }
+      await JoinServerTopics();
     }
     catch (Exception ex)
     {
@@ -677,6 +650,44 @@ public class ViewerHub(
     return HubResult.Ok();
   }
 
+  public async Task<HubResult> SubscribeToDeviceHeartbeats(Guid[] deviceIds)
+  {
+    if (Context.User is null)
+    {
+      return HubResult.Fail("Not authenticated.");
+    }
+
+    if (deviceIds is not { Length: > 0 })
+    {
+      return HubResult.Ok();
+    }
+
+    if (deviceIds.Length > MaxHeartbeatSubscriptionBatch)
+    {
+      return HubResult.Fail(
+        $"Too many device IDs ({deviceIds.Length}). Subscribe at most {MaxHeartbeatSubscriptionBatch} devices per call.");
+    }
+
+    foreach (var deviceId in deviceIds.Distinct())
+    {
+      var device = await _appDb.Devices.AsNoTracking().FirstOrDefaultAsync(x => x.Id == deviceId);
+      if (device is null)
+      {
+        continue;
+      }
+
+      var authResult = await _authorizationService.AuthorizeAsync(
+        Context.User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+
+      if (authResult.Succeeded)
+      {
+        await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.DeviceHeartbeat(deviceId));
+      }
+    }
+
+    return HubResult.Ok();
+  }
+
   public async Task<HubResult> TestVncConnection(Guid guid, int port)
   {
     try
@@ -718,6 +729,19 @@ public class ViewerHub(
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error while uninstalling agent.");
+    }
+  }
+
+  public async Task UnsubscribeFromDeviceHeartbeats(Guid[] deviceIds)
+  {
+    if (deviceIds is not { Length: > 0 })
+    {
+      return;
+    }
+
+    foreach (var deviceId in deviceIds.Distinct())
+    {
+      await Groups.RemoveFromGroupAsync(Context.ConnectionId, HubGroupNames.DeviceHeartbeat(deviceId));
     }
   }
 
@@ -862,6 +886,33 @@ public class ViewerHub(
 
     Guard.IsNotNull(user);
     return user;
+  }
+
+  private async Task JoinServerTopics()
+  {
+    if (Context.User is null)
+    {
+      return;
+    }
+
+    var principal = PrincipalDescriptorBuilder.FromClaims(Context.User);
+    if (principal is null)
+    {
+      return;
+    }
+
+    var permissions = await _permissionEvaluator.GetEffectivePermissionNames(
+      principal, Context.ConnectionAborted);
+
+    if (permissions.Contains(PermissionNames.ServerAlertsRead))
+    {
+      await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerAlerts());
+    }
+
+    if (permissions.Contains(PermissionNames.ServerTelemetryRead))
+    {
+      await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerTelemetry());
+    }
   }
 
   private async Task<HubResult<Device>> TryAuthorizeAgainstDevice(
