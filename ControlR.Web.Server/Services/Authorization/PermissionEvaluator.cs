@@ -42,9 +42,9 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
 
     var rules = resolved.Rules.ToList();
 
-    // Logon token device-scope enforcement: a logon token session is always restricted
+    // Logon token device-scope enforcement. A logon token session is always restricted
     // to the device it was created for. This is a hard security boundary that applies
-    // regardless of scope rows or bridge mode.
+    // regardless of scope rows.
     if (principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType)
     {
       if (!principal.DeviceScopeId.HasValue)
@@ -60,7 +60,7 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
       }
     }
 
-    // Steps 7-8: Credential-scoped principals. PATs and logon tokens have fundamentally
+    // Credential-scoped principals. PATs and logon tokens have fundamentally
     // different authorization models:
     //   - A PAT authenticates as its owning user. With no explicit scope rows it inherits
     //     the user's full effective permissions (user-equivalent). Explicit scope rows are
@@ -128,7 +128,7 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
       // user's full effective permissions resolved above.
     }
 
-    // Step 9: Filter to rules matching the requested permission and resource scope.
+    // Filter to rules matching the requested permission and resource scope.
     var matchingRules = rules
       .Where(r => r.Assignment.IsEnabled &&
                   r.Assignment.PermissionName == permissionName &&
@@ -140,7 +140,7 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
       return PermissionEvaluationResult.Deny("No matching permission assignment found (default deny).");
     }
 
-    // Step 11: Explicit deny always overrides allow, regardless of source or scope.
+    // Explicit deny always overrides allow, regardless of source or scope.
     var denyRule = matchingRules
       .Where(r => r.Assignment.Effect == PermissionEffect.Deny)
       .OrderBy(r => r.Priority)
@@ -153,7 +153,7 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
         $"Explicit deny from {denyRule.Source} at scope {denyRule.Assignment.ScopeKind}.");
     }
 
-    // Step 12: If any matching allow exists, allow.
+    // If any matching allow exists, allow.
     var allowRule = matchingRules
       .Where(r => r.Assignment.Effect == PermissionEffect.Allow)
       .OrderBy(r => r.Priority)
@@ -166,7 +166,7 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
         allowRule.Source.ToString(), allowRule.Assignment.ScopeKind.ToString());
     }
 
-    // Step 13: Default deny.
+    // Default deny.
     return PermissionEvaluationResult.Deny("No matching allow rule found (default deny).");
   }
 
