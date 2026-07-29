@@ -1,5 +1,4 @@
 using ControlR.Libraries.Api.Contracts.Constants;
-using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.LogonTokens;
 using Microsoft.AspNetCore.Mvc;
 
@@ -45,6 +44,16 @@ public class LogonTokensController : ControllerBase
     if (!authResult.Succeeded)
     {
       return Forbid();
+    }
+
+    if (request.Scopes is { Count: > 0 })
+    {
+      var invalidScopes = await GetInvalidScopes(appDb, userId, request.Scopes);
+      if (invalidScopes.Count > 0)
+      {
+        return BadRequest(
+          $"The following permissions are outside your effective permissions: {string.Join(", ", invalidScopes)}");
+      }
     }
 
     var result = await logonTokenProvider.CreateToken(
@@ -132,6 +141,13 @@ public class LogonTokensController : ControllerBase
       return NotFound();
     }
 
+    var invalidScopes = await GetInvalidScopes(appDb, userId, request.Scopes);
+    if (invalidScopes.Count > 0)
+    {
+      return BadRequest(
+        $"The following permissions are outside your effective permissions: {string.Join(", ", invalidScopes)}");
+    }
+
     var existingRows = await appDb.PermissionAssignments
       .IgnoreQueryFilters()
       .Where(x => x.PrincipalKind == PermissionPrincipalKind.LogonToken &&
@@ -187,6 +203,55 @@ public class LogonTokensController : ControllerBase
 
     await appDb.SaveChangesAsync();
     return NoContent();
+  }
+
+  private static async Task<List<string>> GetInvalidScopes(
+    AppDb appDb, Guid creatorUserId, List<InternalDtos.CredentialScopeDto> scopes)
+  {
+    var effectivePermissions = await ResolveUserEffectivePermissions(appDb, creatorUserId);
+    return scopes
+      .Where(scope => !effectivePermissions.Contains(scope.PermissionName))
+      .Select(scope => scope.PermissionName)
+      .Distinct()
+      .ToList();
+  }
+
+  private static async Task<HashSet<string>> ResolveUserEffectivePermissions(AppDb appDb, Guid userId)
+  {
+    var permissions = new HashSet<string>();
+
+    var directAssignments = await appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
+                  x.PrincipalId == userId &&
+                  x.IsEnabled &&
+                  x.Effect == PermissionEffect.Allow)
+      .Select(x => x.PermissionName)
+      .ToListAsync();
+
+    permissions.UnionWith(directAssignments);
+
+    var userGroupIds = await appDb.UserGroupMembers
+      .IgnoreQueryFilters()
+      .Where(x => x.UserId == userId)
+      .Select(x => x.UserGroupId)
+      .ToListAsync();
+
+    if (userGroupIds.Count > 0)
+    {
+      var groupPermissions = await appDb.PermissionAssignments
+        .IgnoreQueryFilters()
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.UserGroup &&
+                    userGroupIds.Contains(x.PrincipalId) &&
+                    x.IsEnabled &&
+                    x.Effect == PermissionEffect.Allow)
+        .Select(x => x.PermissionName)
+        .ToListAsync();
+
+      permissions.UnionWith(groupPermissions);
+    }
+
+    return permissions;
   }
 
   private static async Task WriteScopes(

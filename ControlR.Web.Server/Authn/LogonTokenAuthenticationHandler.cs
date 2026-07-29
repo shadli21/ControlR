@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
-using ControlR.Web.Server.Data.Enums;
-using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.LogonTokens;
 
 namespace ControlR.Web.Server.Authn;
@@ -13,14 +11,10 @@ public class LogonTokenAuthenticationHandler(
   TimeProvider timeProvider,
   IOptionsMonitor<LogonTokenAuthenticationSchemeOptions> options,
   ILoggerFactory logger,
-  ILogonTokenProvider logonTokenProvider,
-  IPatScopeTrimQueue trimQueue,
-  IDbContextFactory<AppDb> dbContextFactory) : AuthenticationHandler<LogonTokenAuthenticationSchemeOptions>(options, logger, encoder)
+  ILogonTokenProvider logonTokenProvider) : AuthenticationHandler<LogonTokenAuthenticationSchemeOptions>(options, logger, encoder)
 {
-  private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogonTokenProvider _logonTokenProvider = logonTokenProvider;
   private readonly TimeProvider _timeProvider = timeProvider;
-  private readonly IPatScopeTrimQueue _trimQueue = trimQueue;
   private readonly UserManager<AppUser> _userManager = userManager;
 
   protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -51,9 +45,6 @@ public class LogonTokenAuthenticationHandler(
     {
       return AuthenticateResult.Fail("User ID is required for logon token.");
     }
-
-    // Detect excess scope rows and enqueue async trim (read-only, no DB writes here).
-    await TryEnqueueScopeTrim(tokenValidation.TokenId!.Value);
 
     var user = await _userManager.FindByIdAsync(tokenValidation.UserId.Value.ToString());
     if (user is null)
@@ -103,31 +94,5 @@ public class LogonTokenAuthenticationHandler(
     await Context.SignInAsync(IdentityConstants.ApplicationScheme, principal);
 
     return AuthenticateResult.Success(ticket);
-  }
-
-  /// <summary>
-  /// Checks whether the logon token credential has scope rows that may exceed the user's
-  /// effective permissions. If scope rows exist, enqueues a trim command for async processing.
-  /// </summary>
-  private async Task TryEnqueueScopeTrim(Guid tokenId)
-  {
-    try
-    {
-      await using var db = await _dbContextFactory.CreateDbContextAsync();
-      var hasScopeRows = await db.PermissionAssignments
-        .IgnoreQueryFilters()
-        .AnyAsync(x => x.PrincipalKind == PermissionPrincipalKind.LogonToken &&
-                       x.PrincipalId == tokenId &&
-                       x.IsEnabled);
-
-      if (hasScopeRows)
-      {
-        _trimQueue.Enqueue(new PatScopeTrimCommand(tokenId, PermissionPrincipalKind.LogonToken));
-      }
-    }
-    catch
-    {
-      // Best-effort: trim detection failure must not block authentication.
-    }
   }
 }

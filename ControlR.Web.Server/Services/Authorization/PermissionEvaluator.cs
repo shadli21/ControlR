@@ -60,27 +60,50 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
       }
     }
 
-    // Steps 7-8: Credential-scoped principals (PAT / logon token) use the granting model.
-    // The credential's scope rows define what it can do, bounded by the user's effective
-    // permissions. Zero scope rows grants nothing.
-    // BRIDGE (deleted in PR 13): Until PR 7 adds scope management, no scope rows exist yet.
-    // During the bridge period, zero scope rows falls through to the user's effective
-    // permissions (preserving pre-rework behavior where PATs/logon tokens inherit full
-    // user authority). After PR 13, zero rows will deny.
+    // Steps 7-8: Credential-scoped principals. PATs and logon tokens have fundamentally
+    // different authorization models:
+    //   - A PAT authenticates as its owning user. With no explicit scope rows it inherits
+    //     the user's full effective permissions (user-equivalent). Explicit scope rows are
+    //     an optional least-privilege restriction, bounded by the user's permissions.
+    //   - A logon token is a self-contained device grant issued to a recipient who may have
+    //     no permissions of their own (e.g., an external user). Its grants are authoritative
+    //     and device-bound, never inherited from or bounded by the recipient.
     if (principal.IsCredentialScoped && principal.CredentialId.HasValue)
     {
-      var credentialKind = principal.CredentialType == PrincipalClaimTypes.PersonalAccessTokenCredentialType
-        ? PermissionPrincipalKind.PersonalAccessToken
-        : PermissionPrincipalKind.LogonToken;
+      var isLogonToken = principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType;
+      var credentialKind = isLogonToken
+        ? PermissionPrincipalKind.LogonToken
+        : PermissionPrincipalKind.PersonalAccessToken;
 
       var credentialAssignments = await _ruleResolver.LoadAssignments(
         credentialKind, principal.CredentialId.Value, cancellationToken);
 
-      if (credentialAssignments.Count > 0)
+      if (isLogonToken)
       {
-        // Bounded constraint: intersect credential grants with the user's effective
-        // permissions computed above. A user cannot grant a credential permissions they
-        // do not themselves hold.
+        // Zero rows grants nothing; grants are restricted to the token's scoped device
+        // (hard-enforced above), so the token can never reach beyond its device.
+        var deviceAssignments = credentialAssignments
+          .Where(a => a.ScopeKind == PermissionScopeKind.Device &&
+                      principal.DeviceScopeId.HasValue &&
+                      a.ScopeId == principal.DeviceScopeId.Value)
+          .ToList();
+
+        if (deviceAssignments.Count == 0)
+        {
+          return PermissionEvaluationResult.Deny("Logon token grants do not match the device scope.");
+        }
+
+        rules.Clear();
+        foreach (var assignment in deviceAssignments)
+        {
+          rules.Add(new PermissionRule(assignment, RuleSource.LogonTokenGrant, SourcePriority.CredentialLogonToken));
+        }
+      }
+      else if (credentialAssignments.Count > 0)
+      {
+        // Explicit PAT scopes are an optional restriction: intersect with the user's
+        // effective permissions (a user cannot grant a PAT permissions they do not hold)
+        // and make them the exclusive permission set for this request.
         var userEffectivePermissions = rules
           .Where(r => r.Assignment.Effect == PermissionEffect.Allow)
           .Select(r => r.Assignment.PermissionName)
@@ -95,48 +118,14 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
           return PermissionEvaluationResult.Deny("Credential scope grants are outside the user's effective permissions.");
         }
 
-        // Logon tokens are additionally device-scoped: grants must target the specific
-        // device the token was created for, preventing cross-device access.
-        if (principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType &&
-            principal.DeviceScopeId.HasValue)
-        {
-          boundedAssignments = boundedAssignments
-            .Where(a => a.ScopeKind == PermissionScopeKind.Device && a.ScopeId == principal.DeviceScopeId.Value)
-            .ToList();
-
-          if (boundedAssignments.Count == 0)
-          {
-            return PermissionEvaluationResult.Deny("Logon token grants do not match the device scope.");
-          }
-        }
-
-        // Replace the user's rules entirely with the bounded credential grants.
-        // The credential's scope is the exclusive permission set for this request.
         rules.Clear();
-        var priority = credentialKind == PermissionPrincipalKind.PersonalAccessToken
-          ? SourcePriority.CredentialPat
-          : SourcePriority.CredentialLogonToken;
-        var source = credentialKind == PermissionPrincipalKind.PersonalAccessToken
-          ? RuleSource.PatGrant
-          : RuleSource.LogonTokenGrant;
-
         foreach (var assignment in boundedAssignments)
         {
-          rules.Add(new PermissionRule(assignment, source, priority));
+          rules.Add(new PermissionRule(assignment, RuleSource.PatGrant, SourcePriority.CredentialPat));
         }
       }
-      else if (principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType &&
-               principal.DeviceScopeId.HasValue &&
-               resource.Kind == PermissionScopeKind.Device &&
-               resource.Id == principal.DeviceScopeId.Value)
-      {
-        // BRIDGE (deleted in PR 13): Logon token sessions accessing their scoped device
-        // are allowed unconditionally when no scope rows exist. This preserves the old
-        // DeviceAccessScopeKind.SingleDevice behavior for external/transient users who
-        // have no roles or explicit assignments. After PR 7 adds scope management and
-        // PR 13 removes the bridge, zero rows will deny.
-        return PermissionEvaluationResult.Allow("logon-token-device-scope-bridge", "Device");
-      }
+      // A PAT with zero scope rows falls through unchanged: it acts as the user with the
+      // user's full effective permissions resolved above.
     }
 
     // Step 9: Filter to rules matching the requested permission and resource scope.

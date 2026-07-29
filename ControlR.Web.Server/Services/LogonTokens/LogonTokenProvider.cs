@@ -38,6 +38,13 @@ public class LogonTokenProvider(
   IPasswordHasher<string> passwordHasher,
   ILogger<LogonTokenProvider> logger) : ILogonTokenProvider
 {
+  private static readonly string[] _defaultDeviceAccessPermissions =
+  [
+    PermissionNames.DeviceRead,
+    PermissionNames.DeviceRemoteControlConnect,
+    PermissionNames.DeviceRemoteControlInteract
+  ];
+
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogger<LogonTokenProvider> _logger = logger;
   private readonly IPasswordHasher<string> _passwordHasher = passwordHasher;
@@ -81,6 +88,24 @@ public class LogonTokenProvider(
     };
 
     dbContext.LogonTokens.Add(logonToken);
+
+    foreach (var permissionName in _defaultDeviceAccessPermissions)
+    {
+      dbContext.PermissionAssignments.Add(new PermissionAssignment
+      {
+        PrincipalKind = PermissionPrincipalKind.LogonToken,
+        PrincipalId = logonToken.Id,
+        PermissionName = permissionName,
+        Effect = PermissionEffect.Allow,
+        ScopeKind = PermissionScopeKind.Device,
+        ScopeId = deviceId,
+        IsEnabled = true,
+        OwningTenantId = tenantId,
+        CreatedByPrincipalType = "system",
+        CreatedByPrincipalId = userId.ToString()
+      });
+    }
+
     await dbContext.SaveChangesAsync(cancellationToken);
 
     var hexId = Convert.ToHexString(logonToken.Id.ToByteArray());

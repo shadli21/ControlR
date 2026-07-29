@@ -56,15 +56,6 @@ public class PatScopeTrimBackgroundService(
         .FirstOrDefaultAsync(cancellationToken);
     }
 
-    if (command.PrincipalKind == PermissionPrincipalKind.LogonToken)
-    {
-      return await db.LogonTokens
-        .IgnoreQueryFilters()
-        .Where(x => x.Id == command.CredentialId)
-        .Select(x => (Guid?)x.UserId)
-        .FirstOrDefaultAsync(cancellationToken);
-    }
-
     return null;
   }
 

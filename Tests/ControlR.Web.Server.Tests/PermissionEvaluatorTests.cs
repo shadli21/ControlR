@@ -545,6 +545,42 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task LogonTokenGrants_ForRecipientWithNoPermissions_Allows()
+  {
+    // The recipient (e.g., an external/transient user) has no permissions of their own.
+    // The logon token's device grants are authoritative and still allow access.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var tokenId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.LogonToken,
+      PrincipalId = tokenId,
+      PermissionName = PermissionNames.DeviceRemoteControlConnect,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: tokenId,
+      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      deviceScopeId: device.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+    Assert.Equal("LogonTokenGrant", result.MatchedRuleSource);
+  }
+
+  [Fact]
   public async Task LogonTokenGrants_WhenDeviceScopeMismatch_Denies()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -638,8 +674,11 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task LogonTokenGrants_WhenOutsideUserPermissions_Denies()
+  public async Task LogonTokenGrants_WhenOutsideUserPermissions_Allows()
   {
+    // Logon tokens carry their own device grants authoritatively and are NOT bounded by
+    // the recipient's permissions (the recipient may be an external user with none). The
+    // grants are set by the device.logon-token.create holder at creation time.
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
@@ -679,16 +718,14 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
 
-    Assert.False(result.Allowed);
-    Assert.Contains("outside the user's effective permissions", result.DenialReason);
+    Assert.True(result.Allowed);
+    Assert.Equal("LogonTokenGrant", result.MatchedRuleSource);
   }
 
   [Fact]
-  public async Task LogonTokenGrants_WhenZeroRows_FallsThroughToUserPermissions()
+  public async Task LogonTokenGrants_WhenZeroRows_Denies()
   {
-    // BRIDGE (deleted in PR 13): Until PR 7 adds scope management, no credential scope
-    // rows exist yet. Zero scope rows falls through to the user's effective permissions
-    // instead of denying. After PR 13, this test should assert deny.
+    // A credential with no scope rows grants nothing.
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
@@ -716,7 +753,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken);
 
-    Assert.True(result.Allowed);
+    Assert.False(result.Allowed);
   }
 
   [Fact]
@@ -846,11 +883,10 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task PatScopes_WhenZeroRows_FallsThroughToUserPermissions()
+  public async Task PatScopes_WhenZeroRows_InheritsUserPermissions()
   {
-    // BRIDGE (deleted in PR 13): Until PR 7 adds scope management, no credential scope
-    // rows exist yet. Zero scope rows falls through to the user's effective permissions
-    // instead of denying. After PR 13, this test should assert deny.
+    // A PAT with no explicit scope rows acts as its owning user, inheriting the user's
+    // full effective permissions.
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
