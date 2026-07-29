@@ -103,13 +103,6 @@ public class PersonalAccessTokenAuthenticationHandler(
       claims.Add(new Claim(ClaimTypes.Email, user.Email));
     }
 
-    // Add role claims from user manager
-    var roles = await _userManager.GetRolesAsync(user);
-    foreach (var role in roles)
-    {
-      claims.Add(new Claim(ClaimTypes.Role, role));
-    }
-
     var identity = new ClaimsIdentity(claims, Scheme.Name);
     var principal = new ClaimsPrincipal(identity);
     var ticket = new AuthenticationTicket(principal, Scheme.Name);

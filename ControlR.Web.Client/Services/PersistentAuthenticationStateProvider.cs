@@ -27,7 +27,6 @@ internal class PersistentAuthenticationStateProvider : AuthenticationStateProvid
       return;
     }
 
-    var roleClaims = userInfo.Roles.Select(x => new Claim(ClaimTypes.Role, x));
     var userClaims = userInfo.Claims.Select(x => new Claim(x.Type, x.Value));
 
     Claim[] claims =
@@ -35,7 +34,6 @@ internal class PersistentAuthenticationStateProvider : AuthenticationStateProvid
       new(ClaimTypes.NameIdentifier, userInfo.UserId),
       new(ClaimTypes.Name, userInfo.Email),
       new(ClaimTypes.Email, userInfo.Email),
-      ..roleClaims,
       ..userClaims
     ];
 

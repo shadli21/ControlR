@@ -10,9 +10,8 @@ namespace ControlR.Web.Server.Authn;
 /// </summary>
 public class AppUserClaimsPrincipalFactory(
   UserManager<AppUser> userManager,
-  RoleManager<AppRole> roleManager,
   IOptions<IdentityOptions> optionsAccessor)
-  : UserClaimsPrincipalFactory<AppUser, AppRole>(userManager, roleManager, optionsAccessor)
+  : UserClaimsPrincipalFactory<AppUser>(userManager, optionsAccessor)
 {
   protected override async Task<ClaimsIdentity> GenerateClaimsAsync(AppUser user)
   {

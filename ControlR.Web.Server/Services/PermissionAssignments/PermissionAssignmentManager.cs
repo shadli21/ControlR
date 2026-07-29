@@ -151,25 +151,11 @@ public class PermissionAssignmentManager(
     Guid tenantId,
     CancellationToken cancellationToken = default)
   {
-    IReadOnlyList<string>? roles = null;
-    if (request.PrincipalKind == PermissionPrincipalKind.User)
-    {
-      roles = await _appDb.UserRoles
-        .IgnoreQueryFilters()
-        .Where(x => x.UserId == request.PrincipalId)
-        .Join(_appDb.Roles.IgnoreQueryFilters(),
-          ur => ur.RoleId,
-          r => r.Id,
-          (ur, r) => r.Name!)
-        .ToListAsync(cancellationToken);
-    }
-
     var principal = new PrincipalDescriptor(
       PrincipalType: request.PrincipalKind.ToString(),
       PrincipalId: request.PrincipalId,
       TenantId: tenantId,
-      AuthMethod: "effective-permission-query",
-      Roles: roles);
+      AuthMethod: "effective-permission-query");
 
     var resource = new ResourceDescriptor(request.ScopeKind, request.ScopeId, tenantId);
 

@@ -54,12 +54,6 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var tenantClaim = result.Principal.FindFirst(UserClaimTypes.TenantId);
     Assert.NotNull(tenantClaim);
     Assert.Equal(tenantId.ToString(), tenantClaim.Value);
-
-    // First user should be in all roles.
-    Assert.True(result.Principal.IsInRole(RoleNames.ServerAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.TenantAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.DeviceSuperUser));
-    Assert.True(result.Principal.IsInRole(RoleNames.AgentInstaller));
   }
 
   [Fact]
@@ -92,12 +86,6 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     Assert.NotNull(identity);
     Assert.Equal(PersonalAccessTokenAuthenticationSchemeOptions.DefaultScheme, identity.AuthenticationType);
     Assert.True(identity.IsAuthenticated);
-
-    // First user should be in all roles.
-    Assert.True(result.Principal.IsInRole(RoleNames.ServerAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.TenantAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.DeviceSuperUser));
-    Assert.True(result.Principal.IsInRole(RoleNames.AgentInstaller));
 
     // Assert UserManager<T> works with the resulting principal.
     var identityUser = await userManager.GetUserAsync(result.Principal);
@@ -250,12 +238,6 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var tenantClaim = result.Principal.FindFirst(UserClaimTypes.TenantId);
     Assert.NotNull(tenantClaim);
     Assert.Equal(tenantId.ToString(), tenantClaim.Value);
-
-    // New user should only have the roles specified.
-    Assert.False(result.Principal.IsInRole(RoleNames.ServerAdministrator));
-    Assert.False(result.Principal.IsInRole(RoleNames.TenantAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.DeviceSuperUser));
-    Assert.True(result.Principal.IsInRole(RoleNames.AgentInstaller));
   }
 
   private static DefaultHttpContext CreateHttpContext(string? token)

@@ -43,7 +43,6 @@ public static class PrincipalDescriptorBuilder
 
     var authMethod = user.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? "unknown";
     var credentialType = user.FindFirst(PrincipalClaimTypes.CredentialType)?.Value;
-    var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
 
     return new PrincipalDescriptor(
       principalType,
@@ -52,7 +51,6 @@ public static class PrincipalDescriptorBuilder
       authMethod,
       credentialId,
       credentialType,
-      deviceScopeId,
-      roles);
+      deviceScopeId);
   }
 }

@@ -80,12 +80,6 @@ public class LogonTokenAuthenticationHandler(
       claims.Add(new(UserClaimTypes.SessionCorrelationId, tokenValidation.SessionCorrelationId));
     }
 
-    var roles = await _userManager.GetRolesAsync(user);
-    foreach (var role in roles)
-    {
-      claims.Add(new Claim(ClaimTypes.Role, role));
-    }
-
     try
     {
       user.LastLogin = _timeProvider.GetUtcNow();

@@ -6,6 +6,5 @@ public class UserInfo
 {
   public List<UserClaim> Claims { get; set; } = [];
   public required string Email { get; set; }
-  public List<string> Roles { get; set; } = [];
   public required string UserId { get; set; }
 }

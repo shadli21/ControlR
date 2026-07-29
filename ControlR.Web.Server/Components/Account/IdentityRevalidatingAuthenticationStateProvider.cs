@@ -103,7 +103,6 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider : Revalida
 
     if (user is not null)
     {
-      var userRoles = await userManager.GetRolesAsync(user);
       var claims = await userManager.GetClaimsAsync(user);
       var userClaims = claims.Select(x => new UserClaim()
       {
@@ -112,15 +111,13 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider : Revalida
       });
 
       userInfo.Claims.AddRange(userClaims);
-      userInfo.Roles.AddRange(userRoles);
 
       var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
       var principalDescriptor = new PrincipalDescriptor(
         PrincipalClaimTypes.User,
         user.Id,
         user.TenantId,
-        principal.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? string.Empty,
-        Roles: userRoles.ToList());
+        principal.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? string.Empty);
       var effectivePermissions = await evaluator.GetEffectivePermissionNames(principalDescriptor, CancellationToken.None);
       var permissionClaims = effectivePermissions.Select(permission => new UserClaim
       {

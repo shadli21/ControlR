@@ -7,8 +7,7 @@ public sealed record PrincipalDescriptor(
   string AuthMethod,
   Guid? CredentialId = null,
   string? CredentialType = null,
-  Guid? DeviceScopeId = null,
-  IReadOnlyList<string>? Roles = null)
+  Guid? DeviceScopeId = null)
 {
   public bool IsCredentialScoped =>
     CredentialType is "PersonalAccessToken" or "LogonToken" && CredentialId is not null;

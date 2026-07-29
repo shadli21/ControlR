@@ -1098,8 +1098,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     Guid tenantId,
     Guid? credentialId = null,
     string? credentialType = null,
-    Guid? deviceScopeId = null,
-    string[]? roles = null)
+    Guid? deviceScopeId = null)
   {
     return new PrincipalDescriptor(
       PrincipalClaimTypes.User,
@@ -1112,8 +1111,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
         : "cookie",
       CredentialId: credentialId,
       CredentialType: credentialType,
-      DeviceScopeId: deviceScopeId,
-      Roles: roles);
+      DeviceScopeId: deviceScopeId);
   }
 
   private static IPermissionEvaluator GetEvaluator(TestApp testApp)
