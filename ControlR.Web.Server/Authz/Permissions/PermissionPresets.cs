@@ -83,8 +83,6 @@ public static class PermissionPresets
         PermissionNames.TenantUsersRead,
         PermissionNames.TenantUsersWrite,
         PermissionNames.TenantUsersDelete,
-        PermissionNames.TenantRolesRead,
-        PermissionNames.TenantRolesAssign,
         PermissionNames.TenantUserGroupsRead,
         PermissionNames.TenantUserGroupsWrite,
         PermissionNames.UserGroupAssignUsers,
