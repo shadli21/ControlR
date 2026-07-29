@@ -129,7 +129,7 @@ public partial class PersonalAccessTokens
     }
   }
 
-  private async Task ManageScopes(PersonalAccessTokenResponseDto personalAccessToken)
+  private async Task ManagePermissions(PersonalAccessTokenResponseDto personalAccessToken)
   {
     var parameters = new DialogParameters<PermissionAssignmentPanelDialog>
     {

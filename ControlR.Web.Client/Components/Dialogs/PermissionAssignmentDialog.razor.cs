@@ -1,10 +1,11 @@
+using ControlR.Web.Client.StateManagement.Stores;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Dialogs;
 
 public partial class PermissionAssignmentDialog : ComponentBase
 {
-  private List<InternalDtos.PermissionCatalogEntryDto> _catalog = [];
+  private IReadOnlyList<InternalDtos.PermissionCatalogEntryDto> _catalog = [];
   private PermissionEffect _effect = PermissionEffect.Allow;
   private bool _isEnabled = true;
   private string _notes = string.Empty;
@@ -22,6 +23,9 @@ public partial class PermissionAssignmentDialog : ComponentBase
   [CascadingParameter]
   public required IMudDialogInstance MudDialog { get; init; }
 
+  [Inject]
+  public required IPermissionCatalogStore PermissionCatalogStore { get; init; }
+
   [Parameter]
   public required Guid PrincipalId { get; set; }
 
@@ -35,11 +39,12 @@ public partial class PermissionAssignmentDialog : ComponentBase
 
   protected override async Task OnInitializedAsync()
   {
-    var result = await ControlrApi.Internal.PermissionAssignments.GetCatalog();
-    if (result.IsSuccess)
+    if (PermissionCatalogStore.Items.Count == 0)
     {
-      _catalog = [.. result.Value.OrderBy(x => x.Name)];
+      await PermissionCatalogStore.Refresh();
     }
+
+    _catalog = PermissionCatalogStore.Items;
 
     if (ExistingAssignment is { } existing)
     {

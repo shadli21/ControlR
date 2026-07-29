@@ -48,18 +48,6 @@ public partial class PrincipalAutocomplete
     await SelectedIdChanged.InvokeAsync(SelectedId);
   }
 
-  private async Task<PrincipalOption?> ResolveSelectedAsync(Guid id)
-  {
-    return PrincipalKind switch
-    {
-      PermissionPrincipalKind.User => await ResolveUser(id),
-      PermissionPrincipalKind.UserGroup => await ResolveUserGroup(id),
-      PermissionPrincipalKind.ServiceAccount => await ResolveServiceAccount(id),
-      PermissionPrincipalKind.PersonalAccessToken => await ResolvePersonalAccessToken(id),
-      _ => null
-    };
-  }
-
   private async Task<PrincipalOption?> ResolvePersonalAccessToken(Guid id)
   {
     var result = await ControlrApi.Internal.PersonalAccessTokens.GetPersonalAccessTokens();
@@ -70,6 +58,18 @@ public partial class PrincipalAutocomplete
 
     var match = result.Value.FirstOrDefault(x => x.Id == id);
     return match is null ? null : new PrincipalOption(match.Id, $"[PAT] {match.Name}", PermissionPrincipalKind.PersonalAccessToken);
+  }
+
+  private async Task<PrincipalOption?> ResolveSelectedAsync(Guid id)
+  {
+    return PrincipalKind switch
+    {
+      PermissionPrincipalKind.User => await ResolveUser(id),
+      PermissionPrincipalKind.UserGroup => await ResolveUserGroup(id),
+      PermissionPrincipalKind.ServiceAccount => await ResolveServiceAccount(id),
+      PermissionPrincipalKind.PersonalAccessToken => await ResolvePersonalAccessToken(id),
+      _ => null
+    };
   }
 
   private async Task<PrincipalOption?> ResolveServiceAccount(Guid id)
@@ -84,18 +84,6 @@ public partial class PrincipalAutocomplete
     return match is null ? null : new PrincipalOption(match.Id, match.Name, PermissionPrincipalKind.ServiceAccount);
   }
 
-  private async Task<PrincipalOption?> ResolveUserGroup(Guid id)
-  {
-    var result = await ControlrApi.Internal.UserGroups.GetAll();
-    if (!result.IsSuccess)
-    {
-      return null;
-    }
-
-    var match = result.Value.FirstOrDefault(x => x.Id == id);
-    return match is null ? null : new PrincipalOption(match.Id, match.Name, PermissionPrincipalKind.UserGroup);
-  }
-
   private async Task<PrincipalOption?> ResolveUser(Guid id)
   {
     var result = await ControlrApi.Internal.Users.GetAllUsers();
@@ -106,6 +94,18 @@ public partial class PrincipalAutocomplete
 
     var match = result.Value.FirstOrDefault(x => x.Id == id);
     return match is null ? null : new PrincipalOption(match.Id, match.UserName ?? match.Email ?? match.Id.ToString(), PermissionPrincipalKind.User);
+  }
+
+  private async Task<PrincipalOption?> ResolveUserGroup(Guid id)
+  {
+    var result = await ControlrApi.Internal.UserGroups.GetAll();
+    if (!result.IsSuccess)
+    {
+      return null;
+    }
+
+    var match = result.Value.FirstOrDefault(x => x.Id == id);
+    return match is null ? null : new PrincipalOption(match.Id, match.Name, PermissionPrincipalKind.UserGroup);
   }
 
   private async Task<IEnumerable<PrincipalOption>> Search(string query, CancellationToken cancellationToken)

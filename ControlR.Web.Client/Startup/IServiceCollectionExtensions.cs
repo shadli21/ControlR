@@ -65,6 +65,7 @@ public static class ServiceCollectionExtensions
     services.AddScoped<ITagStore, TagStore>();
     services.AddScoped<IUserStore, UserStore>();
     services.AddScoped<IInviteStore, InviteStore>();
+    services.AddScoped<IPermissionCatalogStore, PermissionCatalogStore>();
     services.AddScoped<IWhatsNewNotifier, WhatsNewNotifier>();
 
     services.AddTransient<IJsInterop, JsInterop>();

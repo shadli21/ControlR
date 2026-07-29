@@ -44,22 +44,13 @@
         }
       </CellTemplate>
     </PropertyColumn>
-    <TemplateColumn Title="Actions" Sortable="false">
+    <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
       <CellTemplate>
-        <MudTooltip Text="Rename">
-          <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" Size="Size.Small"
-            OnClick="() => RenamePersonalAccessToken(context.Item)" />
-        </MudTooltip>
-
-        <MudTooltip Text="Scopes">
-          <MudIconButton Icon="@Icons.Material.Filled.Shield" Color="Color.Warning" Size="Size.Small"
-            OnClick="() => ManageScopes(context.Item)" />
-        </MudTooltip>
-
-        <MudTooltip Text="Delete">
-          <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
-            OnClick="() => DeletePersonalAccessToken(context.Item)" />
-        </MudTooltip>
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
+          <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info" OnClick="() => RenamePersonalAccessToken(context.Item)">Rename</MudMenuItem>
+          <MudMenuItem Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Info" OnClick="() => ManagePermissions(context.Item)">Permissions</MudMenuItem>
+          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="() => DeletePersonalAccessToken(context.Item)">Delete</MudMenuItem>
+        </MudMenu>
       </CellTemplate>
     </TemplateColumn>
   </Columns>

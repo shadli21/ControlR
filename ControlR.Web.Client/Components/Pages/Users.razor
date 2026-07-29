@@ -27,14 +27,9 @@
   <Columns>
     <PropertyColumn Property="x => x.UserName" Title="Username" />
     <PropertyColumn Property="x => x.Email" Title="Email" />
-    <TemplateColumn Title="Permissions" Sortable="false" Filterable="false">
+    <TemplateColumn Title="Permissions" Sortable="true" SortBy="@(x => x.Permissions.Count)">
       <CellTemplate>
-        <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
-          @foreach (var permission in context.Item.Permissions)
-          {
-            <MudChip T="string" Size="Size.Small" Color="Color.Default">@permission</MudChip>
-          }
-        </MudStack>
+        @context.Item.Permissions.Count
       </CellTemplate>
     </TemplateColumn>
     <PropertyColumn Property="x => x.CreatedAt" Title="Created" />

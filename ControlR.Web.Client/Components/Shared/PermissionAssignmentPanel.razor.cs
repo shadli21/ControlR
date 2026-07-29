@@ -21,10 +21,10 @@ public partial class PermissionAssignmentPanel : ComponentBase
   public bool IsPrincipalLocked { get; set; }
 
   [Parameter]
-  public PermissionPrincipalKind? PrincipalKind { get; set; }
+  public Guid? PrincipalId { get; set; }
 
   [Parameter]
-  public Guid? PrincipalId { get; set; }
+  public PermissionPrincipalKind? PrincipalKind { get; set; }
 
   [Inject]
   public required ISnackbar Snackbar { get; init; }
@@ -111,9 +111,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   private async Task LoadAssignments()
   {
-    if (!TryGetSelectedPrincipal(out _, out var principalId))
+    if (_selectedPrincipalId is null)
     {
-      Snackbar.Add("Select a principal first", Severity.Error);
       return;
     }
 
@@ -122,7 +121,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
     try
     {
-      var result = await ControlrApi.Internal.PermissionAssignments.GetByPrincipal(_principalKind.ToString(), principalId);
+      var result = await ControlrApi.Internal.PermissionAssignments.GetByPrincipal(_principalKind.ToString(), _selectedPrincipalId.Value);
       if (result.IsSuccess)
       {
         _assignments = result.Value;
@@ -137,6 +136,51 @@ public partial class PermissionAssignmentPanel : ComponentBase
       _loading = false;
       StateHasChanged();
     }
+  }
+
+  private async Task OnPrincipalIdChanged(Guid? id)
+  {
+    _selectedPrincipalId = id;
+    _assignments = null;
+
+    if (id is not null)
+    {
+      await LoadAssignments();
+    }
+  }
+
+  private async Task OnPrincipalKindChanged(PermissionPrincipalKind kind)
+  {
+    _principalKind = kind;
+    _selectedPrincipalId = null;
+    _assignments = null;
+    StateHasChanged();
+
+    if (_selectedPrincipalId is not null)
+    {
+      await LoadAssignments();
+    }
+  }
+
+  private async Task ShowNotes(string? notes)
+  {
+    if (string.IsNullOrWhiteSpace(notes))
+    {
+      return;
+    }
+
+    var dialogOptions = new DialogOptions()
+    {
+      MaxWidth = MaxWidth.Medium,
+      FullWidth = true
+    };
+
+    var parameters = new DialogParameters<NotesDialog>
+    {
+      { x => x.Notes, notes }
+    };
+
+    await DialogService.ShowAsync<NotesDialog>("Notes", parameters, dialogOptions);
   }
 
   private async Task ToggleEnabled(InternalDtos.PermissionAssignmentDto assignment, bool enabled)

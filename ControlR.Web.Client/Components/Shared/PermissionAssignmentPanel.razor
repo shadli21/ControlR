@@ -32,7 +32,8 @@ else
     <MudGrid Spacing="2">
       <MudItem xs="12" md="3">
         <MudSelect T="PermissionPrincipalKind"
-                   @bind-Value="_principalKind"
+                   Value="_principalKind"
+                   ValueChanged="OnPrincipalKindChanged"
                    Label="Principal Kind">
           <MudSelectItem Value="@(PermissionPrincipalKind.User)">User</MudSelectItem>
           <MudSelectItem Value="@(PermissionPrincipalKind.UserGroup)">User Group</MudSelectItem>
@@ -40,19 +41,11 @@ else
           <MudSelectItem Value="@(PermissionPrincipalKind.PersonalAccessToken)">Personal Access Token</MudSelectItem>
         </MudSelect>
       </MudItem>
-      <MudItem xs="12" md="6">
+      <MudItem xs="12" md="9">
         <PrincipalAutocomplete PrincipalKind="_principalKind"
-                               @bind-SelectedId="_selectedPrincipalId"
+                               SelectedId="_selectedPrincipalId"
+                               SelectedIdChanged="OnPrincipalIdChanged"
                                Label="Principal" />
-      </MudItem>
-      <MudItem xs="12" md="3">
-        <MudButton Variant="Variant.Outlined"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Search"
-                   OnClick="LoadAssignments"
-                   FullWidth="true">
-          Load Assignments
-        </MudButton>
       </MudItem>
     </MudGrid>
   </MudPaper>
@@ -69,7 +62,8 @@ else
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Add"
                OnClick="CreateAssignment"
-               Size="Size.Small">
+               Size="Size.Small"
+               Disabled="@(_selectedPrincipalId is null)">
       New Assignment
     </MudButton>
   </ToolBarContent>
@@ -94,6 +88,21 @@ else
                    ValueChanged="@((enabled) => ToggleEnabled(context.Item, enabled))"
                    Color="Color.Primary"
                    Disabled="@_togglingIds.Contains(context.Item.Id)" />
+      </CellTemplate>
+    </TemplateColumn>
+    <TemplateColumn Title="Notes" Sortable="false" Filterable="false">
+      <CellTemplate>
+        @{
+          var notes = context.Item.Notes;
+          var hasNotes = !string.IsNullOrWhiteSpace(notes);
+        }
+        <MudTooltip Text="@(hasNotes ? "Show notes" : "Notes are empty")" Placement="Placement.Left">
+          <MudIconButton Icon="@Icons.Material.Filled.Info"
+                         Color="@(hasNotes ? Color.Info : Color.Default)"
+                         Size="Size.Small"
+                         Disabled="@(!hasNotes)"
+                         OnClick="@(() => ShowNotes(notes))" />
+        </MudTooltip>
       </CellTemplate>
     </TemplateColumn>
     <TemplateColumn Title="" Sortable="false" Filterable="false">
