@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.ServiceAccounts;
@@ -85,7 +86,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var user = await testServer.Services.CreateTestUser(
       tenant.Id,
       "non-admin@test.local",
-      RoleNames.DeviceSuperUser);
+      PermissionPresets.DeviceSuperUser);
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
@@ -115,7 +116,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var user = await testServer.Services.CreateTestUser(
       tenant.Id,
       "server-admin@test.local",
-      RoleNames.ServerAdministrator);
+      PermissionPresets.ServerAdministrator);
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(

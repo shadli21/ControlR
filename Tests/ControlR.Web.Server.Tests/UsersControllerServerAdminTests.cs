@@ -25,7 +25,7 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
 
     // Create a tenant admin caller (not a server admin)
     var (controller, _, _) = await scope.CreateControllerWithTestData<UsersController>(
-      roles: RoleNames.TenantAdministrator);
+      presets: PermissionPresets.TenantAdministrator);
 
     var request = new InternalDtos.CreateUserRequestDto(
       UserName: "evil",
@@ -52,7 +52,7 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
 
     // Create a server admin caller
     var (controller, _, _) = await scope.CreateControllerWithTestData<UsersController>(
-      roles: RoleNames.ServerAdministrator);
+      presets: PermissionPresets.ServerAdministrator);
 
     await using var db = services.GetRequiredService<AppDb>();
 

@@ -4,6 +4,7 @@ using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Tests.Helpers;
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authz.Permissions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
@@ -214,7 +215,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
 
     var normalUser = await services.CreateTestUser(
       tenantId: tenantId,
-      roles: [RoleNames.DeviceSuperUser, RoleNames.AgentInstaller]);
+      presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
 
     var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
 

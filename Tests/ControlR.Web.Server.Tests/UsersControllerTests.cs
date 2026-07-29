@@ -27,7 +27,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
     using var scope = testApp.CreateScope();
     var services = scope.ServiceProvider;
     var (controller, tenant, _) = await scope.CreateControllerWithTestData<UsersController>(
-      roles: RoleNames.TenantAdministrator);
+      presets: PermissionPresets.TenantAdministrator);
     var targetUser = await services.CreateTestUser(tenant.Id, "target@t.local");
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
@@ -64,7 +64,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
     identityOptions.Password.RequireNonAlphanumeric = true;
 
     var (controller, tenant, _) = await scope.CreateControllerWithTestData<UsersController>(
-      roles: RoleNames.TenantAdministrator);
+      presets: PermissionPresets.TenantAdministrator);
     var targetUser = await services.CreateTestUser(tenant.Id, "short-policy@t.local");
 
     var result = await controller.AdminResetPassword(
@@ -85,7 +85,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
     using var scope = testApp.CreateScope();
     var services = scope.ServiceProvider;
     var (controller, _, _) = await scope.CreateControllerWithTestData<UsersController>(
-      roles: RoleNames.TenantAdministrator);
+      presets: PermissionPresets.TenantAdministrator);
     var otherTenant = await services.CreateTestTenant("Other Tenant");
     var otherUser = await services.CreateTestUser(otherTenant.Id, "other@t.local");
 
@@ -109,7 +109,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
     var (controller, _, _) = await scope.CreateControllerWithTestData<UsersController>(
       "Tenant1",
       "admin@t.local",
-      RoleNames.TenantAdministrator);
+      PermissionPresets.TenantAdministrator);
 
     await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
 
@@ -149,7 +149,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
 
     var (controller, _, _) = await scope.CreateControllerWithTestData<UsersController>(
-      roles: RoleNames.TenantAdministrator);
+      presets: PermissionPresets.TenantAdministrator);
 
     var request = new InternalDtos.CreateUserRequestDto(
       "nouser",
@@ -174,7 +174,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
     using var scope = testApp.CreateScope();
     var services = scope.ServiceProvider;
     var (controller, tenant, _) = await scope.CreateControllerWithTestData<UsersController>(
-      roles: RoleNames.TenantAdministrator);
+      presets: PermissionPresets.TenantAdministrator);
     var targetUser = await services.CreateTestUser(tenant.Id, "pat-target@t.local");
 
     var createResult = await controller.CreateUserPersonalAccessToken(

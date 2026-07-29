@@ -6,6 +6,7 @@ using ControlR.Libraries.Api.Contracts.Dtos.HubDtos;
 using ControlR.Libraries.Api.Contracts.Dtos.Devices;
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services;
@@ -38,7 +39,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // One device exists, two don't
     var existingId = Guid.NewGuid();
@@ -100,7 +101,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create an abundance of devices (15 total).
     // 10 will be requested for deletion, 5 stay untouched.
@@ -256,7 +257,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Devices that exist and will be requested for deletion
     var deleteIds = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
@@ -339,7 +340,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Create test tenant and user
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create test tag
     var tagId = Guid.NewGuid();
@@ -426,7 +427,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with different online status
     for (var i = 0; i < 5; i++)
@@ -514,7 +515,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with specific combinations for multi-filter testing
     var testData = new[]
@@ -631,7 +632,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with varying numeric properties
     var cpuValues = new[] { 0.1, 0.3, 0.5, 0.7, 0.9 };
@@ -771,7 +772,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Create test tenant and user
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create test devices with varying string properties
     var devices = new[]
@@ -881,7 +882,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with specific patterns for testing
     var testDevices = new[]
@@ -1034,7 +1035,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with 0 and non-zero CPU utilization
     var cpuValues = new[] { 0.0, 0.5, 0.0, 0.8 };
@@ -1126,7 +1127,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create a test device
     var deviceDto = new DeviceUpdateRequestDto(
@@ -1225,7 +1226,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var tenant2 = await services.CreateTestTenant("Tenant 2");
 
     // Create user for tenant 1
-    var user1 = await services.CreateTestUser(tenant1.Id, email: "user1@example.com", roles: RoleNames.DeviceSuperUser);
+    var user1 = await services.CreateTestUser(tenant1.Id, email: "user1@example.com", presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices for both tenants
     for (int i = 0; i < 5; i++)
@@ -1336,7 +1337,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Create test tenant and user
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create test tags
     var tagIds = new[] { Guid.NewGuid(), Guid.NewGuid() }.ToImmutableArray();
@@ -1572,7 +1573,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     var deviceDto = new DeviceUpdateRequestDto(
       Name: "Cross-Tenant Device",
@@ -1628,7 +1629,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     await controller.SetControllerUser(user, services.GetRequiredService<UserManager<AppUser>>());
 
@@ -1795,7 +1796,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var deviceManager = services.GetRequiredService<IDeviceManager>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     var deviceId = Guid.NewGuid();
     var deviceDto = new DeviceUpdateRequestDto(
@@ -1913,7 +1914,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Create user in a different tenant
     var userTenant = await services.CreateTestTenant("User Tenant");
-    var user = await services.CreateTestUser(userTenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(userTenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     await controller.SetControllerUser(user, userManager);
 
@@ -1943,7 +1944,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var deviceManager = services.GetRequiredService<IDeviceManager>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     var deviceId = Guid.NewGuid();
     var deviceDto = new DeviceUpdateRequestDto(

@@ -25,9 +25,7 @@ internal static class ControllerExtensions
     ArgumentNullException.ThrowIfNull(controller);
     ArgumentNullException.ThrowIfNull(user);
 
-    var userRoles = await userManager.GetRolesAsync(user);
     var userClaims = await userManager.GetClaimsAsync(user);
-    var roleClaims = userRoles.Select(role => new Claim(ClaimTypes.Role, role));
 
     Claim[] claims =
     [
@@ -39,7 +37,6 @@ internal static class ControllerExtensions
       new(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.User),
       new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
       new(UserClaimTypes.AuthenticationMethod, "cookie"),
-      ..roleClaims,
       ..userClaims
     ];
 

@@ -322,7 +322,7 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
 
     var tenant = await services.CreateTestTenant();
     var user = await services.CreateTestUser(
-      tenant.Id, $"cascade-{Guid.NewGuid():N}@t.local", RoleNames.TenantAdministrator);
+      tenant.Id, $"cascade-{Guid.NewGuid():N}@t.local", PermissionPresets.TenantAdministrator);
 
     using (var scope = services.CreateScope())
     {
@@ -536,7 +536,7 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
     var user = await testServer.Services.CreateTestUser(
       tenant.Id,
       $"admin-{Guid.NewGuid():N}@t.local",
-      RoleNames.TenantAdministrator);
+      PermissionPresets.TenantAdministrator);
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(

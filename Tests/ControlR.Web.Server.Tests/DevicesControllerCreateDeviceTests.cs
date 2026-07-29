@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using ControlR.Libraries.Api.Contracts.Dtos.Devices;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos;
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services.AgentInstaller;
@@ -29,7 +30,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var user = await services.CreateTestUser(
       tenantId: tenant.Id,
       email: "test@example.com",
-      roles: [RoleNames.DeviceSuperUser, RoleNames.AgentInstaller]);
+      presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -67,7 +68,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var user = await services.CreateTestUser(
       tenantId: tenant.Id,
       email: "test@example.com",
-      roles: [RoleNames.DeviceSuperUser, RoleNames.AgentInstaller]);
+      presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
 
     var existingDevice = await services.CreateTestDevice(tenant.Id);
     var originalName = existingDevice.Name;
@@ -110,7 +111,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var user = await services.CreateTestUser(
       tenantId: tenant.Id,
       email: "authorized@example.com",
-      roles: [RoleNames.DeviceSuperUser, RoleNames.AgentInstaller]);
+      presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
 
     var existingDevice = await services.CreateTestDevice(tenant.Id);
 
@@ -142,7 +143,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var user = await services.CreateTestUser(
       tenantId: tenant.Id,
       email: "test@example.com",
-      roles: [RoleNames.DeviceSuperUser, RoleNames.AgentInstaller]);
+      presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
 
     var existingDevice = await services.CreateTestDevice(tenant.Id);
 
@@ -182,7 +183,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var deviceOwner = await services.CreateTestUser(
       tenantId: tenant.Id,
       email: "owner@test.com",
-      roles: [RoleNames.DeviceSuperUser, RoleNames.AgentInstaller]);
+      presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
     var unauthorizedUser = await services.CreateTestUser(tenant.Id, "unauthorized@test.com");
 
     var existingDevice = await services.CreateTestDevice(tenant.Id);
@@ -212,7 +213,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -250,7 +251,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -287,7 +288,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -314,7 +315,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -345,7 +346,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -374,7 +375,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -420,7 +421,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -457,7 +458,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -493,7 +494,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     using var scope = services.CreateScope();
     await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
@@ -541,7 +542,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -571,7 +572,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
@@ -608,7 +609,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.TenantAdministrator);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
 
     var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
     var installerKey = await keyManager.CreateKey(
