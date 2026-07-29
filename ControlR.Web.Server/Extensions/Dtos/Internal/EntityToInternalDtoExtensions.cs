@@ -54,19 +54,6 @@ public static class EntityToInternalDtoExtensions
     };
   }
 
-  public static InternalDtos.RoleResponseDto ToInternalResponseDto(this AppRole role)
-  {
-    var userIds = role
-      .UserRoles
-      ?.Select(x => x.UserId)
-      ?.ToList() ?? [];
-
-    return new InternalDtos.RoleResponseDto(
-      role.Id,
-      role.Name ?? string.Empty,
-      userIds);
-  }
-
   public static InternalDtos.UserPreferenceResponseDto ToInternalResponseDto(this UserPreference userPreference)
   {
     return new InternalDtos.UserPreferenceResponseDto(userPreference.Id, userPreference.Name, userPreference.Value);

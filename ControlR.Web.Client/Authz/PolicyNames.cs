@@ -19,7 +19,6 @@ public static class PolicyNames
   public const string RequirePermissionAssignmentsWrite = "RequirePermissionAssignmentsWrite";
   public const string RequirePersonalAccessTokensOthersRead = "RequirePersonalAccessTokensOthersRead";
   public const string RequirePersonalAccessTokensOthersWrite = "RequirePersonalAccessTokensOthersWrite";
-  public const string RequireRolesRead = "RequireRolesRead";
   public const string RequireServerAdmin = "RequireServerAdmin";
   public const string RequireServerAlertsWrite = "RequireServerAlertsWrite";
   public const string RequireServerServiceAccountsRead = "RequireServerServiceAccountsRead";

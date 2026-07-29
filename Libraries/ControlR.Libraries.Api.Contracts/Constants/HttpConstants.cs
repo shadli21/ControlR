@@ -26,7 +26,6 @@ public static class HttpConstants
     public const string PermissionAssignmentsEndpoint = "/api/permission-assignments";
     public const string PersonalAccessTokensEndpoint = "/api/personal-access-tokens";
     public const string PublicServerSettingsEndpoint = "/api/public-server-settings";
-    public const string RolesEndpoint = "/api/roles";
     public const string ServerAlertEndpoint = "/api/server-alert";
     public const string ServerLogsEndpoint = "/api/server-logs";
     public const string ServerServiceAccountsEndpoint = "/api/server-service-accounts";
@@ -38,7 +37,6 @@ public static class HttpConstants
     public const string TestEmailEndpoint = "/api/test-email";
     public const string UserGroupsEndpoint = "/api/user-groups";
     public const string UserPreferencesEndpoint = "/api/user-preferences";
-    public const string UserRolesEndpoint = "/api/user-roles";
     public const string UsersEndpoint = "/api/users";
     public const string UserServerSettingsEndpoint = "/api/user-server-settings";
     public const string UserStorageEndpoint = "/api/user-storage";

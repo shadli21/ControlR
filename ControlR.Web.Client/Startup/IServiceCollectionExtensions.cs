@@ -65,7 +65,6 @@ public static class ServiceCollectionExtensions
     services.AddScoped<IUserTagStore, UserTagStore>();
     services.AddScoped<IAdminTagStore, AdminTagStore>();
     services.AddScoped<IUserStore, UserStore>();
-    services.AddScoped<IRoleStore, RoleStore>();
     services.AddScoped<IInviteStore, InviteStore>();
     services.AddScoped<IWhatsNewNotifier, WhatsNewNotifier>();
 

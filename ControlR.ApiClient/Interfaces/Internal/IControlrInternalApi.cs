@@ -17,7 +17,6 @@ public interface IControlrInternalApi
   IPermissionAssignmentsApi PermissionAssignments { get; }
   IPersonalAccessTokensApi PersonalAccessTokens { get; }
   IPublicServerSettingsApi PublicServerSettings { get; }
-  IRolesApi Roles { get; }
   IServerAlertApi ServerAlert { get; }
   IServerLogsApi ServerLogs { get; }
   IServerServiceAccountsApi ServerServiceAccounts { get; }
@@ -28,7 +27,6 @@ public interface IControlrInternalApi
   ITestEmailApi TestEmail { get; }
   IUserGroupsApi UserGroups { get; }
   IUserPreferencesApi UserPreferences { get; }
-  IUserRolesApi UserRoles { get; }
   IUsersApi Users { get; }
   IUserServerSettingsApi UserServerSettings { get; }
   IUserStorageApi UserStorage { get; }

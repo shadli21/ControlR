@@ -26,7 +26,6 @@ public static class PermissionPolicies
       [PolicyNames.RequirePermissionAssignmentsWrite] = PermissionNames.TenantPermissionsWrite,
       [PolicyNames.RequirePersonalAccessTokensOthersRead] = PermissionNames.PersonalAccessTokenOthersRead,
       [PolicyNames.RequirePersonalAccessTokensOthersWrite] = PermissionNames.PersonalAccessTokenOthersWrite,
-      [PolicyNames.RequireRolesRead] = PermissionNames.TenantRolesRead,
       [PolicyNames.RequireServerAdmin] = PermissionNames.ServerAdmin,
       [PolicyNames.RequireServerAlertsWrite] = PermissionNames.ServerAlertsWrite,
       [PolicyNames.RequireServerServiceAccountsRead] = PermissionNames.ServerServiceAccountsRead,

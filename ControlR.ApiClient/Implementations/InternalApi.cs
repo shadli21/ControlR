@@ -19,7 +19,6 @@ internal partial class InternalApi(ControlrApi client) :
   IPersonalAccessTokensApi,
   IPermissionAssignmentsApi,
   IPublicServerSettingsApi,
-  IRolesApi,
   IServerAlertApi,
   IServerLogsApi,
   IServerStatsApi,
@@ -29,7 +28,6 @@ internal partial class InternalApi(ControlrApi client) :
   ITenantSettingsApi,
   ITestEmailApi,
   IUserPreferencesApi,
-  IUserRolesApi,
   IUsersApi,
   IUserServerSettingsApi,
   IUserStorageApi,
@@ -54,7 +52,6 @@ internal partial class InternalApi(ControlrApi client) :
   public IPermissionAssignmentsApi PermissionAssignments => this;
   public IPersonalAccessTokensApi PersonalAccessTokens => this;
   public IPublicServerSettingsApi PublicServerSettings => this;
-  public IRolesApi Roles => this;
   public IServerAlertApi ServerAlert => this;
   public IServerLogsApi ServerLogs => this;
   public IServerServiceAccountsApi ServerServiceAccounts => this;
@@ -65,7 +62,6 @@ internal partial class InternalApi(ControlrApi client) :
   public ITestEmailApi TestEmail => this;
   public IUserGroupsApi UserGroups => this;
   public IUserPreferencesApi UserPreferences => this;
-  public IUserRolesApi UserRoles => this;
   public IUsersApi Users => this;
   public IUserServerSettingsApi UserServerSettings => this;
   public IUserStorageApi UserStorage => this;
