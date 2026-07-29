@@ -21,6 +21,7 @@ internal static class TestAppBuilder
     Dictionary<string, string?>? extraConfiguration = null,
     [CallerMemberName] string testDatabaseName = "",
     bool useInMemoryDatabase = true,
+    bool applyMigrations = true,
     Action<ILoggingBuilder>? configureLogging = null)
   {
     var timeProvider = new FakeTimeProvider(DateTimeOffset.Now);
@@ -76,9 +77,9 @@ internal static class TestAppBuilder
     var app = builder.Build();
     if (useInMemoryDatabase)
     {
-      await app.AddBuiltInRoles();
+      await app.EnsureDatabaseCreated();
     }
-    else
+    else if (applyMigrations)
     {
       await app.ApplyMigrations();
     }

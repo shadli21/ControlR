@@ -78,8 +78,8 @@ public class TenantInvitesProvider(
       return HttpResult.Fail<InternalDtos.AcceptInvitationResponseDto>(HttpResultErrorCode.BadRequest, "Failed to set new password");
     }
 
-    // Clear only UserRoles and Tags when moving to new tenant
-    var trackedUser = await ClearUserRoles(appDb, invitee.Id);
+    // Track the user entity so its tenant can be updated below.
+    var trackedUser = await GetTrackedUser(appDb, invitee.Id);
 
     // Update tenant ID on the tracked entity
     trackedUser.TenantId = invite.TenantId;
@@ -186,15 +186,8 @@ public class TenantInvitesProvider(
       .ToArrayAsync();
   }
 
-  private async Task<AppUser> ClearUserRoles(AppDb appDb, Guid userId)
+  private async Task<AppUser> GetTrackedUser(AppDb appDb, Guid userId)
   {
-    // Remove UserRoles
-    var userRoles = await appDb.UserRoles
-      .Where(ur => ur.UserId == userId)
-      .ToListAsync();
-
-    appDb.UserRoles.RemoveRange(userRoles);
-
     var user = await appDb.Users
       .IgnoreQueryFilters()
       .FirstOrDefaultAsync(u => u.Id == userId);

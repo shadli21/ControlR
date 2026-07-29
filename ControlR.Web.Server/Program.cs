@@ -122,7 +122,7 @@ app.MapHub<ViewerHub>(AppConstants.ViewerHubPath);
 
 if (appOptions.UseInMemoryDatabase)
 {
-  await app.AddBuiltInRoles();
+  await app.EnsureDatabaseCreated();
 }
 else
 {

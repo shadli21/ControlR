@@ -150,14 +150,10 @@ public class InviteAcceptanceTests(ITestOutputHelper testOutput)
         .IgnoreQueryFilters()
         .Include(u => u.UserPreferences)
         .Include(u => u.PersonalAccessTokens)
-        .Include(u => u.UserRoles)
         .FirstAsync(u => u.Id == user2Id, cancellationToken: TestContext.Current.CancellationToken);
 
       Assert.Equal(tenantAId, user2Final.TenantId);
-      
-      // Only UserRoles should be cleared
-      Assert.Empty(user2Final.UserRoles ?? []);
-      
+
       // PersonalAccessTokens and UserPreferences should be retained
       Assert.Equal(2, user2Final.PersonalAccessTokens?.Count ?? 0);
       Assert.Equal(2, user2Final.UserPreferences?.Count ?? 0);

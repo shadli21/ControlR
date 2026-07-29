@@ -1,4 +1,3 @@
-using ControlR.Web.Server.Authz.Roles;
 using ControlR.Web.Server.Data.Configuration;
 using ControlR.Web.Server.Data.Enums;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
@@ -6,7 +5,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace ControlR.Web.Server.Data;
 
-public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionKeyContext
+public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyContext
 {
   // EF Core's fluent API cannot express conditional check constraints or partial unique
   // indexes. These SQL strings assume default column mapping (property name == column name).
@@ -67,7 +66,6 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
     ConfigureServerAlert(builder);
     ConfigureTenant(builder);
     ConfigureDevices(builder);
-    ConfigureRoles(builder);
     ConfigureTags(builder);
     ConfigureTenantSettings(builder);
     ConfigureUsers(builder);
@@ -125,15 +123,6 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
       .HasIndex(x => new { x.PrincipalKind, x.PrincipalId });
   }
 
-  private static void ConfigureRoles(ModelBuilder builder)
-  {
-    builder
-      .Entity<AppRole>()
-      .HasMany(x => x.UserRoles)
-      .WithOne()
-      .HasForeignKey(x => x.RoleId);
-  }
-
   private static void ConfigureServerAlert(ModelBuilder builder)
   {
     builder
@@ -143,12 +132,6 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
 
   private static void SeedDatabase(ModelBuilder builder)
   {
-    var builtInRoles = RoleFactory.GetBuiltInRoles();
-
-    builder
-        .Entity<AppRole>()
-        .HasData(builtInRoles);
-
     builder
         .Entity<ServerAlert>()
         .HasData(new ServerAlert
@@ -547,12 +530,6 @@ public class AppDb : IdentityDbContext<AppUser, AppRole, Guid>, IDataProtectionK
       .Entity<AppUser>()
       .Property(x => x.CreatedAt)
       .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-    builder
-      .Entity<AppUser>()
-      .HasMany(x => x.UserRoles)
-      .WithOne()
-      .HasForeignKey(x => x.UserId);
 
     builder
       .Entity<AppUser>()

@@ -4,7 +4,7 @@
   <DialogContent>
     <MudStack Spacing="3">
       <MudTextField T="string" @bind-Value="_name" Label="Name" Required="true" />
-      <MudTextField T="string" @bind-Value="_description" Label="Description" Lines="3" />
+      <MudTextField T="string" @bind-Value="_description" Label="Description" Sizing="InputSizing.Auto" MaxLines="4" />
     </MudStack>
   </DialogContent>
   <DialogActions>

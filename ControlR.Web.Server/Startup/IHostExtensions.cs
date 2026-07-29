@@ -1,21 +1,11 @@
 ﻿using System.Security.Claims;
 using ControlR.Libraries.Shared.Helpers;
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Authz.Roles;
 
 namespace ControlR.Web.Server.Startup;
 
 public static class HostExtensions
 {
-  public static async Task AddBuiltInRoles(this IHost host)
-  {
-    await using var scope = host.Services.CreateAsyncScope();
-    await using var context = scope.ServiceProvider.GetRequiredService<AppDb>();
-    var builtInRoles = RoleFactory.GetBuiltInRoles();
-    await context.Roles.AddRangeAsync(builtInRoles);
-    await context.SaveChangesAsync();
-  }
-
   public static async Task ApplyMigrations(this IHost host)
   {
     await using var scope = host.Services.CreateAsyncScope();
@@ -189,6 +179,13 @@ public static class HostExtensions
       logger.LogError("Bootstrap server service account failed: {Reason}", result.Reason);
       throw new InvalidOperationException($"Bootstrap server service account failed: {result.Reason}");
     }
+  }
+
+  public static async Task EnsureDatabaseCreated(this IHost host)
+  {
+    await using var scope = host.Services.CreateAsyncScope();
+    await using var context = scope.ServiceProvider.GetRequiredService<AppDb>();
+    await context.Database.EnsureCreatedAsync();
   }
 
   public static async Task RemoveEmptyTenants(this IHost host)

@@ -19,7 +19,6 @@ public class AppUser : IdentityUser<Guid>, ITenantEntityBase
   public Guid TenantId { get; set; }
   public List<UserGroupMember>? UserGroupMembers { get; set; }
   public List<UserPreference>? UserPreferences { get; set; }
-  public List<IdentityUserRole<Guid>>? UserRoles { get; set; }
   public List<UserStorageItem>? UserStorageItems { get; set; }
 }
 
