@@ -77,11 +77,6 @@ public static class EntityToInternalDtoExtensions
 
   public static InternalDtos.TagResponseDto ToInternalResponseDto(this Tag tag)
   {
-    var userIds = tag
-      .Users?
-      .Select(x => x.Id)
-      .ToList() ?? [];
-
     var deviceIds = tag
       .Devices?
       .Select(x => x.Id)
@@ -91,7 +86,6 @@ public static class EntityToInternalDtoExtensions
       tag.Id,
       tag.Name,
       tag.Type,
-      userIds,
       deviceIds);
   }
 

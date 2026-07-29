@@ -10,5 +10,4 @@ public class Tag : TenantEntityBase
   public required string Name { get; set; }
 
   public TagType Type { get; set; }
-  public List<AppUser>? Users { get; set; }
 }

@@ -91,7 +91,6 @@ public static class PermissionPresets
         PermissionNames.DeviceGroupAssignDevices,
         PermissionNames.TenantCustomersRead,
         PermissionNames.TenantCustomersWrite,
-        PermissionNames.TenantTagsRead,
         PermissionNames.TenantTagsWrite,
         PermissionNames.TenantPermissionsRead,
         PermissionNames.TenantPermissionsWrite,

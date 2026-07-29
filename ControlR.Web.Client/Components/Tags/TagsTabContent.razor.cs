@@ -28,10 +28,7 @@ public partial class TagsTabContent : ComponentBase, IDisposable
   public required ISnackbar Snackbar { get; init; }
 
   [Inject]
-  public required IAdminTagStore TagStore { get; init; }
-
-  [Inject]
-  public required IUserTagStore UserTagStore { get; init; }
+  public required ITagStore TagStore { get; init; }
 
   private IOrderedEnumerable<TagViewModel> FilteredTags =>
     TagStore.Items
@@ -78,7 +75,6 @@ public partial class TagsTabContent : ComponentBase, IDisposable
     Snackbar.Add("Tag created", Severity.Success);
     var vm = new TagViewModel(createResult.Value);
     await TagStore.AddOrUpdate(vm);
-    await UserTagStore.AddOrUpdate(vm);
     _newTagName = null;
     await InvokeAsync(StateHasChanged);
   }
@@ -107,7 +103,6 @@ public partial class TagsTabContent : ComponentBase, IDisposable
     }
 
     await TagStore.Remove(_selectedTag.Id);
-    await UserTagStore.Remove(_selectedTag.Id);
     _selectedTag = null;
     Snackbar.Add("Tag deleted", Severity.Success);
   }
@@ -171,7 +166,6 @@ public partial class TagsTabContent : ComponentBase, IDisposable
 
     var vm = new TagViewModel(renameResult.Value);
     await TagStore.AddOrUpdate(vm);
-    await UserTagStore.AddOrUpdate(vm);
     Snackbar.Add("Tag renamed", Severity.Success);
   }
 
@@ -202,7 +196,6 @@ public partial class TagsTabContent : ComponentBase, IDisposable
       }
 
       await TagStore.InvokeItemsChanged();
-      await UserTagStore.InvokeItemsChanged();
 
       Snackbar.Add(isToggled
         ? "Tag added"

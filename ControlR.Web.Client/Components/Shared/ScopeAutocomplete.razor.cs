@@ -33,15 +33,12 @@ public partial class ScopeAutocomplete
 
   private string DeviceDisplayText =>
     _selectedDevice is null ? string.Empty : DeviceDisplay.GetDisplayName(_selectedDevice);
-
   private string ImplicitScopeMessage => ScopeKind switch
   {
     PermissionScopeKind.Server => "Server-wide scope. No specific target is required.",
     _ => "Tenant-wide scope. No specific target is required."
   };
-
   private bool IsDeviceScope => ScopeKind == PermissionScopeKind.Device;
-
   private bool RequiresTarget => ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant;
 
   protected override void OnParametersSet()
@@ -94,14 +91,14 @@ public partial class ScopeAutocomplete
     };
   }
 
-  private async Task<IEnumerable<ScopeOption>> SearchDeviceGroups(string query, CancellationToken cancellationToken)
+  private async Task<IEnumerable<ScopeOption>> SearchCustomers(string query, CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
     {
       return [];
     }
 
-    var result = await ControlrApi.Internal.DeviceGroups.GetAll(cancellationToken);
+    var result = await ControlrApi.Internal.Customers.GetAll(cancellationToken);
     if (!result.IsSuccess)
     {
       return [];
@@ -112,14 +109,14 @@ public partial class ScopeAutocomplete
       .Select(x => new ScopeOption(x.Id, x.Name));
   }
 
-  private async Task<IEnumerable<ScopeOption>> SearchCustomers(string query, CancellationToken cancellationToken)
+  private async Task<IEnumerable<ScopeOption>> SearchDeviceGroups(string query, CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
     {
       return [];
     }
 
-    var result = await ControlrApi.Internal.Customers.GetAll(cancellationToken);
+    var result = await ControlrApi.Internal.DeviceGroups.GetAll(cancellationToken);
     if (!result.IsSuccess)
     {
       return [];

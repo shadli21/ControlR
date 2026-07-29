@@ -1,13 +1,13 @@
 @using System.Collections.Immutable
 @using ControlR.Web.Client.StateManagement.Stores
 
-@inject IUserTagStore UserTagStore
+@inject ITagStore TagStore
 
 <MudSelect T="string" MultiSelection="true" QuickSearchInterval="@(TimeSpan.FromMilliseconds(50))" Text="@GetText()"
            MultiSelectionTextFunc="@GetTagsMultiSelectText" AdornmentIcon="@Icons.Material.Filled.Tag" Adornment="Adornment.End"
            SelectedValues="_selectedTagNames" SelectedValuesChanged="HandleSelectedTagsChanged" SelectAll="true" FullWidth="true"
            SelectAllText="All Tags" Immediate="true">
-  @foreach (var tag in UserTagStore.Items)
+  @foreach (var tag in TagStore.Items)
   {
     <MudSelectItem Value="@tag.Name">
       @tag.Name
@@ -29,9 +29,9 @@
   {
     await base.OnInitializedAsync();
 
-    if (UserTagStore.Items.Count == 0)
+    if (TagStore.Items.Count == 0)
     {
-      await UserTagStore.Refresh();
+      await TagStore.Refresh();
     }
   }
 
@@ -48,7 +48,7 @@
       return "No tags selected";
     }
 
-    if (_selectedTagNames.Count == UserTagStore.Items.Count)
+    if (_selectedTagNames.Count == TagStore.Items.Count)
     {
       return "All tags selected";
     }
@@ -64,7 +64,7 @@
       return "No tag filter";
     }
 
-    if (_selectedTagNames.Count == UserTagStore.Items.Count)
+    if (_selectedTagNames.Count == TagStore.Items.Count)
     {
       return "All tags selected";
     }
@@ -82,7 +82,7 @@
   {
     _selectedTagNames = tags?.ToHashSet() ?? [];
 
-    SelectedTags = UserTagStore.Items
+    SelectedTags = TagStore.Items
       .Where(x => _selectedTagNames.Contains(x.Name))
       .ToImmutableArray();
 

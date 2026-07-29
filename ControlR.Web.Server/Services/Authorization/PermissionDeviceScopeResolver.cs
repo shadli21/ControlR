@@ -13,10 +13,8 @@ namespace ControlR.Web.Server.Services.Authorization;
 /// uses), and this class only projects the resolved <c>device.read</c> allow rules into a scope.
 /// </summary>
 public class PermissionDeviceScopeResolver(
-  IPermissionRuleResolver ruleResolver,
-  IDbContextFactory<AppDb> dbContextFactory) : IDeviceAccessScopeResolver
+  IPermissionRuleResolver ruleResolver) : IDeviceAccessScopeResolver
 {
-  private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly IPermissionRuleResolver _ruleResolver = ruleResolver;
 
   public async Task<DeviceAccessScope> Resolve(
@@ -52,21 +50,6 @@ public class PermissionDeviceScopeResolver(
 
     if (deviceReadAllows.Count == 0)
     {
-      // Bridge fallback (removed with the tag model in Increment B): users with tag associations
-      // but no permission assignments retain tag-based device access until tags are deleted.
-      if (PermissionRuleResolver.ResolvePrincipalKind(principal.PrincipalType) == PermissionPrincipalKind.User)
-      {
-        await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var tagIds = await db.Users
-          .Where(x => x.Id == principal.PrincipalId && x.TenantId == tenantId)
-          .SelectMany(x => x.Tags!.Select(tag => tag.Id))
-          .ToListAsync(cancellationToken);
-
-        return tagIds.Count == 0
-          ? DeviceAccessScope.None()
-          : DeviceAccessScope.TaggedDevices(tagIds);
-      }
-
       return DeviceAccessScope.None();
     }
 

@@ -63,7 +63,7 @@
         Customers
       </MudNavLink>
     </AuthorizeView>
-    <AuthorizeView Policy="@(PolicyNames.RequireTagsRead)">
+    <AuthorizeView Policy="@(PolicyNames.RequireTagsWrite)">
       <MudNavLink Href="@(ClientRoutes.Tags)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.NewLabel">
         Device Tags
       </MudNavLink>
@@ -166,7 +166,7 @@
     PermissionNames.TenantUserGroupsRead,
     PermissionNames.TenantDeviceGroupsRead,
     PermissionNames.TenantCustomersRead,
-    PermissionNames.TenantTagsRead,
+    PermissionNames.TenantTagsWrite,
     PermissionNames.ServiceAccountRead,
     PermissionNames.TenantSettingsRead,
   ];

@@ -63,10 +63,10 @@ public partial class Dashboard : IAsyncDisposable
   public required ISnackbar Snackbar { get; init; }
 
   [Inject]
-  public required IUserPreferencesProvider UserPreferences { get; init; }
+  public required ITagStore TagStore { get; init; }
 
   [Inject]
-  public required IUserTagStore UserTagStore { get; init; }
+  public required IUserPreferencesProvider UserPreferences { get; init; }
 
   [Inject]
   public required IDeviceContentWindowStore WindowStore { get; init; }
@@ -110,19 +110,19 @@ public partial class Dashboard : IAsyncDisposable
       _hideOfflineDevices = preferences.HideOfflineDevices;
       _openDeviceInNewTab = preferences.OpenDeviceInNewTab;
 
-      if (UserTagStore.Items.Count == 0)
+      if (TagStore.Items.Count == 0)
       {
-        await UserTagStore.Refresh();
+        await TagStore.Refresh();
       }
 
-      if (UserTagStore.Items.Count == 0)
+      if (TagStore.Items.Count == 0)
       {
         _selectedTags = [];
         _includeUntaggedDevices = true;
       }
       else
       {
-        _selectedTags = [.. UserTagStore.Items];
+        _selectedTags = [.. TagStore.Items];
         _includeUntaggedDevices = preferences.IncludeUntaggedDevices;
       }
 

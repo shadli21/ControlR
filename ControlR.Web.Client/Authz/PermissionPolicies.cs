@@ -35,7 +35,6 @@ public static class PermissionPolicies
       [PolicyNames.RequireServiceAccountRead] = PermissionNames.ServiceAccountRead,
       [PolicyNames.RequireServiceAccountRotateCredentials] = PermissionNames.ServiceAccountRotateCredentials,
       [PolicyNames.RequireServiceAccountWrite] = PermissionNames.ServiceAccountWrite,
-      [PolicyNames.RequireTagsRead] = PermissionNames.TenantTagsRead,
       [PolicyNames.RequireTagsWrite] = PermissionNames.TenantTagsWrite,
       [PolicyNames.RequireTenantSettingsRead] = PermissionNames.TenantSettingsRead,
       [PolicyNames.RequireTenantSettingsWrite] = PermissionNames.TenantSettingsWrite,

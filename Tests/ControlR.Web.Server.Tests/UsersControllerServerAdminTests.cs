@@ -31,8 +31,7 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
       UserName: "evil",
       Email: "evil@t.local",
       Password: "P@ssw0rd!",
-      PresetNames: [PermissionPresets.ServerAdministrator],
-      TagIds: null);
+      PresetNames: [PermissionPresets.ServerAdministrator]);
 
     var result = await controller.Create(
       services.GetRequiredService<AppDb>(),
@@ -61,8 +60,7 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
       UserName: "super",
       Email: "super@t.local",
       Password: "P@ssw0rd!",
-      PresetNames: [PermissionPresets.ServerAdministrator],
-      TagIds: null);
+      PresetNames: [PermissionPresets.ServerAdministrator]);
 
     var result = await controller.Create(
       services.GetRequiredService<AppDb>(),

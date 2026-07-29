@@ -99,31 +99,25 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task Create_CreatesUser_WithPresetsAndTags()
+  public async Task Create_CreatesUser_WithPresets()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
 
-    // Arrange: create tenant, admin user and a tag to assign.
+    // Arrange: create tenant and admin user.
     using var scope = testApp.CreateScope();
     var services = scope.ServiceProvider;
-    var (controller, tenant, _) = await scope.CreateControllerWithTestData<UsersController>(
+    var (controller, _, _) = await scope.CreateControllerWithTestData<UsersController>(
       "Tenant1",
       "admin@t.local",
       RoleNames.TenantAdministrator);
 
     await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
 
-    // create a tag to assign
-    var tagId = Guid.NewGuid();
-    db.Tags.Add(new Tag { Id = tagId, Name = "Tag1", TenantId = tenant.Id });
-    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
     var request = new InternalDtos.CreateUserRequestDto(
       "newuser",
       "newuser@t.local",
       "P@ssw0rd!",
-      [PermissionPresets.DeviceSuperUser],
-      [tagId]);
+      [PermissionPresets.DeviceSuperUser]);
 
     // Act
     var result = await controller.Create(
@@ -135,14 +129,11 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
     // Assert
     Assert.IsType<CreatedAtActionResult>(result.Result);
 
-    // Verify user exists and has the preset's permissions and the tag.
+    // Verify user exists and has the preset's permissions.
     var createdUser = await db.Users
-      .Include(appUser => appUser.Tags)
       .FirstOrDefaultAsync(u => u.Email == "newuser@t.local", TestContext.Current.CancellationToken);
 
     Assert.NotNull(createdUser);
-    Assert.NotNull(createdUser.Tags);
-    Assert.Contains(createdUser.Tags, t => t.Id == tagId);
 
     var hasDeviceRead = await db.PermissionAssignments.AnyAsync(
       x => x.PrincipalId == createdUser.Id && x.PermissionName == PermissionNames.DeviceRead,
@@ -164,36 +155,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
       "nouser",
       "nouser@t.local",
       "P@ssw0rd!",
-      ["Nonexistent Preset"],
-      null);
-
-    var result = await controller.Create(
-      services.GetRequiredService<AppDb>(),
-      services.GetRequiredService<IPermissionEvaluator>(),
-      services.GetRequiredService<IUserCreator>(),
-      request);
-
-    Assert.IsType<BadRequestObjectResult>(result.Result);
-  }
-
-  [Fact]
-  public async Task Create_ReturnsBadRequest_WhenTagMissing()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
-    using var scope = testApp.CreateScope();
-    var services = scope.ServiceProvider;
-
-    var (controller, _, _) = await scope.CreateControllerWithTestData<UsersController>(
-      roles: RoleNames.TenantAdministrator);
-
-    var missingTagId = Guid.NewGuid();
-
-    var request = new InternalDtos.CreateUserRequestDto(
-      "nouser",
-      "nouser@t.local",
-      "P@ssw0rd!",
-      null,
-      [missingTagId]);
+      ["Nonexistent Preset"]);
 
     var result = await controller.Create(
       services.GetRequiredService<AppDb>(),

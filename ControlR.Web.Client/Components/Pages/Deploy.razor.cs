@@ -129,7 +129,7 @@ public partial class Deploy
     _appendInstanceId = await TenantSettingsProvider.GetAppendInstanceId();
     _instanceId = await TenantSettingsProvider.GetInstanceId();
 
-    var result = await ControlrApi.Internal.UserTags.GetAllowedTags();
+    var result = await ControlrApi.Internal.Tags.GetAllTags();
     if (result.IsSuccess)
     {
       _tags = result.Value;

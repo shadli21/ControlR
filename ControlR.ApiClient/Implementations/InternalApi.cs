@@ -31,7 +31,6 @@ internal partial class InternalApi(ControlrApi client) :
   IUsersApi,
   IUserServerSettingsApi,
   IUserStorageApi,
-  IUserTagsApi,
   IUserGroupsApi,
   IVersionApi
 {
@@ -65,6 +64,5 @@ internal partial class InternalApi(ControlrApi client) :
   public IUsersApi Users => this;
   public IUserServerSettingsApi UserServerSettings => this;
   public IUserStorageApi UserStorage => this;
-  public IUserTagsApi UserTags => this;
   public IVersionApi Version => this;
 }

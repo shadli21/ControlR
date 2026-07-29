@@ -138,35 +138,6 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_MissingTags_FailsAndCleansUp()
-    {
-        await using var testApp = await TestAppBuilder.CreateTestApp(output);
-        using var scope = testApp.CreateScope();
-        var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-        await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
-
-        var tenant = new Tenant { Name = "Test Tenant" };
-        appDb.Tenants.Add(tenant);
-        await appDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var missingTagId = Guid.NewGuid();
-
-        var result = await userCreator.CreateUser(
-            "failtags@example.com", 
-            "Password123!", 
-            tenant.Id, 
-            tagIds: [missingTagId],
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains(result.IdentityResult.Errors, e => e.Description.Contains("Tags not found"));
-
-        // Verify user was deleted
-        var user = await appDb.Users.FirstOrDefaultAsync(u => u.Email == "failtags@example.com", TestContext.Current.CancellationToken);
-        Assert.Null(user);
-    }
-
-    [Fact]
     public async Task CreateUser_NewTenant_AssignsDefaultRoles()
     {
         var config = new Dictionary<string, string?>
@@ -237,7 +208,7 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_WithPresetsAndTags_Succeeds()
+    public async Task CreateUser_WithPresets_Succeeds()
     {
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
@@ -247,11 +218,6 @@ public class UserCreatorTests(ITestOutputHelper output)
         // Create tenant
         var tenant = new Tenant { Name = "Test Tenant" };
         appDb.Tenants.Add(tenant);
-        
-        // Create tags
-        var tag1 = new Tag { Name = "Tag1", Tenant = tenant };
-        var tag2 = new Tag { Name = "Tag2", Tenant = tenant };
-        appDb.Tags.AddRange(tag1, tag2);
         await appDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var email = "complex@example.com";
@@ -260,7 +226,6 @@ public class UserCreatorTests(ITestOutputHelper output)
             "Password123!", 
             tenant.Id, 
             presetNames: [PermissionPresets.DeviceSuperUser], 
-            tagIds: [tag1.Id, tag2.Id],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Succeeded);
@@ -272,15 +237,6 @@ public class UserCreatorTests(ITestOutputHelper output)
             x => x.PrincipalId == user.Id && x.PermissionName == PermissionNames.DeviceRead,
             TestContext.Current.CancellationToken);
         Assert.True(hasDeviceRead);
-
-        // Verify tags
-        var userWithTags = await appDb.Users.Include(u => u.Tags)
-            .FirstOrDefaultAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
-        Assert.NotNull(userWithTags);
-        Assert.NotNull(userWithTags.Tags);
-        Assert.Equal(2, userWithTags.Tags.Count);
-        Assert.Contains(userWithTags.Tags, t => t.Name == "Tag1");
-        Assert.Contains(userWithTags.Tags, t => t.Name == "Tag2");
     }
 
     [Fact]

@@ -4,5 +4,4 @@ public record CreateUserRequestDto(
   string UserName,
   string? Email,
   string? Password,
-  IEnumerable<string>? PresetNames,
-  IEnumerable<Guid>? TagIds);
+  IEnumerable<string>? PresetNames);

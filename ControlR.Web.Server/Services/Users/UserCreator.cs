@@ -30,13 +30,12 @@ public interface IUserCreator
     bool isPublicRegistration = false,
     CancellationToken cancellationToken = default);
   
-  // Overload to create a user within a tenant and optionally assign permission presets and tags.
+  // Overload to create a user within a tenant and optionally assign permission presets.
   Task<CreateUserResult> CreateUser(
     string emailAddress,
     string password,
     Guid tenantId,
     IEnumerable<string>? presetNames = null,
-    IEnumerable<Guid>? tagIds = null,
     CancellationToken cancellationToken = default);
 
   // Overload for API context where NavigationManager is unavailable.
@@ -118,7 +117,6 @@ public interface IUserCreator
     string password,
     Guid tenantId,
     IEnumerable<string>? presetNames = null,
-    IEnumerable<Guid>? tagIds = null,
     CancellationToken cancellationToken = default)
   {
     var result = await CreateUserImpl(
@@ -150,27 +148,6 @@ public interface IUserCreator
       }
 
       await PermissionPresets.SeedAssignmentsAsync(_appDb, user.Id, user.TenantId, presetNames, cancellationToken);
-    }
-
-    // Assign tags if provided
-    if (tagIds?.Any() == true)
-    {
-      var tags = await _appDb.Tags.Where(t => tagIds.Contains(t.Id)).ToListAsync(cancellationToken: cancellationToken);
-      var foundTagIds = tags.Select(t => t.Id).ToHashSet();
-      var missingTagIds = tagIds.Except(foundTagIds).ToList();
-      if (missingTagIds.Count != 0)
-      {
-        await _userManager.DeleteAsync(user);
-        var err = new IdentityError { Description = $"Tags not found: {string.Join(',', missingTagIds)}." };
-        return new CreateUserResult(false, IdentityResult.Failed(err));
-      }
-
-      if (tags.Count != 0)
-      {
-        user.Tags = tags;
-        _appDb.Users.Update(user);
-        await _appDb.SaveChangesAsync(cancellationToken);
-      }
     }
 
     return new CreateUserResult(true, result.IdentityResult, user);

@@ -1,10 +1,10 @@
 ﻿namespace ControlR.Web.Client.StateManagement.Stores;
 
-public interface IAdminTagStore : IStoreBase<TagViewModel>
+public interface ITagStore : IStoreBase<TagViewModel>
 { }
 
-public class AdminTagStore(IControlrApi controlrApi, ISnackbar snackbar, ILogger<AdminTagStore> logger)
-  : StoreBase<TagViewModel>(controlrApi, snackbar, logger), IAdminTagStore
+public class TagStore(IControlrApi controlrApi, ISnackbar snackbar, ILogger<TagStore> logger)
+  : StoreBase<TagViewModel>(controlrApi, snackbar, logger), ITagStore
 {
   protected override Guid GetItemId(TagViewModel dto)
   {

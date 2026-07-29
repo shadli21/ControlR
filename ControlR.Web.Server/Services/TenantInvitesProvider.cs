@@ -79,7 +79,7 @@ public class TenantInvitesProvider(
     }
 
     // Clear only UserRoles and Tags when moving to new tenant
-    var trackedUser = await ClearUserRolesAndTags(appDb, invitee.Id);
+    var trackedUser = await ClearUserRoles(appDb, invitee.Id);
 
     // Update tenant ID on the tracked entity
     trackedUser.TenantId = invite.TenantId;
@@ -186,7 +186,7 @@ public class TenantInvitesProvider(
       .ToArrayAsync();
   }
 
-  private async Task<AppUser> ClearUserRolesAndTags(AppDb appDb, Guid userId)
+  private async Task<AppUser> ClearUserRoles(AppDb appDb, Guid userId)
   {
     // Remove UserRoles
     var userRoles = await appDb.UserRoles
@@ -195,20 +195,13 @@ public class TenantInvitesProvider(
 
     appDb.UserRoles.RemoveRange(userRoles);
 
-    // Remove Tags
     var user = await appDb.Users
       .IgnoreQueryFilters()
-      .Include(u => u.Tags)
       .FirstOrDefaultAsync(u => u.Id == userId);
 
     if (user is null)
     {
       throw new InvalidOperationException($"User with ID {userId} not found.");
-    }
-
-    if (user.Tags is not null)
-    {
-      user.Tags.Clear();
     }
 
     return user;

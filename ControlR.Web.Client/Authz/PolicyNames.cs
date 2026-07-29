@@ -28,7 +28,6 @@ public static class PolicyNames
   public const string RequireServiceAccountRead = "RequireServiceAccountRead";
   public const string RequireServiceAccountRotateCredentials = "RequireServiceAccountRotateCredentials";
   public const string RequireServiceAccountWrite = "RequireServiceAccountWrite";
-  public const string RequireTagsRead = "RequireTagsRead";
   public const string RequireTagsWrite = "RequireTagsWrite";
   public const string RequireTenantSettingsRead = "RequireTenantSettingsRead";
   public const string RequireTenantSettingsWrite = "RequireTenantSettingsWrite";

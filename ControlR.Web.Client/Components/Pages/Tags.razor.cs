@@ -16,7 +16,7 @@ public partial class Tags : ComponentBase
   public required ISnackbar Snackbar { get; init; }
 
   [Inject]
-  public required IAdminTagStore TagStore { get; init; }
+  public required ITagStore TagStore { get; init; }
 
   protected override async Task OnInitializedAsync()
   {

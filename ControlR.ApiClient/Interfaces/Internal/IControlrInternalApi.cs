@@ -30,6 +30,5 @@ public interface IControlrInternalApi
   IUsersApi Users { get; }
   IUserServerSettingsApi UserServerSettings { get; }
   IUserStorageApi UserStorage { get; }
-  IUserTagsApi UserTags { get; }
   IVersionApi Version { get; }
 }

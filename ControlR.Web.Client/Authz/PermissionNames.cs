@@ -58,7 +58,6 @@ public static class PermissionNames
   public const string TenantRead = "tenant.read";
   public const string TenantSettingsRead = "tenant.settings.read";
   public const string TenantSettingsWrite = "tenant.settings.write";
-  public const string TenantTagsRead = "tenant.tags.read";
   public const string TenantTagsWrite = "tenant.tags.write";
   public const string TenantUserGroupsRead = "tenant.user-groups.read";
   public const string TenantUserGroupsWrite = "tenant.user-groups.write";

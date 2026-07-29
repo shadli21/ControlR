@@ -61,7 +61,6 @@ public class TagsController : ControllerBase
   }
 
   [HttpGet]
-  [Authorize(Policy = PolicyNames.RequireTagsRead)]
   public async Task<ActionResult<InternalDtos.TagResponseDto[]>> GetAllTags(
     [FromServices] AppDb appDb,
     [FromQuery] bool includeLinkedIds = false)
@@ -78,7 +77,6 @@ public class TagsController : ControllerBase
     if (includeLinkedIds)
     {
       query = query
-        .Include(x => x.Users)
         .Include(x => x.Devices);
     }
 

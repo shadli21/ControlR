@@ -15,7 +15,7 @@ namespace ControlR.Web.Server.Tests;
 public class InviteAcceptanceTests(ITestOutputHelper testOutput)
 {
   [Fact]
-  public async Task AcceptInvite_ClearsOnlyUserRolesAndTags_RetainsTokensAndPreferences()
+  public async Task AcceptInvite_ClearsOnlyUserRoles_RetainsTokensAndPreferences()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(testOutput, useInMemoryDatabase: false);
 
@@ -48,61 +48,6 @@ public class InviteAcceptanceTests(ITestOutputHelper testOutput)
       await userManager.DeleteAsync(tempUserResult.User);
     }
 
-    // Step 3: Create tags for Tenant A
-    using (var scope = testApp.CreateScope())
-    {
-      var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDb>>();
-      await using var db = await dbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
-
-      db.Tags.Add(new Tag
-      {
-        Id = Guid.NewGuid(),
-        Name = "TenantA-Tag1",
-        Type = TagType.Permission,
-        TenantId = tenantAId
-      });
-
-      db.Tags.Add(new Tag
-      {
-        Id = Guid.NewGuid(),
-        Name = "TenantA-Tag2",
-        Type = TagType.Permission,
-        TenantId = tenantAId
-      });
-
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    // Step 4: Create tags for Tenant B
-    Guid tenantBTag1Id;
-    Guid tenantBTag2Id;
-    using (var scope = testApp.CreateScope())
-    {
-      var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDb>>();
-      await using var db = await dbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
-
-      tenantBTag1Id = Guid.NewGuid();
-      tenantBTag2Id = Guid.NewGuid();
-
-      db.Tags.Add(new Tag
-      {
-        Id = tenantBTag1Id,
-        Name = "TenantB-Tag1",
-        Type = TagType.Permission,
-        TenantId = tenantBId
-      });
-
-      db.Tags.Add(new Tag
-      {
-        Id = tenantBTag2Id,
-        Name = "TenantB-Tag2",
-        Type = TagType.Permission,
-        TenantId = tenantBId
-      });
-
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
     // Step 5: AdminUser invites User2 to Tenant A (this creates user2 in Tenant A)
     using (var scope = testApp.CreateScope())
     {
@@ -130,7 +75,7 @@ public class InviteAcceptanceTests(ITestOutputHelper testOutput)
       user2Id = user2.Id;
     }
 
-    // Step 6: Move user2 to Tenant B and assign tags, preferences, and tokens
+    // Step 6: Move user2 to Tenant B and assign preferences and tokens
     using (var scope = testApp.CreateScope())
     {
       var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDb>>();
@@ -139,18 +84,8 @@ public class InviteAcceptanceTests(ITestOutputHelper testOutput)
       // Move user2 to Tenant B
       var user2 = await db.Users
         .IgnoreQueryFilters()
-        .Include(u => u.Tags)
         .FirstAsync(u => u.Id == user2Id, cancellationToken: TestContext.Current.CancellationToken);
       user2.TenantId = tenantBId;
-
-      // Assign tags from Tenant B
-      var tag1 = await db.Tags.IgnoreQueryFilters().FirstAsync(t => t.Id == tenantBTag1Id, cancellationToken: TestContext.Current.CancellationToken);
-      var tag2 = await db.Tags.IgnoreQueryFilters().FirstAsync(t => t.Id == tenantBTag2Id, cancellationToken: TestContext.Current.CancellationToken);
-      user2.Tags =
-      [
-        tag1,
-        tag2
-      ];
 
       // Create preferences in Tenant B
       db.UserPreferences.Add(new UserPreference
@@ -213,7 +148,6 @@ public class InviteAcceptanceTests(ITestOutputHelper testOutput)
       // User2 should be in Tenant A
       var user2Final = await db.Users
         .IgnoreQueryFilters()
-        .Include(u => u.Tags)
         .Include(u => u.UserPreferences)
         .Include(u => u.PersonalAccessTokens)
         .Include(u => u.UserRoles)
@@ -221,9 +155,8 @@ public class InviteAcceptanceTests(ITestOutputHelper testOutput)
 
       Assert.Equal(tenantAId, user2Final.TenantId);
       
-      // Only UserRoles and Tags should be cleared
+      // Only UserRoles should be cleared
       Assert.Empty(user2Final.UserRoles ?? []);
-      Assert.Empty(user2Final.Tags ?? []);
       
       // PersonalAccessTokens and UserPreferences should be retained
       Assert.Equal(2, user2Final.PersonalAccessTokens?.Count ?? 0);
