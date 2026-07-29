@@ -18,6 +18,9 @@ public interface IPermissionAssignmentsApi
   [ApiRoute($"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/catalog", "GET")]
   Task<ApiResult<InternalDtos.PermissionCatalogEntryDto[]>> GetCatalog(CancellationToken cancellationToken = default);
 
+  [ApiRoute($"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/presets", "GET")]
+  Task<ApiResult<InternalDtos.PermissionPresetDto[]>> GetPresets(CancellationToken cancellationToken = default);
+
   [ApiRoute($"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/{{assignmentId}}", "PUT")]
   Task<ApiResult<InternalDtos.PermissionAssignmentDto>> Update(Guid assignmentId, InternalDtos.UpdatePermissionAssignmentRequestDto request, CancellationToken cancellationToken = default);
 }

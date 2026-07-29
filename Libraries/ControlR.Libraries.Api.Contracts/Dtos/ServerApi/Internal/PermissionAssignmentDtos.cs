@@ -65,3 +65,5 @@ public record EffectivePermissionQueryRequestDto(
 public record EffectivePermissionQueryResponseDto(
   bool IsAllowed,
   string? DenyReason);
+
+public record PermissionPresetDto(string Name, string[] Permissions);

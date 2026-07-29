@@ -42,6 +42,13 @@ internal partial class InternalApi
         $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/catalog", cancellationToken));
   }
 
+  async Task<ApiResult<InternalDtos.PermissionPresetDto[]>> IPermissionAssignmentsApi.GetPresets(CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+      await _client.HttpClient.GetFromJsonAsync<InternalDtos.PermissionPresetDto[]>(
+        $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/presets", cancellationToken));
+  }
+
   async Task<ApiResult<InternalDtos.EffectivePermissionQueryResponseDto>> IEffectivePermissionsApi.Query(InternalDtos.EffectivePermissionQueryRequestDto request, CancellationToken cancellationToken)
   {
     return await _client.ExecuteApiCall(async () =>

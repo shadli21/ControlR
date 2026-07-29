@@ -4093,6 +4093,75 @@
         ]
       }
     },
+    "/api/permission-assignments/presets": {
+      "get": {
+        "tags": [
+          "PermissionAssignments"
+        ],
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionPresetDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionPresetDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionPresetDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
     "/api/personal-access-tokens": {
       "post": {
         "tags": [
@@ -11166,6 +11235,24 @@
       },
       "PermissionEffect": {
         "type": "integer"
+      },
+      "PermissionPresetDto": {
+        "required": [
+          "name",
+          "permissions"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
       "PermissionPrincipalKind": {
         "type": "integer"

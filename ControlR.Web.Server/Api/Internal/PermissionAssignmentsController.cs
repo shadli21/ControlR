@@ -94,6 +94,18 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     return Ok(entries);
   }
 
+  [HttpGet("presets")]
+  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
+  public ActionResult<IReadOnlyList<InternalDtos.PermissionPresetDto>> GetPresets()
+  {
+    var presets = PermissionPresets.All
+      .Select(p => new InternalDtos.PermissionPresetDto(p.Key, [.. p.Value]))
+      .OrderBy(p => p.Name)
+      .ToList();
+
+    return Ok(presets);
+  }
+
   [HttpPut("{assignmentId:guid}")]
   [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<ActionResult<InternalDtos.PermissionAssignmentDto>> Update(

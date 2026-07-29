@@ -4,13 +4,10 @@
 
 @if (IsPrincipalLocked)
 {
-  <MudPaper Class="pa-3 mb-3">
+  <MudPaper Class="pa-3 mb-3" Elevation="2">
     <MudGrid Spacing="2">
       <MudItem xs="12" md="3">
-        <MudSelect T="PermissionPrincipalKind"
-                   Value="_principalKind"
-                   Label="Principal Kind"
-                   Disabled="true">
+        <MudSelect T="PermissionPrincipalKind" Value="_principalKind" Label="Principal Kind" Disabled="true">
           <MudSelectItem Value="@(PermissionPrincipalKind.User)">User</MudSelectItem>
           <MudSelectItem Value="@(PermissionPrincipalKind.UserGroup)">User Group</MudSelectItem>
           <MudSelectItem Value="@(PermissionPrincipalKind.ServiceAccount)">Service Account</MudSelectItem>
@@ -18,9 +15,7 @@
         </MudSelect>
       </MudItem>
       <MudItem xs="12" md="9">
-        <PrincipalAutocomplete PrincipalKind="_principalKind"
-                               SelectedId="_selectedPrincipalId"
-                               Label="Principal"
+        <PrincipalAutocomplete PrincipalKind="_principalKind" SelectedId="_selectedPrincipalId" Label="Principal"
                                Disabled="true" />
       </MudItem>
     </MudGrid>
@@ -28,12 +23,10 @@
 }
 else
 {
-  <MudPaper Class="pa-3 mb-3">
+  <MudPaper Class="pa-3 mb-3" Elevation="2">
     <MudGrid Spacing="2">
       <MudItem xs="12" md="3">
-        <MudSelect T="PermissionPrincipalKind"
-                   Value="_principalKind"
-                   ValueChanged="OnPrincipalKindChanged"
+        <MudSelect T="PermissionPrincipalKind" Value="_principalKind" ValueChanged="OnPrincipalKindChanged"
                    Label="Principal Kind">
           <MudSelectItem Value="@(PermissionPrincipalKind.User)">User</MudSelectItem>
           <MudSelectItem Value="@(PermissionPrincipalKind.UserGroup)">User Group</MudSelectItem>
@@ -42,28 +35,57 @@ else
         </MudSelect>
       </MudItem>
       <MudItem xs="12" md="9">
-        <PrincipalAutocomplete PrincipalKind="_principalKind"
-                               SelectedId="_selectedPrincipalId"
-                               SelectedIdChanged="OnPrincipalIdChanged"
-                               Label="Principal" />
+        <PrincipalAutocomplete PrincipalKind="_principalKind" SelectedId="_selectedPrincipalId"
+                               SelectedIdChanged="OnPrincipalIdChanged" Label="Principal" />
       </MudItem>
     </MudGrid>
   </MudPaper>
 }
 
-<MudDataGrid T="InternalDtos.PermissionAssignmentDto"
-             Items="_assignments"
-             Hover="true"
-             Dense="true"
-             Loading="_loading">
+<MudPaper Class="pa-3 mb-3" Elevation="2">
+  <MudText Typo="Typo.subtitle2" Class="mb-2">Presets</MudText>
+  <MudGrid Spacing="2" Justify="Justify.FlexEnd">
+    <MudItem xs="12" md="6">
+      <MudSelect T="string" MultiSelection="true" SelectedValues="_selectedPresetNames"
+                 SelectedValuesChanged="OnPresetSelectionChanged" Label="Permission Presets" Dense="true">
+        @foreach (var preset in _presets)
+        {
+          <MudSelectItem T="string" Value="@preset.Name">@preset.Name</MudSelectItem>
+        }
+      </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="6">
+      <MudSelect T="PermissionScopeKind" @bind-Value="_presetScopeKind" Label="Scope Kind" Dense="true">
+        <MudSelectItem Value="PermissionScopeKind.Server">Server</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.Tenant">Tenant</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.Device">Device</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.DeviceGroup">Device Group</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.CustomerTenant">Customer</MudSelectItem>
+      </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="6">
+      <MudSelect T="PresetApplyMode" @bind-Value="_presetMode" Label="Mode" Dense="true">
+        <MudSelectItem Value="PresetApplyMode.Merge">Merge</MudSelectItem>
+        <MudSelectItem Value="PresetApplyMode.Replace">Replace</MudSelectItem>
+      </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="6">
+      <ScopeAutocomplete ScopeKind="_presetScopeKind" @bind-SelectedId="_presetScopeId" Label="Scope" />
+    </MudItem>
+    <MudItem xs="12" md="6">
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyPresets"
+                 Disabled="@(!_selectedPresetNames.Any() || _selectedPrincipalId is null)" FullWidth="true">
+        Apply Presets
+      </MudButton>
+    </MudItem>
+  </MudGrid>
+</MudPaper>
+
+<MudDataGrid T="InternalDtos.PermissionAssignmentDto" Items="_assignments" Hover="true" Dense="true" Loading="_loading">
   <ToolBarContent>
     <MudSpacer />
-    <MudButton Variant="Variant.Outlined"
-               Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
-               OnClick="CreateAssignment"
-               Size="Size.Small"
-               Disabled="@(_selectedPrincipalId is null)">
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="CreateAssignment" Size="Size.Small" Disabled="@(_selectedPrincipalId is null)">
       New Assignment
     </MudButton>
   </ToolBarContent>
@@ -83,10 +105,8 @@ else
     </TemplateColumn>
     <TemplateColumn Title="Enabled" Sortable="true" SortBy="@(x => x.IsEnabled)">
       <CellTemplate>
-        <MudSwitch T="bool"
-                   Value="context.Item.IsEnabled"
-                   ValueChanged="@((enabled) => ToggleEnabled(context.Item, enabled))"
-                   Color="Color.Primary"
+        <MudSwitch T="bool" Value="context.Item.IsEnabled"
+                   ValueChanged="@((enabled) => ToggleEnabled(context.Item, enabled))" Color="Color.Primary"
                    Disabled="@_togglingIds.Contains(context.Item.Id)" />
       </CellTemplate>
     </TemplateColumn>
@@ -97,27 +117,20 @@ else
           var hasNotes = !string.IsNullOrWhiteSpace(notes);
         }
         <MudTooltip Text="@(hasNotes ? "Show notes" : "Notes are empty")" Placement="Placement.Left">
-          <MudIconButton Icon="@Icons.Material.Filled.Info"
-                         Color="@(hasNotes ? Color.Info : Color.Default)"
-                         Size="Size.Small"
-                         Disabled="@(!hasNotes)"
-                         OnClick="@(() => ShowNotes(notes))" />
+          <MudIconButton Icon="@Icons.Material.Filled.Info" Color="@(hasNotes ? Color.Info : Color.Default)"
+                         Size="Size.Small" Disabled="@(!hasNotes)" OnClick="@(() => ShowNotes(notes))" />
         </MudTooltip>
       </CellTemplate>
     </TemplateColumn>
     <TemplateColumn Title="" Sortable="false" Filterable="false">
       <CellTemplate>
-        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                 Color="Color.Info"
-                 AnchorOrigin="Origin.BottomLeft"
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft"
                  TransformOrigin="Origin.TopRight">
-          <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                       IconColor="Color.Info"
+          <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info"
                        OnClick="@(() => EditAssignment(context.Item))">
             Edit
           </MudMenuItem>
-          <MudMenuItem Icon="@Icons.Material.Filled.Delete"
-                       IconColor="Color.Error"
+          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
                        OnClick="@(() => DeleteAssignment(context.Item))">
             Delete
           </MudMenuItem>

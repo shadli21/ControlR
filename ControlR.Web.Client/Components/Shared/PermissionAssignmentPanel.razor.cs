@@ -8,7 +8,12 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   private InternalDtos.PermissionAssignmentDto[]? _assignments;
   private bool _loading;
+  private PresetApplyMode _presetMode = PresetApplyMode.Merge;
+  private InternalDtos.PermissionPresetDto[] _presets = [];
+  private Guid? _presetScopeId;
+  private PermissionScopeKind _presetScopeKind = PermissionScopeKind.Tenant;
   private PermissionPrincipalKind _principalKind = PermissionPrincipalKind.User;
+  private IReadOnlyCollection<string> _selectedPresetNames = [];
   private Guid? _selectedPrincipalId;
 
   [Inject]
@@ -31,9 +36,18 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
-    if (firstRender && IsPrincipalLocked && _selectedPrincipalId is not null)
+    if (firstRender)
     {
-      await LoadAssignments();
+      var presetsResult = await ControlrApi.Internal.PermissionAssignments.GetPresets();
+      if (presetsResult.IsSuccess)
+      {
+        _presets = presetsResult.Value;
+      }
+
+      if (IsPrincipalLocked && _selectedPrincipalId is not null)
+      {
+        await LoadAssignments();
+      }
     }
   }
 
@@ -44,6 +58,77 @@ public partial class PermissionAssignmentPanel : ComponentBase
       _principalKind = kind;
       _selectedPrincipalId = id;
     }
+  }
+
+  private async Task ApplyPresets()
+  {
+    if (_selectedPrincipalId is null || !_selectedPresetNames.Any())
+    {
+      return;
+    }
+
+    var permissionNames = _selectedPresetNames
+      .SelectMany(name => _presets.FirstOrDefault(p => p.Name == name)?.Permissions ?? [])
+      .Distinct()
+      .ToList();
+
+    if (permissionNames.Count == 0)
+    {
+      return;
+    }
+
+    if (_presetMode == PresetApplyMode.Replace)
+    {
+      var confirmed = await DialogService.ShowMessageBoxAsync(
+        "Replace Assignments",
+        $"This will replace all existing assignments with the selected preset permissions ({permissionNames.Count} permissions). Continue?",
+        "Replace", "Cancel");
+
+      if (!confirmed.GetValueOrDefault())
+      {
+        return;
+      }
+
+      await DeleteAllAssignments();
+    }
+    else
+    {
+      var existingNames = (_assignments ?? [])
+        .Where(a => a.ScopeKind == _presetScopeKind && a.ScopeId == _presetScopeId)
+        .Select(a => a.PermissionName)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+      permissionNames = permissionNames
+        .Where(p => !existingNames.Contains(p))
+        .ToList();
+
+      if (permissionNames.Count == 0)
+      {
+        Snackbar.Add("All preset permissions already assigned", Severity.Info);
+        return;
+      }
+    }
+
+    foreach (var permissionName in permissionNames)
+    {
+      var request = new InternalDtos.CreatePermissionAssignmentRequestDto(
+        _principalKind,
+        _selectedPrincipalId.Value,
+        permissionName,
+        PermissionEffect.Allow,
+        _presetScopeKind,
+        _presetScopeId,
+        null);
+
+      var result = await ControlrApi.Internal.PermissionAssignments.Create(request);
+      if (!result.IsSuccess)
+      {
+        Snackbar.Add($"Failed to assign {permissionName}: {result.Reason}", Severity.Error);
+      }
+    }
+
+    Snackbar.Add($"Applied {permissionNames.Count} permission(s)", Severity.Success);
+    await LoadAssignments();
   }
 
   private async Task CreateAssignment()
@@ -59,12 +144,34 @@ public partial class PermissionAssignmentPanel : ComponentBase
       { x => x.PrincipalId, principalId }
     };
 
-    var dialog = await DialogService.ShowAsync<PermissionAssignmentDialog>("Create Assignment", parameters);
+    var dialogOptions = new DialogOptions()
+    {
+      BackdropClick = false
+    };
+
+    var dialog = await DialogService.ShowAsync<PermissionAssignmentDialog>("Create Assignment", parameters, dialogOptions);
     var result = await dialog.Result;
 
     if (result is not null && !result.Canceled)
     {
       await LoadAssignments();
+    }
+  }
+
+  private async Task DeleteAllAssignments()
+  {
+    if (_assignments is null)
+    {
+      return;
+    }
+
+    foreach (var assignment in _assignments)
+    {
+      var result = await ControlrApi.Internal.PermissionAssignments.Delete(assignment.Id);
+      if (!result.IsSuccess)
+      {
+        Snackbar.Add($"Failed to delete {assignment.PermissionName}: {result.Reason}", Severity.Error);
+      }
     }
   }
 
@@ -100,7 +207,12 @@ public partial class PermissionAssignmentPanel : ComponentBase
       { x => x.PrincipalKind, assignment.PrincipalKind }
     };
 
-    var dialog = await DialogService.ShowAsync<PermissionAssignmentDialog>("Edit Assignment", parameters);
+    var dialogOptions = new DialogOptions()
+    {
+      BackdropClick = false
+    };
+
+    var dialog = await DialogService.ShowAsync<PermissionAssignmentDialog>("Edit Assignment", parameters, dialogOptions);
     var result = await dialog.Result;
 
     if (result is not null && !result.Canceled)
@@ -117,7 +229,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
     }
 
     _loading = true;
-    StateHasChanged();
+    await InvokeAsync(StateHasChanged);
 
     try
     {
@@ -134,8 +246,14 @@ public partial class PermissionAssignmentPanel : ComponentBase
     finally
     {
       _loading = false;
-      StateHasChanged();
+      await InvokeAsync(StateHasChanged);
     }
+  }
+
+  private async Task OnPresetSelectionChanged(IReadOnlyCollection<string> values)
+  {
+    _selectedPresetNames = values;
+    await InvokeAsync(StateHasChanged);
   }
 
   private async Task OnPrincipalIdChanged(Guid? id)
@@ -154,7 +272,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
     _principalKind = kind;
     _selectedPrincipalId = null;
     _assignments = null;
-    StateHasChanged();
+    await InvokeAsync(StateHasChanged);
 
     if (_selectedPrincipalId is not null)
     {
@@ -169,7 +287,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
       return;
     }
 
-    var dialogOptions = new DialogOptions()
+    var dialogOptions = new DialogOptions
     {
       MaxWidth = MaxWidth.Medium,
       FullWidth = true
@@ -238,5 +356,11 @@ public partial class PermissionAssignmentPanel : ComponentBase
     kind = _principalKind;
     principalId = _selectedPrincipalId.Value;
     return true;
+  }
+
+  private enum PresetApplyMode
+  {
+    Merge,
+    Replace
   }
 }
