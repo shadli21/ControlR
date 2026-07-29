@@ -10676,7 +10676,7 @@
           "userName",
           "email",
           "password",
-          "roleIds",
+          "presetNames",
           "tagIds"
         ],
         "type": "object",
@@ -10696,14 +10696,13 @@
               "string"
             ]
           },
-          "roleIds": {
+          "presetNames": {
             "type": [
               "null",
               "array"
             ],
             "items": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           },
           "tagIds": {
@@ -13171,7 +13170,7 @@
           "userName",
           "email",
           "createdAt",
-          "roles"
+          "permissions"
         ],
         "type": "object",
         "properties": {
@@ -13195,7 +13194,7 @@
             "type": "string",
             "format": "date-time"
           },
-          "roles": {
+          "permissions": {
             "type": "array",
             "items": {
               "type": "string"

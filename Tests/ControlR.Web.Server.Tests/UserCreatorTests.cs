@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Options;
@@ -110,7 +111,7 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_MissingRoles_FailsAndCleansUp()
+    public async Task CreateUser_MissingPresets_FailsAndCleansUp()
     {
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
@@ -121,17 +122,15 @@ public class UserCreatorTests(ITestOutputHelper output)
         appDb.Tenants.Add(tenant);
         await appDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var missingRoleId = Guid.NewGuid();
-
         var result = await userCreator.CreateUser(
             "fail@example.com", 
             "Password123!", 
             tenant.Id, 
-            roleIds: [missingRoleId],
+            presetNames: ["Nonexistent Preset"],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Succeeded);
-        Assert.Contains(result.IdentityResult.Errors, e => e.Description.Contains("Roles not found"));
+        Assert.Contains(result.IdentityResult.Errors, e => e.Description.Contains("Presets not found"));
 
         // Verify user was deleted
         var user = await appDb.Users.FirstOrDefaultAsync(u => u.Email == "fail@example.com", TestContext.Current.CancellationToken);
@@ -238,13 +237,12 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_WithRolesAndTags_Succeeds()
+    public async Task CreateUser_WithPresetsAndTags_Succeeds()
     {
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
         var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
         await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
 
         // Create tenant
         var tenant = new Tenant { Name = "Test Tenant" };
@@ -256,31 +254,28 @@ public class UserCreatorTests(ITestOutputHelper output)
         appDb.Tags.AddRange(tag1, tag2);
         await appDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        // Create custom role
-        var role = new AppRole { Name = "CustomRole" };
-        await roleManager.CreateAsync(role);
-
         var email = "complex@example.com";
         var result = await userCreator.CreateUser(
             email, 
             "Password123!", 
             tenant.Id, 
-            roleIds: [role.Id], 
+            presetNames: [PermissionPresets.DeviceSuperUser], 
             tagIds: [tag1.Id, tag2.Id],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Succeeded);
-        Assert.NotNull(result.User);
-        
-        // Verify roles
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-        var userRoles = await userManager.GetRolesAsync(result.User);
-        Assert.Contains("CustomRole", userRoles);
+        var user = result.User;
+        Assert.NotNull(user);
+
+        // Verify the preset's permissions were assigned.
+        var hasDeviceRead = await appDb.PermissionAssignments.AnyAsync(
+            x => x.PrincipalId == user.Id && x.PermissionName == PermissionNames.DeviceRead,
+            TestContext.Current.CancellationToken);
+        Assert.True(hasDeviceRead);
 
         // Verify tags
-        // Need to reload user with tags
         var userWithTags = await appDb.Users.Include(u => u.Tags)
-            .FirstOrDefaultAsync(u => u.Id == result.User.Id, TestContext.Current.CancellationToken);
+            .FirstOrDefaultAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
         Assert.NotNull(userWithTags);
         Assert.NotNull(userWithTags.Tags);
         Assert.Equal(2, userWithTags.Tags.Count);

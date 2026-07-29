@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Data.Enums;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Users;
 using ControlR.Libraries.Api.Contracts.Constants;
 
@@ -39,7 +42,7 @@ public class UsersController : ControllerBase
   [Authorize(Policy = PolicyNames.RequireTenantUsersWrite)]
   public async Task<ActionResult<InternalDtos.UserResponseDto>> Create(
     [FromServices] AppDb appDb,
-    [FromServices] UserManager<AppUser> userManager,
+    [FromServices] IPermissionEvaluator permissionEvaluator,
     [FromServices] IUserCreator userCreator,
     [FromBody] InternalDtos.CreateUserRequestDto request)
   {
@@ -48,31 +51,25 @@ public class UsersController : ControllerBase
       return BadRequest("User tenant not found.");
     }
 
-    var requestRoleIds = request.RoleIds?.ToArray();
-    if (requestRoleIds is { Length: > 0 } roleIds)
+    var presetNames = request.PresetNames?.ToArray();
+    if (presetNames is { Length: > 0 })
     {
-      var roles = await appDb.Roles.Where(r => roleIds.Contains(r.Id)).ToListAsync();
-      var foundRoleIds = roles.Select(r => r.Id).ToHashSet();
-      var missingRoleIds = roleIds.Except(foundRoleIds).ToList();
-      if (missingRoleIds.Count != 0)
+      var missingPresets = presetNames.Except(PermissionPresets.All.Keys).ToList();
+      if (missingPresets.Count != 0)
       {
-        return BadRequest($"Roles not found: {string.Join(',', missingRoleIds)}");
+        return BadRequest($"Presets not found: {string.Join(',', missingPresets)}");
       }
 
-      if (roles.Any(r => r.Name == RoleNames.ServerAdministrator))
+      if (presetNames.Contains(PermissionPresets.ServerAdministrator))
       {
-        if (!User.TryGetUserId(out var callerUserId))
+        var callerPrincipal = PrincipalDescriptorBuilder.FromClaims(User);
+        if (callerPrincipal is null)
         {
-          return BadRequest("Caller user id not found");
+          return BadRequest("Caller principal not found.");
         }
 
-        var callerUser = await appDb.Users.FirstOrDefaultAsync(u => u.Id == callerUserId);
-        if (callerUser == null)
-        {
-          return BadRequest("Caller user not found");
-        }
-
-        if (!await userManager.IsInRoleAsync(callerUser, RoleNames.ServerAdministrator))
+        var callerPermissions = await permissionEvaluator.GetEffectivePermissionNames(callerPrincipal, HttpContext.RequestAborted);
+        if (!callerPermissions.Contains(PermissionNames.ServerAdmin))
         {
           return Forbid();
         }
@@ -83,7 +80,7 @@ public class UsersController : ControllerBase
       string.IsNullOrWhiteSpace(request.Email) ? request.UserName : request.Email,
       request.Password ?? string.Empty,
       tenantId,
-      requestRoleIds,
+      presetNames,
       request.TagIds,
       cancellationToken: HttpContext.RequestAborted);
 
@@ -102,9 +99,16 @@ public class UsersController : ControllerBase
       .Where(x => x.Id == user.Id)
       .Select(x => x.CreatedAt)
       .FirstOrDefaultAsync();
-    var roleNames = await userManager.GetRolesAsync(user);
+    var permissions = await appDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id &&
+                  x.PrincipalKind == PermissionPrincipalKind.User &&
+                  x.Effect == PermissionEffect.Allow &&
+                  x.IsEnabled)
+      .Select(x => x.PermissionName)
+      .Distinct()
+      .ToListAsync();
 
-    var response = new InternalDtos.UserResponseDto(user.Id, user.UserName, user.Email, createdAt, [.. roleNames]);
+    var response = new InternalDtos.UserResponseDto(user.Id, user.UserName, user.Email, createdAt, [.. permissions]);
     return CreatedAtAction(nameof(GetAll), new { id = user.Id }, response);
   }
 
@@ -215,21 +219,21 @@ public class UsersController : ControllerBase
 
     var userIds = users.Select(x => x.Id).ToList();
 
-    var rolesByUser = await appDb.UserRoles
-      .Where(x => userIds.Contains(x.UserId))
-      .Join(appDb.Roles,
-        userRole => userRole.RoleId,
-        role => role.Id,
-        (userRole, role) => new { userRole.UserId, RoleName = role.Name ?? string.Empty })
+    var permissionsByUser = await appDb.PermissionAssignments
+      .Where(x => userIds.Contains(x.PrincipalId) &&
+                  x.PrincipalKind == PermissionPrincipalKind.User &&
+                  x.Effect == PermissionEffect.Allow &&
+                  x.IsEnabled)
+      .Select(x => new { x.PrincipalId, x.PermissionName })
       .ToListAsync();
 
-    var rolesLookup = rolesByUser
-      .GroupBy(x => x.UserId)
-      .ToDictionary(group => group.Key, group => group.Select(x => x.RoleName).ToList());
+    var permissionsLookup = permissionsByUser
+      .GroupBy(x => x.PrincipalId)
+      .ToDictionary(group => group.Key, group => group.Select(x => x.PermissionName).Distinct().ToList());
 
     return users
       .Select(x => new InternalDtos.UserResponseDto(
-        x.Id, x.UserName, x.Email, x.CreatedAt, rolesLookup.GetValueOrDefault(x.Id) ?? []))
+        x.Id, x.UserName, x.Email, x.CreatedAt, permissionsLookup.GetValueOrDefault(x.Id) ?? []))
       .ToList();
   }
 

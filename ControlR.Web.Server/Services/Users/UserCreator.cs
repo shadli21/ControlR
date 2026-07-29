@@ -30,12 +30,12 @@ public interface IUserCreator
     bool isPublicRegistration = false,
     CancellationToken cancellationToken = default);
   
-  // Overload to create a user within a tenant and optionally assign roles and tags.
+  // Overload to create a user within a tenant and optionally assign permission presets and tags.
   Task<CreateUserResult> CreateUser(
     string emailAddress,
     string password,
     Guid tenantId,
-    IEnumerable<Guid>? roleIds = null,
+    IEnumerable<string>? presetNames = null,
     IEnumerable<Guid>? tagIds = null,
     CancellationToken cancellationToken = default);
 
@@ -117,7 +117,7 @@ public interface IUserCreator
     string emailAddress,
     string password,
     Guid tenantId,
-    IEnumerable<Guid>? roleIds = null,
+    IEnumerable<string>? presetNames = null,
     IEnumerable<Guid>? tagIds = null,
     CancellationToken cancellationToken = default)
   {
@@ -138,36 +138,18 @@ public interface IUserCreator
       return new CreateUserResult(false, IdentityResult.Failed(new IdentityError { Description = "User creation failed. No user returned." }));
     }
 
-    // Assign roles if provided
-    if (roleIds?.Any() == true)
+    // Assign permission presets if provided.
+    if (presetNames?.Any() == true)
     {
-      var roles = await _appDb.Roles.Where(r => roleIds.Contains(r.Id)).ToListAsync(cancellationToken: cancellationToken);
-      var foundRoleIds = roles.Select(r => r.Id).ToHashSet();
-      var missingRoleIds = roleIds.Except(foundRoleIds).ToList();
-      if (missingRoleIds.Count != 0)
+      var missingPresets = presetNames.Except(PermissionPresets.All.Keys).ToList();
+      if (missingPresets.Count != 0)
       {
         await _userManager.DeleteAsync(user);
-        var err = new IdentityError { Description = $"Roles not found: {string.Join(',', missingRoleIds)}." };
+        var err = new IdentityError { Description = $"Presets not found: {string.Join(',', missingPresets)}." };
         return new CreateUserResult(false, IdentityResult.Failed(err));
       }
 
-      foreach (var role in roles)
-      {
-        if (string.IsNullOrWhiteSpace(role.Name))
-        {
-          await _userManager.DeleteAsync(user);
-          var err = new IdentityError { Description = "Role has no name configured." };
-          return new CreateUserResult(false, IdentityResult.Failed(err));
-        }
-
-        // Add mapping directly to AspNetUserRoles to avoid relying on RoleManager lookups in tests.
-        var exists = await _appDb.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleId == role.Id, cancellationToken: cancellationToken);
-        if (!exists)
-        {
-          _appDb.UserRoles.Add(new IdentityUserRole<Guid> { UserId = user.Id, RoleId = role.Id });
-          await _appDb.SaveChangesAsync(cancellationToken);
-        }
-      }
+      await PermissionPresets.SeedAssignmentsAsync(_appDb, user.Id, user.TenantId, presetNames, cancellationToken);
     }
 
     // Assign tags if provided

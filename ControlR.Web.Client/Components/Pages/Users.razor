@@ -27,12 +27,12 @@
   <Columns>
     <PropertyColumn Property="x => x.UserName" Title="Username" />
     <PropertyColumn Property="x => x.Email" Title="Email" />
-    <TemplateColumn Title="Roles" Sortable="false" Filterable="false">
+    <TemplateColumn Title="Permissions" Sortable="false" Filterable="false">
       <CellTemplate>
         <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
-          @foreach (var role in context.Item.Roles)
+          @foreach (var permission in context.Item.Permissions)
           {
-            <MudChip T="string" Size="Size.Small" Color="Color.Default">@role</MudChip>
+            <MudChip T="string" Size="Size.Small" Color="Color.Default">@permission</MudChip>
           }
         </MudStack>
       </CellTemplate>

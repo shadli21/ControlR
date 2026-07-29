@@ -1,7 +1,9 @@
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Api.Internal;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Users;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
@@ -97,11 +99,11 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task Create_CreatesUser_WithRolesAndTags()
+  public async Task Create_CreatesUser_WithPresetsAndTags()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
 
-    // Arrange: create tenant, admin user and test role/tag
+    // Arrange: create tenant, admin user and a tag to assign.
     using var scope = testApp.CreateScope();
     var services = scope.ServiceProvider;
     var (controller, tenant, _) = await scope.CreateControllerWithTestData<UsersController>(
@@ -110,12 +112,6 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
       RoleNames.TenantAdministrator);
 
     await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-
-    // create an extra role to assign using RoleManager to ensure Identity data is consistent
-    var roleId = Guid.NewGuid();
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
-    var customRole = new AppRole { Id = roleId, Name = "CustomRole" };
-    await roleManager.CreateAsync(customRole);
 
     // create a tag to assign
     var tagId = Guid.NewGuid();
@@ -126,36 +122,36 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
       "newuser",
       "newuser@t.local",
       "P@ssw0rd!",
-      [roleId],
+      [PermissionPresets.DeviceSuperUser],
       [tagId]);
 
     // Act
     var result = await controller.Create(
       services.GetRequiredService<AppDb>(),
-      services.GetRequiredService<UserManager<AppUser>>(),
+      services.GetRequiredService<IPermissionEvaluator>(),
       services.GetRequiredService<IUserCreator>(),
       request);
 
     // Assert
     Assert.IsType<CreatedAtActionResult>(result.Result);
 
-    // Verify user exists and has role and tag
+    // Verify user exists and has the preset's permissions and the tag.
     var createdUser = await db.Users
       .Include(appUser => appUser.Tags)
-      .Include(u => u.UserRoles)
-      .Include(u => u.Tags)
       .FirstOrDefaultAsync(u => u.Email == "newuser@t.local", TestContext.Current.CancellationToken);
-    
+
     Assert.NotNull(createdUser);
     Assert.NotNull(createdUser.Tags);
     Assert.Contains(createdUser.Tags, t => t.Id == tagId);
-    var userManager = services.GetRequiredService<UserManager<AppUser>>();
-    var roles = await userManager.GetRolesAsync(createdUser);
-    Assert.Contains("CustomRole", roles);
+
+    var hasDeviceRead = await db.PermissionAssignments.AnyAsync(
+      x => x.PrincipalId == createdUser.Id && x.PermissionName == PermissionNames.DeviceRead,
+      TestContext.Current.CancellationToken);
+    Assert.True(hasDeviceRead);
   }
 
   [Fact]
-  public async Task Create_ReturnsBadRequest_WhenRoleMissing()
+  public async Task Create_ReturnsBadRequest_WhenPresetMissing()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
     using var scope = testApp.CreateScope();
@@ -164,18 +160,16 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
     var (controller, _, _) = await scope.CreateControllerWithTestData<UsersController>(
       roles: RoleNames.TenantAdministrator);
 
-    var missingRoleId = Guid.NewGuid();
-
     var request = new InternalDtos.CreateUserRequestDto(
       "nouser",
       "nouser@t.local",
       "P@ssw0rd!",
-      [missingRoleId],
+      ["Nonexistent Preset"],
       null);
 
     var result = await controller.Create(
       services.GetRequiredService<AppDb>(),
-      services.GetRequiredService<UserManager<AppUser>>(),
+      services.GetRequiredService<IPermissionEvaluator>(),
       services.GetRequiredService<IUserCreator>(),
       request);
 
@@ -203,7 +197,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
 
     var result = await controller.Create(
       services.GetRequiredService<AppDb>(),
-      services.GetRequiredService<UserManager<AppUser>>(),
+      services.GetRequiredService<IPermissionEvaluator>(),
       services.GetRequiredService<IUserCreator>(),
       request);
 
