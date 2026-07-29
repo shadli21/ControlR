@@ -33,6 +33,22 @@ public record PermissionAssignmentDto(
   bool IsEnabled,
   DateTimeOffset CreatedAt);
 
+public record UpdatePermissionAssignmentRequestDto(
+  [property: Required]
+  [property: StringLength(150, MinimumLength = 1)]
+  string PermissionName,
+
+  PermissionEffect Effect,
+
+  PermissionScopeKind ScopeKind,
+
+  Guid? ScopeId,
+
+  [property: StringLength(500)]
+  string? Notes,
+
+  bool IsEnabled);
+
 public record EffectivePermissionQueryRequestDto(
   PermissionPrincipalKind PrincipalKind,
 

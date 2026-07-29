@@ -52,4 +52,15 @@ internal partial class InternalApi
       return await response.Content.ReadFromJsonAsync<InternalDtos.EffectivePermissionQueryResponseDto>(cancellationToken);
     });
   }
+
+  async Task<ApiResult<InternalDtos.PermissionAssignmentDto>> IPermissionAssignmentsApi.Update(Guid assignmentId, InternalDtos.UpdatePermissionAssignmentRequestDto request, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+    {
+      using var response = await _client.HttpClient.PutAsJsonAsync(
+        $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/{assignmentId}", request, cancellationToken);
+      await response.EnsureSuccessStatusCodeWithDetails();
+      return await response.Content.ReadFromJsonAsync<InternalDtos.PermissionAssignmentDto>(cancellationToken);
+    });
+  }
 }

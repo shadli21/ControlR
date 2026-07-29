@@ -1,17 +1,24 @@
 @using ControlR.Libraries.Api.Contracts.Enums
 @using ControlR.Web.Client.Components.Shared
+@using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal
 
 <MudDialog>
   <DialogContent>
     <MudGrid Spacing="2">
       <MudItem xs="12">
-        <MudSelect T="string" @bind-Value="_permissionName" Label="Permission" Required="true"
-                   Dense="true" MaxHeight="400">
-          @foreach (var entry in _catalog)
-          {
-            <MudSelectItem T="string" Value="@entry.Name">@entry.DisplayName (@entry.Name)</MudSelectItem>
-          }
-        </MudSelect>
+        <MudAutocomplete T="InternalDtos.PermissionCatalogEntryDto"
+                         Value="_selectedPermission"
+                         ValueChanged="HandlePermissionChanged"
+                         SearchFunc="SearchPermissions"
+                         Label="Permission"
+                         MaxItems="null"
+                         Required="true"
+                         Dense="true"
+                         MaxHeight="400"
+                         ResetValueOnEmptyText="true"
+                         CoerceText="true"
+                         CoerceValue="false"
+                         ToStringFunc="@(p => p is null ? string.Empty : $"{p.DisplayName} ({p.Name})")" />
       </MudItem>
       <MudItem xs="6">
         <MudSelect T="PermissionEffect" @bind-Value="_effect" Label="Effect">
@@ -37,10 +44,15 @@
       <MudItem xs="12">
         <MudTextField T="string" @bind-Value="_notes" Label="Notes (optional)" Sizing="@InputSizing.Auto" MaxLines="4" />
       </MudItem>
+      <MudItem xs="12">
+        <MudSwitch T="bool" @bind-Value="_isEnabled" Label="Enabled" Color="Color.Primary" />
+      </MudItem>
     </MudGrid>
   </DialogContent>
   <DialogActions>
     <MudButton OnClick="Cancel">Cancel</MudButton>
-    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Submit">Create</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Submit">
+      @(IsEdit ? "Save" : "Create")
+    </MudButton>
   </DialogActions>
 </MudDialog>

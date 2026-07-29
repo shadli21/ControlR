@@ -13,6 +13,9 @@ public partial class PrincipalAutocomplete
   public required IControlrApi ControlrApi { get; init; }
 
   [Parameter]
+  public bool Disabled { get; set; }
+
+  [Parameter]
   public string Label { get; set; } = "Principal";
 
   [Parameter]
@@ -24,11 +27,85 @@ public partial class PrincipalAutocomplete
   [Parameter]
   public EventCallback<Guid?> SelectedIdChanged { get; set; }
 
+  protected override async Task OnParametersSetAsync()
+  {
+    if (SelectedId is { } id && _selected?.Id != id)
+    {
+      _selected = await ResolveSelectedAsync(id);
+    }
+    else if (SelectedId is null)
+    {
+      _selected = null;
+    }
+
+    await base.OnParametersSetAsync();
+  }
+
   private async Task HandleValueChanged(PrincipalOption? value)
   {
     _selected = value;
     SelectedId = value?.Id;
     await SelectedIdChanged.InvokeAsync(SelectedId);
+  }
+
+  private async Task<PrincipalOption?> ResolveSelectedAsync(Guid id)
+  {
+    return PrincipalKind switch
+    {
+      PermissionPrincipalKind.User => await ResolveUser(id),
+      PermissionPrincipalKind.UserGroup => await ResolveUserGroup(id),
+      PermissionPrincipalKind.ServiceAccount => await ResolveServiceAccount(id),
+      PermissionPrincipalKind.PersonalAccessToken => await ResolvePersonalAccessToken(id),
+      _ => null
+    };
+  }
+
+  private async Task<PrincipalOption?> ResolvePersonalAccessToken(Guid id)
+  {
+    var result = await ControlrApi.Internal.PersonalAccessTokens.GetPersonalAccessTokens();
+    if (!result.IsSuccess)
+    {
+      return null;
+    }
+
+    var match = result.Value.FirstOrDefault(x => x.Id == id);
+    return match is null ? null : new PrincipalOption(match.Id, $"[PAT] {match.Name}", PermissionPrincipalKind.PersonalAccessToken);
+  }
+
+  private async Task<PrincipalOption?> ResolveServiceAccount(Guid id)
+  {
+    var result = await ControlrApi.Internal.ServiceAccounts.GetAll();
+    if (!result.IsSuccess)
+    {
+      return null;
+    }
+
+    var match = result.Value.FirstOrDefault(x => x.Id == id);
+    return match is null ? null : new PrincipalOption(match.Id, match.Name, PermissionPrincipalKind.ServiceAccount);
+  }
+
+  private async Task<PrincipalOption?> ResolveUserGroup(Guid id)
+  {
+    var result = await ControlrApi.Internal.UserGroups.GetAll();
+    if (!result.IsSuccess)
+    {
+      return null;
+    }
+
+    var match = result.Value.FirstOrDefault(x => x.Id == id);
+    return match is null ? null : new PrincipalOption(match.Id, match.Name, PermissionPrincipalKind.UserGroup);
+  }
+
+  private async Task<PrincipalOption?> ResolveUser(Guid id)
+  {
+    var result = await ControlrApi.Internal.Users.GetAllUsers();
+    if (!result.IsSuccess)
+    {
+      return null;
+    }
+
+    var match = result.Value.FirstOrDefault(x => x.Id == id);
+    return match is null ? null : new PrincipalOption(match.Id, match.UserName ?? match.Email ?? match.Id.ToString(), PermissionPrincipalKind.User);
   }
 
   private async Task<IEnumerable<PrincipalOption>> Search(string query, CancellationToken cancellationToken)
@@ -43,8 +120,22 @@ public partial class PrincipalAutocomplete
       PermissionPrincipalKind.User => await SearchUsers(query, cancellationToken),
       PermissionPrincipalKind.UserGroup => await SearchUserGroups(query, cancellationToken),
       PermissionPrincipalKind.ServiceAccount => await SearchServiceAccounts(query, cancellationToken),
+      PermissionPrincipalKind.PersonalAccessToken => await SearchPersonalAccessTokens(query, cancellationToken),
       _ => []
     };
+  }
+
+  private async Task<IEnumerable<PrincipalOption>> SearchPersonalAccessTokens(string query, CancellationToken cancellationToken)
+  {
+    var result = await ControlrApi.Internal.PersonalAccessTokens.GetPersonalAccessTokens(cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return [];
+    }
+
+    return result.Value
+      .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+      .Select(x => new PrincipalOption(x.Id, $"[PAT] {x.Name}", PermissionPrincipalKind.PersonalAccessToken));
   }
 
   private async Task<IEnumerable<PrincipalOption>> SearchServiceAccounts(string query, CancellationToken cancellationToken)

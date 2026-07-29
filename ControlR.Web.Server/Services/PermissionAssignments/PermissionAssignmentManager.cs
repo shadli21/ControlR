@@ -37,6 +37,12 @@ public interface IPermissionAssignmentManager
     Guid actorPrincipalId,
     IReadOnlyList<InternalDtos.CreatePermissionAssignmentRequestDto> assignments,
     CancellationToken cancellationToken = default);
+  Task<HttpResult<InternalDtos.PermissionAssignmentDto>> Update(
+    Guid assignmentId,
+    InternalDtos.UpdatePermissionAssignmentRequestDto request,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken = default);
 }
 
 public class PermissionAssignmentManager(
@@ -244,6 +250,62 @@ public class PermissionAssignmentManager(
     await _appDb.SaveChangesAsync(cancellationToken);
 
     return HttpResult.Ok();
+  }
+
+  public async Task<HttpResult<InternalDtos.PermissionAssignmentDto>> Update(
+    Guid assignmentId,
+    InternalDtos.UpdatePermissionAssignmentRequestDto request,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken = default)
+  {
+    var assignment = await _appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .FirstOrDefaultAsync(x => x.Id == assignmentId, cancellationToken);
+
+    if (assignment is null)
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
+        HttpResultErrorCode.NotFound, "Permission assignment not found.");
+    }
+
+    if (!PermissionCatalog.Exists(request.PermissionName))
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
+        HttpResultErrorCode.BadRequest, $"Unknown permission name: {request.PermissionName}");
+    }
+
+    if (request.ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant && !request.ScopeId.HasValue)
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
+        HttpResultErrorCode.BadRequest, $"ScopeId is required for scope kind: {request.ScopeKind}");
+    }
+
+    var before = new PermissionAssignmentSnapshot(
+      assignment.PermissionName, assignment.Effect.ToString(), assignment.ScopeKind.ToString(), assignment.ScopeId);
+
+    assignment.PermissionName = request.PermissionName;
+    assignment.Effect = request.Effect;
+    assignment.ScopeKind = request.ScopeKind;
+    assignment.ScopeId = request.ScopeId;
+    assignment.Notes = request.Notes;
+    assignment.IsEnabled = request.IsEnabled;
+    assignment.OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId;
+
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.PermissionAssignmentUpdated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      AuthorizationChangeLogTargetTypes.PermissionAssignment,
+      assignment.Id.ToString(),
+      tenantId,
+      before: before,
+      after: new PermissionAssignmentSnapshot(
+        assignment.PermissionName, assignment.Effect.ToString(), assignment.ScopeKind.ToString(), assignment.ScopeId)));
+
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok(MapToDto(assignment));
   }
 
   private static InternalDtos.PermissionAssignmentDto MapToDto(PermissionAssignment assignment)

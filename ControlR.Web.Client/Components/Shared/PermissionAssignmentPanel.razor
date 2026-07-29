@@ -1,0 +1,119 @@
+@using ControlR.Libraries.Api.Contracts.Enums
+@using ControlR.Web.Client.Components.Shared
+@using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal
+
+@if (IsPrincipalLocked)
+{
+  <MudPaper Class="pa-3 mb-3">
+    <MudGrid Spacing="2">
+      <MudItem xs="12" md="3">
+        <MudSelect T="PermissionPrincipalKind"
+                   Value="_principalKind"
+                   Label="Principal Kind"
+                   Disabled="true">
+          <MudSelectItem Value="@(PermissionPrincipalKind.User)">User</MudSelectItem>
+          <MudSelectItem Value="@(PermissionPrincipalKind.UserGroup)">User Group</MudSelectItem>
+          <MudSelectItem Value="@(PermissionPrincipalKind.ServiceAccount)">Service Account</MudSelectItem>
+          <MudSelectItem Value="@(PermissionPrincipalKind.PersonalAccessToken)">Personal Access Token</MudSelectItem>
+        </MudSelect>
+      </MudItem>
+      <MudItem xs="12" md="9">
+        <PrincipalAutocomplete PrincipalKind="_principalKind"
+                               SelectedId="_selectedPrincipalId"
+                               Label="Principal"
+                               Disabled="true" />
+      </MudItem>
+    </MudGrid>
+  </MudPaper>
+}
+else
+{
+  <MudPaper Class="pa-3 mb-3">
+    <MudGrid Spacing="2">
+      <MudItem xs="12" md="3">
+        <MudSelect T="PermissionPrincipalKind"
+                   @bind-Value="_principalKind"
+                   Label="Principal Kind">
+          <MudSelectItem Value="@(PermissionPrincipalKind.User)">User</MudSelectItem>
+          <MudSelectItem Value="@(PermissionPrincipalKind.UserGroup)">User Group</MudSelectItem>
+          <MudSelectItem Value="@(PermissionPrincipalKind.ServiceAccount)">Service Account</MudSelectItem>
+          <MudSelectItem Value="@(PermissionPrincipalKind.PersonalAccessToken)">Personal Access Token</MudSelectItem>
+        </MudSelect>
+      </MudItem>
+      <MudItem xs="12" md="6">
+        <PrincipalAutocomplete PrincipalKind="_principalKind"
+                               @bind-SelectedId="_selectedPrincipalId"
+                               Label="Principal" />
+      </MudItem>
+      <MudItem xs="12" md="3">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Search"
+                   OnClick="LoadAssignments"
+                   FullWidth="true">
+          Load Assignments
+        </MudButton>
+      </MudItem>
+    </MudGrid>
+  </MudPaper>
+}
+
+<MudDataGrid T="InternalDtos.PermissionAssignmentDto"
+             Items="_assignments"
+             Hover="true"
+             Dense="true"
+             Loading="_loading">
+  <ToolBarContent>
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="CreateAssignment"
+               Size="Size.Small">
+      New Assignment
+    </MudButton>
+  </ToolBarContent>
+  <Columns>
+    <PropertyColumn Property="x => x.PermissionName" Title="Permission" />
+    <PropertyColumn Property="x => x.Effect" Title="Effect" />
+    <TemplateColumn Title="Scope" Sortable="true" SortBy="@(x => x.ScopeKind)">
+      <CellTemplate>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+          <MudChip T="string" Size="Size.Small" Color="Color.Default">@context.Item.ScopeKind</MudChip>
+          @if (context.Item.ScopeId is { } scopeId)
+          {
+            <MudText Typo="Typo.body2">@scopeId.ToString()[..8]...</MudText>
+          }
+        </MudStack>
+      </CellTemplate>
+    </TemplateColumn>
+    <TemplateColumn Title="Enabled" Sortable="true" SortBy="@(x => x.IsEnabled)">
+      <CellTemplate>
+        <MudSwitch T="bool"
+                   Value="context.Item.IsEnabled"
+                   ValueChanged="@((enabled) => ToggleEnabled(context.Item, enabled))"
+                   Color="Color.Primary"
+                   Disabled="@_togglingIds.Contains(context.Item.Id)" />
+      </CellTemplate>
+    </TemplateColumn>
+    <TemplateColumn Title="" Sortable="false" Filterable="false">
+      <CellTemplate>
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                 Color="Color.Info"
+                 AnchorOrigin="Origin.BottomLeft"
+                 TransformOrigin="Origin.TopRight">
+          <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                       IconColor="Color.Info"
+                       OnClick="@(() => EditAssignment(context.Item))">
+            Edit
+          </MudMenuItem>
+          <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                       IconColor="Color.Error"
+                       OnClick="@(() => DeleteAssignment(context.Item))">
+            Delete
+          </MudMenuItem>
+        </MudMenu>
+      </CellTemplate>
+    </TemplateColumn>
+  </Columns>
+</MudDataGrid>

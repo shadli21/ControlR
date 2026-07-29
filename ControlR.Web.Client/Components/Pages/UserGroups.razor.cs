@@ -96,6 +96,27 @@ public partial class UserGroups : ComponentBase
     await Refresh();
   }
 
+  private async Task EditPermissions(InternalDtos.UserGroupDto group)
+  {
+    var parameters = new DialogParameters<PermissionAssignmentPanelDialog>
+    {
+      { x => x.PrincipalKind, PermissionPrincipalKind.UserGroup },
+      { x => x.PrincipalId, group.Id }
+    };
+
+    var dialogOptions = new DialogOptions
+    {
+      CloseButton = true,
+      FullWidth = true,
+      MaxWidth = MaxWidth.Large
+    };
+
+    await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
+      $"Permissions: {group.Name}",
+      parameters,
+      dialogOptions);
+  }
+
   private async Task Refresh()
   {
     _loading = true;

@@ -131,9 +131,10 @@ public partial class PersonalAccessTokens
 
   private async Task ManageScopes(PersonalAccessTokenResponseDto personalAccessToken)
   {
-    var parameters = new DialogParameters<CredentialScopeDialog>
+    var parameters = new DialogParameters<PermissionAssignmentPanelDialog>
     {
-      { x => x.CredentialId, personalAccessToken.Id }
+      { x => x.PrincipalKind, PermissionPrincipalKind.PersonalAccessToken },
+      { x => x.PrincipalId, personalAccessToken.Id }
     };
 
     var dialogOptions = new DialogOptions
@@ -143,8 +144,8 @@ public partial class PersonalAccessTokens
       MaxWidth = MaxWidth.Large
     };
 
-    await DialogService.ShowAsync<CredentialScopeDialog>(
-      $"Scopes: {personalAccessToken.Name}", parameters, dialogOptions);
+    await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
+      $"Permissions: {personalAccessToken.Name}", parameters, dialogOptions);
   }
 
   private async Task OnKeyDown(KeyboardEventArgs e)

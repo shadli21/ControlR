@@ -3935,6 +3935,93 @@
             "PersonalAccessToken": [ ]
           }
         ]
+      },
+      "put": {
+        "tags": [
+          "PermissionAssignments"
+        ],
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePermissionAssignmentRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePermissionAssignmentRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePermissionAssignmentRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionAssignmentDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionAssignmentDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionAssignmentDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
       }
     },
     "/api/permission-assignments/catalog": {
@@ -11871,6 +11958,48 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "UpdatePermissionAssignmentRequestDto": {
+        "required": [
+          "permissionName",
+          "effect",
+          "scopeKind",
+          "scopeId",
+          "notes",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "permissionName": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "effect": {
+            "$ref": "#/components/schemas/PermissionEffect"
+          },
+          "scopeKind": {
+            "$ref": "#/components/schemas/PermissionScopeKind"
+          },
+          "scopeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean"
           }
         }
       },

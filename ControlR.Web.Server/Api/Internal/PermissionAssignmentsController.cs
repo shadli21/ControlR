@@ -93,4 +93,30 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
 
     return Ok(entries);
   }
+
+  [HttpPut("{assignmentId:guid}")]
+  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  public async Task<ActionResult<InternalDtos.PermissionAssignmentDto>> Update(
+    [FromRoute] Guid assignmentId,
+    [FromBody] InternalDtos.UpdatePermissionAssignmentRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryGetTenantId(out var tenantId))
+    {
+      return BadRequest("User tenant not found.");
+    }
+
+    if (!User.TryGetUserId(out var userId))
+    {
+      return BadRequest("User ID not found.");
+    }
+
+    var result = await _permissionAssignmentManager.Update(assignmentId, request, tenantId, userId, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToHttpResult().ToActionResult();
+    }
+
+    return Ok(result.Value);
+  }
 }
