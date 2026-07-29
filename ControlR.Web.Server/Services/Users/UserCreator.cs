@@ -266,9 +266,8 @@ public interface IUserCreator
       if (isServerAdmin)
       {
         _logger.LogInformation(
-          "First user created. User: {UserName}. Assigning server administrator role.",
+          "First user created. User: {UserName}. Assigning server administrator preset.",
           user.UserName);
-        await _userManager.AddToRoleAsync(user, RoleNames.ServerAdministrator);
         await PermissionPresets.SeedAssignmentsAsync(
           _appDb, user.Id, user.TenantId, [PermissionPresets.ServerAdministrator], cancellationToken);
       }
@@ -281,17 +280,7 @@ public interface IUserCreator
 
       if (isNewTenant)
       {
-        var rolesToAdd = RoleFactory
-          .GetBuiltInRoles()
-          .Where(x => x.Name != RoleNames.ServerAdministrator)
-          .Where(x => x.Name is not null)
-          .Select(x => x.Name!)
-          .ToArray();
-
-        await _userManager.AddToRolesAsync(user, rolesToAdd);
-        var rolesString = string.Join(", ", rolesToAdd);
-        _logger.LogInformation("Assigned default roles for newly-created tenant admin user: {Roles}.", rolesString);
-
+        _logger.LogInformation("Assigning default presets for newly-created tenant admin user.");
         await PermissionPresets.SeedAssignmentsAsync(
           _appDb,
           user.Id,

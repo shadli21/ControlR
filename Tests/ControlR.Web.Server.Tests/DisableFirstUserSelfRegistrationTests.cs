@@ -4,6 +4,7 @@ using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services.Users;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlR.Web.Server.Tests;
@@ -103,9 +104,12 @@ public class DisableFirstUserSelfRegistrationTests(ITestOutputHelper testOutput)
     Assert.True(result.Succeeded);
     Assert.NotNull(result.User);
 
-    var userManager = services.GetRequiredService<UserManager<AppUser>>();
-    var roles = await userManager.GetRolesAsync(result.User!);
-    Assert.DoesNotContain(RoleNames.ServerAdministrator, roles);
+    await using var appDb = services.GetRequiredService<AppDb>();
+    var permissions = await appDb.PermissionAssignments
+      .Where(x => x.PrincipalId == result.User!.Id)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+    Assert.DoesNotContain(PermissionNames.ServerAdmin, permissions);
   }
 
   [Fact]
@@ -148,11 +152,14 @@ public class DisableFirstUserSelfRegistrationTests(ITestOutputHelper testOutput)
     Assert.True(result.Succeeded);
     Assert.NotNull(result.User);
 
-    var userManager = services.GetRequiredService<UserManager<AppUser>>();
-    var roles = await userManager.GetRolesAsync(result.User!);
+    await using var appDb = services.GetRequiredService<AppDb>();
+    var permissions = await appDb.PermissionAssignments
+      .Where(x => x.PrincipalId == result.User!.Id)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
 
-    Assert.Contains(RoleNames.ServerAdministrator, roles);
-    Assert.Contains(RoleNames.TenantAdministrator, roles);
+    Assert.Contains(PermissionNames.ServerAdmin, permissions);
+    Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
   }
 
   [Fact]

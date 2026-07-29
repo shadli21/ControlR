@@ -104,27 +104,6 @@ public static class HostExtensions
 
     logger.LogInformation("Bootstrap admin user created: {Email}.", options.AdminEmail);
 
-    // Assign all built-in roles. When new roles are added to RoleFactory,
-    // they are automatically assigned to the bootstrapped admin.
-    var builtInRoles = RoleFactory
-      .GetBuiltInRoles()
-      .Where(x => x.Name is not null)
-      .Select(x => x.Name!)
-      .ToArray();
-
-    var roleResult = await userManager.AddToRolesAsync(user, builtInRoles);
-    if (!roleResult.Succeeded)
-    {
-      foreach (var error in roleResult.Errors)
-      {
-        logger.LogError(
-          "Bootstrap role assignment error. Code: {Code}. Description: {Description}",
-          error.Code,
-          error.Description);
-      }
-      throw new InvalidOperationException($"Bootstrap admin role assignment failed: {string.Join("; ", roleResult.Errors.Select(e => e.Description))}");
-    }
-
     await PermissionPresets.SeedAssignmentsAsync(
       sp.GetRequiredService<AppDb>(),
       user.Id,

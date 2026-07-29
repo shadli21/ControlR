@@ -73,12 +73,11 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_ExistingTenant_DoesNotAssignDefaultRoles()
+    public async Task CreateUser_ExistingTenant_DoesNotAssignDefaultPresets()
     {
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
         var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
         await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
 
         // Create first user so next one isn't server admin
@@ -91,8 +90,9 @@ public class UserCreatorTests(ITestOutputHelper output)
         var result = await userCreator.CreateUser("user@example.com", "Password123!", tenant.Id);
 
         Assert.True(result.Succeeded);
-        var roles = await userManager.GetRolesAsync(result.User!);
-        Assert.Empty(roles);
+        var assignmentCount = await appDb.PermissionAssignments
+          .CountAsync(x => x.PrincipalId == result.User!.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(0, assignmentCount);
     }
 
     [Fact]
@@ -101,13 +101,16 @@ public class UserCreatorTests(ITestOutputHelper output)
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
         var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
 
         var result = await userCreator.CreateUser("admin@example.com", "Password123!", null, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Succeeded);
-        var roles = await userManager.GetRolesAsync(result.User!);
-        Assert.Contains(RoleNames.ServerAdministrator, roles);
+        var permissions = await appDb.PermissionAssignments
+          .Where(x => x.PrincipalId == result.User!.Id)
+          .Select(x => x.PermissionName)
+          .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Contains(PermissionNames.ServerAdmin, permissions);
     }
 
     [Fact]
@@ -138,7 +141,7 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_NewTenant_AssignsDefaultRoles()
+    public async Task CreateUser_NewTenant_AssignsDefaultPresets()
     {
         var config = new Dictionary<string, string?>
         {
@@ -148,7 +151,7 @@ public class UserCreatorTests(ITestOutputHelper output)
         await using var testApp = await TestAppBuilder.CreateTestApp(output, extraConfiguration: config);
         using var scope = testApp.CreateScope();
         var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
 
         // Create first user so next one isn't server admin
         await userCreator.CreateUser("admin@example.com", "Password123!", null, cancellationToken: TestContext.Current.CancellationToken);
@@ -160,11 +163,14 @@ public class UserCreatorTests(ITestOutputHelper output)
              output.WriteLine($"CreateUser failed: {string.Join(", ", result.IdentityResult.Errors.Select(e => e.Description))}");
         }
         Assert.True(result.Succeeded);
-        var roles = await userManager.GetRolesAsync(result.User!);
-        Assert.Contains(RoleNames.TenantAdministrator, roles);
-        Assert.Contains(RoleNames.DeviceSuperUser, roles);
-        Assert.Contains(RoleNames.AgentInstaller, roles);
-        Assert.DoesNotContain(RoleNames.ServerAdministrator, roles);
+        var permissions = await appDb.PermissionAssignments
+          .Where(x => x.PrincipalId == result.User!.Id)
+          .Select(x => x.PermissionName)
+          .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
+        Assert.Contains(PermissionNames.DeviceRead, permissions);
+        Assert.Contains(PermissionNames.AgentInstall, permissions);
+        Assert.DoesNotContain(PermissionNames.ServerAdmin, permissions);
     }
 
     [Fact]

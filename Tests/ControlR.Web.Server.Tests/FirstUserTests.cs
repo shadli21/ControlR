@@ -20,7 +20,7 @@ public class FirstUserTests(ITestOutputHelper output)
   private const string AdminPassword = "FirstUserPass1!";
 
   [Fact]
-  public async Task Bootstrap_CreatesFirstUserWithAllRoles()
+  public async Task Bootstrap_CreatesFirstUserWithAllPresets()
   {
     var config = new Dictionary<string, string?>
     {
@@ -38,7 +38,6 @@ public class FirstUserTests(ITestOutputHelper output)
 
     using var scope = testApp.CreateScope();
     await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
 
     var user = await appDb.Users
       .IgnoreQueryFilters()
@@ -49,16 +48,19 @@ public class FirstUserTests(ITestOutputHelper output)
     Assert.NotEqual(Guid.Empty, user.TenantId);
     Assert.True(user.EmailConfirmed);
 
-    var roles = await userManager.GetRolesAsync(user);
-    Assert.Contains(RoleNames.ServerAdministrator, roles);
-    Assert.Contains(RoleNames.TenantAdministrator, roles);
-    Assert.Contains(RoleNames.DeviceSuperUser, roles);
-    Assert.Contains(RoleNames.AgentInstaller, roles);
-    Assert.Contains(RoleNames.InstallerKeyManager, roles);
+    var permissions = await appDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+    Assert.Contains(PermissionNames.ServerAdmin, permissions);
+    Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
+    Assert.Contains(PermissionNames.DeviceRead, permissions);
+    Assert.Contains(PermissionNames.AgentInstall, permissions);
+    Assert.Contains(PermissionNames.InstallerKeyRead, permissions);
   }
 
   [Fact]
-  public async Task PublicRegistration_CreatesFirstUserWithAllRoles()
+  public async Task PublicRegistration_CreatesFirstUserWithAllPresets()
   {
     var config = new Dictionary<string, string?>
     {
@@ -83,18 +85,21 @@ public class FirstUserTests(ITestOutputHelper output)
 
     Assert.True(result.Succeeded);
 
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+    await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
     var user = result.User;
 
     Assert.NotNull(user);
     Assert.Equal(AdminEmail, user.UserName);
     Assert.NotEqual(Guid.Empty, user.TenantId);
 
-    var roles = await userManager.GetRolesAsync(user);
-    Assert.Contains(RoleNames.ServerAdministrator, roles);
-    Assert.Contains(RoleNames.TenantAdministrator, roles);
-    Assert.Contains(RoleNames.DeviceSuperUser, roles);
-    Assert.Contains(RoleNames.AgentInstaller, roles);
-    Assert.Contains(RoleNames.InstallerKeyManager, roles);
+    var permissions = await appDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+    Assert.Contains(PermissionNames.ServerAdmin, permissions);
+    Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
+    Assert.Contains(PermissionNames.DeviceRead, permissions);
+    Assert.Contains(PermissionNames.AgentInstall, permissions);
+    Assert.Contains(PermissionNames.InstallerKeyRead, permissions);
   }
 }
