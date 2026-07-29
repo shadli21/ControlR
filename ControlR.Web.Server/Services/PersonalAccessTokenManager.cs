@@ -47,18 +47,6 @@ public interface IPersonalAccessTokenManager
   Task<IEnumerable<InternalDtos.PersonalAccessTokenResponseDto>> GetForUser(Guid userId);
 
   /// <summary>
-  /// Retrieves the current scopes for a personal access token.
-  /// </summary>
-  Task<Result<IReadOnlyList<InternalDtos.CredentialScopeDto>>> GetScopes(Guid tokenId, Guid userId);
-
-  /// <summary>
-  /// Replaces the scopes on a personal access token. Validates that all
-  /// requested scopes are within the owning user's effective permissions.
-  /// Writes AuthorizationChangeLog entries for added and removed rows.
-  /// </summary>
-  Task<Result> SetScopes(Guid tokenId, Guid userId, List<InternalDtos.CredentialScopeDto> scopes);
-
-  /// <summary>
   /// Updates a personal access token's name.
   /// </summary>
   /// <param name="id">The ID of the token to update.</param>
@@ -186,120 +174,6 @@ public class PersonalAccessTokenManager(
     return personalAccessTokens.Select(MapToDto);
   }
 
-  public async Task<Result<IReadOnlyList<InternalDtos.CredentialScopeDto>>> GetScopes(Guid tokenId, Guid userId)
-  {
-    var tokenExists = await _appDb.PersonalAccessTokens
-      .IgnoreQueryFilters()
-      .AnyAsync(x => x.Id == tokenId && x.UserId == userId);
-
-    if (!tokenExists)
-    {
-      return Result.Fail<IReadOnlyList<InternalDtos.CredentialScopeDto>>("Personal access token not found.");
-    }
-
-    var rows = await _appDb.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
-                  x.PrincipalId == tokenId &&
-                  x.IsEnabled)
-      .ToListAsync();
-
-    var dtos = rows
-      .Select(x => new InternalDtos.CredentialScopeDto(
-        x.PermissionName, x.ScopeKind, x.ScopeId))
-      .ToList();
-
-    return Result.Ok<IReadOnlyList<InternalDtos.CredentialScopeDto>>(dtos);
-  }
-
-  public async Task<Result> SetScopes(Guid tokenId, Guid userId, List<InternalDtos.CredentialScopeDto> scopes)
-  {
-    var token = await _appDb.PersonalAccessTokens
-      .IgnoreQueryFilters()
-      .FirstOrDefaultAsync(x => x.Id == tokenId && x.UserId == userId);
-
-    if (token is null)
-    {
-      return Result.Fail("Personal access token not found.");
-    }
-
-    var userEffectivePermissions = await ResolveUserEffectivePermissions(userId);
-
-    var invalidScopes = scopes
-      .Where(g => !userEffectivePermissions.Contains(g.PermissionName))
-      .Select(g => g.PermissionName)
-      .Distinct()
-      .ToList();
-
-    if (invalidScopes.Count > 0)
-    {
-      return Result.Fail(
-        $"The following permissions are outside the user's effective permissions: {string.Join(", ", invalidScopes)}");
-    }
-
-    var existingRows = await _appDb.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
-                  x.PrincipalId == tokenId)
-      .ToListAsync();
-
-    var user = await _appDb.Users
-      .IgnoreQueryFilters()
-      .Where(x => x.Id == userId)
-      .Select(x => new { x.TenantId })
-      .FirstOrDefaultAsync();
-
-    foreach (var row in existingRows)
-    {
-      _appDb.AuthorizationChangeLogs.Add(new AuthorizationChangeLog
-      {
-        ActionType = "credential-scope-removed",
-        ActorPrincipalType = "user",
-        ActorPrincipalId = userId.ToString(),
-        TargetType = "PermissionAssignment",
-        TargetId = row.Id.ToString(),
-        OwningTenantId = user?.TenantId,
-        BeforeJson = $"{{\"permission\":\"{row.PermissionName}\",\"scope\":\"{row.ScopeKind}\",\"scopeId\":\"{row.ScopeId}\"}}"
-      });
-    }
-
-    _appDb.PermissionAssignments.RemoveRange(existingRows);
-
-    foreach (var scope in scopes)
-    {
-      _appDb.PermissionAssignments.Add(new PermissionAssignment
-      {
-        PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
-        PrincipalId = tokenId,
-        PermissionName = scope.PermissionName,
-        Effect = PermissionEffect.Allow,
-        ScopeKind = scope.ScopeKind,
-        ScopeId = scope.ScopeId,
-        IsEnabled = true,
-        OwningTenantId = user?.TenantId,
-        CreatedByPrincipalType = "user",
-        CreatedByPrincipalId = userId.ToString()
-      });
-    }
-
-    if (scopes.Count > 0)
-    {
-      _appDb.AuthorizationChangeLogs.Add(new AuthorizationChangeLog
-      {
-        ActionType = "credential-scope-set",
-        ActorPrincipalType = "user",
-        ActorPrincipalId = userId.ToString(),
-        TargetType = "PersonalAccessToken",
-        TargetId = tokenId.ToString(),
-        OwningTenantId = user?.TenantId,
-        AfterJson = $"{{\"scopeCount\":{scopes.Count}}}"
-      });
-    }
-
-    await _appDb.SaveChangesAsync();
-    return Result.Ok();
-  }
-
   public async Task<Result<InternalDtos.PersonalAccessTokenResponseDto>> Update(Guid id, InternalDtos.UpdatePersonalAccessTokenRequestDto request, Guid userId)
   {
     try
@@ -378,43 +252,5 @@ public class PersonalAccessTokenManager(
       personalAccessToken.Name,
       personalAccessToken.CreatedAt,
       personalAccessToken.LastUsed);
-  }
-
-  private async Task<HashSet<string>> ResolveUserEffectivePermissions(Guid userId)
-  {
-    var permissions = new HashSet<string>();
-
-    var directAssignments = await _appDb.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
-                  x.PrincipalId == userId &&
-                  x.IsEnabled &&
-                  x.Effect == PermissionEffect.Allow)
-      .Select(x => x.PermissionName)
-      .ToListAsync();
-
-    permissions.UnionWith(directAssignments);
-
-    var userGroupIds = await _appDb.UserGroupMembers
-      .IgnoreQueryFilters()
-      .Where(x => x.UserId == userId)
-      .Select(x => x.UserGroupId)
-      .ToListAsync();
-
-    if (userGroupIds.Count > 0)
-    {
-      var groupPermissions = await _appDb.PermissionAssignments
-        .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.UserGroup &&
-                    userGroupIds.Contains(x.PrincipalId) &&
-                    x.IsEnabled &&
-                    x.Effect == PermissionEffect.Allow)
-        .Select(x => x.PermissionName)
-        .ToListAsync();
-
-      permissions.UnionWith(groupPermissions);
-    }
-
-    return permissions;
   }
 }

@@ -16,22 +16,26 @@ public interface IPermissionAssignmentManager
     Guid tenantId,
     Guid actorPrincipalId,
     CancellationToken cancellationToken = default);
-
   Task<HttpResult> Delete(
     Guid assignmentId,
     Guid tenantId,
     Guid actorPrincipalId,
     CancellationToken cancellationToken = default);
-
   Task<IReadOnlyList<InternalDtos.PermissionAssignmentDto>> GetByPrincipal(
     PermissionPrincipalKind principalKind,
     Guid principalId,
     Guid tenantId,
     CancellationToken cancellationToken = default);
-
   Task<InternalDtos.EffectivePermissionQueryResponseDto> QueryEffectivePermission(
     InternalDtos.EffectivePermissionQueryRequestDto request,
     Guid tenantId,
+    CancellationToken cancellationToken = default);
+  Task<HttpResult> ReplaceForPrincipal(
+    PermissionPrincipalKind principalKind,
+    Guid principalId,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    IReadOnlyList<InternalDtos.CreatePermissionAssignmentRequestDto> assignments,
     CancellationToken cancellationToken = default);
 }
 
@@ -165,6 +169,81 @@ public class PermissionAssignmentManager(
     return new InternalDtos.EffectivePermissionQueryResponseDto(
       result.Allowed,
       result.Allowed ? null : result.DenialReason ?? "Permission denied by policy evaluation.");
+  }
+
+  public async Task<HttpResult> ReplaceForPrincipal(
+    PermissionPrincipalKind principalKind,
+    Guid principalId,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    IReadOnlyList<InternalDtos.CreatePermissionAssignmentRequestDto> assignments,
+    CancellationToken cancellationToken = default)
+  {
+    var principalExists = await ValidatePrincipalExists(principalKind, principalId, tenantId, cancellationToken);
+    if (!principalExists)
+    {
+      return HttpResult.Fail(
+        HttpResultErrorCode.BadRequest, $"Principal not found: {principalKind}/{principalId}");
+    }
+
+    var existing = await _appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == principalKind && x.PrincipalId == principalId)
+      .ToListAsync(cancellationToken);
+
+    foreach (var existingAssignment in existing)
+    {
+      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+        AuthorizationChangeLogActions.PermissionAssignmentDeleted,
+        AuthorizationChangeLogActorTypes.User,
+        actorPrincipalId.ToString(),
+        AuthorizationChangeLogTargetTypes.PermissionAssignment,
+        existingAssignment.Id.ToString(),
+        tenantId,
+        before: new PermissionAssignmentSnapshot(
+          existingAssignment.PermissionName, existingAssignment.Effect.ToString(),
+          existingAssignment.ScopeKind.ToString(), existingAssignment.ScopeId)));
+
+      _appDb.PermissionAssignments.Remove(existingAssignment);
+    }
+
+    foreach (var request in assignments)
+    {
+      if (!PermissionCatalog.Exists(request.PermissionName))
+      {
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, $"Unknown permission name: {request.PermissionName}");
+      }
+
+      var assignment = new PermissionAssignment
+      {
+        PrincipalKind = principalKind,
+        PrincipalId = principalId,
+        PermissionName = request.PermissionName,
+        Effect = request.Effect,
+        ScopeKind = request.ScopeKind,
+        ScopeId = request.ScopeId,
+        IsEnabled = true,
+        OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId,
+        CreatedByPrincipalType = AuthorizationChangeLogActorTypes.User,
+        CreatedByPrincipalId = actorPrincipalId.ToString()
+      };
+
+      _appDb.PermissionAssignments.Add(assignment);
+
+      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+        AuthorizationChangeLogActions.PermissionAssignmentCreated,
+        AuthorizationChangeLogActorTypes.User,
+        actorPrincipalId.ToString(),
+        AuthorizationChangeLogTargetTypes.PermissionAssignment,
+        assignment.Id.ToString(),
+        tenantId,
+        after: new PermissionAssignmentSnapshot(
+          request.PermissionName, request.Effect.ToString(), request.ScopeKind.ToString(), request.ScopeId)));
+    }
+
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok();
   }
 
   private static InternalDtos.PermissionAssignmentDto MapToDto(PermissionAssignment assignment)

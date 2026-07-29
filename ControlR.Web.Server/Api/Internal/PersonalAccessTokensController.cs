@@ -67,49 +67,6 @@ public class PersonalAccessTokensController : ControllerBase
     return Ok(personalAccessTokens);
   }
 
-  [HttpGet("{id:guid}/scopes")]
-  public async Task<ActionResult<IReadOnlyList<InternalDtos.CredentialScopeDto>>> GetScopes(
-    [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
-    [FromServices] UserManager<AppUser> userManager,
-    [FromRoute] Guid id)
-  {
-    var user = await userManager.GetUserAsync(User);
-    if (user is null)
-    {
-      return BadRequest("User not found.");
-    }
-
-    var result = await personalAccessTokenManager.GetScopes(id, user.Id);
-    if (!result.IsSuccess)
-    {
-      return NotFound(result.Reason);
-    }
-
-    return Ok(result.Value);
-  }
-
-  [HttpPut("{id:guid}/scopes")]
-  public async Task<ActionResult> SetScopes(
-    [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
-    [FromServices] UserManager<AppUser> userManager,
-    [FromRoute] Guid id,
-    [FromBody] InternalDtos.SetCredentialScopesRequestDto request)
-  {
-    var user = await userManager.GetUserAsync(User);
-    if (user is null)
-    {
-      return BadRequest("User not found.");
-    }
-
-    var result = await personalAccessTokenManager.SetScopes(id, user.Id, request.Scopes);
-    if (!result.IsSuccess)
-    {
-      return BadRequest(result.Reason);
-    }
-
-    return NoContent();
-  }
-
   [HttpPut("{id}")]
   public async Task<ActionResult<InternalDtos.PersonalAccessTokenResponseDto>> UpdatePersonalAccessToken(
     [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,

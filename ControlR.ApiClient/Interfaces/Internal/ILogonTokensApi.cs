@@ -8,8 +8,4 @@ public interface ILogonTokensApi
 {
   [ApiRoute($"{HttpConstants.Internal.LogonTokensEndpoint}", "POST")]
   Task<ApiResult<InternalDtos.LogonTokenResponseDto>> CreateLogonToken(InternalDtos.LogonTokenRequestDto request, CancellationToken cancellationToken = default);
-  [ApiRoute($"{HttpConstants.Internal.LogonTokensEndpoint}/{{tokenId}}/scopes", "GET")]
-  Task<ApiResult<InternalDtos.CredentialScopeDto[]>> GetScopes(Guid tokenId, CancellationToken cancellationToken = default);
-  [ApiRoute($"{HttpConstants.Internal.LogonTokensEndpoint}/{{tokenId}}/scopes", "PUT")]
-  Task<ApiResult> SetScopes(Guid tokenId, InternalDtos.SetCredentialScopesRequestDto request, CancellationToken cancellationToken = default);
 }

@@ -12,10 +12,6 @@ public interface IPersonalAccessTokensApi
   Task<ApiResult> DeletePersonalAccessToken(Guid personalAccessTokenId, CancellationToken cancellationToken = default);
   [ApiRoute($"{HttpConstants.Internal.PersonalAccessTokensEndpoint}", "GET")]
   Task<ApiResult<PersonalAccessTokenResponseDto[]>> GetPersonalAccessTokens(CancellationToken cancellationToken = default);
-  [ApiRoute($"{HttpConstants.Internal.PersonalAccessTokensEndpoint}/{{id}}/scopes", "GET")]
-  Task<ApiResult<CredentialScopeDto[]>> GetScopes(Guid id, CancellationToken cancellationToken = default);
-  [ApiRoute($"{HttpConstants.Internal.PersonalAccessTokensEndpoint}/{{id}}/scopes", "PUT")]
-  Task<ApiResult> SetScopes(Guid id, SetCredentialScopesRequestDto request, CancellationToken cancellationToken = default);
   [ApiRoute($"{HttpConstants.Internal.PersonalAccessTokensEndpoint}/{{personalAccessTokenId}}", "PUT")]
   Task<ApiResult<PersonalAccessTokenResponseDto>> UpdatePersonalAccessToken(Guid personalAccessTokenId, UpdatePersonalAccessTokenRequestDto request, CancellationToken cancellationToken = default);
 }

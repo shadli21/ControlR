@@ -128,6 +128,25 @@ public partial class PersonalAccessTokens
       _isLoading = false;
     }
   }
+
+  private async Task ManageScopes(PersonalAccessTokenResponseDto personalAccessToken)
+  {
+    var parameters = new DialogParameters<CredentialScopeDialog>
+    {
+      { x => x.CredentialId, personalAccessToken.Id }
+    };
+
+    var dialogOptions = new DialogOptions
+    {
+      CloseButton = true,
+      FullWidth = true,
+      MaxWidth = MaxWidth.Large
+    };
+
+    await DialogService.ShowAsync<CredentialScopeDialog>(
+      $"Scopes: {personalAccessToken.Name}", parameters, dialogOptions);
+  }
+
   private async Task OnKeyDown(KeyboardEventArgs e)
   {
     if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newTokenName))

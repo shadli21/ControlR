@@ -1,7 +1,3 @@
-using ControlR.Libraries.Api.Contracts.Enums;
-using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
-using Microsoft.AspNetCore.Components;
-
 namespace ControlR.Web.Client.Components.Dialogs;
 
 public partial class CreatePermissionAssignmentDialog : ComponentBase
