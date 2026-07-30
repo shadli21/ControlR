@@ -25,7 +25,7 @@ namespace ControlR.Web.Server.Data.Migrations;
           // with ScopeId = null and OwningTenantId = null, matching the API's Create behavior.
           // Tenant-level roles get ScopeKind.Tenant with ScopeId = the user's TenantId, which
           // the PermissionEvaluator.ScopeMatches method requires for tenant-scoped assignments.
-          var backfillSql = """
+          var backfillSql = $"""
               INSERT INTO "PermissionAssignments"
                 ("PrincipalKind", "PrincipalId", "PermissionName", "Effect", "ScopeKind", "ScopeId", "IsEnabled", "OwningTenantId", "CreatedByPrincipalType", "CreatedByPrincipalId")
               SELECT DISTINCT '{PermissionPrincipalKind.User}', ur."UserId", rp."PermissionName", '{PermissionEffect.Allow}',
@@ -113,7 +113,7 @@ namespace ControlR.Web.Server.Data.Migrations;
                   ('Device Superuser', 'device.power.manage'),
                   ('Device Superuser', 'device.agent.update'),
                   ('Agent Installer', 'agent.install')
-              ) AS rp("RoleName", "PermissionName");
+              ) AS rp("RoleName", "PermissionName") ON r."Name" = rp."RoleName";
               """;
           migrationBuilder.Sql(backfillSql);
 
