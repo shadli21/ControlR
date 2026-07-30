@@ -53,6 +53,10 @@ else
     <ToolBarContent>
       <MudText Typo="Typo.subtitle1">Members (@_group.Members.Count)</MudText>
       <MudSpacer />
+      <MudTooltip Text="Refresh">
+        <MudIconButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
+                       Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshGroup" />
+      </MudTooltip>
       <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
                  OnClick="AddMembers">
         Add Members

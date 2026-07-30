@@ -84,7 +84,7 @@ public class PermissionAssignmentManager(
       PermissionName = request.PermissionName,
       Effect = request.Effect,
       ScopeKind = request.ScopeKind,
-      ScopeId = request.ScopeId,
+      ScopeId = NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
       Notes = request.Notes,
       IsEnabled = true,
       OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId,
@@ -227,7 +227,7 @@ public class PermissionAssignmentManager(
         PermissionName = request.PermissionName,
         Effect = request.Effect,
         ScopeKind = request.ScopeKind,
-        ScopeId = request.ScopeId,
+        ScopeId = NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
         IsEnabled = true,
         OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId,
         CreatedByPrincipalType = AuthorizationChangeLogActorTypes.User,
@@ -287,7 +287,7 @@ public class PermissionAssignmentManager(
     assignment.PermissionName = request.PermissionName;
     assignment.Effect = request.Effect;
     assignment.ScopeKind = request.ScopeKind;
-    assignment.ScopeId = request.ScopeId;
+    assignment.ScopeId = NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId);
     assignment.Notes = request.Notes;
     assignment.IsEnabled = request.IsEnabled;
     assignment.OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId;
@@ -322,6 +322,17 @@ public class PermissionAssignmentManager(
       assignment.IsEnabled,
       assignment.CreatedAt);
   }
+
+  /// <summary>
+  /// Server scope needs no target; tenant scope implicitly targets the acting user's tenant
+  /// (the UI does not collect a ScopeId for these, so the API fills it in).
+  /// </summary>
+  private static Guid? NormalizeScopeId(PermissionScopeKind scopeKind, Guid? scopeId, Guid tenantId) => scopeKind switch
+  {
+    PermissionScopeKind.Server => null,
+    PermissionScopeKind.Tenant => tenantId,
+    _ => scopeId
+  };
 
   private async Task<bool> ValidatePrincipalExists(
     PermissionPrincipalKind principalKind,

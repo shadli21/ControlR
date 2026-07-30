@@ -132,6 +132,12 @@ public partial class UserGroupDetail : ComponentBase
     }
   }
 
+  private async Task RefreshGroup()
+  {
+    await LoadGroup();
+    Snackbar.Add("User group refreshed", Severity.Success);
+  }
+
   private async Task RemoveMember(InternalDtos.UserGroupMemberDto member)
   {
     if (_group is null)

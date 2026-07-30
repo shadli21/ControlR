@@ -7,23 +7,14 @@
   Users
 </PrimaryTitle>
 
+<GridToolbar @bind-SearchValue="_searchString" OnRefresh="Refresh" />
+
 <MudDataGrid T="UserResponseDto"
              Items="_users"
              Hover="true"
              Loading="_loading"
              QuickFilter="QuickFilter"
              Breakpoint="Breakpoint.Sm">
-  <ToolBarContent>
-    <MudTextField T="string"
-                  @bind-Value="_searchString"
-                  Placeholder="Search"
-                  Adornment="Adornment.Start"
-                  AdornmentIcon="@Icons.Material.Filled.Search"
-                  Immediate="true"
-                  Class="mr-4" />
-    <MudSpacer />
-    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="Refresh" />
-  </ToolBarContent>
   <Columns>
     <PropertyColumn Property="x => x.UserName" Title="Username" />
     <PropertyColumn Property="x => x.Email" Title="Email" />

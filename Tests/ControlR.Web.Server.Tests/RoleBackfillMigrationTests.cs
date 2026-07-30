@@ -1,6 +1,7 @@
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -62,26 +63,53 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
 
     using var verifyScope = testApp.CreateScope();
     await using var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
-    var permissions = await verifyDb.PermissionAssignments
-      .Where(x => x.PrincipalId == user.Id)
-      .Select(x => x.PermissionName)
+
+    // Server Administrator preset permissions — server-scoped, no ScopeId, no OwningTenantId.
+    var serverAdminPermissions = await verifyDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id &&
+                 (x.PermissionName == PermissionNames.ServerAdmin ||
+                  x.PermissionName == PermissionNames.ServerTelemetryRead ||
+                  x.PermissionName == PermissionNames.ServerServiceAccountsWrite))
       .ToListAsync(TestContext.Current.CancellationToken);
 
-    // Server Administrator preset permissions.
-    Assert.Contains(PermissionNames.ServerAdmin, permissions);
-    Assert.Contains(PermissionNames.ServerTelemetryRead, permissions);
-    Assert.Contains(PermissionNames.ServerServiceAccountsWrite, permissions);
+    Assert.NotEmpty(serverAdminPermissions);
+    foreach (var perm in serverAdminPermissions)
+    {
+      Assert.Null(perm.ScopeId);
+      Assert.Null(perm.OwningTenantId);
+      Assert.Equal(PermissionScopeKind.Server, perm.ScopeKind);
+    }
 
-    // Tenant Administrator preset permissions.
-    Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
-    Assert.Contains(PermissionNames.TenantUsersRead, permissions);
+    // Tenant Administrator preset permissions — tenant-scoped with ScopeId = tenantId,
+    // which PermissionEvaluator.ScopeMatches requires for tenant-scoped assignments.
+    var tenantAdminPermissions = await verifyDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id &&
+                 (x.PermissionName == PermissionNames.TenantSettingsWrite ||
+                  x.PermissionName == PermissionNames.TenantUsersRead))
+      .ToListAsync(TestContext.Current.CancellationToken);
 
-    // Overlapping permission is granted once, scoped to the user's tenant.
+    Assert.NotEmpty(tenantAdminPermissions);
+    foreach (var perm in tenantAdminPermissions)
+    {
+      Assert.Equal(tenant.Id, perm.ScopeId);
+      Assert.Equal(PermissionScopeKind.Tenant, perm.ScopeKind);
+      Assert.Equal(tenant.Id, perm.OwningTenantId);
+    }
+
+    // Overlapping permission (agent.install) exists twice: once server-scoped (from Server
+    // Administrator) and once tenant-scoped (from Tenant Administrator).
     var agentInstallAssignments = await verifyDb.PermissionAssignments
       .Where(x => x.PrincipalId == user.Id && x.PermissionName == PermissionNames.AgentInstall)
       .ToListAsync(TestContext.Current.CancellationToken);
-    var agentInstall = Assert.Single(agentInstallAssignments);
-    Assert.Equal(tenant.Id, agentInstall.ScopeId);
-    Assert.Equal(tenant.Id, agentInstall.OwningTenantId);
+
+    var serverAgentInstall = agentInstallAssignments.FirstOrDefault(x => x.ScopeKind == PermissionScopeKind.Server);
+    var tenantAgentInstall = agentInstallAssignments.FirstOrDefault(x => x.ScopeKind == PermissionScopeKind.Tenant);
+
+    Assert.NotNull(serverAgentInstall);
+    Assert.Null(serverAgentInstall.ScopeId);
+    Assert.Null(serverAgentInstall.OwningTenantId);
+    Assert.NotNull(tenantAgentInstall);
+    Assert.Equal(tenant.Id, tenantAgentInstall.ScopeId);
+    Assert.Equal(tenant.Id, tenantAgentInstall.OwningTenantId);
   }
 }

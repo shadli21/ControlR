@@ -29,6 +29,13 @@
 
 <MudDataGrid T="PersonalAccessTokenResponseDto" Items="@_personalAccessTokens" Loading="_isLoading" ShowColumnOptions="true" Filterable="true"
   SortMode="SortMode.Single">
+  <ToolBarContent>
+    <MudSpacer />
+    <MudTooltip Text="Refresh">
+      <MudIconButton Variant="Variant.Outlined" Color="Color.Info" Class="ml-2"
+                     Icon="@Icons.Material.Filled.Refresh" OnClick="Refresh" />
+    </MudTooltip>
+  </ToolBarContent>
   <Columns>
     <PropertyColumn Property="x => x.Name" Title="Name" />
     <PropertyColumn Property="x => x.CreatedAt" Title="Created" />

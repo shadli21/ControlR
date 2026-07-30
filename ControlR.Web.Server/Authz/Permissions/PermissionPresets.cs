@@ -14,14 +14,21 @@ public static class PermissionPresets
   public const string ServerAdministrator = "Server Administrator";
   public const string TenantAdministrator = "Tenant Administrator";
 
+  private static readonly HashSet<string> _serverScopedPresets = [ServerAdministrator, InstallerKeyManager];
+
   public static IReadOnlyDictionary<string, IReadOnlyList<string>> All { get; } = BuildPresets();
 
   public static IReadOnlyList<string> GetPermissions(string presetName) =>
     All.TryGetValue(presetName, out var permissions) ? permissions : [];
 
+  public static PermissionScopeKind GetPresetScopeKind(string presetName) =>
+    _serverScopedPresets.Contains(presetName) ? PermissionScopeKind.Server : PermissionScopeKind.Tenant;
+
   /// <summary>
-  /// Seeds tenant-scoped allow assignments for every permission in the given presets, granting the
-  /// user the preset's permissions across their tenant.
+  /// Seeds permission assignments for every permission in the given presets. Server-level
+  /// presets (Server Administrator, Installer Key Manager) get ScopeKind.Server with no
+  /// ScopeId or OwningTenantId; tenant-level presets get ScopeKind.Tenant scoped to the
+  /// user's tenant, matching the PermissionEvaluator's ScopeMatches requirements.
   /// </summary>
   public static async Task SeedAssignmentsAsync(
     AppDb appDb,
@@ -30,31 +37,34 @@ public static class PermissionPresets
     IEnumerable<string> presetNames,
     CancellationToken cancellationToken = default)
   {
-    var permissions = presetNames
-      .SelectMany(GetPermissions)
-      .Distinct()
-      .ToList();
-
-    if (permissions.Count == 0)
+    foreach (var presetName in presetNames)
     {
-      return;
-    }
-
-    foreach (var permission in permissions)
-    {
-      appDb.PermissionAssignments.Add(new PermissionAssignment
+      var permissions = GetPermissions(presetName);
+      if (permissions.Count == 0)
       {
-        PrincipalKind = PermissionPrincipalKind.User,
-        PrincipalId = userId,
-        PermissionName = permission,
-        Effect = PermissionEffect.Allow,
-        ScopeKind = PermissionScopeKind.Tenant,
-        ScopeId = tenantId,
-        IsEnabled = true,
-        OwningTenantId = tenantId,
-        CreatedByPrincipalType = "system",
-        CreatedByPrincipalId = userId.ToString()
-      });
+        continue;
+      }
+
+      var scopeKind = GetPresetScopeKind(presetName);
+      var scopeId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
+      var owningTenantId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
+
+      foreach (var permission in permissions)
+      {
+        appDb.PermissionAssignments.Add(new PermissionAssignment
+        {
+          PrincipalKind = PermissionPrincipalKind.User,
+          PrincipalId = userId,
+          PermissionName = permission,
+          Effect = PermissionEffect.Allow,
+          ScopeKind = scopeKind,
+          ScopeId = scopeId,
+          IsEnabled = true,
+          OwningTenantId = owningTenantId,
+          CreatedByPrincipalType = "system",
+          CreatedByPrincipalId = userId.ToString()
+        });
+      }
     }
 
     await appDb.SaveChangesAsync(cancellationToken);

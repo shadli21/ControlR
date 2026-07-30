@@ -1,0 +1,32 @@
+.grid-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.grid-toolbar-search {
+  min-width: 360px;
+}
+
+::deep .grid-toolbar-search-field {
+  width: 100%;
+  min-width: 360px;
+}
+
+.grid-toolbar-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .grid-toolbar-search {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  ::deep .grid-toolbar-search-field {
+    min-width: 0;
+  }
+}

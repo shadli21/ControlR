@@ -156,6 +156,12 @@ public partial class PersonalAccessTokens
     }
   }
 
+  private async Task Refresh()
+  {
+    await LoadPersonalAccessTokens();
+    Snackbar.Add("Personal access tokens refreshed", Severity.Success);
+  }
+
   private async Task RenamePersonalAccessToken(PersonalAccessTokenResponseDto personalAccessToken)
   {
     var parameters = new DialogParameters

@@ -132,6 +132,12 @@ public partial class DeviceGroupDetail : ComponentBase
     }
   }
 
+  private async Task RefreshGroup()
+  {
+    await LoadGroup();
+    Snackbar.Add("Device group refreshed", Severity.Success);
+  }
+
   private async Task RemoveMember(InternalDtos.DeviceGroupMemberDto member)
   {
     if (_group is null)
