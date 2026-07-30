@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Metadata;
 
-namespace ControlR.Web.Server.Data.Extensions;
+namespace ControlR.Web.Server.Extensions.Database;
 
 public static class AppDbExtensions
 {
