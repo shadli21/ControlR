@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Dtos.RemoteControlDtos;
+using ControlR.Libraries.Api.Contracts.Enums;
 using MessagePack;
 using SkiaSharp;
 
@@ -12,7 +13,7 @@ public class CaptureRecorderPlayerTests
     var cancellationToken = TestContext.Current.CancellationToken;
     using var stream = new MemoryStream();
 
-    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream)))
+    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream), TimeProvider.System, new CaptureRecorderOptions()))
     {
       await recorder.WriteFrame(
         CreateRegion(0, 0, 2, 2, SKColors.Red),
@@ -28,7 +29,7 @@ public class CaptureRecorderPlayerTests
 
     stream.Position = 0;
 
-    await using var player = new CapturePlayer(new NonClosingStream(stream));
+    await using var player = new CapturePlayer(new NonClosingStream(stream), TimeProvider.System, new CapturePlayerOptions());
     var invocationCount = 0;
 
     var registration = player.OnFrameReady(frame =>
@@ -49,7 +50,7 @@ public class CaptureRecorderPlayerTests
     var cancellationToken = TestContext.Current.CancellationToken;
     using var stream = new MemoryStream();
 
-    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream)))
+    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream), TimeProvider.System, new CaptureRecorderOptions()))
     {
       await recorder.WriteFrame(
         CreateRegion(0, 0, 2, 2, SKColors.Red),
@@ -68,7 +69,7 @@ public class CaptureRecorderPlayerTests
     stream.WriteByte(0);
     stream.Position = 0;
 
-    Assert.Throws<InvalidDataException>(() => new CapturePlayer(stream));
+    Assert.Throws<InvalidDataException>(() => new CapturePlayer(stream, TimeProvider.System, new CapturePlayerOptions()));
   }
 
   [Fact]
@@ -77,7 +78,7 @@ public class CaptureRecorderPlayerTests
     var cancellationToken = TestContext.Current.CancellationToken;
     using var stream = new MemoryStream();
 
-    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream)))
+    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream), TimeProvider.System, new CaptureRecorderOptions()))
     {
       await recorder.WriteFrame(
         CreateRegion(0, 0, 4, 4, SKColors.Red),
@@ -112,7 +113,7 @@ public class CaptureRecorderPlayerTests
 
     stream.Position = 0;
 
-    await using var player = new CapturePlayer(new NonClosingStream(stream));
+    await using var player = new CapturePlayer(new NonClosingStream(stream), TimeProvider.System, new CapturePlayerOptions());
 
     var frameCount = 0;
     var eventPayloads = new List<TestEventPayload>();
@@ -157,7 +158,7 @@ public class CaptureRecorderPlayerTests
     var cancellationToken = TestContext.Current.CancellationToken;
     using var stream = new MemoryStream();
 
-    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream)))
+    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream), TimeProvider.System, new CaptureRecorderOptions()))
     {
       await recorder.WriteFrame(
         CreateRegion(0, 0, 4, 4, SKColors.Red),
@@ -183,7 +184,7 @@ public class CaptureRecorderPlayerTests
 
     stream.Position = 0;
 
-    await using var player = new CapturePlayer(new NonClosingStream(stream));
+    await using var player = new CapturePlayer(new NonClosingStream(stream), TimeProvider.System, new CapturePlayerOptions());
     CapturePlaybackFrame? latestFrame = null;
 
     using var registration = player.OnFrameReady(frame =>
@@ -213,7 +214,7 @@ public class CaptureRecorderPlayerTests
     var cancellationToken = TestContext.Current.CancellationToken;
     using var stream = new MemoryStream();
 
-    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream)))
+    await using (var recorder = new CaptureRecorder(new NonClosingStream(stream), TimeProvider.System, new CaptureRecorderOptions()))
     {
       await recorder.WriteFrame(
         CreateRegion(0, 0, 4, 4, SKColors.Red),
@@ -241,7 +242,7 @@ public class CaptureRecorderPlayerTests
     Array.Resize(ref bytes, bytes.Length - 8);
     using var truncatedStream = new MemoryStream(bytes);
 
-    Assert.ThrowsAny<Exception>(() => new CapturePlayer(new NonClosingStream(truncatedStream)));
+    Assert.ThrowsAny<Exception>(() => new CapturePlayer(new NonClosingStream(truncatedStream), TimeProvider.System, new CapturePlayerOptions()));
   }
 
   private static ScreenRegionDto CreateRegion(int x, int y, int width, int height, SKColor color)

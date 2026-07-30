@@ -116,8 +116,7 @@ public class DevicesController(
     var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId);
     query = query
       .ApplyAccessScope(tenantId, accessScope)
-      .AsSplitQuery()
-      .OrderBy(x => x.CreatedAt);
+      .AsSplitQuery();
 
     var (isSuccess, agentVersion) = await GetAgentVersion(agentVersionProvider);
 
@@ -171,7 +170,7 @@ public class DevicesController(
     }
 
     var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId);
-    query = query.ApplyAccessScope(tenantId, accessScope).OrderBy(x => x.CreatedAt);
+    query = query.ApplyAccessScope(tenantId, accessScope);
 
     var deviceStream = query.AsAsyncEnumerable();
 

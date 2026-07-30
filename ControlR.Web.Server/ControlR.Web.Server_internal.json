@@ -10967,6 +10967,9 @@
           }
         }
       },
+      "ImageFormat": {
+        "type": "integer"
+      },
       "InfoRequest": {
         "type": "object",
         "properties": {
@@ -12302,6 +12305,7 @@
           "autoQualityMinimum",
           "autoQualityUpperThresholdMbps",
           "captureCursor",
+          "encodingFormat",
           "enableDirectX",
           "hideOfflineDevices",
           "includeUntaggedDevices",
@@ -12340,6 +12344,9 @@
           },
           "captureCursor": {
             "type": "boolean"
+          },
+          "encodingFormat": {
+            "$ref": "#/components/schemas/ImageFormat"
           },
           "enableDirectX": {
             "type": "boolean"

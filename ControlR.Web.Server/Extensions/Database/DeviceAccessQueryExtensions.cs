@@ -9,7 +9,11 @@ public static class DeviceAccessQueryExtensions
     Guid tenantId,
     DeviceAccessScope accessScope)
   {
-    query = query.Where(x => x.TenantId == tenantId);
+    // Establish a deterministic default ordering at the start of the query so that
+    // any downstream operators (Take/Skip, paging) always operate on an ordered
+    // query. Callers may still override the ordering via ApplySorting; explicit
+    // sorts issued by the caller replace this default.
+    query = query.Where(x => x.TenantId == tenantId).OrderBy(x => x.CreatedAt);
 
     return accessScope.Kind switch
     {
@@ -21,7 +25,7 @@ public static class DeviceAccessQueryExtensions
         x.DeviceGroupMembers!.Any(m => accessScope.DeviceGroupIds.Contains(m.DeviceGroupId))),
       DeviceAccessScopeKind.Customers => query.Where(x =>
         x.CustomerId.HasValue && accessScope.CustomerIds.Contains(x.CustomerId.Value)),
-      _ => query.Take(0)
+      _ => query.Where(_ => false)
     };
   }
 }
