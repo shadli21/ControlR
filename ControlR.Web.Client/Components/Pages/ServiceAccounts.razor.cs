@@ -152,12 +152,7 @@ public partial class ServiceAccounts : ComponentBase
       { x => x.SubtitleLabel, "Name" }
     };
 
-    var options = new DialogOptions
-    {
-      BackdropClick = false,
-      FullWidth = true,
-      MaxWidth = MaxWidth.Small
-    };
+    var options = SecretDisplayDialog.DefaultOptions;
 
     await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
   }

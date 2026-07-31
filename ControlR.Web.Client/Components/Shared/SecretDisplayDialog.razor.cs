@@ -2,6 +2,13 @@ namespace ControlR.Web.Client.Components.Shared;
 
 public partial class SecretDisplayDialog
 {
+  public static DialogOptions DefaultOptions => new()
+  {
+    BackdropClick = false,
+    FullWidth = true,
+    MaxWidth = MaxWidth.Small
+  };
+
   [Inject]
   public required IClipboardManager ClipboardManager { get; set; }
 

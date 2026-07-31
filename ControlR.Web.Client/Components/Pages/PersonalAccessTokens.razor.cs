@@ -45,12 +45,7 @@ public partial class PersonalAccessTokens
           { x => x.SubtitleLabel, "Token Name" }
         };
 
-        var dialogOptions = new DialogOptions
-        {
-          BackdropClick = false,
-          FullWidth = true,
-          MaxWidth = MaxWidth.Small
-        };
+        var dialogOptions = SecretDisplayDialog.DefaultOptions;
 
         await DialogService.ShowAsync<SecretDisplayDialog>("Personal Access Token Created", parameters, dialogOptions);
 
@@ -137,15 +132,10 @@ public partial class PersonalAccessTokens
       { x => x.PrincipalId, personalAccessToken.Id }
     };
 
-    var dialogOptions = new DialogOptions
-    {
-      CloseButton = true,
-      FullWidth = true,
-      MaxWidth = MaxWidth.Large
-    };
-
     await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
-      $"Permissions: {personalAccessToken.Name}", parameters, dialogOptions);
+      $"Permissions: {personalAccessToken.Name}", 
+      parameters, 
+      PermissionAssignmentPanelDialog.DefaultOptions);
   }
 
   private async Task OnKeyDown(KeyboardEventArgs e)

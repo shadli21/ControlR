@@ -81,7 +81,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
     {
       var confirmed = await DialogService.ShowMessageBoxAsync(
         "Replace Assignments",
-        $"This will replace all existing assignments with the selected preset permissions ({permissionNames.Count} permissions). Continue?",
+        $"This will replace all existing assignments with the selected preset permissions ({permissionNames.Count} permission(s)). Continue?",
         "Replace", "Cancel");
 
       if (!confirmed.GetValueOrDefault())
@@ -144,10 +144,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
       { x => x.PrincipalId, principalId }
     };
 
-    var dialogOptions = new DialogOptions()
-    {
-      BackdropClick = false
-    };
+    var dialogOptions = PermissionAssignmentDialog.DefaultOptions;
 
     var dialog = await DialogService.ShowAsync<PermissionAssignmentDialog>("Create Assignment", parameters, dialogOptions);
     var result = await dialog.Result;
@@ -207,10 +204,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
       { x => x.PrincipalKind, assignment.PrincipalKind }
     };
 
-    var dialogOptions = new DialogOptions()
-    {
-      BackdropClick = false
-    };
+    var dialogOptions = PermissionAssignmentDialog.DefaultOptions;
 
     var dialog = await DialogService.ShowAsync<PermissionAssignmentDialog>("Edit Assignment", parameters, dialogOptions);
     var result = await dialog.Result;

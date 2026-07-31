@@ -1,9 +1,15 @@
-using ControlR.Libraries.Api.Contracts.Enums;
-
 namespace ControlR.Web.Client.Components.Dialogs;
 
 public partial class PermissionAssignmentPanelDialog : ComponentBase
 {
+  public static DialogOptions DefaultOptions => new()
+  {
+    CloseButton = true,
+    FullWidth = true,
+    MaxWidth = MaxWidth.Large,
+    BackdropClick = false
+  };
+
   [CascadingParameter]
   public required IMudDialogInstance MudDialog { get; init; }
 

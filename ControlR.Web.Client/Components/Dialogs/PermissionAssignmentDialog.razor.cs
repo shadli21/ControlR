@@ -1,4 +1,3 @@
-using ControlR.Web.Client.StateManagement.Stores;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Dialogs;
@@ -13,6 +12,11 @@ public partial class PermissionAssignmentDialog : ComponentBase
   private Guid? _scopeId;
   private PermissionScopeKind _scopeKind = PermissionScopeKind.Tenant;
   private InternalDtos.PermissionCatalogEntryDto? _selectedPermission;
+
+  public static DialogOptions DefaultOptions => new()
+  {
+    BackdropClick = false
+  };
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }

@@ -101,17 +101,10 @@ public partial class UserGroups : ComponentBase
       { x => x.PrincipalId, group.Id }
     };
 
-    var dialogOptions = new DialogOptions
-    {
-      CloseButton = true,
-      FullWidth = true,
-      MaxWidth = MaxWidth.Large
-    };
-
     await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
       $"Permissions: {group.Name}",
       parameters,
-      dialogOptions);
+      PermissionAssignmentPanelDialog.DefaultOptions);
   }
 
   private async Task Refresh()

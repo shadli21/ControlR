@@ -73,17 +73,10 @@ public partial class Users : ComponentBase
       { x => x.PrincipalId, user.Id }
     };
 
-    var dialogOptions = new DialogOptions
-    {
-      CloseButton = true,
-      FullWidth = true,
-      MaxWidth = MaxWidth.Large
-    };
-
     await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
       $"Permissions: {user.UserName ?? user.Email ?? user.Id.ToString()}",
       parameters,
-      dialogOptions);
+      PermissionAssignmentPanelDialog.DefaultOptions);
   }
 
   private async Task Refresh()
