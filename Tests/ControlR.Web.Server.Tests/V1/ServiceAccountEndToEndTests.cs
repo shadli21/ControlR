@@ -87,8 +87,6 @@ public class ServiceAccountEndToEndTests(ITestOutputHelper testOutput)
     // Step 3: Service account creates an installer key.
     var createKeyReq = new V1Dtos.CreateInstallerKeyRequestDto(
       tenantResult.TenantId,
-      sa.Id,
-      CreatorKind.ServerServiceAccount,
       InstallerKeyType.Persistent,
       FriendlyName: "E2E Test Key");
 

@@ -25,14 +25,11 @@ public class ServerPrincipalEndpointTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
 
     var tenant = await services.CreateTestTenant();
-    var creator = await services.CreateTestUser(tenant.Id, email: "creator@test.local");
     var controller = scope.CreateController<InstallerKeysController>();
     controller.ControllerContext.HttpContext.User = await services.CreateServerPrincipal();
 
     var result = await controller.Create(new CreateInstallerKeyRequestDto(
       tenant.Id,
-      creator.Id,
-      CreatorKind.User,
       InstallerKeyType.Persistent));
 
     Assert.NotNull(result.Result);

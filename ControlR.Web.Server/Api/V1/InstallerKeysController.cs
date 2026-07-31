@@ -19,10 +19,20 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
   public async Task<ActionResult<V1Dtos.CreateInstallerKeyResponseDto>> Create(
       [FromBody] CreateInstallerKeyRequestDto request)
   {
+    if (!User.TryGetPrincipalId(out var creatorId))
+    {
+      return Forbid();
+    }
+
+    if (!User.TryResolveTenantId(request.TenantId, out var tenantId))
+    {
+      return Forbid();
+    }
+
     var internalDto = await _installerKeyManager.CreateKey(
-        request.TenantId,
-        request.CreatorId,
-        request.CreatorKind,
+        tenantId,
+        creatorId,
+        User.GetCreatorKind(),
         request.KeyType,
         request.AllowedUses,
         request.Expiration,

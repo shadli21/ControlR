@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Extensions;
 using ControlR.Web.Server.Services.LogonTokens;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,6 +24,11 @@ public class LogonTokensController : ControllerBase
   {
     var device = await appDb.Devices.FindAsync(request.DeviceId);
     if (device is null || device.TenantId != request.TenantId)
+    {
+      return BadRequest("Device not found");
+    }
+
+    if (!User.IsInTenant(device.TenantId))
     {
       return BadRequest("Device not found");
     }
@@ -61,6 +67,11 @@ public class LogonTokensController : ControllerBase
   {
     var device = await appDb.Devices.FindAsync(request.DeviceId);
     if (device is null || device.TenantId != request.TenantId)
+    {
+      return BadRequest("Device not found");
+    }
+
+    if (!User.IsInTenant(device.TenantId))
     {
       return BadRequest("Device not found");
     }

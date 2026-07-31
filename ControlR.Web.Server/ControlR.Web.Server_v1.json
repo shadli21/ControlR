@@ -2056,8 +2056,6 @@
       "CreateInstallerKeyRequestDto": {
         "required": [
           "tenantId",
-          "creatorId",
-          "creatorKind",
           "keyType"
         ],
         "type": "object",
@@ -2065,13 +2063,6 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
-          },
-          "creatorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "creatorKind": {
-            "$ref": "#/components/schemas/CreatorKind"
           },
           "keyType": {
             "$ref": "#/components/schemas/InstallerKeyType"
@@ -2328,9 +2319,6 @@
             "type": "string"
           }
         }
-      },
-      "CreatorKind": {
-        "type": "integer"
       },
       "DeleteDevicesRequestDto": {
         "required": [
