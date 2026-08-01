@@ -98,16 +98,15 @@ public class PatScopeTrimBackgroundService(
 
     foreach (var row in excessRows)
     {
-      db.AuthorizationChangeLogs.Add(new AuthorizationChangeLog
-      {
-        ActionType = "credential-scope-trim",
-        ActorPrincipalType = "system",
-        ActorPrincipalId = null,
-        TargetType = "PermissionAssignment",
-        TargetId = row.Id.ToString(),
-        OwningTenantId = row.OwningTenantId,
-        BeforeJson = $"{{\"permission\":\"{row.PermissionName}\",\"scope\":\"{row.ScopeKind}\",\"scopeId\":\"{row.ScopeId}\"}}"
-      });
+      db.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+        AuthorizationChangeLogActions.CredentialScopeTrim,
+        AuthorizationChangeLogActorTypes.System,
+        actorPrincipalId: null,
+        AuthorizationChangeLogTargetTypes.PermissionAssignment,
+        row.Id.ToString(),
+        row.OwningTenantId,
+        before: new CredentialScopeSnapshot(
+          row.PermissionName, row.ScopeKind, row.ScopeId)));
 
       db.PermissionAssignments.Remove(row);
     }

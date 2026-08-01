@@ -1,3 +1,5 @@
+using ControlR.Web.Server.Data.Enums;
+
 namespace ControlR.Web.Server.Services.Authorization;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace ControlR.Web.Server.Services.Authorization;
 /// </summary>
 public sealed record ServiceAccountSnapshot(
   string Name,
-  string Kind,
+  ServiceAccountKind Kind,
   string? Description,
   bool IsEnabled);
 
@@ -24,7 +26,7 @@ public sealed record ServiceAccountCredentialSnapshot(
 /// </summary>
 public sealed record CredentialScopeSnapshot(
   string PermissionName,
-  string ScopeKind,
+  PermissionScopeKind ScopeKind,
   Guid? ScopeId);
 
 /// <summary>
@@ -75,6 +77,6 @@ public sealed record UserGroupMembershipChange(int Count);
 /// </summary>
 public sealed record PermissionAssignmentSnapshot(
   string PermissionName,
-  string Effect,
-  string ScopeKind,
+  PermissionEffect Effect,
+  PermissionScopeKind ScopeKind,
   Guid? ScopeId);

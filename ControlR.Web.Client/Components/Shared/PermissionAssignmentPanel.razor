@@ -81,15 +81,30 @@ else
   </MudGrid>
 </MudPaper>
 
-<MudDataGrid T="InternalDtos.PermissionAssignmentDto" Items="_assignments" Hover="true" Dense="true" Loading="_loading">
+<MudDataGrid T="InternalDtos.PermissionAssignmentDto" Items="_assignments" Hover="true" Dense="true" Loading="_loading"
+                 MultiSelection="true" @bind-SelectedItems="_selectedAssignments">
   <ToolBarContent>
-    <MudSpacer />
-    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-               OnClick="CreateAssignment" Size="Size.Small" Disabled="@(_selectedPrincipalId is null)">
-      New Assignment
-    </MudButton>
+    @if (_selectedAssignments.Count > 0)
+    {
+      <MudText Typo="Typo.subtitle2" Class="mr-2">
+        @_selectedAssignments.Count selected
+      </MudText>
+      <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
+                 OnClick="DeleteSelectedAssignments" Size="Size.Small" Disabled="_bulkDeleting">
+        Delete Selected
+      </MudButton>
+    }
+    else
+    {
+      <MudSpacer />
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                 OnClick="CreateAssignment" Size="Size.Small" Disabled="@(_selectedPrincipalId is null)">
+        New Assignment
+      </MudButton>
+    }
   </ToolBarContent>
   <Columns>
+    <SelectColumn ShowInFooter="false" />
     <PropertyColumn Property="x => x.PermissionName" Title="Permission" />
     <PropertyColumn Property="x => x.Effect" Title="Effect" />
     <TemplateColumn Title="Scope" Sortable="true" SortBy="@(x => x.ScopeKind)">

@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using ControlR.Libraries.Api.Contracts.Enums;
 
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
@@ -48,6 +47,30 @@ public record UpdatePermissionAssignmentRequestDto(
   string? Notes,
 
   bool IsEnabled);
+
+public record DeleteManyPermissionAssignmentsRequestDto(Guid[] AssignmentIds)
+{
+  public const int MaxAssignmentIds = 1000;
+
+  [MaxLength(MaxAssignmentIds)]
+  public Guid[] AssignmentIds { get; init; } = AssignmentIds;
+}
+
+public record DeleteManyPermissionAssignmentsResponseDto(
+  IReadOnlyList<Guid> SuccessIds,
+  IReadOnlyList<Guid> FailureIds);
+
+public record CreateManyPermissionAssignmentsRequestDto(
+  [property: MinLength(1)]
+  CreatePermissionAssignmentRequestDto[] Assignments);
+
+public record ReplacePermissionAssignmentsRequestDto(
+  PermissionPrincipalKind PrincipalKind,
+
+  Guid PrincipalId,
+
+  [property: MinLength(1)]
+  CreatePermissionAssignmentRequestDto[] Assignments);
 
 public record EffectivePermissionQueryRequestDto(
   PermissionPrincipalKind PrincipalKind,

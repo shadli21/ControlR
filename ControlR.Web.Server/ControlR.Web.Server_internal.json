@@ -3885,6 +3885,132 @@
         ]
       }
     },
+    "/api/permission-assignments/create-many": {
+      "post": {
+        "tags": [
+          "PermissionAssignments"
+        ],
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateManyPermissionAssignmentsRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateManyPermissionAssignmentsRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateManyPermissionAssignmentsRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
+    "/api/permission-assignments/replace": {
+      "post": {
+        "tags": [
+          "PermissionAssignments"
+        ],
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplacePermissionAssignmentsRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplacePermissionAssignmentsRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplacePermissionAssignmentsRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
     "/api/permission-assignments/{assignmentId}": {
       "delete": {
         "tags": [
@@ -3999,6 +4125,86 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PermissionAssignmentDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
+    "/api/permission-assignments/delete-many": {
+      "post": {
+        "tags": [
+          "PermissionAssignments"
+        ],
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteManyPermissionAssignmentsRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteManyPermissionAssignmentsRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteManyPermissionAssignmentsRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteManyPermissionAssignmentsResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteManyPermissionAssignmentsResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteManyPermissionAssignmentsResponseDto"
                 }
               }
             }
@@ -9663,6 +9869,21 @@
           }
         }
       },
+      "CreateManyPermissionAssignmentsRequestDto": {
+        "required": [
+          "assignments"
+        ],
+        "type": "object",
+        "properties": {
+          "assignments": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreatePermissionAssignmentRequestDto"
+            }
+          }
+        }
+      },
       "CreatePermissionAssignmentRequestDto": {
         "required": [
           "principalKind",
@@ -10092,6 +10313,45 @@
         }
       },
       "DeleteManyDevicesResponseDto": {
+        "required": [
+          "successIds",
+          "failureIds"
+        ],
+        "type": "object",
+        "properties": {
+          "successIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "failureIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "DeleteManyPermissionAssignmentsRequestDto": {
+        "required": [
+          "assignmentIds"
+        ],
+        "type": "object",
+        "properties": {
+          "assignmentIds": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "DeleteManyPermissionAssignmentsResponseDto": {
         "required": [
           "successIds",
           "failureIds"
@@ -11413,6 +11673,30 @@
           },
           "friendlyName": {
             "type": "string"
+          }
+        }
+      },
+      "ReplacePermissionAssignmentsRequestDto": {
+        "required": [
+          "principalKind",
+          "principalId",
+          "assignments"
+        ],
+        "type": "object",
+        "properties": {
+          "principalKind": {
+            "$ref": "#/components/schemas/PermissionPrincipalKind"
+          },
+          "principalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignments": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreatePermissionAssignmentRequestDto"
+            }
           }
         }
       },

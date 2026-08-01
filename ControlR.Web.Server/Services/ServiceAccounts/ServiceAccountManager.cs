@@ -417,7 +417,7 @@ public class ServiceAccountManager(
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       account.Id.ToString(),
       tenantId,
-      after: new ServiceAccountSnapshot(name, "Tenant", description, true)));
+      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Tenant, description, true)));
 
     var saveResult = await appDb.SaveChangesOrConfirmConflictAsync<ServiceAccount>(
       x => x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId && x.Name == name,
@@ -464,7 +464,7 @@ public class ServiceAccountManager(
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       serviceAccountId.ToString(),
       null,
-      before: new ServiceAccountSnapshot(account.Name, "Server", account.Description, account.IsEnabled)));
+      before: new ServiceAccountSnapshot(account.Name, ServiceAccountKind.Server, account.Description, account.IsEnabled)));
 
     appDb.ServiceAccounts.Remove(account);
     await appDb.SaveChangesAsync(cancellationToken);
@@ -500,7 +500,7 @@ public class ServiceAccountManager(
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       serviceAccountId.ToString(),
       tenantId,
-      before: new ServiceAccountSnapshot(account.Name, "Tenant", account.Description, account.IsEnabled)));
+      before: new ServiceAccountSnapshot(account.Name, ServiceAccountKind.Tenant, account.Description, account.IsEnabled)));
 
     appDb.ServiceAccounts.Remove(account);
     await appDb.SaveChangesAsync(cancellationToken);
@@ -667,7 +667,7 @@ public class ServiceAccountManager(
       return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.NotFound, "Server service account not found.");
     }
 
-    var before = new ServiceAccountSnapshot(account.Name, "Server", account.Description, account.IsEnabled);
+    var before = new ServiceAccountSnapshot(account.Name, ServiceAccountKind.Server, account.Description, account.IsEnabled);
 
     account.Name = name;
     account.Description = description;
@@ -680,7 +680,7 @@ public class ServiceAccountManager(
       serviceAccountId.ToString(),
       null,
       before: before,
-      after: new ServiceAccountSnapshot(name, "Server", description, account.IsEnabled)));
+      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Server, description, account.IsEnabled)));
 
     await appDb.SaveChangesAsync(cancellationToken);
 
@@ -709,7 +709,7 @@ public class ServiceAccountManager(
       return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.NotFound, "Service account not found.");
     }
 
-    var before = new ServiceAccountSnapshot(account.Name, "Tenant", account.Description, account.IsEnabled);
+    var before = new ServiceAccountSnapshot(account.Name, ServiceAccountKind.Tenant, account.Description, account.IsEnabled);
 
     account.Name = name;
     account.Description = description;
@@ -722,7 +722,7 @@ public class ServiceAccountManager(
       serviceAccountId.ToString(),
       tenantId,
       before: before,
-      after: new ServiceAccountSnapshot(name, "Tenant", description, account.IsEnabled)));
+      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Tenant, description, account.IsEnabled)));
 
     await appDb.SaveChangesAsync(cancellationToken);
 

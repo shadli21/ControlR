@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ControlR.Web.Server.Services.Authorization;
 
@@ -11,7 +12,8 @@ public static class AuthorizationChangeLogEntry
   private static readonly JsonSerializerOptions _serializerOptions = new()
   {
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    Converters = { new JsonStringEnumConverter() }
   };
 
   public static AuthorizationChangeLog Create(

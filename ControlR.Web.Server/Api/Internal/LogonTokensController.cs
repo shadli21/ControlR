@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.LogonTokens;
 using Microsoft.AspNetCore.Mvc;
 
@@ -158,16 +159,14 @@ public class LogonTokensController : ControllerBase
       });
     }
 
-    appDb.AuthorizationChangeLogs.Add(new AuthorizationChangeLog
-    {
-      ActionType = "credential-scope-set",
-      ActorPrincipalType = "user",
-      ActorPrincipalId = userId.ToString(),
-      TargetType = "LogonToken",
-      TargetId = tokenId.ToString(),
-      OwningTenantId = tenantId,
-      AfterJson = $"{{\"scopeCount\":{scopes.Count}}}"
-    });
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      AuthorizationChangeLogActions.CredentialScopeSet,
+      AuthorizationChangeLogActorTypes.User,
+      userId.ToString(),
+      AuthorizationChangeLogTargetTypes.LogonToken,
+      tokenId.ToString(),
+      tenantId,
+      after: new CredentialScopeSetSummary(scopes.Count)));
 
     await appDb.SaveChangesAsync();
   }

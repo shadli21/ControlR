@@ -1,3 +1,4 @@
+using ControlR.Libraries.Api.Contracts.Dtos;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Shared;
@@ -7,12 +8,14 @@ public partial class PermissionAssignmentPanel : ComponentBase
   private readonly HashSet<Guid> _togglingIds = [];
 
   private InternalDtos.PermissionAssignmentDto[]? _assignments;
+  private bool _bulkDeleting;
   private bool _loading;
   private PresetApplyMode _presetMode = PresetApplyMode.Merge;
   private InternalDtos.PermissionPresetDto[] _presets = [];
   private Guid? _presetScopeId;
   private PermissionScopeKind _presetScopeKind = PermissionScopeKind.Tenant;
   private PermissionPrincipalKind _principalKind = PermissionPrincipalKind.User;
+  private HashSet<InternalDtos.PermissionAssignmentDto> _selectedAssignments = [];
   private IReadOnlyCollection<string> _selectedPresetNames = [];
   private Guid? _selectedPrincipalId;
 
@@ -77,6 +80,18 @@ public partial class PermissionAssignmentPanel : ComponentBase
       return;
     }
 
+    var assignmentRequests = permissionNames
+      .Select(name => new InternalDtos.CreatePermissionAssignmentRequestDto(
+        _principalKind,
+        _selectedPrincipalId.Value,
+        name,
+        PermissionEffect.Allow,
+        _presetScopeKind,
+        _presetScopeId,
+        null))
+      .ToArray();
+
+    ApiResult result;
     if (_presetMode == PresetApplyMode.Replace)
     {
       var confirmed = await DialogService.ShowMessageBoxAsync(
@@ -89,7 +104,9 @@ public partial class PermissionAssignmentPanel : ComponentBase
         return;
       }
 
-      await DeleteAllAssignments();
+      result = await ControlrApi.Internal.PermissionAssignments.Replace(
+        new InternalDtos.ReplacePermissionAssignmentsRequestDto(
+          _principalKind, _selectedPrincipalId.Value, assignmentRequests));
     }
     else
     {
@@ -98,36 +115,25 @@ public partial class PermissionAssignmentPanel : ComponentBase
         .Select(a => a.PermissionName)
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-      permissionNames = permissionNames
-        .Where(p => !existingNames.Contains(p))
-        .ToList();
+      assignmentRequests = [.. assignmentRequests.Where(r => !existingNames.Contains(r.PermissionName))];
 
-      if (permissionNames.Count == 0)
+      if (assignmentRequests.Length == 0)
       {
         Snackbar.Add("All preset permissions already assigned", Severity.Info);
         return;
       }
+
+      result = await ControlrApi.Internal.PermissionAssignments.CreateMany(
+        new InternalDtos.CreateManyPermissionAssignmentsRequestDto(assignmentRequests));
     }
 
-    foreach (var permissionName in permissionNames)
+    if (!result.IsSuccess)
     {
-      var request = new InternalDtos.CreatePermissionAssignmentRequestDto(
-        _principalKind,
-        _selectedPrincipalId.Value,
-        permissionName,
-        PermissionEffect.Allow,
-        _presetScopeKind,
-        _presetScopeId,
-        null);
-
-      var result = await ControlrApi.Internal.PermissionAssignments.Create(request);
-      if (!result.IsSuccess)
-      {
-        Snackbar.Add($"Failed to assign {permissionName}: {result.Reason}", Severity.Error);
-      }
+      Snackbar.Add(result.Reason, Severity.Error);
+      return;
     }
 
-    Snackbar.Add($"Applied {permissionNames.Count} permission(s)", Severity.Success);
+    Snackbar.Add($"Applied {assignmentRequests.Length} permission(s)", Severity.Success);
     await LoadAssignments();
   }
 
@@ -155,23 +161,6 @@ public partial class PermissionAssignmentPanel : ComponentBase
     }
   }
 
-  private async Task DeleteAllAssignments()
-  {
-    if (_assignments is null)
-    {
-      return;
-    }
-
-    foreach (var assignment in _assignments)
-    {
-      var result = await ControlrApi.Internal.PermissionAssignments.Delete(assignment.Id);
-      if (!result.IsSuccess)
-      {
-        Snackbar.Add($"Failed to delete {assignment.PermissionName}: {result.Reason}", Severity.Error);
-      }
-    }
-  }
-
   private async Task DeleteAssignment(InternalDtos.PermissionAssignmentDto assignment)
   {
     var confirmed = await DialogService.ShowMessageBoxAsync(
@@ -193,6 +182,60 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
     Snackbar.Add("Assignment deleted", Severity.Success);
     await LoadAssignments();
+  }
+
+  private async Task DeleteSelectedAssignments()
+  {
+    if (_selectedAssignments.Count == 0 || _bulkDeleting)
+    {
+      return;
+    }
+
+    var selected = _selectedAssignments.ToList();
+
+    var confirmed = await DialogService.ShowMessageBoxAsync(
+      "Delete Assignments",
+      $"Delete {selected.Count} assignment(s)?",
+      "Delete", "Cancel");
+
+    if (!confirmed.GetValueOrDefault())
+    {
+      return;
+    }
+
+    _bulkDeleting = true;
+
+    try
+    {
+      var result = await ControlrApi.Internal.PermissionAssignments.DeleteMany(
+        new InternalDtos.DeleteManyPermissionAssignmentsRequestDto(
+          [.. selected.Select(x => x.Id)]));
+
+      if (!result.IsSuccess)
+      {
+        Snackbar.Add(result.Reason, Severity.Error);
+        return;
+      }
+
+      _selectedAssignments.Clear();
+
+      var successCount = result.Value.SuccessIds.Count;
+      var failureCount = result.Value.FailureIds.Count;
+      if (failureCount == 0)
+      {
+        Snackbar.Add($"Deleted {successCount} assignment(s)", Severity.Success);
+      }
+      else
+      {
+        Snackbar.Add($"Deleted {successCount} assignment(s); {failureCount} failed", Severity.Warning);
+      }
+
+      await LoadAssignments();
+    }
+    finally
+    {
+      _bulkDeleting = false;
+    }
   }
 
   private async Task EditAssignment(InternalDtos.PermissionAssignmentDto assignment)
@@ -254,6 +297,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
   {
     _selectedPrincipalId = id;
     _assignments = null;
+    _selectedAssignments.Clear();
 
     if (id is not null)
     {
@@ -266,6 +310,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
     _principalKind = kind;
     _selectedPrincipalId = null;
     _assignments = null;
+    _selectedAssignments.Clear();
     await InvokeAsync(StateHasChanged);
 
     if (_selectedPrincipalId is not null)

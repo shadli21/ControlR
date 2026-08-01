@@ -18,6 +18,16 @@ internal partial class InternalApi
     });
   }
 
+  async Task<ApiResult> IPermissionAssignmentsApi.CreateMany(InternalDtos.CreateManyPermissionAssignmentsRequestDto request, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+    {
+      using var response = await _client.HttpClient.PostAsJsonAsync(
+        $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/create-many", request, cancellationToken);
+      await response.EnsureSuccessStatusCodeWithDetails();
+    });
+  }
+
   async Task<ApiResult> IPermissionAssignmentsApi.Delete(Guid assignmentId, CancellationToken cancellationToken)
   {
     return await _client.ExecuteApiCall(async () =>
@@ -25,6 +35,17 @@ internal partial class InternalApi
       using var response = await _client.HttpClient.DeleteAsync(
         $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/{assignmentId}", cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
+    });
+  }
+
+  async Task<ApiResult<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>> IPermissionAssignmentsApi.DeleteMany(InternalDtos.DeleteManyPermissionAssignmentsRequestDto request, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+    {
+      using var response = await _client.HttpClient.PostAsJsonAsync(
+        $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/delete-many", request, cancellationToken);
+      await response.EnsureSuccessStatusCodeWithDetails();
+      return await response.Content.ReadFromJsonAsync<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>(cancellationToken);
     });
   }
 
@@ -57,6 +78,16 @@ internal partial class InternalApi
         $"{HttpConstants.Internal.EffectivePermissionsEndpoint}/query", request, cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
       return await response.Content.ReadFromJsonAsync<InternalDtos.EffectivePermissionQueryResponseDto>(cancellationToken);
+    });
+  }
+
+  async Task<ApiResult> IPermissionAssignmentsApi.Replace(InternalDtos.ReplacePermissionAssignmentsRequestDto request, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+    {
+      using var response = await _client.HttpClient.PostAsJsonAsync(
+        $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/replace", request, cancellationToken);
+      await response.EnsureSuccessStatusCodeWithDetails();
     });
   }
 

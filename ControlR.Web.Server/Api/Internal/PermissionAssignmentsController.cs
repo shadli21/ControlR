@@ -1,6 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Services.PermissionAssignments;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -38,6 +37,32 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     return Ok(result.Value);
   }
 
+  [HttpPost("create-many")]
+  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  public async Task<IActionResult> CreateMany(
+    [FromBody] InternalDtos.CreateManyPermissionAssignmentsRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryGetTenantId(out var tenantId))
+    {
+      return BadRequest("User tenant not found.");
+    }
+
+    if (!User.TryGetUserId(out var userId))
+    {
+      return BadRequest("User ID not found.");
+    }
+
+    var result = await _permissionAssignmentManager.CreateMany(
+      request.Assignments, tenantId, userId, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToActionResult();
+    }
+
+    return NoContent();
+  }
+
   [HttpDelete("{assignmentId:guid}")]
   [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<IActionResult> Delete(
@@ -61,6 +86,32 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     }
 
     return NoContent();
+  }
+
+  [HttpPost("delete-many")]
+  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  public async Task<ActionResult<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>> DeleteMany(
+    [FromBody] InternalDtos.DeleteManyPermissionAssignmentsRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryGetTenantId(out var tenantId))
+    {
+      return BadRequest("User tenant not found.");
+    }
+
+    if (!User.TryGetUserId(out var userId))
+    {
+      return BadRequest("User ID not found.");
+    }
+
+    var result = await _permissionAssignmentManager.DeleteMany(
+      request.AssignmentIds, tenantId, userId, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToHttpResult().ToActionResult();
+    }
+
+    return Ok(result.Value);
   }
 
   [HttpGet]
@@ -104,6 +155,37 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
       .ToList();
 
     return Ok(presets);
+  }
+
+  [HttpPost("replace")]
+  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  public async Task<IActionResult> Replace(
+    [FromBody] InternalDtos.ReplacePermissionAssignmentsRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryGetTenantId(out var tenantId))
+    {
+      return BadRequest("User tenant not found.");
+    }
+
+    if (!User.TryGetUserId(out var userId))
+    {
+      return BadRequest("User ID not found.");
+    }
+
+    var result = await _permissionAssignmentManager.ReplaceForPrincipal(
+      request.PrincipalKind,
+      request.PrincipalId,
+      tenantId,
+      userId,
+      request.Assignments,
+      cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToActionResult();
+    }
+
+    return NoContent();
   }
 
   [HttpPut("{assignmentId:guid}")]

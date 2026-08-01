@@ -16,8 +16,18 @@ public interface IPermissionAssignmentManager
     Guid tenantId,
     Guid actorPrincipalId,
     CancellationToken cancellationToken = default);
+  Task<HttpResult> CreateMany(
+    IReadOnlyList<InternalDtos.CreatePermissionAssignmentRequestDto> requests,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken = default);
   Task<HttpResult> Delete(
     Guid assignmentId,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken = default);
+  Task<HttpResult<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>> DeleteMany(
+    IReadOnlyList<Guid> assignmentIds,
     Guid tenantId,
     Guid actorPrincipalId,
     CancellationToken cancellationToken = default);
@@ -102,11 +112,75 @@ public class PermissionAssignmentManager(
       assignment.Id.ToString(),
       tenantId,
       after: new PermissionAssignmentSnapshot(
-        request.PermissionName, request.Effect.ToString(), request.ScopeKind.ToString(), request.ScopeId)));
+        request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
 
     await _appDb.SaveChangesAsync(cancellationToken);
 
     return HttpResult.Ok(MapToDto(assignment));
+  }
+
+  public async Task<HttpResult> CreateMany(
+    IReadOnlyList<InternalDtos.CreatePermissionAssignmentRequestDto> requests,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken = default)
+  {
+    if (requests.Count == 0)
+    {
+      return HttpResult.Fail(HttpResultErrorCode.BadRequest, "No assignments were provided.");
+    }
+
+    var principalExists = await ValidatePrincipalExists(
+      requests[0].PrincipalKind, requests[0].PrincipalId, tenantId, cancellationToken);
+    if (!principalExists)
+    {
+      return HttpResult.Fail(
+        HttpResultErrorCode.BadRequest, $"Principal not found: {requests[0].PrincipalKind}/{requests[0].PrincipalId}");
+    }
+
+    foreach (var request in requests)
+    {
+      if (!PermissionCatalog.Exists(request.PermissionName))
+      {
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, $"Unknown permission name: {request.PermissionName}");
+      }
+
+      if (request.ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant && !request.ScopeId.HasValue)
+      {
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, $"ScopeId is required for scope kind: {request.ScopeKind}");
+      }
+
+      var assignment = new PermissionAssignment
+      {
+        PrincipalKind = request.PrincipalKind,
+        PrincipalId = request.PrincipalId,
+        PermissionName = request.PermissionName,
+        Effect = request.Effect,
+        ScopeKind = request.ScopeKind,
+        ScopeId = NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+        Notes = request.Notes,
+        IsEnabled = true,
+        OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId,
+        CreatedByPrincipalType = AuthorizationChangeLogActorTypes.User,
+        CreatedByPrincipalId = actorPrincipalId.ToString()
+      };
+
+      _appDb.PermissionAssignments.Add(assignment);
+
+      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+        AuthorizationChangeLogActions.PermissionAssignmentCreated,
+        AuthorizationChangeLogActorTypes.User,
+        actorPrincipalId.ToString(),
+        AuthorizationChangeLogTargetTypes.PermissionAssignment,
+        assignment.Id.ToString(),
+        tenantId,
+        after: new PermissionAssignmentSnapshot(
+          request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
+    }
+
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok();
   }
 
   public async Task<HttpResult> Delete(
@@ -132,12 +206,54 @@ public class PermissionAssignmentManager(
       assignmentId.ToString(),
       tenantId,
       before: new PermissionAssignmentSnapshot(
-        assignment.PermissionName, assignment.Effect.ToString(), assignment.ScopeKind.ToString(), assignment.ScopeId)));
+        assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));
 
     _appDb.PermissionAssignments.Remove(assignment);
     await _appDb.SaveChangesAsync(cancellationToken);
 
     return HttpResult.Ok();
+  }
+
+  public async Task<HttpResult<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>> DeleteMany(
+    IReadOnlyList<Guid> assignmentIds,
+    Guid tenantId,
+    Guid actorPrincipalId,
+    CancellationToken cancellationToken = default)
+  {
+    if (assignmentIds.Count == 0)
+    {
+      return HttpResult.Fail<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>(
+        HttpResultErrorCode.BadRequest, "No assignment IDs were provided.");
+    }
+
+    var assignments = await _appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => assignmentIds.Contains(x.Id))
+      .ToListAsync(cancellationToken);
+
+    var foundIds = assignments.Select(x => x.Id).ToHashSet();
+    var successIds = new List<Guid>(assignments.Count);
+    var failureIds = assignmentIds.Except(foundIds).ToList();
+
+    foreach (var assignment in assignments)
+    {
+      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+        AuthorizationChangeLogActions.PermissionAssignmentDeleted,
+        AuthorizationChangeLogActorTypes.User,
+        actorPrincipalId.ToString(),
+        AuthorizationChangeLogTargetTypes.PermissionAssignment,
+        assignment.Id.ToString(),
+        tenantId,
+        before: new PermissionAssignmentSnapshot(
+          assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));
+
+      _appDb.PermissionAssignments.Remove(assignment);
+      successIds.Add(assignment.Id);
+    }
+
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    return HttpResult.Ok(new InternalDtos.DeleteManyPermissionAssignmentsResponseDto(successIds, failureIds));
   }
 
   public async Task<IReadOnlyList<InternalDtos.PermissionAssignmentDto>> GetByPrincipal(
@@ -207,8 +323,8 @@ public class PermissionAssignmentManager(
         existingAssignment.Id.ToString(),
         tenantId,
         before: new PermissionAssignmentSnapshot(
-          existingAssignment.PermissionName, existingAssignment.Effect.ToString(),
-          existingAssignment.ScopeKind.ToString(), existingAssignment.ScopeId)));
+          existingAssignment.PermissionName, existingAssignment.Effect,
+          existingAssignment.ScopeKind, existingAssignment.ScopeId)));
 
       _appDb.PermissionAssignments.Remove(existingAssignment);
     }
@@ -244,7 +360,7 @@ public class PermissionAssignmentManager(
         assignment.Id.ToString(),
         tenantId,
         after: new PermissionAssignmentSnapshot(
-          request.PermissionName, request.Effect.ToString(), request.ScopeKind.ToString(), request.ScopeId)));
+          request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
     }
 
     await _appDb.SaveChangesAsync(cancellationToken);
@@ -282,7 +398,7 @@ public class PermissionAssignmentManager(
     }
 
     var before = new PermissionAssignmentSnapshot(
-      assignment.PermissionName, assignment.Effect.ToString(), assignment.ScopeKind.ToString(), assignment.ScopeId);
+      assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId);
 
     assignment.PermissionName = request.PermissionName;
     assignment.Effect = request.Effect;
@@ -301,7 +417,7 @@ public class PermissionAssignmentManager(
       tenantId,
       before: before,
       after: new PermissionAssignmentSnapshot(
-        assignment.PermissionName, assignment.Effect.ToString(), assignment.ScopeKind.ToString(), assignment.ScopeId)));
+        assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));
 
     await _appDb.SaveChangesAsync(cancellationToken);
 
