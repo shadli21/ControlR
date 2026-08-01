@@ -42,5 +42,5 @@
   [Parameter]
   public RenderFragment? Actions { get; set; }
 
-  private string PaperClass => string.IsNullOrWhiteSpace(Class) ? "pa-3 mb-3" : $"pa-3 mb-3 {Class}";
+  private string PaperClass => string.IsNullOrWhiteSpace(Class) ? "pa-3 mb-3" : Class;
 }

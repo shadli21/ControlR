@@ -81,9 +81,8 @@ else
   </MudGrid>
 </MudPaper>
 
-<MudDataGrid T="InternalDtos.PermissionAssignmentDto" Items="_assignments" Hover="true" Dense="true" Loading="_loading"
-                 MultiSelection="true" @bind-SelectedItems="_selectedAssignments">
-  <ToolBarContent>
+<div class="permission-toolbar-row mt-8">
+  <div class="permission-toolbar-left">
     @if (_selectedAssignments.Count > 0)
     {
       <MudText Typo="Typo.subtitle2" Class="mr-2">
@@ -94,15 +93,19 @@ else
         Delete Selected
       </MudButton>
     }
-    else
-    {
-      <MudSpacer />
+  </div>
+  <GridToolbar @bind-SearchValue="_searchString" OnRefresh="LoadAssignments">
+    <Actions>
       <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-                 OnClick="CreateAssignment" Size="Size.Small" Disabled="@(_selectedPrincipalId is null)">
+                 OnClick="CreateAssignment" Disabled="@(_selectedPrincipalId is null)">
         New Assignment
       </MudButton>
-    }
-  </ToolBarContent>
+    </Actions>
+  </GridToolbar>
+</div>
+
+<MudDataGrid T="InternalDtos.PermissionAssignmentDto" Items="_assignments" Hover="true" Dense="true" Loading="_loading"
+                 MultiSelection="true" @bind-SelectedItems="_selectedAssignments" QuickFilter="QuickFilter">
   <Columns>
     <SelectColumn ShowInFooter="false" />
     <PropertyColumn Property="x => x.PermissionName" Title="Permission" />

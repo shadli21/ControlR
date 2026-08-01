@@ -15,6 +15,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
   private Guid? _presetScopeId;
   private PermissionScopeKind _presetScopeKind = PermissionScopeKind.Tenant;
   private PermissionPrincipalKind _principalKind = PermissionPrincipalKind.User;
+  private string _searchString = string.Empty;
   private HashSet<InternalDtos.PermissionAssignmentDto> _selectedAssignments = [];
   private IReadOnlyCollection<string> _selectedPresetNames = [];
   private Guid? _selectedPrincipalId;
@@ -36,6 +37,18 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   [Inject]
   public required ISnackbar Snackbar { get; init; }
+
+  private Func<InternalDtos.PermissionAssignmentDto, bool> QuickFilter => assignment =>
+  {
+    if (string.IsNullOrWhiteSpace(_searchString))
+    {
+      return true;
+    }
+
+    return assignment.PermissionName.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+           assignment.Effect.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+           assignment.ScopeKind.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase);
+  };
 
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
