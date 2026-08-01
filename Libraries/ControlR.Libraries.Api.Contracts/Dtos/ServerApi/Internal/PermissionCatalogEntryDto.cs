@@ -4,5 +4,5 @@ public record PermissionCatalogEntryDto(
   string Name,
   string DisplayName,
   string Description,
-  PermissionScopeKind[] DefaultScopeKinds,
-  bool IsAssignable);
+  PermissionScopeKind[] AllowedScopeKinds,
+  bool SelfRemovable);

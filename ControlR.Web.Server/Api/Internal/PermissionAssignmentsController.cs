@@ -138,7 +138,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   {
     var entries = PermissionCatalog.All.Values
       .Select(x => new InternalDtos.PermissionCatalogEntryDto(
-        x.Name, x.DisplayName, x.Description, x.DefaultScopeKinds, x.IsAssignable))
+        x.Name, x.DisplayName, x.Description, x.AllowedScopeKinds, x.SelfRemovable))
       .OrderBy(x => x.DisplayName)
       .ToList();
 

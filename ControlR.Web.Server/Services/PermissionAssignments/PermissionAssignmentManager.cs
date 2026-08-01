@@ -75,16 +75,9 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.BadRequest, $"Principal not found: {request.PrincipalKind}/{request.PrincipalId}");
     }
 
-    if (!PermissionCatalog.Exists(request.PermissionName))
+    if (ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId) is { } scopeError)
     {
-      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
-        HttpResultErrorCode.BadRequest, $"Unknown permission name: {request.PermissionName}");
-    }
-
-    if (request.ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant && !request.ScopeId.HasValue)
-    {
-      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
-        HttpResultErrorCode.BadRequest, $"ScopeId is required for scope kind: {request.ScopeKind}");
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, scopeError);
     }
 
     var assignment = new PermissionAssignment
@@ -140,14 +133,9 @@ public class PermissionAssignmentManager(
 
     foreach (var request in requests)
     {
-      if (!PermissionCatalog.Exists(request.PermissionName))
+      if (ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId) is { } scopeError)
       {
-        return HttpResult.Fail(HttpResultErrorCode.BadRequest, $"Unknown permission name: {request.PermissionName}");
-      }
-
-      if (request.ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant && !request.ScopeId.HasValue)
-      {
-        return HttpResult.Fail(HttpResultErrorCode.BadRequest, $"ScopeId is required for scope kind: {request.ScopeKind}");
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, scopeError);
       }
 
       var assignment = new PermissionAssignment
@@ -198,6 +186,30 @@ public class PermissionAssignmentManager(
       return HttpResult.Fail(HttpResultErrorCode.NotFound, "Permission assignment not found.");
     }
 
+    if (IsSelf(assignment, actorPrincipalId))
+    {
+      var grantedAfter = await _appDb.PermissionAssignments
+        .IgnoreQueryFilters()
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
+                    x.PrincipalId == actorPrincipalId &&
+                    x.Id != assignmentId &&
+                    x.Effect == PermissionEffect.Allow &&
+                    x.IsEnabled)
+        .Select(x => x.PermissionName)
+        .ToListAsync(cancellationToken);
+
+      var grantedBefore = new HashSet<string>(grantedAfter);
+      if (assignment.Effect == PermissionEffect.Allow && assignment.IsEnabled)
+      {
+        grantedBefore.Add(assignment.PermissionName);
+      }
+
+      if (FindViolatedSelfProtected(grantedBefore, grantedAfter) is { } violation)
+      {
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, violation);
+      }
+    }
+
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
       AuthorizationChangeLogActions.PermissionAssignmentDeleted,
       AuthorizationChangeLogActorTypes.User,
@@ -234,6 +246,31 @@ public class PermissionAssignmentManager(
     var foundIds = assignments.Select(x => x.Id).ToHashSet();
     var successIds = new List<Guid>(assignments.Count);
     var failureIds = assignmentIds.Except(foundIds).ToList();
+
+    if (assignments.Any(x => IsSelf(x, actorPrincipalId)))
+    {
+      var grantedAfter = await _appDb.PermissionAssignments
+        .IgnoreQueryFilters()
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
+                    x.PrincipalId == actorPrincipalId &&
+                    !assignmentIds.Contains(x.Id) &&
+                    x.Effect == PermissionEffect.Allow &&
+                    x.IsEnabled)
+        .Select(x => x.PermissionName)
+        .ToListAsync(cancellationToken);
+
+      var grantedBefore = new HashSet<string>(grantedAfter);
+      foreach (var selfAssignment in assignments.Where(x => IsSelf(x, actorPrincipalId) && x.Effect == PermissionEffect.Allow && x.IsEnabled))
+      {
+        grantedBefore.Add(selfAssignment.PermissionName);
+      }
+
+      if (FindViolatedSelfProtected(grantedBefore, grantedAfter) is { } violation)
+      {
+        return HttpResult.Fail<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>(
+          HttpResultErrorCode.BadRequest, violation);
+      }
+    }
 
     foreach (var assignment in assignments)
     {
@@ -308,6 +345,28 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.BadRequest, $"Principal not found: {principalKind}/{principalId}");
     }
 
+    if (principalKind == PermissionPrincipalKind.User && principalId == actorPrincipalId)
+    {
+      var grantedBefore = await _appDb.PermissionAssignments
+        .IgnoreQueryFilters()
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
+                    x.PrincipalId == actorPrincipalId &&
+                    x.Effect == PermissionEffect.Allow &&
+                    x.IsEnabled)
+        .Select(x => x.PermissionName)
+        .ToListAsync(cancellationToken);
+
+      var grantedAfter = assignments
+        .Where(r => r.Effect == PermissionEffect.Allow)
+        .Select(r => r.PermissionName)
+        .ToList();
+
+      if (FindViolatedSelfProtected(grantedBefore, grantedAfter) is { } violation)
+      {
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, violation);
+      }
+    }
+
     var existing = await _appDb.PermissionAssignments
       .IgnoreQueryFilters()
       .Where(x => x.PrincipalKind == principalKind && x.PrincipalId == principalId)
@@ -331,9 +390,9 @@ public class PermissionAssignmentManager(
 
     foreach (var request in assignments)
     {
-      if (!PermissionCatalog.Exists(request.PermissionName))
+      if (ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId) is { } scopeError)
       {
-        return HttpResult.Fail(HttpResultErrorCode.BadRequest, $"Unknown permission name: {request.PermissionName}");
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, scopeError);
       }
 
       var assignment = new PermissionAssignment
@@ -385,16 +444,39 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.NotFound, "Permission assignment not found.");
     }
 
-    if (!PermissionCatalog.Exists(request.PermissionName))
+    if (ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId) is { } scopeError)
     {
-      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
-        HttpResultErrorCode.BadRequest, $"Unknown permission name: {request.PermissionName}");
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, scopeError);
     }
 
-    if (request.ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant && !request.ScopeId.HasValue)
+    if (IsSelf(assignment, actorPrincipalId))
     {
-      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
-        HttpResultErrorCode.BadRequest, $"ScopeId is required for scope kind: {request.ScopeKind}");
+      var others = await _appDb.PermissionAssignments
+        .IgnoreQueryFilters()
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
+                    x.PrincipalId == actorPrincipalId &&
+                    x.Id != assignmentId &&
+                    x.Effect == PermissionEffect.Allow &&
+                    x.IsEnabled)
+        .Select(x => x.PermissionName)
+        .ToListAsync(cancellationToken);
+
+      var grantedBefore = new HashSet<string>(others);
+      if (assignment.Effect == PermissionEffect.Allow && assignment.IsEnabled)
+      {
+        grantedBefore.Add(assignment.PermissionName);
+      }
+
+      var grantedAfter = new HashSet<string>(others);
+      if (request.Effect == PermissionEffect.Allow && request.IsEnabled)
+      {
+        grantedAfter.Add(request.PermissionName);
+      }
+
+      if (FindViolatedSelfProtected(grantedBefore, grantedAfter) is { } violation)
+      {
+        return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, violation);
+      }
     }
 
     var before = new PermissionAssignmentSnapshot(
@@ -424,6 +506,31 @@ public class PermissionAssignmentManager(
     return HttpResult.Ok(MapToDto(assignment));
   }
 
+  /// <summary>
+  /// Anti-lockout guard: returns an error if the operation drops any non-self-removable
+  /// permission that the actor actually held before the operation (i.e. the last grant of a
+  /// protected permission would be lost). Only the actor's own principal is guarded; another
+  /// authorized holder may still revoke these.
+  /// </summary>
+  private static string? FindViolatedSelfProtected(
+    IReadOnlyCollection<string> preOpGranted,
+    IReadOnlyCollection<string> postOpGranted)
+  {
+    foreach (var lostPermission in new HashSet<string>(preOpGranted).Except(postOpGranted))
+    {
+      var metadata = PermissionCatalog.Get(lostPermission);
+      if (metadata is not null && !metadata.SelfRemovable)
+      {
+        return $"You cannot remove '{metadata.DisplayName}' from yourself; retaining it is required to continue managing permissions.";
+      }
+    }
+
+    return null;
+  }
+
+  private static bool IsSelf(PermissionAssignment assignment, Guid actorPrincipalId) =>
+    assignment.PrincipalKind == PermissionPrincipalKind.User && assignment.PrincipalId == actorPrincipalId;
+
   private static InternalDtos.PermissionAssignmentDto MapToDto(PermissionAssignment assignment)
   {
     return new InternalDtos.PermissionAssignmentDto(
@@ -449,6 +556,32 @@ public class PermissionAssignmentManager(
     PermissionScopeKind.Tenant => tenantId,
     _ => scopeId
   };
+
+  /// <summary>
+  /// Validates that the permission exists in the catalog and that the requested scope kind is
+  /// within its allowed whitelist. Returns a user-facing error message, or <see langword="null"/>
+  /// when valid.
+  /// </summary>
+  private static string? ValidatePermissionScope(string permissionName, PermissionScopeKind scopeKind, Guid? scopeId)
+  {
+    var metadata = PermissionCatalog.Get(permissionName);
+    if (metadata is null)
+    {
+      return $"Unknown permission name: {permissionName}";
+    }
+
+    if (metadata.AllowedScopeKinds is not { } allowed || !allowed.Contains(scopeKind))
+    {
+      return $"Permission '{metadata.DisplayName}' cannot be assigned at {scopeKind} scope.";
+    }
+
+    if (scopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant && !scopeId.HasValue)
+    {
+      return $"ScopeId is required for scope kind: {scopeKind}";
+    }
+
+    return null;
+  }
 
   private async Task<bool> ValidatePrincipalExists(
     PermissionPrincipalKind principalKind,

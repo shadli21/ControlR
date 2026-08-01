@@ -1,12 +1,17 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Pages;
 
 public partial class Users : ComponentBase
 {
+  private Guid? _currentUserId;
   private bool _loading;
   private string _searchString = string.Empty;
   private IEnumerable<InternalDtos.UserResponseDto> _users = [];
+
+  [Inject]
+  public required AuthenticationStateProvider AuthState { get; init; }
 
   [Inject]
   public required IClipboardManager ClipboardManager { get; init; }
@@ -33,6 +38,12 @@ public partial class Users : ComponentBase
 
   protected override async Task OnInitializedAsync()
   {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    if (state.User.TryGetUserId(out var currentUserId))
+    {
+      _currentUserId = currentUserId;
+    }
+
     await Refresh();
   }
 

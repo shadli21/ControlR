@@ -27,12 +27,12 @@
         </MudSelect>
       </MudItem>
       <MudItem xs="6">
-        <MudSelect T="PermissionScopeKind" @bind-Value="_scopeKind" Label="Scope Kind">
-          <MudSelectItem Value="PermissionScopeKind.Server">Server</MudSelectItem>
-          <MudSelectItem Value="PermissionScopeKind.Tenant">Tenant</MudSelectItem>
-          <MudSelectItem Value="PermissionScopeKind.Device">Device</MudSelectItem>
-          <MudSelectItem Value="PermissionScopeKind.DeviceGroup">Device Group</MudSelectItem>
-          <MudSelectItem Value="PermissionScopeKind.CustomerTenant">Customer</MudSelectItem>
+        <MudSelect T="PermissionScopeKind" @bind-Value="_scopeKind" Label="Scope Kind" Disabled="_selectedPermission is null">
+          @foreach (var scopeKind in _selectedPermission?.AllowedScopeKinds ?? [])
+          {
+            var kind = scopeKind;
+            <MudSelectItem Value="kind">@ScopeKindLabel(kind)</MudSelectItem>
+          }
         </MudSelect>
       </MudItem>
       <MudItem xs="12">

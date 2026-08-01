@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Dtos;
+using Microsoft.AspNetCore.Components.Authorization;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Shared;
@@ -9,16 +10,18 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   private InternalDtos.PermissionAssignmentDto[]? _assignments;
   private bool _bulkDeleting;
+  private Guid? _currentUserId;
   private bool _loading;
   private PresetApplyMode _presetMode = PresetApplyMode.Merge;
   private InternalDtos.PermissionPresetDto[] _presets = [];
-  private Guid? _presetScopeId;
-  private PermissionScopeKind _presetScopeKind = PermissionScopeKind.Tenant;
   private PermissionPrincipalKind _principalKind = PermissionPrincipalKind.User;
   private string _searchString = string.Empty;
   private HashSet<InternalDtos.PermissionAssignmentDto> _selectedAssignments = [];
   private IReadOnlyCollection<string> _selectedPresetNames = [];
   private Guid? _selectedPrincipalId;
+
+  [Inject]
+  public required AuthenticationStateProvider AuthState { get; init; }
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
@@ -28,6 +31,9 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   [Parameter]
   public bool IsPrincipalLocked { get; set; }
+
+  [Inject]
+  public required IPermissionCatalogStore PermissionCatalogStore { get; init; }
 
   [Parameter]
   public Guid? PrincipalId { get; set; }
@@ -54,6 +60,17 @@ public partial class PermissionAssignmentPanel : ComponentBase
   {
     if (firstRender)
     {
+      var state = await AuthState.GetAuthenticationStateAsync();
+      if (state.User.TryGetUserId(out var currentUserId))
+      {
+        _currentUserId = currentUserId;
+      }
+
+      if (PermissionCatalogStore.Items.Count == 0)
+      {
+        await PermissionCatalogStore.Refresh();
+      }
+
       var presetsResult = await ControlrApi.Internal.PermissionAssignments.GetPresets();
       if (presetsResult.IsSuccess)
       {
@@ -76,11 +93,27 @@ public partial class PermissionAssignmentPanel : ComponentBase
     }
   }
 
+  private static int Breadth(PermissionScopeKind scopeKind) => scopeKind switch
+  {
+    PermissionScopeKind.Device => 0,
+    PermissionScopeKind.DeviceGroup => 1,
+    PermissionScopeKind.UserGroup => 1,
+    PermissionScopeKind.CustomerTenant => 2,
+    PermissionScopeKind.Tenant => 3,
+    PermissionScopeKind.Server => 4,
+    _ => 0
+  };
+
   private async Task ApplyPresets()
   {
     if (_selectedPrincipalId is null || !_selectedPresetNames.Any())
     {
       return;
+    }
+
+    if (PermissionCatalogStore.Items.Count == 0)
+    {
+      await PermissionCatalogStore.Refresh();
     }
 
     var permissionNames = _selectedPresetNames
@@ -99,8 +132,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
         _selectedPrincipalId.Value,
         name,
         PermissionEffect.Allow,
-        _presetScopeKind,
-        _presetScopeId,
+        BroadestLegalScope(name),
+        null,
         null))
       .ToArray();
 
@@ -123,12 +156,12 @@ public partial class PermissionAssignmentPanel : ComponentBase
     }
     else
     {
-      var existingNames = (_assignments ?? [])
-        .Where(a => a.ScopeKind == _presetScopeKind && a.ScopeId == _presetScopeId)
-        .Select(a => a.PermissionName)
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+      var existingKeyed = (_assignments ?? [])
+        .Select(a => (a.PermissionName, a.ScopeKind))
+        .ToHashSet();
 
-      assignmentRequests = [.. assignmentRequests.Where(r => !existingNames.Contains(r.PermissionName))];
+      assignmentRequests = [.. assignmentRequests
+        .Where(r => !existingKeyed.Contains((r.PermissionName, r.ScopeKind)))];
 
       if (assignmentRequests.Length == 0)
       {
@@ -148,6 +181,17 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
     Snackbar.Add($"Applied {assignmentRequests.Length} permission(s)", Severity.Success);
     await LoadAssignments();
+  }
+
+  private PermissionScopeKind BroadestLegalScope(string permissionName)
+  {
+    var entry = PermissionCatalogStore.Items.FirstOrDefault(p => p.Name == permissionName);
+    if (entry?.AllowedScopeKinds is { Length: > 0 } kinds)
+    {
+      return kinds.MaxBy(Breadth);
+    }
+
+    return PermissionScopeKind.Tenant;
   }
 
   private async Task CreateAssignment()
@@ -269,6 +313,37 @@ public partial class PermissionAssignmentPanel : ComponentBase
     {
       await LoadAssignments();
     }
+  }
+
+  /// <summary>
+  /// True when the row is the current user's own last enabled Allow grant of a
+  /// non-self-removable permission, so removing or disabling it would lock them out. Mirrors
+  /// the server-side guard; the server remains authoritative.
+  /// </summary>
+  private bool IsProtectedSelfLastGrant(InternalDtos.PermissionAssignmentDto assignment)
+  {
+    if (_principalKind != PermissionPrincipalKind.User || _selectedPrincipalId != _currentUserId)
+    {
+      return false;
+    }
+
+    if (assignment.Effect != PermissionEffect.Allow || !assignment.IsEnabled)
+    {
+      return false;
+    }
+
+    var entry = PermissionCatalogStore.Items.FirstOrDefault(p => p.Name == assignment.PermissionName);
+    if (entry is null || entry.SelfRemovable)
+    {
+      return false;
+    }
+
+    var grantCount = (_assignments ?? [])
+      .Count(a => a.PermissionName == assignment.PermissionName &&
+                  a.Effect == PermissionEffect.Allow &&
+                  a.IsEnabled);
+
+    return grantCount <= 1;
   }
 
   private async Task LoadAssignments()

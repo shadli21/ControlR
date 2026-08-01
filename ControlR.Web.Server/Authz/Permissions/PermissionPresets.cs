@@ -14,21 +14,17 @@ public static class PermissionPresets
   public const string ServerAdministrator = "Server Administrator";
   public const string TenantAdministrator = "Tenant Administrator";
 
-  private static readonly HashSet<string> _serverScopedPresets = [ServerAdministrator, InstallerKeyManager];
-
   public static IReadOnlyDictionary<string, IReadOnlyList<string>> All { get; } = BuildPresets();
 
   public static IReadOnlyList<string> GetPermissions(string presetName) =>
     All.TryGetValue(presetName, out var permissions) ? permissions : [];
 
-  public static PermissionScopeKind GetPresetScopeKind(string presetName) =>
-    _serverScopedPresets.Contains(presetName) ? PermissionScopeKind.Server : PermissionScopeKind.Tenant;
-
   /// <summary>
-  /// Seeds permission assignments for every permission in the given presets. Server-level
-  /// presets (Server Administrator, Installer Key Manager) get ScopeKind.Server with no
-  /// ScopeId or OwningTenantId; tenant-level presets get ScopeKind.Tenant scoped to the
-  /// user's tenant, matching the PermissionEvaluator's ScopeMatches requirements.
+  /// Seeds permission assignments for every permission in the given presets. Each permission is
+  /// scoped to its <b>broadest legal scope</b> from the catalog (Server &gt; Tenant &gt;
+  /// CustomerTenant/DeviceGroup &gt; Device). Server-wide permissions get ScopeKind.Server with
+  /// no ScopeId or OwningTenantId; everything else lands at Tenant scope targeting the given
+  /// tenant, matching the PermissionEvaluator's ScopeMatches requirements.
   /// </summary>
   public static async Task SeedAssignmentsAsync(
     AppDb appDb,
@@ -45,12 +41,12 @@ public static class PermissionPresets
         continue;
       }
 
-      var scopeKind = GetPresetScopeKind(presetName);
-      var scopeId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
-      var owningTenantId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
-
       foreach (var permission in permissions)
       {
+        var scopeKind = PermissionCatalog.GetBroadestLegalScope(permission) ?? PermissionScopeKind.Tenant;
+        var scopeId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
+        var owningTenantId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
+
         appDb.PermissionAssignments.Add(new PermissionAssignment
         {
           PrincipalKind = PermissionPrincipalKind.User,

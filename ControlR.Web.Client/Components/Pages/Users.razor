@@ -38,7 +38,7 @@
       <CellTemplate>
         <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
           <MudMenuItem Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Info" OnClick="@(() => EditPermissions(context.Item))">Edit Permissions</MudMenuItem>
-          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteUser(context.Item))">Delete</MudMenuItem>
+          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(context.Item.Id == _currentUserId)" OnClick="@(() => DeleteUser(context.Item))">Delete</MudMenuItem>
         </MudMenu>
       </CellTemplate>
     </TemplateColumn>

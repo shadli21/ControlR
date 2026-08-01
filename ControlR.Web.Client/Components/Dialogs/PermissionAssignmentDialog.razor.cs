@@ -62,12 +62,45 @@ public partial class PermissionAssignmentDialog : ComponentBase
     }
   }
 
+  private static int Breadth(PermissionScopeKind scopeKind) => scopeKind switch
+  {
+    PermissionScopeKind.Device => 0,
+    PermissionScopeKind.DeviceGroup => 1,
+    PermissionScopeKind.UserGroup => 1,
+    PermissionScopeKind.CustomerTenant => 2,
+    PermissionScopeKind.Tenant => 3,
+    PermissionScopeKind.Server => 4,
+    _ => 0
+  };
+
+  private static PermissionScopeKind BroadestLegalScope(InternalDtos.PermissionCatalogEntryDto? entry)
+  {
+    if (entry?.AllowedScopeKinds is { Length: > 0 } kinds)
+    {
+      return kinds.MaxBy(Breadth);
+    }
+
+    return PermissionScopeKind.Tenant;
+  }
+
+  private static string ScopeKindLabel(PermissionScopeKind scopeKind) => scopeKind switch
+  {
+    PermissionScopeKind.Server => "Server",
+    PermissionScopeKind.Tenant => "Tenant",
+    PermissionScopeKind.Device => "Device",
+    PermissionScopeKind.DeviceGroup => "Device Group",
+    PermissionScopeKind.CustomerTenant => "Customer",
+    _ => scopeKind.ToString()
+  };
+
   private void Cancel() => MudDialog.Cancel();
 
   private void HandlePermissionChanged(InternalDtos.PermissionCatalogEntryDto? value)
   {
     _selectedPermission = value;
     _permissionName = value?.Name ?? string.Empty;
+    _scopeKind = BroadestLegalScope(value);
+    _scopeId = null;
   }
 
   private async Task<IEnumerable<InternalDtos.PermissionCatalogEntryDto>> SearchPermissions(

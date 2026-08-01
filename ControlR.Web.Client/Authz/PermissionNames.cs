@@ -3,8 +3,6 @@ namespace ControlR.Web.Client.Authz;
 public static class PermissionNames
 {
   public const string AgentInstall = "agent.install";
-  public const string CustomerTenantRead = "customer-tenant.read";
-  public const string CustomerTenantWrite = "customer-tenant.write";
   public const string DeviceAgentUpdate = "device.agent.update";
   public const string DeviceAliasWrite = "device.alias.write";
   public const string DeviceChatSend = "device.chat.send";

@@ -13,21 +13,52 @@ public static class PermissionCatalog
   public static PermissionMetadata? Get(string permissionName) =>
     _permissions.GetValueOrDefault(permissionName);
 
+  /// <summary>
+  /// Returns the broadest legal scope for a permission, per the scope-breadth ordering
+  /// (Device &lt; DeviceGroup &lt; CustomerTenant &lt; Tenant &lt; Server). Used when applying
+  /// presets at the highest sensible scope.
+  /// </summary>
+  public static PermissionScopeKind? GetBroadestLegalScope(string permissionName)
+  {
+    var kinds = AllowedKinds(permissionName);
+    if (kinds is null || kinds.Length == 0)
+    {
+      return null;
+    }
+
+    return kinds.MaxBy(Breadth);
+  }
+
+  private static PermissionScopeKind[]? AllowedKinds(string permissionName) =>
+    _permissions.GetValueOrDefault(permissionName)?.AllowedScopeKinds;
+
+  private static int Breadth(PermissionScopeKind scopeKind) => scopeKind switch
+  {
+    PermissionScopeKind.Device => 0,
+    PermissionScopeKind.DeviceGroup => 1,
+    PermissionScopeKind.UserGroup => 1,
+    PermissionScopeKind.CustomerTenant => 2,
+    PermissionScopeKind.Tenant => 3,
+    PermissionScopeKind.Server => 4,
+    _ => 0
+  };
+
   private static Dictionary<string, PermissionMetadata> BuildCatalog()
   {
     var catalog = new Dictionary<string, PermissionMetadata>();
 
-    void Add(string name, string displayName, string description, PermissionScopeKind[] scopeKinds, bool isAssignable = true)
+    void Add(string name, string displayName, string description, PermissionScopeKind[] scopeKinds, bool selfRemovable = true)
     {
-      catalog[name] = new PermissionMetadata(name, displayName, description, scopeKinds, isAssignable);
+      catalog[name] = new PermissionMetadata(name, displayName, description, scopeKinds, selfRemovable);
     }
 
     var server = new[] { PermissionScopeKind.Server };
     var tenant = new[] { PermissionScopeKind.Tenant };
-    var device = new[] { PermissionScopeKind.Device, PermissionScopeKind.CustomerTenant };
-    var deviceAndGroup = new[] { PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup, PermissionScopeKind.CustomerTenant };
+    var deviceResources = new[] { PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup, PermissionScopeKind.CustomerTenant, PermissionScopeKind.Tenant };
+    var deviceGroup = new[] { PermissionScopeKind.DeviceGroup, PermissionScopeKind.Tenant };
+    var userGroup = new[] { PermissionScopeKind.UserGroup, PermissionScopeKind.Tenant };
 
-    Add(PermissionNames.ServerAdmin, "Server Admin", "Full administrative access to server-wide settings and operations.", server);
+    Add(PermissionNames.ServerAdmin, "Server Admin", "Full administrative access to server-wide settings and operations.", server, selfRemovable: false);
     Add(PermissionNames.ServerAlertsRead, "Read Server Alerts", "View server alerts and notifications.", server);
     Add(PermissionNames.ServerAlertsWrite, "Manage Server Alerts", "Create, update, and dismiss server alerts.", server);
     Add(PermissionNames.ServerTelemetryRead, "Read Server Telemetry", "View server telemetry (logs and metrics).", server);
@@ -49,37 +80,37 @@ public static class PermissionCatalog
     Add(PermissionNames.TenantCustomersWrite, "Manage Customers", "Create, update, and delete customers within the tenant.", tenant);
     Add(PermissionNames.TenantTagsWrite, "Manage Tags", "Create, update, and delete tag definitions within the tenant.", tenant);
     Add(PermissionNames.TenantPermissionsRead, "Read Permissions", "View permission assignments within the tenant.", tenant);
-    Add(PermissionNames.TenantPermissionsWrite, "Manage Permissions", "Create and update allow permission assignments within the tenant.", tenant);
-    Add(PermissionNames.TenantPermissionsDeny, "Manage Deny Permissions", "Create and update deny permission assignments within the tenant.", tenant);
+    Add(PermissionNames.TenantPermissionsWrite, "Manage Permissions", "Create and update allow permission assignments within the tenant.", tenant, selfRemovable: false);
+    Add(PermissionNames.TenantPermissionsDeny, "Manage Deny Permissions", "Create and update deny permission assignments within the tenant.", tenant, selfRemovable: false);
 
-    Add(PermissionNames.DeviceRead, "Read Device", "View device details and status.", deviceAndGroup);
-    Add(PermissionNames.DeviceDelete, "Delete Device", "Remove a device from the system.", deviceAndGroup);
-    Add(PermissionNames.DeviceAliasWrite, "Update Device Alias", "Change the display alias for a device.", deviceAndGroup);
-    Add(PermissionNames.DeviceTagsRead, "Read Device Tags", "View tags assigned to a device.", deviceAndGroup);
-    Add(PermissionNames.DeviceTagsWrite, "Manage Device Tags", "Add and remove tags on a device.", deviceAndGroup);
-    Add(PermissionNames.DeviceDesktopPreviewRead, "View Desktop Preview", "View the desktop preview thumbnail for a device.", deviceAndGroup);
-    Add(PermissionNames.DeviceLogsRead, "Read Device Logs", "View remote log files from a device.", deviceAndGroup);
+    Add(PermissionNames.DeviceRead, "Read Device", "View device details and status.", deviceResources);
+    Add(PermissionNames.DeviceDelete, "Delete Device", "Remove a device from the system.", deviceResources);
+    Add(PermissionNames.DeviceAliasWrite, "Update Device Alias", "Change the display alias for a device.", deviceResources);
+    Add(PermissionNames.DeviceTagsRead, "Read Device Tags", "View tags assigned to a device.", deviceResources);
+    Add(PermissionNames.DeviceTagsWrite, "Manage Device Tags", "Add and remove tags on a device.", deviceResources);
+    Add(PermissionNames.DeviceDesktopPreviewRead, "View Desktop Preview", "View the desktop preview thumbnail for a device.", deviceResources);
+    Add(PermissionNames.DeviceLogsRead, "Read Device Logs", "View remote log files from a device.", deviceResources);
 
-    Add(PermissionNames.DeviceRemoteControlConnect, "Connect Remote Control", "Initiate a remote control session to a device.", deviceAndGroup);
-    Add(PermissionNames.DeviceRemoteControlInteract, "Interact Remote Control", "Send input during a remote control session.", deviceAndGroup);
-    Add(PermissionNames.DeviceRemoteControlBlockInput, "Block Remote Input", "Block the remote user's keyboard and mouse during a remote control session.", deviceAndGroup);
-    Add(PermissionNames.DeviceRemoteControlElevatedDesktop, "Elevated Desktop Access", "Access the elevated (system) desktop during remote control.", deviceAndGroup);
-    Add(PermissionNames.DeviceCtrlAltDelSend, "Send Ctrl+Alt+Del", "Send Ctrl+Alt+Del to a remote device.", deviceAndGroup);
-    Add(PermissionNames.DeviceClipboardRead, "Read Device Clipboard", "Read the clipboard contents from a remote device.", device);
-    Add(PermissionNames.DeviceClipboardWrite, "Write Device Clipboard", "Write to the clipboard on a remote device.", device);
-    Add(PermissionNames.DeviceChatSend, "Chat with Device", "Send chat messages to a remote device user.", deviceAndGroup);
+    Add(PermissionNames.DeviceRemoteControlConnect, "Connect Remote Control", "Initiate a remote control session to a device.", deviceResources);
+    Add(PermissionNames.DeviceRemoteControlInteract, "Interact Remote Control", "Send input during a remote control session.", deviceResources);
+    Add(PermissionNames.DeviceRemoteControlBlockInput, "Block Remote Input", "Block the remote user's keyboard and mouse during a remote control session.", deviceResources);
+    Add(PermissionNames.DeviceRemoteControlElevatedDesktop, "Elevated Desktop Access", "Access the elevated (system) desktop during remote control.", deviceResources);
+    Add(PermissionNames.DeviceCtrlAltDelSend, "Send Ctrl+Alt+Del", "Send Ctrl+Alt+Del to a remote device.", deviceResources);
+    Add(PermissionNames.DeviceClipboardRead, "Read Device Clipboard", "Read the clipboard contents from a remote device.", deviceResources);
+    Add(PermissionNames.DeviceClipboardWrite, "Write Device Clipboard", "Write to the clipboard on a remote device.", deviceResources);
+    Add(PermissionNames.DeviceChatSend, "Chat with Device", "Send chat messages to a remote device user.", deviceResources);
 
-    Add(PermissionNames.DeviceFileSystemRead, "Read Device File System", "Browse and read files on a remote device.", deviceAndGroup);
-    Add(PermissionNames.DeviceFileSystemWrite, "Write Device File System", "Create and modify files on a remote device.", deviceAndGroup);
-    Add(PermissionNames.DeviceFileSystemDelete, "Delete Device Files", "Delete files on a remote device.", deviceAndGroup);
-    Add(PermissionNames.DeviceFileSystemTransferUpload, "Upload Files to Device", "Upload files to a remote device.", deviceAndGroup);
-    Add(PermissionNames.DeviceFileSystemTransferDownload, "Download Files from Device", "Download files from a remote device.", deviceAndGroup);
+    Add(PermissionNames.DeviceFileSystemRead, "Read Device File System", "Browse and read files on a remote device.", deviceResources);
+    Add(PermissionNames.DeviceFileSystemWrite, "Write Device File System", "Create and modify files on a remote device.", deviceResources);
+    Add(PermissionNames.DeviceFileSystemDelete, "Delete Device Files", "Delete files on a remote device.", deviceResources);
+    Add(PermissionNames.DeviceFileSystemTransferUpload, "Upload Files to Device", "Upload files to a remote device.", deviceResources);
+    Add(PermissionNames.DeviceFileSystemTransferDownload, "Download Files from Device", "Download files from a remote device.", deviceResources);
 
-    Add(PermissionNames.DeviceTerminalUse, "Use Remote Terminal", "Open a terminal session and execute commands on a remote device.", deviceAndGroup);
-    Add(PermissionNames.DeviceLogonTokenCreate, "Create Logon Token", "Create a single-use logon token for a device.", device);
-    Add(PermissionNames.DeviceWakeSend, "Send Wake Command", "Send a wake-on-LAN command to a device.", deviceAndGroup);
-    Add(PermissionNames.DevicePowerManage, "Manage Device Power", "Shutdown or restart a remote device.", deviceAndGroup);
-    Add(PermissionNames.DeviceAgentUpdate, "Update Device Agent", "Trigger an agent update on a remote device.", deviceAndGroup);
+    Add(PermissionNames.DeviceTerminalUse, "Use Remote Terminal", "Open a terminal session and execute commands on a remote device.", deviceResources);
+    Add(PermissionNames.DeviceLogonTokenCreate, "Create Logon Token", "Create a single-use logon token for a device.", deviceResources);
+    Add(PermissionNames.DeviceWakeSend, "Send Wake Command", "Send a wake-on-LAN command to a device.", deviceResources);
+    Add(PermissionNames.DevicePowerManage, "Manage Device Power", "Shutdown or restart a remote device.", deviceResources);
+    Add(PermissionNames.DeviceAgentUpdate, "Update Device Agent", "Trigger an agent update on a remote device.", deviceResources);
 
     Add(PermissionNames.PersonalAccessTokenSelfRead, "Read Own PATs", "View your own personal access tokens.", tenant);
     Add(PermissionNames.PersonalAccessTokenSelfWrite, "Manage Own PATs", "Create and delete your own personal access tokens.", tenant);
@@ -94,10 +125,8 @@ public static class PermissionCatalog
     Add(PermissionNames.InstallerKeyManageAll, "Manage All Installer Keys", "View and manage installer keys created by any user in the tenant.", tenant);
     Add(PermissionNames.AgentInstall, "Install Agent", "Generate agent installation commands and scripts.", tenant);
 
-    Add(PermissionNames.CustomerTenantRead, "Read Customer Tenant", "View customer tenant details.", [PermissionScopeKind.CustomerTenant], isAssignable: false);
-    Add(PermissionNames.CustomerTenantWrite, "Manage Customer Tenant", "Create and update customer tenants.", [PermissionScopeKind.CustomerTenant], isAssignable: false);
-    Add(PermissionNames.DeviceGroupAssignDevices, "Assign Devices to Group", "Add and remove devices from a device group.", [PermissionScopeKind.DeviceGroup], isAssignable: false);
-    Add(PermissionNames.UserGroupAssignUsers, "Assign Users to Group", "Add and remove users from a user group.", [PermissionScopeKind.UserGroup], isAssignable: false);
+    Add(PermissionNames.DeviceGroupAssignDevices, "Assign Devices to Group", "Add and remove devices from a device group.", deviceGroup);
+    Add(PermissionNames.UserGroupAssignUsers, "Assign Users to Group", "Add and remove users from a user group.", userGroup);
 
     return catalog;
   }

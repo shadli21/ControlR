@@ -11471,8 +11471,8 @@
           "name",
           "displayName",
           "description",
-          "defaultScopeKinds",
-          "isAssignable"
+          "allowedScopeKinds",
+          "selfRemovable"
         ],
         "type": "object",
         "properties": {
@@ -11485,13 +11485,13 @@
           "description": {
             "type": "string"
           },
-          "defaultScopeKinds": {
+          "allowedScopeKinds": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PermissionScopeKind"
             }
           },
-          "isAssignable": {
+          "selfRemovable": {
             "type": "boolean"
           }
         }

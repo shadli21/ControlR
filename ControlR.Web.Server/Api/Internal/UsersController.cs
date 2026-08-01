@@ -153,6 +153,11 @@ public class UsersController : ControllerBase
       return BadRequest("User tenant not found.");
     }
 
+    if (User.TryGetUserId(out var callerUserId) && callerUserId == userId)
+    {
+      return BadRequest("You cannot delete your own account. Use the identity-management pages instead.");
+    }
+
     var user = await appDb.Users
       .Include(x => x.UserPreferences)
       .FirstOrDefaultAsync(x => x.Id == userId && x.TenantId == tenantId);
