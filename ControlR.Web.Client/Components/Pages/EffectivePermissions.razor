@@ -11,12 +11,12 @@
   <MudItem xs="12" md="5">
     <MudPaper Class="pa-4">
       <MudText Typo="Typo.h6" Class="mb-3">Query Parameters</MudText>
-      <MudSelect T="string" @bind-Value="_principalKind" Label="Principal Kind" Class="mb-2">
-        <MudSelectItem Value="@("User")">User</MudSelectItem>
-        <MudSelectItem Value="@("UserGroup")">User Group</MudSelectItem>
-        <MudSelectItem Value="@("ServiceAccount")">Service Account</MudSelectItem>
+      <MudSelect T="PermissionPrincipalKind" @bind-Value="_principalKind" Label="Principal Kind" Class="mb-2">
+        <MudSelectItem Value="PermissionPrincipalKind.User">User</MudSelectItem>
+        <MudSelectItem Value="PermissionPrincipalKind.UserGroup">User Group</MudSelectItem>
+        <MudSelectItem Value="PermissionPrincipalKind.ServiceAccount">Service Account</MudSelectItem>
       </MudSelect>
-      <PrincipalAutocomplete PrincipalKind="_parsedPrincipalKind"
+      <PrincipalAutocomplete PrincipalKind="_principalKind"
                              @bind-SelectedId="_selectedPrincipalId"
                              Label="Search Principal"
                              Class="mb-2" />
@@ -27,13 +27,13 @@
           <MudSelectItem T="string" Value="@entry.Name">@entry.DisplayName (@entry.Name)</MudSelectItem>
         }
       </MudSelect>
-      <MudSelect T="string" @bind-Value="_scopeKind" Label="Scope Kind" Class="mb-2">
-        <MudSelectItem Value="@("Server")">Server</MudSelectItem>
-        <MudSelectItem Value="@("Tenant")">Tenant</MudSelectItem>
-        <MudSelectItem Value="@("Device")">Device</MudSelectItem>
-        <MudSelectItem Value="@("DeviceGroup")">Device Group</MudSelectItem>
+      <MudSelect T="PermissionScopeKind" @bind-Value="_scopeKind" Label="Scope Kind" Class="mb-2">
+        <MudSelectItem Value="PermissionScopeKind.Server">Server</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.Tenant">Tenant</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.Device">Device</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.DeviceGroup">Device Group</MudSelectItem>
       </MudSelect>
-      <ScopeAutocomplete ScopeKind="_parsedScopeKind"
+      <ScopeAutocomplete ScopeKind="_scopeKind"
                          @bind-SelectedId="_scopeId"
                          Label="Scope"
                          Class="mb-3" />

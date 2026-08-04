@@ -7,28 +7,39 @@ public partial class EffectivePermissions : ComponentBase
 {
   private List<InternalDtos.PermissionCatalogEntryDto> _catalog = [];
   private string _permissionName = string.Empty;
-  private string _principalKind = "User";
+  private PermissionPrincipalKind _principalKind = PermissionPrincipalKind.User;
   private InternalDtos.EffectivePermissionQueryResponseDto? _result;
   private Guid? _scopeId;
-  private string _scopeKind = "Tenant";
+  private PermissionScopeKind _scopeKind = PermissionScopeKind.Tenant;
   private Guid? _selectedPrincipalId;
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
 
   [Inject]
+  public required ILogger<EffectivePermissions> Logger { get; init; }
+
+  [Inject]
   public required ISnackbar Snackbar { get; init; }
-
-  private PermissionPrincipalKind _parsedPrincipalKind => Enum.Parse<PermissionPrincipalKind>(_principalKind);
-
-  private PermissionScopeKind _parsedScopeKind => Enum.Parse<PermissionScopeKind>(_scopeKind);
 
   protected override async Task OnInitializedAsync()
   {
-    var result = await ControlrApi.Internal.PermissionAssignments.GetCatalog();
-    if (result.IsSuccess)
+    try
     {
-      _catalog = [.. result.Value];
+      var result = await ControlrApi.Internal.PermissionAssignments.GetCatalog();
+      if (result.IsSuccess)
+      {
+        _catalog = [.. result.Value];
+      }
+      else
+      {
+        Snackbar.Add(result.Reason, Severity.Error);
+      }
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Failed to load the permission catalog.");
+      Snackbar.Add("Failed to load the permission catalog.", Severity.Error);
     }
   }
 
@@ -47,10 +58,10 @@ public partial class EffectivePermissions : ComponentBase
     }
 
     var request = new InternalDtos.EffectivePermissionQueryRequestDto(
-      _parsedPrincipalKind,
+      _principalKind,
       principalId,
       _permissionName,
-      _parsedScopeKind,
+      _scopeKind,
       _scopeId);
 
     var result = await ControlrApi.Internal.EffectivePermissions.Query(request);
