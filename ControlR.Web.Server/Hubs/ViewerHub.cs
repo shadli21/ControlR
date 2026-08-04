@@ -694,20 +694,20 @@ public class ViewerHub(
         $"Too many device IDs ({deviceIds.Length}). Subscribe at most {MaxHeartbeatSubscriptionBatch} devices per call.");
     }
 
-    foreach (var deviceId in deviceIds.Distinct())
-    {
-      var device = await _appDb.Devices.AsNoTracking().FirstOrDefaultAsync(x => x.Id == deviceId);
-      if (device is null)
-      {
-        continue;
-      }
+    var distinctIds = deviceIds.Distinct().ToArray();
 
+    var devices = await _appDb.Devices.AsNoTracking()
+      .Where(x => distinctIds.Contains(x.Id))
+      .ToListAsync();
+
+    foreach (var device in devices)
+    {
       var authResult = await _authorizationService.AuthorizeAsync(
         Context.User, device, DeviceResourcePolicies.Read);
 
       if (authResult.Succeeded)
       {
-        await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.DeviceHeartbeat(deviceId));
+        await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.DeviceHeartbeat(device.Id));
       }
     }
 
