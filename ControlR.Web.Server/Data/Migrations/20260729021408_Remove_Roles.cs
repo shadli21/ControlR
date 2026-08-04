@@ -45,7 +45,7 @@ namespace ControlR.Web.Server.Data.Migrations;
                 'system', CAST(ur."UserId" AS text)
               FROM "AspNetUserRoles" ur
               INNER JOIN "AspNetRoles" r ON ur."RoleId" = r."Id"
-              INNER JOIN "AspNetUsers" u ON ur."Id" = u."Id"
+              INNER JOIN "AspNetUsers" u ON ur."UserId" = u."Id"
               INNER JOIN (
                 VALUES
                   ('Server Administrator', '{PermissionNames.ServerAdmin}'),

@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.LogonTokens;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,7 @@ public class LogonTokensController : ControllerBase
     [FromServices] AppDb appDb,
     [FromServices] ILogonTokenProvider logonTokenProvider,
     [FromServices] IAuthorizationService authorizationService,
+    [FromServices] IPermissionEvaluator permissionEvaluator,
     [FromBody] InternalDtos.LogonTokenRequestDto request)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -49,7 +51,21 @@ public class LogonTokensController : ControllerBase
 
     if (request.Scopes is { Count: > 0 })
     {
-      var invalidScopes = await GetInvalidScopes(appDb, userId, request.Scopes);
+      var creatorPrincipal = PrincipalDescriptorBuilder.FromClaims(User);
+      if (creatorPrincipal is null)
+      {
+        return BadRequest("User principal not found.");
+      }
+
+      var effectivePermissions = await permissionEvaluator.GetEffectivePermissionNames(
+        creatorPrincipal, HttpContext.RequestAborted);
+
+      var invalidScopes = request.Scopes
+        .Where(scope => !effectivePermissions.Contains(scope.PermissionName))
+        .Select(scope => scope.PermissionName)
+        .Distinct()
+        .ToList();
+
       if (invalidScopes.Count > 0)
       {
         return BadRequest(
@@ -83,55 +99,6 @@ public class LogonTokensController : ControllerBase
       Token: result.Value.Token);
 
     return Ok(response);
-  }
-
-  private static async Task<List<string>> GetInvalidScopes(
-    AppDb appDb, Guid creatorUserId, List<InternalDtos.CredentialScopeDto> scopes)
-  {
-    var effectivePermissions = await ResolveUserEffectivePermissions(appDb, creatorUserId);
-    return scopes
-      .Where(scope => !effectivePermissions.Contains(scope.PermissionName))
-      .Select(scope => scope.PermissionName)
-      .Distinct()
-      .ToList();
-  }
-
-  private static async Task<HashSet<string>> ResolveUserEffectivePermissions(AppDb appDb, Guid userId)
-  {
-    var permissions = new HashSet<string>();
-
-    var directAssignments = await appDb.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
-                  x.PrincipalId == userId &&
-                  x.IsEnabled &&
-                  x.Effect == PermissionEffect.Allow)
-      .Select(x => x.PermissionName)
-      .ToListAsync();
-
-    permissions.UnionWith(directAssignments);
-
-    var userGroupIds = await appDb.UserGroupMembers
-      .IgnoreQueryFilters()
-      .Where(x => x.UserId == userId)
-      .Select(x => x.UserGroupId)
-      .ToListAsync();
-
-    if (userGroupIds.Count > 0)
-    {
-      var groupPermissions = await appDb.PermissionAssignments
-        .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.UserGroup &&
-                    userGroupIds.Contains(x.PrincipalId) &&
-                    x.IsEnabled &&
-                    x.Effect == PermissionEffect.Allow)
-        .Select(x => x.PermissionName)
-        .ToListAsync();
-
-      permissions.UnionWith(groupPermissions);
-    }
-
-    return permissions;
   }
 
   private static async Task WriteScopes(
