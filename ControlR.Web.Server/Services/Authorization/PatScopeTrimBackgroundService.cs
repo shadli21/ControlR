@@ -1,72 +1,41 @@
+using ControlR.Libraries.Hosting;
 using ControlR.Web.Server.Data.Enums;
 
 namespace ControlR.Web.Server.Services.Authorization;
 
 /// <summary>
-/// Background service that processes credential scope trim commands from the
-/// <see cref="IPatScopeTrimQueue"/>. When a credential's scope rows exceed the
-/// owning user's effective permissions (e.g., after an admin revokes a user's
-/// permission), this service removes the excess rows and writes an
-/// <see cref="AuthorizationChangeLog"/> entry per trimmed assignment.
-/// Deduplicates by credential ID within a processing batch to avoid redundant work.
+/// Periodically sweeps personal access tokens that carry explicit scope rows and trims any
+/// row that exceeds the owning user's current effective permissions (e.g., after an admin
+/// revokes a user's permission). Excess rows are already inert at evaluation time (the
+/// PermissionEvaluator intersects PAT scopes with the user's live permissions), so this is
+/// storage hygiene rather than a security boundary; staleness is bounded by the sweep period.
+/// Each trimmed row is recorded in the <see cref="AuthorizationChangeLog"/>.
 /// </summary>
 public class PatScopeTrimBackgroundService(
-  IPatScopeTrimQueue trimQueue,
   IDbContextFactory<AppDb> dbContextFactory,
-  ILogger<PatScopeTrimBackgroundService> logger) : BackgroundService
+  TimeProvider timeProvider,
+  ILogger<PeriodicBackgroundService> logger)
+  : PeriodicBackgroundService(TimeSpan.FromMinutes(15), true, timeProvider, logger)
 {
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
-  private readonly ILogger<PatScopeTrimBackgroundService> _logger = logger;
-  private readonly IPatScopeTrimQueue _trimQueue = trimQueue;
 
-  protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+  protected override async Task HandleElapsed()
   {
-    _logger.LogInformation("PatScopeTrimBackgroundService started.");
-
-    await foreach (var command in _trimQueue.Reader.ReadAllAsync(stoppingToken))
-    {
-      try
-      {
-        await ProcessTrimCommand(command, stoppingToken);
-      }
-      catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-      {
-        break;
-      }
-      catch (Exception ex)
-      {
-        _logger.LogError(ex,
-          "Error processing scope trim for credential {CredentialId} ({PrincipalKind}).",
-          command.CredentialId, command.PrincipalKind);
-      }
-    }
-
-    _logger.LogInformation("PatScopeTrimBackgroundService stopped.");
+    await Sweep(CancellationToken.None);
   }
 
-  private static async Task<Guid?> ResolveOwningUserId(
-    AppDb db, PatScopeTrimCommand command, CancellationToken cancellationToken)
+  protected override async Task OnStartingAsync(CancellationToken stoppingToken)
   {
-    if (command.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken)
-    {
-      return await db.PersonalAccessTokens
-        .IgnoreQueryFilters()
-        .Where(x => x.Id == command.CredentialId)
-        .Select(x => (Guid?)x.UserId)
-        .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    return null;
+    await Sweep(stoppingToken);
   }
 
-  private async Task ProcessTrimCommand(PatScopeTrimCommand command, CancellationToken cancellationToken)
+  private async Task ResolveAndTrimAsync(
+    AppDb db, Guid tokenId, CancellationToken cancellationToken)
   {
-    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
     var scopeRows = await db.PermissionAssignments
       .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == command.PrincipalKind &&
-                  x.PrincipalId == command.CredentialId &&
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
+                  x.PrincipalId == tokenId &&
                   x.IsEnabled)
       .ToListAsync(cancellationToken);
 
@@ -75,12 +44,17 @@ public class PatScopeTrimBackgroundService(
       return;
     }
 
-    var owningUserId = await ResolveOwningUserId(db, command, cancellationToken);
+    var owningUserId = await db.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .Where(x => x.Id == tokenId)
+      .Select(x => (Guid?)x.UserId)
+      .FirstOrDefaultAsync(cancellationToken);
+
     if (owningUserId is null)
     {
-      _logger.LogWarning(
-        "Cannot resolve owning user for credential {CredentialId}. Skipping trim.",
-        command.CredentialId);
+      Logger.LogWarning(
+        "Cannot resolve owning user for personal access token {TokenId}. Skipping trim.",
+        tokenId);
       return;
     }
 
@@ -113,9 +87,9 @@ public class PatScopeTrimBackgroundService(
 
     await db.SaveChangesAsync(cancellationToken);
 
-    _logger.LogInformation(
-      "Trimmed {Count} excess scope row(s) from credential {CredentialId} ({PrincipalKind}).",
-      excessRows.Count, command.CredentialId, command.PrincipalKind);
+    Logger.LogInformation(
+      "Trimmed {Count} excess scope row(s) from personal access token {TokenId}.",
+      excessRows.Count, tokenId);
   }
 
   private async Task<HashSet<string>> ResolveUserEffectivePermissions(
@@ -155,5 +129,40 @@ public class PatScopeTrimBackgroundService(
     }
 
     return permissions;
+  }
+
+  private async Task Sweep(CancellationToken cancellationToken)
+  {
+    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+    var tokenIds = await db.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
+                  x.IsEnabled)
+      .Select(x => x.PrincipalId)
+      .Distinct()
+      .ToListAsync(cancellationToken);
+
+    if (tokenIds.Count == 0)
+    {
+      return;
+    }
+
+    foreach (var tokenId in tokenIds)
+    {
+      try
+      {
+        await ResolveAndTrimAsync(db, tokenId, cancellationToken);
+      }
+      catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+      {
+        throw;
+      }
+      catch (Exception ex)
+      {
+        Logger.LogError(ex,
+          "Error trimming scopes for personal access token {TokenId}.", tokenId);
+      }
+    }
   }
 }

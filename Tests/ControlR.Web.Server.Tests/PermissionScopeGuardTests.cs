@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Authz.Policies;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +32,17 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
           resourceKinds.Contains(scopeKind),
           $"Permission '{name}' lists '{scopeKind}' which is a principal kind, not a resource scope kind.");
       }
+    }
+  }
+
+  [Fact]
+  public void DeviceResourcePolicies_AllPermissionsExistInCatalog()
+  {
+    foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)
+    {
+      Assert.True(
+        PermissionCatalog.Exists(permissionName),
+        $"Device resource policy '{policyName}' references permission '{permissionName}', which does not exist in the permission catalog.");
     }
   }
 

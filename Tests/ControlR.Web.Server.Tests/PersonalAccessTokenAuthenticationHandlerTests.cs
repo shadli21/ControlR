@@ -262,8 +262,6 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
     var timeProvider = services.GetRequiredService<TimeProvider>();
     var memoryCache = services.GetRequiredService<IMemoryCache>();
-    var trimQueue = services.GetRequiredService<IPatScopeTrimQueue>();
-    var dbContextFactory = services.GetRequiredService<IDbContextFactory<AppDb>>();
 
     var scheme = new AuthenticationScheme(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultScheme,
@@ -276,8 +274,6 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
       loggerFactory,
       personalAccessTokenManager,
       memoryCache,
-      trimQueue,
-      dbContextFactory,
       options);
 
     await handler.InitializeAsync(scheme, context);

@@ -3,8 +3,6 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.Extensions.Caching.Memory;
 using ControlR.Web.Server.Constants;
-using ControlR.Web.Server.Data.Enums;
-using ControlR.Web.Server.Services.Authorization;
 
 namespace ControlR.Web.Server.Authn;
 
@@ -14,18 +12,14 @@ public class PersonalAccessTokenAuthenticationHandler(
   ILoggerFactory logger,
   IPersonalAccessTokenManager personalAccessTokenManager,
   IMemoryCache memoryCache,
-  IPatScopeTrimQueue trimQueue,
-  IDbContextFactory<AppDb> dbContextFactory,
   IOptionsMonitor<PersonalAccessTokenAuthenticationSchemeOptions> options) : AuthenticationHandler<PersonalAccessTokenAuthenticationSchemeOptions>(options, logger, encoder)
 {
   private const int MaxFailures = 5;
 
   private static readonly TimeSpan _failureWindow = TimeSpan.FromMinutes(5);
 
-  private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly IMemoryCache _failureCache = memoryCache;
   private readonly IPersonalAccessTokenManager _personalAccessTokenManager = personalAccessTokenManager;
-  private readonly IPatScopeTrimQueue _trimQueue = trimQueue;
   private readonly UserManager<AppUser> _userManager = userManager;
 
   protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -82,9 +76,6 @@ public class PersonalAccessTokenAuthenticationHandler(
     // Successful auth resets failure counter
     _failureCache.Remove(failureKey);
 
-    // Detect excess scope rows and enqueue async trim (read-only, no DB writes here).
-    await TryEnqueueScopeTrim(result.TokenId!.Value);
-
     var claims = new List<Claim>
     {
       new(UserClaimTypes.UserId, user.Id.ToString()),
@@ -108,32 +99,5 @@ public class PersonalAccessTokenAuthenticationHandler(
     var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
     return AuthenticateResult.Success(ticket);
-  }
-
-  /// <summary>
-  /// Checks whether the credential has scope rows that may exceed the user's effective
-  /// permissions. If scope rows exist, enqueues a trim command for async processing.
-  /// This is a lightweight read-only check; the actual trim happens in the background service.
-  /// </summary>
-  private async Task TryEnqueueScopeTrim(Guid tokenId)
-  {
-    try
-    {
-      await using var db = await _dbContextFactory.CreateDbContextAsync();
-      var hasScopeRows = await db.PermissionAssignments
-        .IgnoreQueryFilters()
-        .AnyAsync(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
-                       x.PrincipalId == tokenId &&
-                       x.IsEnabled);
-
-      if (hasScopeRows)
-      {
-        _trimQueue.Enqueue(new PatScopeTrimCommand(tokenId, PermissionPrincipalKind.PersonalAccessToken));
-      }
-    }
-    catch
-    {
-      // Best-effort: trim detection failure must not block authentication.
-    }
   }
 }

@@ -141,6 +141,11 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
   public ActionResult<IReadOnlyList<InternalDtos.PermissionCatalogEntryDto>> GetCatalog()
   {
+    if (!User.TryGetTenantId(out _))
+    {
+      return BadRequest("User tenant not found.");
+    }
+
     var entries = PermissionCatalog.All.Values
       .Select(x => new InternalDtos.PermissionCatalogEntryDto(
         x.Name, x.DisplayName, x.Description, x.AllowedScopeKinds, x.SelfRemovable))
@@ -154,6 +159,11 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
   public ActionResult<IReadOnlyList<InternalDtos.PermissionPresetDto>> GetPresets()
   {
+    if (!User.TryGetTenantId(out _))
+    {
+      return BadRequest("User tenant not found.");
+    }
+
     var presets = PermissionPresets.All
       .Select(p => new InternalDtos.PermissionPresetDto(p.Key, [.. p.Value]))
       .OrderBy(p => p.Name)

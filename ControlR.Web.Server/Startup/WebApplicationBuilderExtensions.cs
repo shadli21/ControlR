@@ -240,7 +240,6 @@ public static class WebApplicationBuilderExtensions
     builder.Services.AddHostedService(sp => sp.GetRequiredService<LogonTokenCleanupBackgroundService>());
     builder.Services.AddSingleton<AuthorizationChangeLogCleanupBackgroundService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<AuthorizationChangeLogCleanupBackgroundService>());
-    builder.Services.AddSingleton<IPatScopeTrimQueue, PatScopeTrimQueue>();
     builder.Services.AddSingleton<PatScopeTrimBackgroundService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<PatScopeTrimBackgroundService>());
     builder.Services.AddScoped<IAgentInstallerKeyManager, AgentInstallerKeyManager>();
