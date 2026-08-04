@@ -24,6 +24,9 @@ public partial class PermissionAssignmentDialog : ComponentBase
   [Parameter]
   public InternalDtos.PermissionAssignmentDto? ExistingAssignment { get; set; }
 
+  [Inject]
+  public required ILogger<PermissionAssignmentDialog> Logger { get; init; }
+
   [CascadingParameter]
   public required IMudDialogInstance MudDialog { get; init; }
 
@@ -150,43 +153,59 @@ public partial class PermissionAssignmentDialog : ComponentBase
 
     if (ExistingAssignment is { } existing)
     {
-      var updateRequest = new InternalDtos.UpdatePermissionAssignmentRequestDto(
+      try
+      {
+        var updateRequest = new InternalDtos.UpdatePermissionAssignmentRequestDto(
+          _permissionName,
+          _effect,
+          _scopeKind,
+          _scopeId,
+          string.IsNullOrWhiteSpace(_notes) ? null : _notes,
+          _isEnabled);
+
+        var result = await ControlrApi.Internal.PermissionAssignments.Update(existing.Id, updateRequest);
+        if (!result.IsSuccess)
+        {
+          Snackbar.Add(result.Reason, Severity.Error);
+          return;
+        }
+
+        Snackbar.Add("Assignment updated", Severity.Success);
+        MudDialog.Close(DialogResult.Ok(true));
+      }
+      catch (Exception ex)
+      {
+        Logger.LogError(ex, "Failed to update permission assignment {AssignmentId}.", existing.Id);
+        Snackbar.Add("Failed to update the assignment.", Severity.Error);
+      }
+      return;
+    }
+
+    try
+    {
+      var createRequest = new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PrincipalKind,
+        PrincipalId,
         _permissionName,
         _effect,
         _scopeKind,
         _scopeId,
-        string.IsNullOrWhiteSpace(_notes) ? null : _notes,
-        _isEnabled);
+        string.IsNullOrWhiteSpace(_notes) ? null : _notes);
 
-      var result = await ControlrApi.Internal.PermissionAssignments.Update(existing.Id, updateRequest);
-      if (!result.IsSuccess)
+      var createResult = await ControlrApi.Internal.PermissionAssignments.Create(createRequest);
+      if (!createResult.IsSuccess)
       {
-        Snackbar.Add(result.Reason, Severity.Error);
+        Snackbar.Add(createResult.Reason, Severity.Error);
         return;
       }
 
-      Snackbar.Add("Assignment updated", Severity.Success);
+      Snackbar.Add("Assignment created", Severity.Success);
       MudDialog.Close(DialogResult.Ok(true));
-      return;
     }
-
-    var createRequest = new InternalDtos.CreatePermissionAssignmentRequestDto(
-      PrincipalKind,
-      PrincipalId,
-      _permissionName,
-      _effect,
-      _scopeKind,
-      _scopeId,
-      string.IsNullOrWhiteSpace(_notes) ? null : _notes);
-
-    var createResult = await ControlrApi.Internal.PermissionAssignments.Create(createRequest);
-    if (!createResult.IsSuccess)
+    catch (Exception ex)
     {
-      Snackbar.Add(createResult.Reason, Severity.Error);
-      return;
+      Logger.LogError(ex, "Failed to create permission assignment for principal {PrincipalId}.", PrincipalId);
+      Snackbar.Add("Failed to create the assignment.", Severity.Error);
     }
-
-    Snackbar.Add("Assignment created", Severity.Success);
-    MudDialog.Close(DialogResult.Ok(true));
   }
 }

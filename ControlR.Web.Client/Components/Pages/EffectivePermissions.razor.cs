@@ -64,14 +64,22 @@ public partial class EffectivePermissions : ComponentBase
       _scopeKind,
       _scopeId);
 
-    var result = await ControlrApi.Internal.EffectivePermissions.Query(request);
-    if (!result.IsSuccess)
+    try
     {
-      Snackbar.Add(result.Reason, Severity.Error);
-      return;
-    }
+      var result = await ControlrApi.Internal.EffectivePermissions.Query(request);
+      if (!result.IsSuccess)
+      {
+        Snackbar.Add(result.Reason, Severity.Error);
+        return;
+      }
 
-    _result = result.Value;
-    StateHasChanged();
+      _result = result.Value;
+      StateHasChanged();
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Failed to query effective permissions.");
+      Snackbar.Add("Failed to query effective permissions.", Severity.Error);
+    }
   }
 }

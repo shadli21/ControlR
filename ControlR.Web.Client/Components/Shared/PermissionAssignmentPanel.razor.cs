@@ -33,6 +33,9 @@ public partial class PermissionAssignmentPanel : ComponentBase
   public bool IsPrincipalLocked { get; set; }
 
   [Inject]
+  public required ILogger<PermissionAssignmentPanel> Logger { get; init; }
+
+  [Inject]
   public required IPermissionCatalogStore PermissionCatalogStore { get; init; }
 
   [Parameter]
@@ -71,10 +74,22 @@ public partial class PermissionAssignmentPanel : ComponentBase
         await PermissionCatalogStore.Refresh();
       }
 
-      var presetsResult = await ControlrApi.Internal.PermissionAssignments.GetPresets();
-      if (presetsResult.IsSuccess)
+      try
       {
-        _presets = presetsResult.Value;
+        var presetsResult = await ControlrApi.Internal.PermissionAssignments.GetPresets();
+        if (presetsResult.IsSuccess)
+        {
+          _presets = presetsResult.Value;
+        }
+        else
+        {
+          Snackbar.Add(presetsResult.Reason, Severity.Error);
+        }
+      }
+      catch (Exception ex)
+      {
+        Logger.LogError(ex, "Failed to load permission presets.");
+        Snackbar.Add("Failed to load permission presets.", Severity.Error);
       }
 
       if (IsPrincipalLocked && _selectedPrincipalId is not null)
@@ -289,6 +304,11 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
       await LoadAssignments();
     }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Failed to bulk-delete permission assignments.");
+      Snackbar.Add("Failed to delete assignments.", Severity.Error);
+    }
     finally
     {
       _bulkDeleting = false;
@@ -367,6 +387,11 @@ public partial class PermissionAssignmentPanel : ComponentBase
       {
         Snackbar.Add(result.Reason, Severity.Error);
       }
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Failed to load permission assignments for principal {PrincipalId}.", _selectedPrincipalId);
+      Snackbar.Add("Failed to load assignments.", Severity.Error);
     }
     finally
     {
@@ -463,6 +488,11 @@ public partial class PermissionAssignmentPanel : ComponentBase
           _assignments = [.. _assignments[..index], updated, .. _assignments[(index + 1)..]];
         }
       }
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Failed to toggle permission assignment {AssignmentId}.", assignment.Id);
+      Snackbar.Add("Failed to update assignment.", Severity.Error);
     }
     finally
     {
