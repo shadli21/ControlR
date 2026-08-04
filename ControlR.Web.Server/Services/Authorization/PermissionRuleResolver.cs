@@ -88,14 +88,15 @@ public class PermissionRuleResolver(
     // Server-scoped service accounts bypass evaluation when they have no explicit
     // permission assignments (the zero-config RMM use case). Once an admin attaches
     // assignments to a server service account, it opts into fine-grained evaluation
-    // while retaining cross-tenant reach (no tenant filter on its assignments).
+    // while retaining cross-tenant reach (no tenant filter on its assignments). The opt-in
+    // is based on assignment existence regardless of enabled state: disabling the last
+    // assignment must fail closed (zero effective rules), never revert to bypass.
     if (principal.PrincipalType == PrincipalClaimTypes.ServerServiceAccount)
     {
       var hasAssignments = await db.PermissionAssignments
         .IgnoreQueryFilters()
         .AnyAsync(x => x.PrincipalKind == PermissionPrincipalKind.ServiceAccount &&
-                       x.PrincipalId == principal.PrincipalId &&
-                       x.IsEnabled, cancellationToken);
+                       x.PrincipalId == principal.PrincipalId, cancellationToken);
 
       if (!hasAssignments)
       {

@@ -947,6 +947,38 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task ServerServiceAccount_WithAllAssignmentsDisabled_DeniesInsteadOfBypass()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var serviceAccountId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.ServiceAccount,
+      PrincipalId = serviceAccountId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      IsEnabled = false
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = new PrincipalDescriptor(
+      PrincipalClaimTypes.ServerServiceAccount,
+      serviceAccountId,
+      TenantId: null,
+      AuthMethod: PrincipalClaimTypes.ServiceAccountCredentialMethod);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+  }
+
+  [Fact]
   public async Task ServerServiceAccount_WithAssignments_EvaluatesNormally()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
