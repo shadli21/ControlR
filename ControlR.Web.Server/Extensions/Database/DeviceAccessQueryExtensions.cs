@@ -25,6 +25,18 @@ public static class DeviceAccessQueryExtensions
         x.DeviceGroupMembers!.Any(m => accessScope.DeviceGroupIds.Contains(m.DeviceGroupId))),
       DeviceAccessScopeKind.Customers => query.Where(x =>
         x.CustomerId.HasValue && accessScope.CustomerIds.Contains(x.CustomerId.Value)),
+      DeviceAccessScopeKind.Combined => query.Where(x =>
+        (accessScope.IncludesTenantWide ||
+         (accessScope.DeviceGroupIds.Count > 0 &&
+          x.DeviceGroupMembers!.Any(m => accessScope.DeviceGroupIds.Contains(m.DeviceGroupId))) ||
+         (accessScope.CustomerIds.Count > 0 &&
+          x.CustomerId.HasValue && accessScope.CustomerIds.Contains(x.CustomerId.Value)) ||
+         (accessScope.DeviceIds.Count > 0 && accessScope.DeviceIds.Contains(x.Id))) &&
+        !(accessScope.ExcludedDeviceIds.Count > 0 && accessScope.ExcludedDeviceIds.Contains(x.Id)) &&
+        !(accessScope.ExcludedDeviceGroupIds.Count > 0 &&
+          x.DeviceGroupMembers!.Any(m => accessScope.ExcludedDeviceGroupIds.Contains(m.DeviceGroupId))) &&
+        !(accessScope.ExcludedCustomerIds.Count > 0 &&
+          x.CustomerId.HasValue && accessScope.ExcludedCustomerIds.Contains(x.CustomerId.Value))),
       _ => query.Where(_ => false)
     };
   }

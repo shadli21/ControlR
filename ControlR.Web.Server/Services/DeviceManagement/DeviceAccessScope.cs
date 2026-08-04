@@ -8,13 +8,17 @@ public enum DeviceAccessScopeKind
   TaggedDevices,
   SpecificDevices,
   DeviceGroups,
-  Customers
+  Customers,
+  Combined
 }
 
 /// <summary>
 /// Represents the resolved set of devices a principal is authorized to access.
 /// Produced by <see cref="IDeviceAccessScopeResolver"/> and consumed by query-filter
-/// extensions to restrict device queries to the authorized subset.
+/// extensions to restrict device queries to the authorized subset. The <see cref="DeviceAccessScopeKind.Combined"/>
+/// kind unions multiple inclusion categories (tenant-wide, device groups, customers, specific
+/// devices) and subtracts exclusion sets derived from explicit deny rules, mirroring the
+/// point-authorization evaluator's deny-overrides-allow semantics.
 /// </summary>
 public sealed record DeviceAccessScope
 {
@@ -24,7 +28,11 @@ public sealed record DeviceAccessScope
     IReadOnlyCollection<Guid>? tagIds,
     IReadOnlyCollection<Guid>? deviceIds,
     IReadOnlyCollection<Guid>? deviceGroupIds,
-    IReadOnlyCollection<Guid>? customerIds = null)
+    IReadOnlyCollection<Guid>? customerIds = null,
+    bool includesTenantWide = false,
+    IReadOnlyCollection<Guid>? excludedDeviceIds = null,
+    IReadOnlyCollection<Guid>? excludedDeviceGroupIds = null,
+    IReadOnlyCollection<Guid>? excludedCustomerIds = null)
   {
     Kind = kind;
     DeviceId = deviceId;
@@ -32,12 +40,24 @@ public sealed record DeviceAccessScope
     DeviceIds = deviceIds ?? [];
     DeviceGroupIds = deviceGroupIds ?? [];
     CustomerIds = customerIds ?? [];
+    IncludesTenantWide = includesTenantWide;
+    ExcludedDeviceIds = excludedDeviceIds ?? [];
+    ExcludedDeviceGroupIds = excludedDeviceGroupIds ?? [];
+    ExcludedCustomerIds = excludedCustomerIds ?? [];
   }
 
   public IReadOnlyCollection<Guid> CustomerIds { get; }
   public Guid? DeviceId { get; }
   public IReadOnlyCollection<Guid> DeviceGroupIds { get; }
   public IReadOnlyCollection<Guid> DeviceIds { get; }
+  public IReadOnlyCollection<Guid> ExcludedCustomerIds { get; }
+  public IReadOnlyCollection<Guid> ExcludedDeviceGroupIds { get; }
+  public IReadOnlyCollection<Guid> ExcludedDeviceIds { get; }
+  /// <summary>
+  /// True when a <see cref="DeviceAccessScopeKind.Combined"/> scope includes all tenant devices
+  /// (from a Server/Tenant-scope allow) before exclusions are applied.
+  /// </summary>
+  public bool IncludesTenantWide { get; }
   public DeviceAccessScopeKind Kind { get; }
   public IReadOnlyCollection<Guid> TagIds { get; }
 
@@ -59,4 +79,17 @@ public sealed record DeviceAccessScope
 
   public static DeviceAccessScope ForCustomers(IReadOnlyCollection<Guid> customerIds) =>
     new(DeviceAccessScopeKind.Customers, null, [], [], [], customerIds);
+
+  public static DeviceAccessScope Combined(
+    bool includesTenantWide,
+    IReadOnlyCollection<Guid> deviceGroupIds,
+    IReadOnlyCollection<Guid> customerIds,
+    IReadOnlyCollection<Guid> deviceIds,
+    IReadOnlyCollection<Guid> excludedDeviceGroupIds,
+    IReadOnlyCollection<Guid> excludedCustomerIds,
+    IReadOnlyCollection<Guid> excludedDeviceIds) =>
+    new(
+      DeviceAccessScopeKind.Combined,
+      null, [], deviceIds, deviceGroupIds, customerIds,
+      includesTenantWide, excludedDeviceIds, excludedDeviceGroupIds, excludedCustomerIds);
 }
