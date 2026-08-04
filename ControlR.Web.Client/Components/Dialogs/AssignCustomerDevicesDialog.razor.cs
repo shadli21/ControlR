@@ -20,6 +20,9 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
   [Parameter]
   public required Guid CustomerId { get; set; }
 
+  [Inject]
+  public required ILogger<AssignCustomerDevicesDialog> Logger { get; init; }
+
   [CascadingParameter]
   public required IMudDialogInstance MudDialog { get; init; }
 
@@ -33,17 +36,25 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
 
   private async Task Assign()
   {
-    var result = await ControlrApi.Internal.Customers.AssignDevices(
-      CustomerId, new InternalDtos.AssignCustomerDevicesRequestDto([.. _selectedIds]));
-
-    if (!result.IsSuccess)
+    try
     {
-      Snackbar.Add(result.Reason, Severity.Error);
-      return;
-    }
+      var result = await ControlrApi.Internal.Customers.AssignDevices(
+        CustomerId, new InternalDtos.AssignCustomerDevicesRequestDto([.. _selectedIds]));
 
-    Snackbar.Add($"Assigned {_selectedIds.Count} device(s)", Severity.Success);
-    MudDialog.Close(DialogResult.Ok(true));
+      if (!result.IsSuccess)
+      {
+        Snackbar.Add(result.Reason, Severity.Error);
+        return;
+      }
+
+      Snackbar.Add($"Assigned {_selectedIds.Count} device(s)", Severity.Success);
+      MudDialog.Close(DialogResult.Ok(true));
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Failed to assign devices to customer {CustomerId}.", CustomerId);
+      Snackbar.Add("Failed to assign devices.", Severity.Error);
+    }
   }
 
   private void Cancel() => MudDialog.Cancel();
@@ -73,6 +84,11 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
 
       _devices = [.. response.Value.Items ?? []];
       _totalPages = Math.Max(1, (int)Math.Ceiling(response.Value.TotalItems / (double)PageSize));
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Failed to load devices for customer {CustomerId}.", CustomerId);
+      Snackbar.Add("Failed to load devices.", Severity.Error);
     }
     finally
     {
