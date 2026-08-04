@@ -55,10 +55,26 @@ public partial class PermissionAssignmentDialog : ComponentBase
       _permissionName = existing.PermissionName;
       _selectedPermission = _catalog.FirstOrDefault(p => p.Name == existing.PermissionName);
       _effect = existing.Effect;
-      _scopeKind = existing.ScopeKind;
-      _scopeId = existing.ScopeId;
       _notes = existing.Notes ?? string.Empty;
       _isEnabled = existing.IsEnabled;
+
+      if (_selectedPermission is null)
+      {
+        Snackbar.Add($"The permission '{existing.PermissionName}' no longer exists in the catalog.", Severity.Warning);
+        _scopeKind = PermissionScopeKind.Tenant;
+        _scopeId = null;
+      }
+      else if (!_selectedPermission.AllowedScopeKinds.Contains(existing.ScopeKind))
+      {
+        _scopeKind = BroadestLegalScope(_selectedPermission);
+        _scopeId = null;
+        Snackbar.Add("The original scope kind is no longer valid for this permission and was reset.", Severity.Warning);
+      }
+      else
+      {
+        _scopeKind = existing.ScopeKind;
+        _scopeId = existing.ScopeId;
+      }
     }
   }
 

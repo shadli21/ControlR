@@ -1,4 +1,4 @@
-namespace ControlR.Web.Client.Authz;
+namespace ControlR.Libraries.Api.Contracts.Authz;
 
 /// <summary>
 /// Well-known policy names for permission-based authorization policies. Shared by the

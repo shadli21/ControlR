@@ -1,4 +1,4 @@
-namespace ControlR.Web.Client.Authz;
+namespace ControlR.Libraries.Api.Contracts.Authz;
 
 /// <summary>
 /// Single source of truth mapping each permission-based policy to the permission name it
