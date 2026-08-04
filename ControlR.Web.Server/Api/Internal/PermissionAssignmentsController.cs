@@ -126,8 +126,13 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
       return BadRequest("User tenant not found.");
     }
 
+    if (!User.TryGetUserId(out var userId))
+    {
+      return BadRequest("User ID not found.");
+    }
+
     var assignments = await _permissionAssignmentManager.GetByPrincipal(
-      principalKind, principalId, tenantId, cancellationToken);
+      principalKind, principalId, tenantId, userId, cancellationToken);
 
     return Ok(assignments);
   }
