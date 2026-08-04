@@ -50,11 +50,12 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
     var createResult = await userManager.CreateAsync(user, "T3stP@ssw0rd!");
     Assert.True(createResult.Succeeded);
 
-    // Give the user two legacy roles whose presets overlap (both include agent.install).
+    // Give the user three legacy roles. Installer Key Manager and Tenant Administrator
+    // overlap on agent.install (server-scoped and tenant-scoped respectively).
     await db.Database.ExecuteSqlRawAsync(
       """
       INSERT INTO "AspNetUserRoles" ("UserId", "RoleId")
-      SELECT {0}, "Id" FROM "AspNetRoles" WHERE "Name" IN ('Server Administrator', 'Tenant Administrator');
+      SELECT {0}, "Id" FROM "AspNetRoles" WHERE "Name" IN ('Server Administrator', 'Tenant Administrator', 'Installer Key Manager');
       """,
       user.Id);
 
@@ -64,12 +65,16 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
     using var verifyScope = testApp.CreateScope();
     await using var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
 
-    // Server Administrator preset permissions — server-scoped, no ScopeId, no OwningTenantId.
+    // Server Administrator and Installer Key Manager preset permissions — server-scoped,
+    // no ScopeId, no OwningTenantId. (Installer Key Manager permissions also appear
+    // tenant-scoped via Tenant Administrator, so filter to server-scoped rows here.)
     var serverAdminPermissions = await verifyDb.PermissionAssignments
       .Where(x => x.PrincipalId == user.Id &&
+                  x.ScopeKind == PermissionScopeKind.Server &&
                  (x.PermissionName == PermissionNames.ServerAdmin ||
                   x.PermissionName == PermissionNames.ServerTelemetryRead ||
-                  x.PermissionName == PermissionNames.ServerServiceAccountsWrite))
+                  x.PermissionName == PermissionNames.ServerServiceAccountsWrite ||
+                  x.PermissionName == PermissionNames.InstallerKeyRead))
       .ToListAsync(TestContext.Current.CancellationToken);
 
     Assert.NotEmpty(serverAdminPermissions);
@@ -96,8 +101,8 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
       Assert.Equal(tenant.Id, perm.OwningTenantId);
     }
 
-    // Overlapping permission (agent.install) exists twice: once server-scoped (from Server
-    // Administrator) and once tenant-scoped (from Tenant Administrator).
+    // Overlapping permission (agent.install) exists twice: once server-scoped (from Installer
+    // Key Manager) and once tenant-scoped (from Tenant Administrator).
     var agentInstallAssignments = await verifyDb.PermissionAssignments
       .Where(x => x.PrincipalId == user.Id && x.PermissionName == PermissionNames.AgentInstall)
       .ToListAsync(TestContext.Current.CancellationToken);

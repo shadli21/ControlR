@@ -38,7 +38,7 @@ public class DisableFirstUserSelfRegistrationTests(ITestOutputHelper testOutput)
     Assert.False(result.Succeeded);
     Assert.NotNull(result.IdentityResult);
     Assert.Single(result.IdentityResult.Errors);
-    Assert.Equal("RegistrationDisabled", result.IdentityResult.Errors.First().Code);
+    Assert.Equal(UserCreator.RegistrationDisabledErrorCode, result.IdentityResult.Errors.First().Code);
   }
 
   [Fact]
@@ -60,7 +60,7 @@ public class DisableFirstUserSelfRegistrationTests(ITestOutputHelper testOutput)
     Assert.False(result.Succeeded);
     Assert.NotNull(result.IdentityResult);
     Assert.Single(result.IdentityResult.Errors);
-    Assert.Equal("RegistrationDisabled", result.IdentityResult.Errors.First().Code);
+    Assert.Equal(UserCreator.RegistrationDisabledErrorCode, result.IdentityResult.Errors.First().Code);
   }
 
   [Fact]

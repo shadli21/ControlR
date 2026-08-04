@@ -133,7 +133,7 @@ public class UserCreatorTests(ITestOutputHelper output)
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Succeeded);
-        Assert.Contains(result.IdentityResult.Errors, e => e.Description.Contains("Presets not found"));
+        Assert.Contains(result.IdentityResult.Errors, e => e.Code == UserCreator.PresetsNotFoundErrorCode);
 
         // Verify user was deleted
         var user = await appDb.Users.FirstOrDefaultAsync(u => u.Email == "fail@example.com", TestContext.Current.CancellationToken);

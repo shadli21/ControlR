@@ -3,9 +3,11 @@ using System.Net.Http.Json;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlR.Web.Server.Tests.V1;
@@ -46,6 +48,14 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+    using var scope = testServer.Services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var deviceStillExists = await db.Devices
+      .IgnoreQueryFilters()
+      .AnyAsync(x => x.Id == deviceB.Id, TestContext.Current.CancellationToken);
+
+    Assert.True(deviceStillExists, "The cross-tenant device was deleted despite the Forbidden response.");
   }
 
   [Fact]
@@ -76,6 +86,9 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+    var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    Assert.DoesNotContain(deviceB.Id.ToString(), body);
   }
 
   [Fact]

@@ -58,6 +58,8 @@ public interface IUserCreator
     IPublicServerSettingsProvider serverSettings,
     ILogger<UserCreator> logger) : IUserCreator
   {
+    public const string PresetsNotFoundErrorCode = "PresetsNotFound";
+    public const string RegistrationDisabledErrorCode = "RegistrationDisabled";
     private readonly AppDb _appDb = appDb;
     private readonly IOptionsMonitor<AppOptions> _appOptions = appOptions;
     private readonly IPublicRegistrationBootstrapGate _bootstrapGate = bootstrapGate;
@@ -142,7 +144,11 @@ public interface IUserCreator
       if (missingPresets.Count != 0)
       {
         await _userManager.DeleteAsync(user);
-        var err = new IdentityError { Description = $"Presets not found: {string.Join(',', missingPresets)}." };
+        var err = new IdentityError
+        {
+          Code = PresetsNotFoundErrorCode,
+          Description = $"Presets not found: {string.Join(',', missingPresets)}."
+        };
         return new CreateUserResult(false, IdentityResult.Failed(err));
       }
 
@@ -193,7 +199,7 @@ public interface IUserCreator
           false,
           IdentityResult.Failed(new IdentityError
           {
-            Code = "RegistrationDisabled",
+            Code = RegistrationDisabledErrorCode,
             Description = "Public registration is not currently enabled."
           }));
       }

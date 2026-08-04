@@ -723,6 +723,65 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task LogonTokenGrants_WhenTokenHasDenyAtDeviceScope_Denies()
+  {
+    // The logon-token path rebuilds rules solely from the token's grants; a deny among those
+    // grants must still override allows (deny-overrides-allow applies to every source).
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var tokenId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRemoteControlConnect,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.LogonToken,
+      PrincipalId = tokenId,
+      PermissionName = PermissionNames.DeviceRemoteControlConnect,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.LogonToken,
+      PrincipalId = tokenId,
+      PermissionName = PermissionNames.DeviceRemoteControlConnect,
+      Effect = PermissionEffect.Deny,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: tokenId,
+      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      deviceScopeId: device.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+  }
+
+  [Fact]
   public async Task LogonTokenGrants_WhenZeroRows_Denies()
   {
     // A credential with no scope rows grants nothing.
@@ -883,6 +942,107 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task PatScopes_WhenRowScopeBeyondUserScope_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var patId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = deviceA.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
+      PrincipalId = patId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = deviceB.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: patId,
+      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+  }
+
+  [Fact]
+  public async Task PatScopes_WhenUserDeniedAtRowScope_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var patId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Deny,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = deviceB.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
+      PrincipalId = patId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = deviceB.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: patId,
+      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+  }
+
+  [Fact]
   public async Task PatScopes_WhenZeroRows_InheritsUserPermissions()
   {
     // A PAT with no explicit scope rows acts as its owning user, inheriting the user's
@@ -944,6 +1104,46 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     Assert.True(result.Allowed);
     Assert.Equal("Direct", result.MatchedRuleSource);
+  }
+
+  [Fact]
+  public async Task ServerScopeDeny_OverridesTenantScopeAllow()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Deny,
+      ScopeKind = PermissionScopeKind.Server,
+      ScopeId = null,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
   }
 
   [Fact]

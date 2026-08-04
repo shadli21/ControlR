@@ -54,7 +54,8 @@ public interface IServiceAccountManager
   Task<HttpResult> Delete(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Deletes a tenant-scoped service account. Emits AuthorizationChangeLog.
+  /// Deletes a tenant-scoped service account. Emits AuthorizationChangeLog and removes
+  /// orphaned PermissionAssignment rows where this account is the principal.
   /// </summary>
   Task<HttpResult> DeleteForTenant(Guid serviceAccountId, Guid tenantId, Guid requestingPrincipalId, CancellationToken cancellationToken);
 
@@ -492,6 +493,14 @@ public class ServiceAccountManager(
     }
 
     await EvictAccountFromCacheAsync(serviceAccountId, cancellationToken);
+
+    // Cascade: remove PermissionAssignment rows where this service account is the principal.
+    var principalAssignments = await appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.ServiceAccount && x.PrincipalId == serviceAccountId)
+      .ToListAsync(cancellationToken);
+
+    appDb.PermissionAssignments.RemoveRange(principalAssignments);
 
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
       AuthorizationChangeLogActions.ServiceAccountDeleted,

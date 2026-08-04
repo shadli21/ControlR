@@ -35,17 +35,6 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
     }
   }
 
-  [Fact]
-  public void DeviceResourcePolicies_AllPermissionsExistInCatalog()
-  {
-    foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)
-    {
-      Assert.True(
-        PermissionCatalog.Exists(permissionName),
-        $"Device resource policy '{policyName}' references permission '{permissionName}', which does not exist in the permission catalog.");
-    }
-  }
-
   [Theory]
   [InlineData(PermissionNames.ServerAdmin, PermissionScopeKind.Server)]
   [InlineData(PermissionNames.TenantPermissionsWrite, PermissionScopeKind.Tenant)]
@@ -163,6 +152,17 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+  }
+
+  [Fact]
+  public void DeviceResourcePolicies_AllPermissionsExistInCatalog()
+  {
+    foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)
+    {
+      Assert.True(
+        PermissionCatalog.Exists(permissionName),
+        $"Device resource policy '{policyName}' references permission '{permissionName}', which does not exist in the permission catalog.");
+    }
   }
 
   [Fact]

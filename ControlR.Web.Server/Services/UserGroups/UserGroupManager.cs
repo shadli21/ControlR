@@ -247,6 +247,14 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
       return HttpResult.Fail<InternalDtos.UserGroupDetailDto>(HttpResultErrorCode.NotFound, "User group not found.");
     }
 
+    var nameConflict = await _appDb.UserGroups
+      .AnyAsync(x => x.TenantId == tenantId && x.Name == name && x.Id != userGroupId, cancellationToken);
+
+    if (nameConflict)
+    {
+      return HttpResult.Fail<InternalDtos.UserGroupDetailDto>(HttpResultErrorCode.Conflict, "A user group with that name already exists.");
+    }
+
     var before = new UserGroupSnapshot(group.Name, group.Description);
 
     group.Name = name;

@@ -101,16 +101,14 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
       }
       else if (credentialAssignments.Count > 0)
       {
-        // Explicit PAT scopes are an optional restriction: intersect with the user's
-        // effective permissions (a user cannot grant a PAT permissions they do not hold)
-        // and make them the exclusive permission set for this request.
-        var userEffectivePermissions = rules
-          .Where(r => r.Assignment.Effect == PermissionEffect.Allow)
-          .Select(r => r.Assignment.PermissionName)
-          .ToHashSet();
-
+        // Explicit PAT scopes are an optional restriction: a PAT can never exceed its owning
+        // user's effective rights. Each scope row survives only when the user's own rules
+        // cover the row's scope with an allow and no matching deny. Coverage is evaluated
+        // without device group/customer membership knowledge, so user allows that reach a
+        // resource only through group or customer membership do not cover rows scoped to
+        // that resource (fail-closed).
         var boundedAssignments = credentialAssignments
-          .Where(a => userEffectivePermissions.Contains(a.PermissionName))
+          .Where(a => UserRulesCoverScope(rules, a))
           .ToList();
 
         if (boundedAssignments.Count == 0)
@@ -202,6 +200,40 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
   }
 
   /// <summary>
+  /// Determines whether a user rule's scope covers a credential scope row. Server grants cover
+  /// every row scope; only server grants cover server-scoped rows. Tenant grants cover rows
+  /// scoped to the same tenant and rows scoped to narrower categories within it (device,
+  /// group, and customer membership within the tenant is not knowable at bounding time).
+  /// Group, customer, and device grants cover only rows scoped to the same group, customer,
+  /// or device, so rows a user reaches only through membership are not covered (fail-closed).
+  /// </summary>
+  private static bool RuleCoversScope(
+    PermissionAssignment userRule,
+    PermissionScopeKind rowScopeKind,
+    Guid? rowScopeId)
+  {
+    if (userRule.ScopeKind == PermissionScopeKind.Server)
+    {
+      return true;
+    }
+
+    if (rowScopeKind == PermissionScopeKind.Server)
+    {
+      return false;
+    }
+
+    return (userRule.ScopeKind, rowScopeKind) switch
+    {
+      (PermissionScopeKind.Tenant, PermissionScopeKind.Tenant) => userRule.ScopeId == rowScopeId,
+      (PermissionScopeKind.Tenant, _) => true,
+      (PermissionScopeKind.DeviceGroup, PermissionScopeKind.DeviceGroup) => userRule.ScopeId == rowScopeId,
+      (PermissionScopeKind.CustomerTenant, PermissionScopeKind.CustomerTenant) => userRule.ScopeId == rowScopeId,
+      (PermissionScopeKind.Device, PermissionScopeKind.Device) => userRule.ScopeId == rowScopeId,
+      _ => false
+    };
+  }
+
+  /// <summary>
   /// Determines whether an assignment's scope covers the requested resource.
   /// Scope is hierarchical: Server covers everything, Tenant covers resources within
   /// that tenant, DeviceGroup covers devices within the group, Device covers only itself.
@@ -259,4 +291,20 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
     PermissionScopeKind.Server => 4,
     _ => 5
   };
+
+  /// <summary>
+  /// Determines whether a credential scope row is covered by the owning user's rules with
+  /// deny-overrides-allow semantics: at least one user allow must cover the row's scope and
+  /// no user deny may cover it.
+  /// </summary>
+  private static bool UserRulesCoverScope(List<PermissionRule> userRules, PermissionAssignment row)
+  {
+    var coveringRules = userRules
+      .Where(r => r.Assignment.PermissionName == row.PermissionName &&
+                  RuleCoversScope(r.Assignment, row.ScopeKind, row.ScopeId))
+      .ToList();
+
+    return coveringRules.Any(r => r.Assignment.Effect == PermissionEffect.Allow) &&
+           !coveringRules.Any(r => r.Assignment.Effect == PermissionEffect.Deny);
+  }
 }
