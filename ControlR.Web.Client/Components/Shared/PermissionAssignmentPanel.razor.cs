@@ -10,6 +10,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   private InternalDtos.PermissionAssignmentDto[]? _assignments;
   private bool _bulkDeleting;
+  private bool _canWrite;
   private Guid? _currentUserId;
   private bool _loading;
   private PresetApplyMode _presetMode = PresetApplyMode.Merge;
@@ -68,6 +69,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
       {
         _currentUserId = currentUserId;
       }
+
+      _canWrite = state.User.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.TenantPermissionsWrite);
 
       if (PermissionCatalogStore.Items.Count == 0)
       {

@@ -21,6 +21,8 @@
   </MudGrid>
 </MudPaper>
 
+@if (_canWrite)
+{
 <MudPaper Class="pa-3 mb-3" Elevation="2">
   <MudText Typo="Typo.subtitle2" Class="mb-2">Presets</MudText>
   <MudGrid Spacing="2" Justify="Justify.FlexEnd">
@@ -47,10 +49,11 @@
     </MudItem>
   </MudGrid>
 </MudPaper>
+}
 
 <div class="permission-toolbar-row mt-8">
   <div class="permission-toolbar-left">
-    @if (_selectedAssignments.Count > 0)
+    @if (_canWrite && _selectedAssignments.Count > 0)
     {
       <MudText Typo="Typo.subtitle2" Class="mr-2">
         @_selectedAssignments.Count selected
@@ -63,10 +66,13 @@
   </div>
   <GridToolbar @bind-SearchValue="_searchString" OnRefresh="LoadAssignments" Disabled="@(_selectedPrincipalId is null)">
     <Actions>
-      <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-                 OnClick="CreateAssignment" Disabled="@(_selectedPrincipalId is null)">
-        New Assignment
-      </MudButton>
+      @if (_canWrite)
+      {
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="CreateAssignment" Disabled="@(_selectedPrincipalId is null)">
+          New Assignment
+        </MudButton>
+      }
     </Actions>
   </GridToolbar>
 </div>
@@ -81,7 +87,10 @@
     </MudText>
   </NoRecordsContent>
   <Columns>
-    <SelectColumn ShowInFooter="false" />
+    @if (_canWrite)
+    {
+      <SelectColumn ShowInFooter="false" />
+    }
     <PropertyColumn Property="x => x.PermissionName" Title="Permission" />
     <PropertyColumn Property="x => x.Effect" Title="Effect" />
     <TemplateColumn Title="Scope" Sortable="true" SortBy="@(x => x.ScopeKind)">
@@ -99,7 +108,7 @@
       <CellTemplate>
         <MudSwitch T="bool" Value="context.Item.IsEnabled"
                    ValueChanged="@((enabled) => ToggleEnabled(context.Item, enabled))" Color="Color.Primary"
-                   Disabled="@(_togglingIds.Contains(context.Item.Id) || IsProtectedSelfLastGrant(context.Item))" />
+                   Disabled="@(!_canWrite || _togglingIds.Contains(context.Item.Id) || IsProtectedSelfLastGrant(context.Item))" />
       </CellTemplate>
     </TemplateColumn>
     <TemplateColumn Title="Notes" Sortable="false" Filterable="false">
@@ -114,21 +123,24 @@
         </MudTooltip>
       </CellTemplate>
     </TemplateColumn>
-    <TemplateColumn Title="" Sortable="false" Filterable="false">
-      <CellTemplate>
-        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft"
-                 TransformOrigin="Origin.TopRight">
-          <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info"
-                       OnClick="@(() => EditAssignment(context.Item))">
-            Edit
-          </MudMenuItem>
-          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
-                       Disabled="IsProtectedSelfLastGrant(context.Item)"
-                       OnClick="@(() => DeleteAssignment(context.Item))">
-            Delete
-          </MudMenuItem>
-        </MudMenu>
-      </CellTemplate>
-    </TemplateColumn>
+    @if (_canWrite)
+    {
+      <TemplateColumn Title="" Sortable="false" Filterable="false">
+        <CellTemplate>
+          <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopRight">
+            <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info"
+                         OnClick="@(() => EditAssignment(context.Item))">
+              Edit
+            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
+                         Disabled="IsProtectedSelfLastGrant(context.Item)"
+                         OnClick="@(() => DeleteAssignment(context.Item))">
+              Delete
+            </MudMenuItem>
+          </MudMenu>
+        </CellTemplate>
+      </TemplateColumn>
+    }
   </Columns>
 </MudDataGrid>
