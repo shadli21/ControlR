@@ -26,7 +26,7 @@ public partial class DeviceGroups : ComponentBase
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
-  private Func<InternalDtos.DeviceGroupDto, bool> _quickFilter => group =>
+  private Func<InternalDtos.DeviceGroupDto, bool> QuickFilter => group =>
   {
     if (string.IsNullOrWhiteSpace(_searchString))
     {

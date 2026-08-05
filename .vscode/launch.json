@@ -211,12 +211,9 @@
       ],
       "cwd": "${workspaceFolder}/ControlR.Web.Server",
       "stopAtEntry": false,
-      "serverReadyAction": {
-        "action": "openExternally",
-        "pattern": "\\bNow listening on:\\s+(https?:\\/\\/\\S+)"
-      },
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_WATCH_RESTART_ON_RUDE_EDIT": "1"
       },
       "console": "internalConsole",
       "linux": {

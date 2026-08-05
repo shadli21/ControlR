@@ -23,7 +23,7 @@ public partial class UserGroups : ComponentBase
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
-  private Func<InternalDtos.UserGroupDto, bool> _quickFilter => group =>
+  private Func<InternalDtos.UserGroupDto, bool> QuickFilter => group =>
   {
     if (string.IsNullOrWhiteSpace(_searchString))
     {

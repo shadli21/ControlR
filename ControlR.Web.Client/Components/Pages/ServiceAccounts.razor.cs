@@ -22,7 +22,7 @@ public partial class ServiceAccounts : ComponentBase
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
-  private Func<InternalDtos.TenantServiceAccountDto, bool> _quickFilter => account =>
+  private Func<InternalDtos.TenantServiceAccountDto, bool> QuickFilter => account =>
   {
     if (string.IsNullOrWhiteSpace(_searchString))
     {

@@ -20,7 +20,7 @@ public partial class InstallerKeys
   public required ISnackbar Snackbar { get; init; }
 
 
-  private Func<AgentInstallerKeyDto, bool> _quickFilter => key =>
+  private Func<AgentInstallerKeyDto, bool> QuickFilter => key =>
   {
     if (string.IsNullOrWhiteSpace(_searchString))
     {
