@@ -23,8 +23,11 @@ public interface IPermissionEvaluator
     CancellationToken cancellationToken);
 }
 
-public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermissionEvaluator
+public class PermissionEvaluator(
+  IPermissionRuleResolver ruleResolver,
+  IDbContextFactory<AppDb> dbContextFactory) : IPermissionEvaluator
 {
+  private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly IPermissionRuleResolver _ruleResolver = ruleResolver;
 
   public async Task<PermissionEvaluationResult> Evaluate(
@@ -103,13 +106,21 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
       {
         // Explicit PAT scopes are an optional restriction: a PAT can never exceed its owning
         // user's effective rights. Each scope row survives only when the user's own rules
-        // cover the row's scope with an allow and no matching deny. Coverage is evaluated
-        // without device group/customer membership knowledge, so user allows that reach a
-        // resource only through group or customer membership do not cover rows scoped to
-        // that resource (fail-closed).
-        var boundedAssignments = credentialAssignments
-          .Where(a => UserRulesCoverScope(rules, a))
-          .ToList();
+        // cover it: device-scoped rows are checked precisely against the target device
+        // (loading its group/customer membership), other rows via scope coverage rules. In
+        // both cases a matching user deny discards the row.
+        var boundedAssignments = new List<PermissionAssignment>();
+        foreach (var row in credentialAssignments)
+        {
+          var covered = row.ScopeKind == PermissionScopeKind.Device && row.ScopeId.HasValue
+            ? await UserRulesCoverDeviceScope(rules, row, cancellationToken)
+            : UserRulesCoverScope(rules, row);
+
+          if (covered)
+          {
+            boundedAssignments.Add(row);
+          }
+        }
 
         if (boundedAssignments.Count == 0)
         {
@@ -126,7 +137,37 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
       // user's full effective permissions resolved above.
     }
 
-    // Filter to rules matching the requested permission and resource scope.
+    return ResolveMatchingRules(rules, permissionName, resource);
+  }
+
+  /// <summary>
+  /// Returns the set of permission names the principal effectively holds (allow rules not
+  /// overridden by deny), evaluated at the name level without regard to resource scope.
+  /// Consumers: claim emission for client-side policy evaluation
+  /// (<c>IdentityRevalidatingAuthenticationStateProvider</c>), logon-token scope validation
+  /// (<c>LogonTokensController</c>), and the server-admin guard in
+  /// <c>PermissionAssignmentManager</c>. Assignment rows are interpreted by
+  /// <see cref="IPermissionRuleResolver"/> (direct and user-group). Credential-scoping and
+  /// the server-service-account bypass do not apply to these consumers.
+  /// </summary>
+  public async Task<IReadOnlySet<string>> GetEffectivePermissionNames(
+    PrincipalDescriptor principal,
+    CancellationToken cancellationToken)
+  {
+    var resolved = await _ruleResolver.Resolve(principal, cancellationToken);
+    return resolved.GetEffectivePermissionNames();
+  }
+
+  /// <summary>
+  /// Resolves the allow/deny outcome for the rules matching a permission at a resource:
+  /// explicit deny overrides allow; otherwise any matching allow permits; otherwise default
+  /// deny. Used both by the main evaluation path and by PAT scope bounding.
+  /// </summary>
+  private static PermissionEvaluationResult ResolveMatchingRules(
+    List<PermissionRule> rules,
+    string permissionName,
+    ResourceDescriptor resource)
+  {
     var matchingRules = rules
       .Where(r => r.Assignment.IsEnabled &&
                   r.Assignment.PermissionName == permissionName &&
@@ -151,7 +192,6 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
         $"Explicit deny from {denyRule.Source} at scope {denyRule.Assignment.ScopeKind}.");
     }
 
-    // If any matching allow exists, allow.
     var allowRule = matchingRules
       .Where(r => r.Assignment.Effect == PermissionEffect.Allow)
       .OrderBy(r => r.Priority)
@@ -164,26 +204,7 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
         allowRule.Source.ToString(), allowRule.Assignment.ScopeKind.ToString());
     }
 
-    // Default deny.
     return PermissionEvaluationResult.Deny("No matching allow rule found (default deny).");
-  }
-
-  /// <summary>
-  /// Returns the set of permission names the principal effectively holds (allow rules not
-  /// overridden by deny), evaluated at the name level without regard to resource scope.
-  /// Consumers: claim emission for client-side policy evaluation
-  /// (<c>IdentityRevalidatingAuthenticationStateProvider</c>), logon-token scope validation
-  /// (<c>LogonTokensController</c>), and the server-admin guard in
-  /// <c>PermissionAssignmentManager</c>. Assignment rows are interpreted by
-  /// <see cref="IPermissionRuleResolver"/> (direct and user-group). Credential-scoping and
-  /// the server-service-account bypass do not apply to these consumers.
-  /// </summary>
-  public async Task<IReadOnlySet<string>> GetEffectivePermissionNames(
-    PrincipalDescriptor principal,
-    CancellationToken cancellationToken)
-  {
-    var resolved = await _ruleResolver.Resolve(principal, cancellationToken);
-    return resolved.GetEffectivePermissionNames();
   }
 
   /// <summary>
@@ -293,5 +314,40 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
 
     return coveringRules.Any(r => r.Assignment.Effect == PermissionEffect.Allow) &&
            !coveringRules.Any(r => r.Assignment.Effect == PermissionEffect.Deny);
+  }
+
+  /// <summary>
+  /// Determines precisely whether the owning user's rules cover a device-scoped credential
+  /// row by resolving the target device's tenant, customer, and group memberships and
+  /// running the standard match/deny resolution against the user's rules. A missing device
+  /// fails closed.
+  /// </summary>
+  private async Task<bool> UserRulesCoverDeviceScope(
+    List<PermissionRule> userRules,
+    PermissionAssignment row,
+    CancellationToken cancellationToken)
+  {
+    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+    var device = await db.Devices
+      .IgnoreQueryFilters()
+      .AsNoTracking()
+      .FirstOrDefaultAsync(x => x.Id == row.ScopeId, cancellationToken);
+    if (device is null)
+    {
+      return false;
+    }
+
+    var groupIds = await db.DeviceGroupMembers
+      .IgnoreQueryFilters()
+      .AsNoTracking()
+      .Where(member => member.DeviceId == device.Id)
+      .Select(member => member.DeviceGroupId)
+      .ToListAsync(cancellationToken);
+
+    var resource = new ResourceDescriptor(
+      PermissionScopeKind.Device, device.Id, device.TenantId, device.CustomerId, groupIds);
+
+    return ResolveMatchingRules(userRules, row.PermissionName, resource).Allowed;
   }
 }

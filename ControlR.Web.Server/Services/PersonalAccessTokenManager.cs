@@ -1,4 +1,6 @@
 using ControlR.Libraries.Shared.Helpers;
+using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.Authorization;
 
@@ -66,9 +68,11 @@ public interface IPersonalAccessTokenManager
 public class PersonalAccessTokenManager(
   AppDb appDb,
   TimeProvider timeProvider,
-  IPasswordHasher<string> passwordHasher) : IPersonalAccessTokenManager
+  IPasswordHasher<string> passwordHasher,
+  ICredentialScopeService credentialScopeService) : IPersonalAccessTokenManager
 {
   private readonly AppDb _appDb = appDb;
+  private readonly ICredentialScopeService _credentialScopeService = credentialScopeService;
   private readonly IPasswordHasher<string> _passwordHasher = passwordHasher;
   private readonly TimeProvider _timeProvider = timeProvider;
 
@@ -76,6 +80,35 @@ public class PersonalAccessTokenManager(
   {
     try
     {
+      Guid? ownerTenantId = null;
+
+      if (request.Scopes is { Count: > 0 })
+      {
+        var owner = await _appDb.Users
+          .IgnoreQueryFilters()
+          .AsNoTracking()
+          .FirstOrDefaultAsync(x => x.Id == userId);
+        if (owner is null || owner.TenantId == Guid.Empty)
+        {
+          return Result.Fail<InternalDtos.CreatePersonalAccessTokenResponseDto>("Token owner not found.");
+        }
+
+        ownerTenantId = owner.TenantId;
+
+        var ownerPrincipal = new PrincipalDescriptor(
+          PrincipalType: PrincipalClaimTypes.User,
+          PrincipalId: userId,
+          TenantId: owner.TenantId,
+          AuthMethod: "pat-scope-validation");
+
+        var scopeValidation = await _credentialScopeService.ValidateGrantableScopes(
+          ownerPrincipal, owner.TenantId, request.Scopes);
+        if (!scopeValidation.IsSuccess)
+        {
+          return Result.Fail<InternalDtos.CreatePersonalAccessTokenResponseDto>(scopeValidation.Reason);
+        }
+      }
+
       var plainTextKey = RandomGenerator.CreateApiKey();
       var hashedKey = _passwordHasher.HashPassword(string.Empty, plainTextKey);
 
@@ -87,6 +120,32 @@ public class PersonalAccessTokenManager(
       };
 
       _appDb.PersonalAccessTokens.Add(personalAccessToken);
+
+      if (request.Scopes is { Count: > 0 } && ownerTenantId is { } tenantId)
+      {
+        foreach (var scope in request.Scopes)
+        {
+          _appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+            PermissionPrincipalKind.PersonalAccessToken,
+            personalAccessToken.Id,
+            scope.PermissionName,
+            scope.ScopeKind,
+            scope.ScopeId,
+            tenantId,
+            AuthorizationChangeLogActorTypes.User,
+            userId.ToString()));
+        }
+
+        _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+          AuthorizationChangeLogActions.CredentialScopeSet,
+          AuthorizationChangeLogActorTypes.User,
+          userId.ToString(),
+          AuthorizationChangeLogTargetTypes.PersonalAccessToken,
+          personalAccessToken.Id.ToString(),
+          tenantId,
+          after: new CredentialScopeSetSummary(request.Scopes.Count)));
+      }
+
       await _appDb.SaveChangesAsync();
 
       var hexId = Convert.ToHexString(personalAccessToken.Id.ToByteArray());

@@ -57,7 +57,7 @@ public class LogonTokensController : ControllerBase
         return BadRequest("User principal not found.");
       }
 
-      var scopeValidation = await credentialScopeService.ValidateGrantableScopes(
+      var scopeValidation = await credentialScopeService.ValidateLogonTokenScopes(
         creatorPrincipal, tenantId, request.Scopes, HttpContext.RequestAborted);
       if (!scopeValidation.IsSuccess)
       {

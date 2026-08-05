@@ -67,6 +67,14 @@
         Permissions
       </MudNavLink>
     </AuthorizeView>
+    @if (!_canSeeServerAdmin)
+    {
+      <AuthorizeView Policy="@(PolicyNames.RequirePermissionAssignmentsRead)">
+        <MudNavLink Href="@(ClientRoutes.AuthorizationLogs)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.History">
+          Authorization Logs
+        </MudNavLink>
+      </AuthorizeView>
+    }
     <AuthorizeView Policy="@(PolicyNames.RequireTagsWrite)">
       <MudNavLink Href="@(ClientRoutes.Tags)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.NewLabel">
         Device Tags
@@ -107,6 +115,12 @@
       <MudNavLink Href="@(ClientRoutes.EffectivePermissions)" Match="NavLinkMatch.Prefix"
                   Icon="@Icons.Material.Filled.FactCheck">
         Effective Permissions
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireServerAdmin)">
+      <MudNavLink Href="@(ClientRoutes.AuthorizationLogs)" Match="NavLinkMatch.Prefix"
+                  Icon="@Icons.Material.Filled.History">
+        Authorization Logs
       </MudNavLink>
     </AuthorizeView>
     <AuthorizeView Policy="@(PolicyNames.RequireServerAdmin)">

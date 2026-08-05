@@ -1,0 +1,129 @@
+@attribute [Route(ClientRoutes.AuthorizationLogs)]
+@attribute [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
+
+<PageTitle>Authorization Logs</PageTitle>
+
+<PrimaryTitle>
+  Authorization Logs
+</PrimaryTitle>
+
+<MudAlert Severity="Severity.Info" Class="mb-4">
+  Audit trail of authorization-state changes: permission assignments, credential scopes,
+  service accounts, groups, and customers. Server administrators see all tenants; other
+  viewers see only their own tenant's entries.
+</MudAlert>
+
+<MudCard Class="mb-4">
+  <MudCardContent>
+    <MudGrid>
+      <MudItem xs="12" sm="6" md="3">
+        <MudAutocomplete T="string" @bind-Value="_actionTypeFilter" Label="Action Type"
+                         SearchFunc="SearchActionTypes" Clearable="true" CoerceValue="true"
+                         ResetValueOnEmptyText="true" Dense="true" MaxItems="50" />
+      </MudItem>
+      <MudItem xs="12" sm="6" md="3">
+        <MudAutocomplete T="string" @bind-Value="_targetTypeFilter" Label="Target Type"
+                         SearchFunc="SearchTargetTypes" Clearable="true" CoerceValue="true"
+                         ResetValueOnEmptyText="true" Dense="true" MaxItems="50" />
+      </MudItem>
+      <MudItem xs="12" sm="6" md="3">
+        <MudTextField @bind-Value="_searchText" Label="Actor / Target ID"
+                      Placeholder="GUID or partial ID" Immediate="true" />
+      </MudItem>
+      @if (_tenants.Length > 0)
+      {
+        <MudItem xs="12" sm="6" md="3">
+          <MudSelect T="Guid?" @bind-Value="_selectedTenantId" Label="Tenant" Clearable="true">
+            @foreach (var tenant in _tenants)
+            {
+              <MudSelectItem T="Guid?" Value="tenant.Id">@(tenant.Name ?? tenant.Id.ToString())</MudSelectItem>
+            }
+          </MudSelect>
+        </MudItem>
+      }
+      <MudItem xs="12" sm="6" md="3">
+        <MudDatePicker @bind-Date="_fromDate" Label="From" Editable="true" />
+      </MudItem>
+      <MudItem xs="12" sm="6" md="3">
+        <MudDatePicker @bind-Date="_toDate" Label="To" Editable="true" />
+      </MudItem>
+      <MudItem xs="12" sm="6" md="3" Class="d-flex align-end">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ApplyFilters"
+                   StartIcon="@Icons.Material.Filled.Search">
+          Apply Filters
+        </MudButton>
+      </MudItem>
+    </MudGrid>
+  </MudCardContent>
+</MudCard>
+
+<MudTable T="AuthorizationChangeLogDto" ServerData="LoadTableData" @ref="_table"
+          Hover="true" Dense="true" Striped="true" Loading="_isLoading"
+          RowsPerPage="25">
+  <ToolBarContent>
+    <MudText Typo="Typo.h6">Authorization Change Log</MudText>
+    <MudSpacer />
+    <MudTooltip Text="Refresh">
+      <MudIconButton Variant="Variant.Outlined" Color="Color.Info"
+                     Icon="@Icons.Material.Filled.Refresh" OnClick="Refresh" />
+    </MudTooltip>
+  </ToolBarContent>
+  <HeaderContent>
+    <MudTh Style="width: 40px;" />
+    <MudTh>Time (Local)</MudTh>
+    <MudTh>Action</MudTh>
+    <MudTh>Actor Type</MudTh>
+    <MudTh>Actor ID</MudTh>
+    <MudTh>Target Type</MudTh>
+    <MudTh>Target ID</MudTh>
+    @if (_tenants.Length > 0)
+    {
+      <MudTh>Tenant</MudTh>
+    }
+    <MudTh>IP</MudTh>
+  </HeaderContent>
+  <RowTemplate>
+    <MudTd>
+      <MudIconButton Size="Size.Small"
+                     Icon="@(_expandedItem == context ? Icons.Material.Filled.KeyboardArrowUp : Icons.Material.Filled.KeyboardArrowDown)"
+                     OnClick="@(() => ToggleExpanded(context))" />
+    </MudTd>
+    <MudTd DataLabel="Time (Local)">@context.CreatedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
+    <MudTd DataLabel="Action">@context.ActionType</MudTd>
+    <MudTd DataLabel="Actor Type">@context.ActorPrincipalType</MudTd>
+    <MudTd DataLabel="Actor ID"><MudText Typo="Typo.caption">@context.ActorPrincipalId</MudText></MudTd>
+    <MudTd DataLabel="Target Type">@context.TargetType</MudTd>
+    <MudTd DataLabel="Target ID"><MudText Typo="Typo.caption">@context.TargetId</MudText></MudTd>
+    @if (_tenants.Length > 0)
+    {
+      <MudTd DataLabel="Tenant">@GetTenantName(context.OwningTenantId)</MudTd>
+    }
+    <MudTd DataLabel="IP">@context.IpAddress</MudTd>
+  </RowTemplate>
+  <ChildRowContent>
+    @if (_expandedItem == context)
+    {
+      <MudTr Class="child-row">
+        <td colspan="@(_tenants.Length > 0 ? 9 : 8)">
+          <MudGrid Class="pa-3">
+            <MudItem xs="12" md="6">
+              <MudText Typo="Typo.subtitle2">Before</MudText>
+              <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: monospace;">
+                @(string.IsNullOrWhiteSpace(context.BeforeJson) ? "(none)" : context.BeforeJson)
+              </MudText>
+            </MudItem>
+            <MudItem xs="12" md="6">
+              <MudText Typo="Typo.subtitle2">After</MudText>
+              <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: monospace;">
+                @(string.IsNullOrWhiteSpace(context.AfterJson) ? "(none)" : context.AfterJson)
+              </MudText>
+            </MudItem>
+          </MudGrid>
+        </td>
+      </MudTr>
+    }
+  </ChildRowContent>
+  <PagerContent>
+    <MudTablePager PageSizeOptions="new[] { 25, 50, 100 }" />
+  </PagerContent>
+</MudTable>

@@ -17,6 +17,16 @@ public interface ICredentialScopeService
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default);
 
+  /// <summary>
+  /// Validates scopes for a logon token. Logon tokens are device-bound and only honor
+  /// Device-scoped grants, so any other scope kind is rejected rather than written inert.
+  /// </summary>
+  Task<HttpResult> ValidateLogonTokenScopes(
+    PrincipalDescriptor creator,
+    Guid tenantId,
+    IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
+    CancellationToken cancellationToken = default);
+
   Task WriteLogonTokenScopes(
     Guid tokenId,
     Guid deviceId,
@@ -56,11 +66,30 @@ public class CredentialScopeService(
       {
         return HttpResult.Fail(
           HttpResultErrorCode.BadRequest,
-          $"The permission '{scope.PermissionName}' at {scope.ScopeKind} scope is outside your effective permissions.");
+          $"The permission '{scope.PermissionName}' at {scope.ScopeKind} scope is outside the effective permissions of the granting user.");
       }
     }
 
     return HttpResult.Ok();
+  }
+
+  public async Task<HttpResult> ValidateLogonTokenScopes(
+    PrincipalDescriptor creator,
+    Guid tenantId,
+    IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
+    CancellationToken cancellationToken = default)
+  {
+    foreach (var scope in scopes)
+    {
+      if (scope.ScopeKind != PermissionScopeKind.Device)
+      {
+        return HttpResult.Fail(
+          HttpResultErrorCode.BadRequest,
+          $"Logon token scopes must be Device-scoped; '{scope.ScopeKind}' scopes are not honored for logon tokens.");
+      }
+    }
+
+    return await ValidateGrantableScopes(creator, tenantId, scopes, cancellationToken);
   }
 
   public async Task WriteLogonTokenScopes(

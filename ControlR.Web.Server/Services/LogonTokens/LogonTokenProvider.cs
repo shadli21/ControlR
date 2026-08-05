@@ -185,6 +185,44 @@ public class LogonTokenProvider(
   public Task<LogonTokenValidationResult> ValidateToken(string token, CancellationToken cancellationToken = default) =>
     ValidateCore(token, expectedDeviceId: null, consume: false, cancellationToken);
 
+  private static (Guid TokenId, string Secret)? TryParseToken(string token)
+  {
+    var parts = token.Split(':', 2);
+    if (parts.Length != 2)
+    {
+      return null;
+    }
+
+    try
+    {
+      var tokenIdBytes = Convert.FromHexString(parts[0]);
+      return (new Guid(tokenIdBytes), parts[1]);
+    }
+    catch (FormatException)
+    {
+      return null;
+    }
+  }
+
+  private async Task<Guid?> GetValidUserId(LogonToken logonToken, CancellationToken cancellationToken)
+  {
+    await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+    var userId = await dbContext.Users
+      .AsNoTracking()
+      .Where(u => u.Id == logonToken.UserId && u.TenantId == logonToken.TenantId)
+      .Select(u => (Guid?)u.Id)
+      .FirstOrDefaultAsync(cancellationToken);
+
+    if (userId is null)
+    {
+      _logger.LogWarning(
+        "User {UserId} not found in tenant {TenantId} for logon token",
+        logonToken.UserId, logonToken.TenantId);
+    }
+
+    return userId;
+  }
+
   private async Task<LogonTokenValidationResult> ValidateCore(
     string token,
     Guid? expectedDeviceId,
@@ -271,43 +309,5 @@ public class LogonTokenProvider(
       _logger.LogError(ex, "Failed to validate logon token.");
       return LogonTokenValidationResult.Failure("Token validation failed.");
     }
-  }
-
-  private static (Guid TokenId, string Secret)? TryParseToken(string token)
-  {
-    var parts = token.Split(':', 2);
-    if (parts.Length != 2)
-    {
-      return null;
-    }
-
-    try
-    {
-      var tokenIdBytes = Convert.FromHexString(parts[0]);
-      return (new Guid(tokenIdBytes), parts[1]);
-    }
-    catch (FormatException)
-    {
-      return null;
-    }
-  }
-
-  private async Task<Guid?> GetValidUserId(LogonToken logonToken, CancellationToken cancellationToken)
-  {
-    await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-    var userId = await dbContext.Users
-      .AsNoTracking()
-      .Where(u => u.Id == logonToken.UserId && u.TenantId == logonToken.TenantId)
-      .Select(u => (Guid?)u.Id)
-      .FirstOrDefaultAsync(cancellationToken);
-
-    if (userId is null)
-    {
-      _logger.LogWarning(
-        "User {UserId} not found in tenant {TenantId} for logon token",
-        logonToken.UserId, logonToken.TenantId);
-    }
-
-    return userId;
   }
 }

@@ -1,7 +1,7 @@
-namespace ControlR.Web.Server.Services.Authorization;
+namespace ControlR.Libraries.Api.Contracts.Constants;
 
 /// <summary>
-/// Well-known action types for <see cref="AuthorizationChangeLog"/> entries.
+/// Well-known action types for authorization change log entries.
 /// Stored as human-readable strings in the database for raw inspection.
 /// </summary>
 public static class AuthorizationChangeLogActions
@@ -34,7 +34,7 @@ public static class AuthorizationChangeLogActions
 }
 
 /// <summary>
-/// Well-known actor principal types for <see cref="AuthorizationChangeLog"/> entries.
+/// Well-known actor principal types for authorization change log entries.
 /// Mirrors the canonical principal-type claim values.
 /// </summary>
 public static class AuthorizationChangeLogActorTypes
@@ -45,7 +45,7 @@ public static class AuthorizationChangeLogActorTypes
 }
 
 /// <summary>
-/// Well-known target types for <see cref="AuthorizationChangeLog"/> entries.
+/// Well-known target types for authorization change log entries.
 /// </summary>
 public static class AuthorizationChangeLogTargetTypes
 {

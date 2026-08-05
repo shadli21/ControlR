@@ -1,0 +1,132 @@
+namespace ControlR.Web.Client.Components.Pages;
+
+public partial class AuthorizationLogs
+{
+  private string? _actionTypeFilter;
+  private AuthorizationChangeLogDto? _expandedItem;
+  private DateTime? _fromDate;
+  private bool _isLoading;
+  private string _searchText = string.Empty;
+  private Guid? _selectedTenantId;
+  private MudTable<AuthorizationChangeLogDto>? _table;
+  private string? _targetTypeFilter;
+  private TenantSummaryDto[] _tenants = [];
+  private DateTime? _toDate;
+
+  [Inject]
+  public required IControlrApi ControlrApi { get; init; }
+
+  [Inject]
+  public required ILogger<AuthorizationLogs> Logger { get; init; }
+
+  [Inject]
+  public required ISnackbar Snackbar { get; init; }
+
+  protected override async Task OnInitializedAsync()
+  {
+    await LoadTenants();
+  }
+
+  private static IEnumerable<string> SearchVocabulary(IReadOnlyList<string> values, string query) =>
+    string.IsNullOrWhiteSpace(query)
+      ? values
+      : values.Where(x => x.Contains(query, StringComparison.OrdinalIgnoreCase));
+
+  private async Task ApplyFilters()
+  {
+    if (_table is null)
+    {
+      return;
+    }
+
+    await _table.ReloadServerData();
+  }
+
+  private string GetTenantName(Guid? tenantId)
+  {
+    if (tenantId is null)
+    {
+      return "(server)";
+    }
+
+    var tenant = _tenants.FirstOrDefault(x => x.Id == tenantId.Value);
+    return tenant?.Name ?? tenantId.Value.ToString();
+  }
+
+  private async Task<TableData<AuthorizationChangeLogDto>> LoadTableData(
+    TableState state, CancellationToken cancellationToken)
+  {
+    _isLoading = true;
+    try
+    {
+      var result = await ControlrApi.Internal.AuthorizationChangeLogs.Get(
+        page: state.Page,
+        pageSize: state.PageSize,
+        actionType: string.IsNullOrWhiteSpace(_actionTypeFilter) ? null : _actionTypeFilter.Trim(),
+        targetType: string.IsNullOrWhiteSpace(_targetTypeFilter) ? null : _targetTypeFilter.Trim(),
+        searchText: string.IsNullOrWhiteSpace(_searchText) ? null : _searchText.Trim(),
+        tenantId: _selectedTenantId,
+        from: _fromDate is { } from ? new DateTimeOffset(from) : null,
+        to: _toDate is { } to ? new DateTimeOffset(to).AddDays(1) : null,
+        cancellationToken: cancellationToken);
+
+      if (!result.IsSuccess)
+      {
+        Snackbar.Add($"Failed to load authorization logs: {result.Reason}", Severity.Error);
+        return new TableData<AuthorizationChangeLogDto> { Items = [], TotalItems = 0 };
+      }
+
+      return new TableData<AuthorizationChangeLogDto>
+      {
+        Items = result.Value.Items,
+        TotalItems = result.Value.TotalItems
+      };
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Error loading authorization logs.");
+      Snackbar.Add($"Error loading authorization logs: {ex.Message}", Severity.Error);
+      return new TableData<AuthorizationChangeLogDto> { Items = [], TotalItems = 0 };
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+
+  private async Task LoadTenants()
+  {
+    try
+    {
+      var result = await ControlrApi.Internal.Tenants.Get();
+      if (result.IsSuccess)
+      {
+        _tenants = result.Value;
+      }
+    }
+    catch (Exception ex)
+    {
+      Logger.LogDebug(ex, "Tenant list unavailable; hiding tenant filter.");
+    }
+  }
+
+  private async Task Refresh()
+  {
+    if (_table is null)
+    {
+      return;
+    }
+
+    await _table.ReloadServerData();
+    Snackbar.Add("Authorization logs refreshed", Severity.Success);
+  }
+
+  private Task<IEnumerable<string>> SearchActionTypes(string query, CancellationToken cancellationToken) =>
+    Task.FromResult(SearchVocabulary(ChangeLogVocabulary.ActionTypes, query));
+
+  private Task<IEnumerable<string>> SearchTargetTypes(string query, CancellationToken cancellationToken) =>
+    Task.FromResult(SearchVocabulary(ChangeLogVocabulary.TargetTypes, query));
+
+  private void ToggleExpanded(AuthorizationChangeLogDto item) =>
+    _expandedItem = _expandedItem == item ? null : item;
+}

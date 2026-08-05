@@ -1,4 +1,5 @@
 global using ControlR.Libraries.Shared.Primitives;
+global using ControlR.Libraries.Api.Contracts.Constants;
 global using ControlR.Libraries.Api.Contracts.Dtos;
 global using ControlR.Libraries.Shared.Extensions;
 global using ControlR.Libraries.Shared.Services;

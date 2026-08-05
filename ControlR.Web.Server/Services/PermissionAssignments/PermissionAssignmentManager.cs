@@ -61,9 +61,11 @@ public interface IPermissionAssignmentManager
 
 public class PermissionAssignmentManager(
   AppDb appDb,
-  IPermissionEvaluator permissionEvaluator) : IPermissionAssignmentManager
+  IPermissionEvaluator permissionEvaluator,
+  ICredentialScopeService credentialScopeService) : IPermissionAssignmentManager
 {
   private readonly AppDb _appDb = appDb;
+  private readonly ICredentialScopeService _credentialScopeService = credentialScopeService;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
 
   public async Task<HttpResult<InternalDtos.PermissionAssignmentDto>> Create(
@@ -89,6 +91,13 @@ public class PermissionAssignmentManager(
     if (ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId) is { } scopeError)
     {
       return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, scopeError);
+    }
+
+    if (await ValidateCredentialPrincipalScope(
+      request.PrincipalKind, request.PrincipalId, request.PermissionName,
+      request.ScopeKind, request.ScopeId, cancellationToken) is { } credentialScopeError)
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, credentialScopeError);
     }
 
     var assignment = PermissionAssignment.CreateGrant(
@@ -151,6 +160,13 @@ public class PermissionAssignmentManager(
       if (ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId) is { } scopeError)
       {
         return HttpResult.Fail(HttpResultErrorCode.BadRequest, scopeError);
+      }
+
+      if (await ValidateCredentialPrincipalScope(
+        request.PrincipalKind, request.PrincipalId, request.PermissionName,
+        request.ScopeKind, request.ScopeId, cancellationToken) is { } credentialScopeError)
+      {
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, credentialScopeError);
       }
 
       var assignment = PermissionAssignment.CreateGrant(
@@ -418,6 +434,13 @@ public class PermissionAssignmentManager(
         return HttpResult.Fail(HttpResultErrorCode.BadRequest, scopeError);
       }
 
+      if (await ValidateCredentialPrincipalScope(
+        principalKind, principalId, request.PermissionName,
+        request.ScopeKind, request.ScopeId, cancellationToken) is { } credentialScopeError)
+      {
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, credentialScopeError);
+      }
+
       var assignment = PermissionAssignment.CreateGrant(
         principalKind,
         principalId,
@@ -482,6 +505,13 @@ public class PermissionAssignmentManager(
     if (ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId) is { } scopeError)
     {
       return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, scopeError);
+    }
+
+    if (await ValidateCredentialPrincipalScope(
+      assignment.PrincipalKind, assignment.PrincipalId, request.PermissionName,
+      request.ScopeKind, request.ScopeId, cancellationToken) is { } credentialScopeError)
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, credentialScopeError);
     }
 
     if (IsSelf(assignment, actorPrincipalId))
@@ -639,6 +669,64 @@ public class PermissionAssignmentManager(
 
     var effectivePermissions = await _permissionEvaluator.GetEffectivePermissionNames(principal, cancellationToken);
     return effectivePermissions.Contains(PermissionNames.ServerAdmin);
+  }
+
+  /// <summary>
+  /// Credential principals (PATs, logon tokens) can never exceed their owning user's
+  /// effective rights, so rows written for them are validated against the owner at write
+  /// time rather than left to be silently discarded by evaluation-time bounding. Returns a
+  /// user-facing error message, or <see langword="null"/> when valid or not applicable.
+  /// </summary>
+  private async Task<string?> ValidateCredentialPrincipalScope(
+    PermissionPrincipalKind principalKind,
+    Guid principalId,
+    string permissionName,
+    PermissionScopeKind scopeKind,
+    Guid? scopeId,
+    CancellationToken cancellationToken)
+  {
+    var ownerUserId = principalKind switch
+    {
+      PermissionPrincipalKind.PersonalAccessToken => await _appDb.PersonalAccessTokens
+        .IgnoreQueryFilters()
+        .Where(x => x.Id == principalId)
+        .Select(x => (Guid?)x.UserId)
+        .FirstOrDefaultAsync(cancellationToken),
+      PermissionPrincipalKind.LogonToken => await _appDb.LogonTokens
+        .IgnoreQueryFilters()
+        .Where(x => x.Id == principalId)
+        .Select(x => (Guid?)x.UserId)
+        .FirstOrDefaultAsync(cancellationToken),
+      _ => null
+    };
+
+    if (ownerUserId is null)
+    {
+      return null;
+    }
+
+    var owner = await _appDb.Users
+      .IgnoreQueryFilters()
+      .AsNoTracking()
+      .FirstOrDefaultAsync(x => x.Id == ownerUserId, cancellationToken);
+    if (owner is null || owner.TenantId == Guid.Empty)
+    {
+      return "Token owner not found.";
+    }
+
+    var ownerPrincipal = new PrincipalDescriptor(
+      PrincipalType: PrincipalClaimTypes.User,
+      PrincipalId: owner.Id,
+      TenantId: owner.TenantId,
+      AuthMethod: "credential-scope-validation");
+
+    var validation = await _credentialScopeService.ValidateGrantableScopes(
+      ownerPrincipal,
+      owner.TenantId,
+      [new InternalDtos.CredentialScopeDto(permissionName, scopeKind, scopeId)],
+      cancellationToken);
+
+    return validation.IsSuccess ? null : validation.Reason;
   }
 
   private async Task<bool> ValidatePrincipalExists(

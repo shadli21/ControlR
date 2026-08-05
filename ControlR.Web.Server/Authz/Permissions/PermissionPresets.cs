@@ -76,6 +76,7 @@ public static class PermissionPresets
         PermissionNames.ServerServiceAccountsRead,
         PermissionNames.ServerServiceAccountsWrite,
         PermissionNames.ServerServiceAccountsRotateCredentials,
+        PermissionNames.TenantPermissionsRead,
       ],
 
       [TenantAdministrator] =
