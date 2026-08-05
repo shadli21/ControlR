@@ -1,4 +1,6 @@
 using ControlR.Libraries.Hosting;
+using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data.Enums;
 
 namespace ControlR.Web.Server.Services.Authorization;
@@ -9,15 +11,19 @@ namespace ControlR.Web.Server.Services.Authorization;
 /// revokes a user's permission). Excess rows are already inert at evaluation time (the
 /// PermissionEvaluator intersects PAT scopes with the user's live permissions), so this is
 /// storage hygiene rather than a security boundary; staleness is bounded by the sweep period.
-/// Each trimmed row is recorded in the <see cref="AuthorizationChangeLog"/>.
+/// Each trimmed row is recorded in the <see cref="AuthorizationChangeLog"/>. Effective
+/// permissions are resolved through <see cref="IPermissionRuleResolver"/> so row
+/// interpretation stays in its single source of truth.
 /// </summary>
 public class PatScopeTrimBackgroundService(
   IDbContextFactory<AppDb> dbContextFactory,
+  IServiceScopeFactory scopeFactory,
   TimeProvider timeProvider,
   ILogger<PeriodicBackgroundService> logger)
   : PeriodicBackgroundService(TimeSpan.FromMinutes(15), true, timeProvider, logger)
 {
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
+  private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
 
   protected override async Task HandleElapsed()
   {
@@ -30,7 +36,10 @@ public class PatScopeTrimBackgroundService(
   }
 
   private async Task ResolveAndTrimAsync(
-    AppDb db, Guid tokenId, CancellationToken cancellationToken)
+    AppDb db,
+    IPermissionRuleResolver ruleResolver,
+    Guid tokenId,
+    CancellationToken cancellationToken)
   {
     var scopeRows = await db.PermissionAssignments
       .IgnoreQueryFilters()
@@ -44,13 +53,13 @@ public class PatScopeTrimBackgroundService(
       return;
     }
 
-    var owningUserId = await db.PersonalAccessTokens
+    var owner = await db.PersonalAccessTokens
       .IgnoreQueryFilters()
       .Where(x => x.Id == tokenId)
-      .Select(x => (Guid?)x.UserId)
+      .Select(x => new { x.UserId, UserTenantId = x.User!.TenantId })
       .FirstOrDefaultAsync(cancellationToken);
 
-    if (owningUserId is null)
+    if (owner is null)
     {
       Logger.LogWarning(
         "Cannot resolve owning user for personal access token {TokenId}. Skipping trim.",
@@ -58,8 +67,14 @@ public class PatScopeTrimBackgroundService(
       return;
     }
 
-    var userEffectivePermissions = await ResolveUserEffectivePermissions(
-      db, owningUserId.Value, cancellationToken);
+    var principal = new PrincipalDescriptor(
+      PrincipalType: PrincipalClaimTypes.User,
+      PrincipalId: owner.UserId,
+      TenantId: owner.UserTenantId,
+      AuthMethod: "pat-scope-trim");
+
+    var resolved = await ruleResolver.Resolve(principal, cancellationToken);
+    var userEffectivePermissions = resolved.GetEffectivePermissionNames();
 
     var excessRows = scopeRows
       .Where(row => !userEffectivePermissions.Contains(row.PermissionName))
@@ -92,45 +107,6 @@ public class PatScopeTrimBackgroundService(
       excessRows.Count, tokenId);
   }
 
-  private async Task<HashSet<string>> ResolveUserEffectivePermissions(
-    AppDb db, Guid userId, CancellationToken cancellationToken)
-  {
-    var permissions = new HashSet<string>();
-
-    var directAssignments = await db.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
-                  x.PrincipalId == userId &&
-                  x.IsEnabled &&
-                  x.Effect == PermissionEffect.Allow)
-      .Select(x => x.PermissionName)
-      .ToListAsync(cancellationToken);
-
-    permissions.UnionWith(directAssignments);
-
-    var userGroupIds = await db.UserGroupMembers
-      .IgnoreQueryFilters()
-      .Where(x => x.UserId == userId)
-      .Select(x => x.UserGroupId)
-      .ToListAsync(cancellationToken);
-
-    if (userGroupIds.Count > 0)
-    {
-      var groupPermissions = await db.PermissionAssignments
-        .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.UserGroup &&
-                    userGroupIds.Contains(x.PrincipalId) &&
-                    x.IsEnabled &&
-                    x.Effect == PermissionEffect.Allow)
-        .Select(x => x.PermissionName)
-        .ToListAsync(cancellationToken);
-
-      permissions.UnionWith(groupPermissions);
-    }
-
-    return permissions;
-  }
-
   private async Task Sweep(CancellationToken cancellationToken)
   {
     await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -148,11 +124,14 @@ public class PatScopeTrimBackgroundService(
       return;
     }
 
+    using var scope = _scopeFactory.CreateScope();
+    var ruleResolver = scope.ServiceProvider.GetRequiredService<IPermissionRuleResolver>();
+
     foreach (var tokenId in tokenIds)
     {
       try
       {
-        await ResolveAndTrimAsync(db, tokenId, cancellationToken);
+        await ResolveAndTrimAsync(db, ruleResolver, tokenId, cancellationToken);
       }
       catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
       {

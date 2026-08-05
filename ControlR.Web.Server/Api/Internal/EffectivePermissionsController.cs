@@ -1,5 +1,6 @@
 using ControlR.Libraries.Api.Contracts.Constants;
-using ControlR.Web.Server.Services.PermissionAssignments;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -8,9 +9,9 @@ namespace ControlR.Web.Server.Api.Internal;
 [ApiController]
 [Authorize]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
-public class EffectivePermissionsController(IPermissionAssignmentManager permissionAssignmentManager) : ControllerBase
+public class EffectivePermissionsController(IPermissionEvaluator permissionEvaluator) : ControllerBase
 {
-  private readonly IPermissionAssignmentManager _permissionAssignmentManager = permissionAssignmentManager;
+  private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
 
   [HttpPost("query")]
   [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
@@ -23,9 +24,19 @@ public class EffectivePermissionsController(IPermissionAssignmentManager permiss
       return BadRequest("User tenant not found.");
     }
 
-    var result = await _permissionAssignmentManager.QueryEffectivePermission(
-      request, tenantId, cancellationToken);
+    var principal = new PrincipalDescriptor(
+      PrincipalType: request.PrincipalKind.ToString(),
+      PrincipalId: request.PrincipalId,
+      TenantId: tenantId,
+      AuthMethod: "effective-permission-query");
 
-    return Ok(result);
+    var resource = new ResourceDescriptor(request.ScopeKind, request.ScopeId, tenantId);
+
+    var result = await _permissionEvaluator.Evaluate(
+      principal, request.PermissionName, resource, cancellationToken);
+
+    return Ok(new InternalDtos.EffectivePermissionQueryResponseDto(
+      result.Allowed,
+      result.Allowed ? null : result.DenialReason ?? "Permission denied by policy evaluation."));
   }
 }

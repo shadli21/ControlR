@@ -1,6 +1,8 @@
 using ControlR.Libraries.Shared.Helpers;
 using ControlR.Web.Client;
+using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Primitives;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Users;
 
 namespace ControlR.Web.Server.Services;
@@ -83,8 +85,43 @@ public class TenantInvitesProvider(
 
     // Update tenant ID on the tracked entity
     trackedUser.TenantId = invite.TenantId;
+
+    // The move invalidates the user's former-tenant authorization state: remove their
+    // permission assignments and user-group memberships so no stale grants survive.
+    // (The rule resolver's tenant-ownership boundary already keeps stale rows inert; this
+    // cleanup removes the residue and records the removals in the change log.)
+    var staleAssignments = await appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.User && x.PrincipalId == invitee.Id)
+      .ToListAsync();
+
+    foreach (var assignment in staleAssignments)
+    {
+      appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+        AuthorizationChangeLogActions.PermissionAssignmentDeleted,
+        AuthorizationChangeLogActorTypes.System,
+        actorPrincipalId: null,
+        AuthorizationChangeLogTargetTypes.PermissionAssignment,
+        assignment.Id.ToString(),
+        invite.TenantId,
+        before: new PermissionAssignmentSnapshot(
+          assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));
+    }
+
+    appDb.PermissionAssignments.RemoveRange(staleAssignments);
+
+    var staleMemberships = await appDb.UserGroupMembers
+      .IgnoreQueryFilters()
+      .Where(x => x.UserId == invitee.Id)
+      .ToListAsync();
+    appDb.UserGroupMembers.RemoveRange(staleMemberships);
+
     appDb.TenantInvites.Remove(invite);
     await appDb.SaveChangesAsync();
+
+    _logger.LogInformation(
+      "User {UserId} moved to tenant {TenantId}: removed {AssignmentCount} assignment(s) and {MembershipCount} group membership(s).",
+      invitee.Id, invite.TenantId, staleAssignments.Count, staleMemberships.Count);
 
     var response = new InternalDtos.AcceptInvitationResponseDto(true);
     return HttpResult.Ok(response);

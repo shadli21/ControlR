@@ -19,7 +19,7 @@ public class LogonTokensController : ControllerBase
     [FromServices] AppDb appDb,
     [FromServices] ILogonTokenProvider logonTokenProvider,
     [FromServices] IAuthorizationService authorizationService,
-    [FromServices] IPermissionEvaluator permissionEvaluator,
+    [FromServices] ICredentialScopeService credentialScopeService,
     [FromBody] InternalDtos.LogonTokenRequestDto request)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -57,19 +57,11 @@ public class LogonTokensController : ControllerBase
         return BadRequest("User principal not found.");
       }
 
-      var effectivePermissions = await permissionEvaluator.GetEffectivePermissionNames(
-        creatorPrincipal, HttpContext.RequestAborted);
-
-      var invalidScopes = request.Scopes
-        .Where(scope => !effectivePermissions.Contains(scope.PermissionName))
-        .Select(scope => scope.PermissionName)
-        .Distinct()
-        .ToList();
-
-      if (invalidScopes.Count > 0)
+      var scopeValidation = await credentialScopeService.ValidateGrantableScopes(
+        creatorPrincipal, tenantId, request.Scopes, HttpContext.RequestAborted);
+      if (!scopeValidation.IsSuccess)
       {
-        return BadRequest(
-          $"The following permissions are outside your effective permissions: {string.Join(", ", invalidScopes)}");
+        return scopeValidation.ToActionResult();
       }
     }
 
@@ -86,7 +78,8 @@ public class LogonTokensController : ControllerBase
 
     if (request.Scopes is { Count: > 0 })
     {
-      await WriteScopes(appDb, result.Value.TokenId, request.DeviceId, tenantId, userId, request.Scopes);
+      await credentialScopeService.WriteLogonTokenScopes(
+        result.Value.TokenId, request.DeviceId, tenantId, userId, request.Scopes, HttpContext.RequestAborted);
     }
 
     var deviceAccessUrl = new Uri(
@@ -99,42 +92,5 @@ public class LogonTokensController : ControllerBase
       Token: result.Value.Token);
 
     return Ok(response);
-  }
-
-  private static async Task WriteScopes(
-    AppDb appDb,
-    Guid tokenId,
-    Guid deviceId,
-    Guid tenantId,
-    Guid userId,
-    List<InternalDtos.CredentialScopeDto> scopes)
-  {
-    foreach (var scope in scopes)
-    {
-      appDb.PermissionAssignments.Add(new PermissionAssignment
-      {
-        PrincipalKind = PermissionPrincipalKind.LogonToken,
-        PrincipalId = tokenId,
-        PermissionName = scope.PermissionName,
-        Effect = PermissionEffect.Allow,
-        ScopeKind = scope.ScopeKind,
-        ScopeId = scope.ScopeId ?? deviceId,
-        IsEnabled = true,
-        OwningTenantId = tenantId,
-        CreatedByPrincipalType = "user",
-        CreatedByPrincipalId = userId.ToString()
-      });
-    }
-
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
-      AuthorizationChangeLogActions.CredentialScopeSet,
-      AuthorizationChangeLogActorTypes.User,
-      userId.ToString(),
-      AuthorizationChangeLogTargetTypes.LogonToken,
-      tokenId.ToString(),
-      tenantId,
-      after: new CredentialScopeSetSummary(scopes.Count)));
-
-    await appDb.SaveChangesAsync();
   }
 }

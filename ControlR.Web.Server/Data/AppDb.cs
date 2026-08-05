@@ -96,6 +96,14 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
 
   private static void ConfigurePermissionAssignments(ModelBuilder builder)
   {
+    // PermissionAssignments intentionally have NO tenant query filter. Server-scoped rows
+    // carry a null OwningTenantId, visibility is actor-capability-dependent (server.admin
+    // holders also see null-owned rows), and the rule resolver must load rows without a
+    // tenant context. Tenant isolation for this table is enforced in
+    // PermissionAssignmentManager via IsVisibleToTenant. Note: the manager's
+    // IgnoreQueryFilters() calls on this DbSet are currently no-ops and would silently
+    // bypass a filter if one were ever added here.
+
     builder
       .Entity<PermissionAssignment>()
       .Property(x => x.PrincipalKind)

@@ -7,7 +7,6 @@ public enum RuleSource
 {
   Direct,
   UserGroup,
-  RoleBundle,
   PatGrant,
   LogonTokenGrant
 }
@@ -21,8 +20,7 @@ public enum SourcePriority
   CredentialPat = 0,
   CredentialLogonToken = 1,
   Direct = 2,
-  UserGroup = 3,
-  RoleBundle = 4
+  UserGroup = 3
 }
 
 public sealed record PermissionRule(
@@ -34,7 +32,7 @@ public sealed record PermissionRule(
 /// The result of interpreting a principal's permission assignments. <see cref="ServerBypass"/>
 /// is true for a server-scoped service account that has no explicit assignments (the zero-config
 /// RMM use case); such a principal is unrestricted. Otherwise <see cref="Rules"/> holds the
-/// assembled allow/deny rules (direct, user-group, and the interim role-bundle bridge).
+/// assembled allow/deny rules (direct and user-group).
 /// </summary>
 public sealed record ResolvedPrincipalPermissions(
   bool ServerBypass,
@@ -43,6 +41,30 @@ public sealed record ResolvedPrincipalPermissions(
   public static ResolvedPrincipalPermissions Bypass() => new(true, []);
 
   public static ResolvedPrincipalPermissions Scoped(IReadOnlyList<PermissionRule> rules) => new(false, rules);
+
+  /// <summary>
+  /// Projects the resolved rules to the set of permission names the principal effectively
+  /// holds at the name level, honoring deny-overrides-allow: a name with any deny rule is
+  /// excluded even if allows also exist.
+  /// </summary>
+  public IReadOnlySet<string> GetEffectivePermissionNames()
+  {
+    var effective = new HashSet<string>();
+    foreach (var group in Rules.GroupBy(rule => rule.Assignment.PermissionName))
+    {
+      if (group.Any(rule => rule.Assignment.Effect == PermissionEffect.Deny))
+      {
+        continue;
+      }
+
+      if (group.Any(rule => rule.Assignment.Effect == PermissionEffect.Allow))
+      {
+        effective.Add(group.Key);
+      }
+    }
+
+    return effective;
+  }
 }
 
 /// <summary>
@@ -107,9 +129,17 @@ public class PermissionRuleResolver(
     var principalKind = ResolvePrincipalKind(principal.PrincipalType);
     var rules = new List<PermissionRule>();
 
+    // Tenant-ownership boundary for user principals: a user's effective rows are those owned
+    // by their current tenant, plus server-scoped rows (no owning tenant). Rows owned by a
+    // former tenant (e.g., after a cross-tenant invite move) are inert until cleaned up.
+    // Service accounts are exempt by design (server accounts retain cross-tenant reach).
+    var userTenantFilter = principal.PrincipalType == PrincipalClaimTypes.User
+      ? principal.TenantId
+      : null;
+
     var directAssignments = await LoadAssignments(
       db, principalKind, principal.PrincipalId, cancellationToken);
-    foreach (var assignment in directAssignments)
+    foreach (var assignment in directAssignments.Where(x => IsOwnedByPrincipalTenant(x, userTenantFilter)))
     {
       rules.Add(new PermissionRule(assignment, RuleSource.Direct, SourcePriority.Direct));
     }
@@ -117,7 +147,7 @@ public class PermissionRuleResolver(
     if (principal.PrincipalType == PrincipalClaimTypes.User)
     {
       var groupAssignments = await LoadUserGroupAssignmentsAsync(db, principal.PrincipalId, cancellationToken);
-      foreach (var assignment in groupAssignments)
+      foreach (var assignment in groupAssignments.Where(x => IsOwnedByPrincipalTenant(x, userTenantFilter)))
       {
         rules.Add(new PermissionRule(assignment, RuleSource.UserGroup, SourcePriority.UserGroup));
       }
@@ -131,6 +161,11 @@ public class PermissionRuleResolver(
         or PrincipalClaimTypes.ServerServiceAccount
       ? PermissionPrincipalKind.ServiceAccount
       : PermissionPrincipalKind.User;
+
+  private static bool IsOwnedByPrincipalTenant(PermissionAssignment assignment, Guid? principalTenantId) =>
+    principalTenantId is null ||
+    assignment.OwningTenantId is null ||
+    assignment.OwningTenantId == principalTenantId;
 
   private static async Task<List<PermissionAssignment>> LoadAssignments(
     AppDb db,

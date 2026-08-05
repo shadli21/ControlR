@@ -3,6 +3,7 @@ using ControlR.Libraries.Shared.Helpers;
 using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Primitives;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Settings;
 
 namespace ControlR.Web.Server.Services.LogonTokens;
@@ -28,7 +29,7 @@ public interface ILogonTokenProvider
     CancellationToken cancellationToken = default);
 
   Task<LogonTokenValidationResult> ValidateAndConsumeToken(string token, Guid deviceId, CancellationToken cancellationToken = default);
-  Task<Result<LogonTokenValidationResult>> ValidateToken(string token, CancellationToken cancellationToken = default);
+  Task<LogonTokenValidationResult> ValidateToken(string token, CancellationToken cancellationToken = default);
 }
 
 public class LogonTokenProvider(
@@ -91,19 +92,15 @@ public class LogonTokenProvider(
 
     foreach (var permissionName in _defaultDeviceAccessPermissions)
     {
-      dbContext.PermissionAssignments.Add(new PermissionAssignment
-      {
-        PrincipalKind = PermissionPrincipalKind.LogonToken,
-        PrincipalId = logonToken.Id,
-        PermissionName = permissionName,
-        Effect = PermissionEffect.Allow,
-        ScopeKind = PermissionScopeKind.Device,
-        ScopeId = deviceId,
-        IsEnabled = true,
-        OwningTenantId = tenantId,
-        CreatedByPrincipalType = "system",
-        CreatedByPrincipalId = userId.ToString()
-      });
+      dbContext.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.LogonToken,
+        logonToken.Id,
+        permissionName,
+        PermissionScopeKind.Device,
+        deviceId,
+        tenantId,
+        AuthorizationChangeLogActorTypes.System,
+        userId.ToString()));
     }
 
     await dbContext.SaveChangesAsync(cancellationToken);
@@ -182,126 +179,97 @@ public class LogonTokenProvider(
     return await CreateToken(deviceId, tenantId, guestUser.Id, expirationMinutes, userCorrelationId, sessionCorrelationId, cancellationToken);
   }
 
-  public async Task<LogonTokenValidationResult> ValidateAndConsumeToken(string token, Guid deviceId, CancellationToken cancellationToken = default)
-  {
-    var parseResult = TryParseToken(token);
-    if (parseResult is not (var tokenId, var secret))
-    {
-      return LogonTokenValidationResult.Failure("Invalid logon token format.");
-    }
+  public Task<LogonTokenValidationResult> ValidateAndConsumeToken(string token, Guid deviceId, CancellationToken cancellationToken = default) =>
+    ValidateCore(token, deviceId, consume: true, cancellationToken);
 
-    await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+  public Task<LogonTokenValidationResult> ValidateToken(string token, CancellationToken cancellationToken = default) =>
+    ValidateCore(token, expectedDeviceId: null, consume: false, cancellationToken);
 
-    var logonToken = await dbContext.LogonTokens
-      .FirstOrDefaultAsync(x => x.Id == tokenId, cancellationToken);
-
-    if (logonToken is null)
-    {
-      _logger.LogWarning("Logon token not found.");
-      return LogonTokenValidationResult.Failure("Invalid or expired token.");
-    }
-
-    if (_timeProvider.GetUtcNow() > logonToken.ExpiresAt)
-    {
-      _logger.LogWarning("Token has expired at {ExpiresAt}.", logonToken.ExpiresAt);
-      return LogonTokenValidationResult.Failure("Token has expired.");
-    }
-
-    if (logonToken.DeviceId != deviceId)
-    {
-      _logger.LogWarning(
-        "Device ID mismatch for logon token. Expected: {ExpectedDeviceId}, Actual: {ActualDeviceId}.",
-        logonToken.DeviceId, deviceId);
-      return LogonTokenValidationResult.Failure("Token is not valid for this device.");
-    }
-
-    var verification = _passwordHasher.VerifyHashedPassword(string.Empty, logonToken.Token, secret);
-    if (verification == PasswordVerificationResult.Failed)
-    {
-      return LogonTokenValidationResult.Failure("Invalid or expired token.");
-    }
-
-    var consumedCount = await dbContext.LogonTokens
-      .Where(x => x.Id == logonToken.Id && !x.IsConsumed)
-      .ExecuteUpdateCompatAsync(
-        dbContext,
-        q => q.ExecuteUpdateAsync(s => s.SetProperty(x => x.IsConsumed, true), cancellationToken),
-        x => x.IsConsumed = true,
-        cancellationToken);
-
-    if (consumedCount == 0)
-    {
-      return LogonTokenValidationResult.Failure("Token has already been used.");
-    }
-
-    var userId = await GetValidUserId(logonToken, cancellationToken);
-    if (userId is null)
-    {
-      return LogonTokenValidationResult.Failure("User not found.");
-    }
-
-    dbContext.LogonTokens.Remove(logonToken);
-    await dbContext.SaveChangesAsync(cancellationToken);
-
-    _logger.LogInformation(
-      "Validated and consumed logon token for user {UserId} on device {DeviceId}.",
-      userId, deviceId);
-
-    return LogonTokenValidationResult.Success(logonToken.Id, userId.Value, logonToken.TenantId, logonToken.SessionCorrelationId);
-  }
-
-  public async Task<Result<LogonTokenValidationResult>> ValidateToken(string token, CancellationToken cancellationToken = default)
+  private async Task<LogonTokenValidationResult> ValidateCore(
+    string token,
+    Guid? expectedDeviceId,
+    bool consume,
+    CancellationToken cancellationToken)
   {
     try
     {
       var parseResult = TryParseToken(token);
       if (parseResult is not (var tokenId, var secret))
       {
-        return Result.Fail<LogonTokenValidationResult>("Invalid logon token format.");
+        return LogonTokenValidationResult.Failure("Invalid logon token format.");
       }
 
       await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
       var logonToken = await dbContext.LogonTokens
-        .AsNoTracking()
         .FirstOrDefaultAsync(x => x.Id == tokenId, cancellationToken);
 
       if (logonToken is null)
       {
-        return Result.Fail<LogonTokenValidationResult>("Invalid or expired token.");
+        _logger.LogWarning("Logon token not found.");
+        return LogonTokenValidationResult.Failure("Invalid or expired token.");
       }
 
       if (_timeProvider.GetUtcNow() > logonToken.ExpiresAt)
       {
-        return Result.Fail<LogonTokenValidationResult>("Token has expired.");
+        _logger.LogWarning("Token has expired at {ExpiresAt}.", logonToken.ExpiresAt);
+        return LogonTokenValidationResult.Failure("Token has expired.");
       }
 
       if (logonToken.IsConsumed)
       {
-        return Result.Fail<LogonTokenValidationResult>("Token has already been used.");
+        return LogonTokenValidationResult.Failure("Token has already been used.");
+      }
+
+      if (expectedDeviceId.HasValue && logonToken.DeviceId != expectedDeviceId.Value)
+      {
+        _logger.LogWarning(
+          "Device ID mismatch for logon token. Expected: {ExpectedDeviceId}, Actual: {ActualDeviceId}.",
+          expectedDeviceId.Value, logonToken.DeviceId);
+        return LogonTokenValidationResult.Failure("Token is not valid for this device.");
       }
 
       var verification = _passwordHasher.VerifyHashedPassword(string.Empty, logonToken.Token, secret);
       if (verification == PasswordVerificationResult.Failed)
       {
-        return Result.Fail<LogonTokenValidationResult>("Invalid or expired token.");
+        return LogonTokenValidationResult.Failure("Invalid or expired token.");
       }
 
       var userId = await GetValidUserId(logonToken, cancellationToken);
       if (userId is null)
       {
-        return Result.Fail<LogonTokenValidationResult>("User not found.");
+        return LogonTokenValidationResult.Failure("User not found.");
       }
 
-      _logger.LogInformation("Validated logon token for user {UserId}", userId);
+      if (consume)
+      {
+        var consumedCount = await dbContext.LogonTokens
+          .Where(x => x.Id == logonToken.Id && !x.IsConsumed)
+          .ExecuteUpdateCompatAsync(
+            dbContext,
+            q => q.ExecuteUpdateAsync(s => s.SetProperty(x => x.IsConsumed, true), cancellationToken),
+            x => x.IsConsumed = true,
+            cancellationToken);
 
-      var result = LogonTokenValidationResult.Success(logonToken.Id, userId.Value, logonToken.TenantId, logonToken.SessionCorrelationId);
-      return Result.Ok(result);
+        if (consumedCount == 0)
+        {
+          return LogonTokenValidationResult.Failure("Token has already been used.");
+        }
+
+        dbContext.LogonTokens.Remove(logonToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+      }
+
+      _logger.LogInformation(
+        "Validated logon token for user {UserId} on device {DeviceId}.",
+        userId, logonToken.DeviceId);
+
+      return LogonTokenValidationResult.Success(logonToken.Id, userId.Value, logonToken.TenantId, logonToken.SessionCorrelationId);
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to validate token");
-      return Result.Fail<LogonTokenValidationResult>("Token validation failed");
+      _logger.LogError(ex, "Failed to validate logon token.");
+      return LogonTokenValidationResult.Failure("Token validation failed.");
     }
   }
 

@@ -31,4 +31,35 @@ public class PermissionAssignment : EntityBase
   public Guid? ScopeId { get; set; }
 
   public PermissionScopeKind ScopeKind { get; set; }
+
+  /// <summary>
+  /// Creates a new grant row enforcing the assignment invariants: server-scoped rows carry
+  /// no ScopeId or OwningTenantId; all other rows keep the given scope target and are owned
+  /// by the granting tenant.
+  /// </summary>
+  public static PermissionAssignment CreateGrant(
+    PermissionPrincipalKind principalKind,
+    Guid principalId,
+    string permissionName,
+    PermissionScopeKind scopeKind,
+    Guid? scopeId,
+    Guid? owningTenantId,
+    string createdByPrincipalType,
+    string? createdByPrincipalId,
+    PermissionEffect effect = PermissionEffect.Allow,
+    string? notes = null) =>
+    new()
+    {
+      PrincipalKind = principalKind,
+      PrincipalId = principalId,
+      PermissionName = permissionName,
+      Effect = effect,
+      ScopeKind = scopeKind,
+      ScopeId = scopeKind == PermissionScopeKind.Server ? null : scopeId,
+      IsEnabled = true,
+      OwningTenantId = scopeKind == PermissionScopeKind.Server ? null : owningTenantId,
+      CreatedByPrincipalType = createdByPrincipalType,
+      CreatedByPrincipalId = createdByPrincipalId,
+      Notes = notes
+    };
 }

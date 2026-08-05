@@ -217,8 +217,8 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
 
     var result = await logonTokenProvider.ValidateToken(createResult.Value.Token, TestContext.Current.CancellationToken);
 
-    Assert.False(result.IsSuccess);
-    Assert.Contains("expired", result.Reason);
+    Assert.False(result.IsValid);
+    Assert.Contains("expired", result.ErrorMessage);
   }
 
   [Fact]
@@ -232,7 +232,7 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
 
     var result = await logonTokenProvider.ValidateToken(invalidToken, TestContext.Current.CancellationToken);
 
-    Assert.False(result.IsSuccess);
+    Assert.False(result.IsValid);
   }
 
   [Fact]
@@ -251,9 +251,9 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
     Assert.True(createResult.IsSuccess);
     var validateResult = await logonTokenProvider.ValidateToken(createResult.Value.Token, TestContext.Current.CancellationToken);
 
-    Assert.True(validateResult.IsSuccess);
-    Assert.Equal(user.Id, validateResult.Value.UserId);
-    Assert.Equal(tenant.Id, validateResult.Value.TenantId);
+    Assert.True(validateResult.IsValid);
+    Assert.Equal(user.Id, validateResult.UserId);
+    Assert.Equal(tenant.Id, validateResult.TenantId);
   }
 }
 

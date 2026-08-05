@@ -1,5 +1,4 @@
 using ControlR.Web.Server.Authn;
-using ControlR.Web.Server.Authz;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Components.Account;
 using ControlR.Web.Server.Services.Authorization;
@@ -70,11 +69,10 @@ public static class AuthorizationRegistrationExtensions
         .RequirePermission(permissionName, PermissionScopeKind.Device));
     }
 
-    hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderRequirementHandler>();
-    hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderAsyncRequirementHandler>();
     hostBuilder.Services.AddScoped<IAuthorizationHandler, PermissionRequirementHandler>();
     hostBuilder.Services.AddScoped<IDeviceAccessScopeResolver, PermissionDeviceScopeResolver>();
     hostBuilder.Services.AddScoped<IPermissionRuleResolver, PermissionRuleResolver>();
     hostBuilder.Services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
+    hostBuilder.Services.AddScoped<ICredentialScopeService, CredentialScopeService>();
   }
 }

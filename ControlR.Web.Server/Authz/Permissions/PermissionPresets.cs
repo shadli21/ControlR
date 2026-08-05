@@ -1,3 +1,5 @@
+using ControlR.Web.Server.Services.Authorization;
+
 namespace ControlR.Web.Server.Authz.Permissions;
 
 /// <summary>
@@ -45,21 +47,16 @@ public static class PermissionPresets
       {
         var scopeKind = PermissionCatalog.GetBroadestLegalScope(permission) ?? PermissionScopeKind.Tenant;
         var scopeId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
-        var owningTenantId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
 
-        appDb.PermissionAssignments.Add(new PermissionAssignment
-        {
-          PrincipalKind = PermissionPrincipalKind.User,
-          PrincipalId = userId,
-          PermissionName = permission,
-          Effect = PermissionEffect.Allow,
-          ScopeKind = scopeKind,
-          ScopeId = scopeId,
-          IsEnabled = true,
-          OwningTenantId = owningTenantId,
-          CreatedByPrincipalType = "system",
-          CreatedByPrincipalId = userId.ToString()
-        });
+        appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+          PermissionPrincipalKind.User,
+          userId,
+          permission,
+          scopeKind,
+          scopeId,
+          tenantId,
+          AuthorizationChangeLogActorTypes.System,
+          userId.ToString()));
       }
     }
 

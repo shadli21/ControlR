@@ -38,10 +38,12 @@ public interface IPermissionAssignmentManager
     Guid tenantId,
     Guid actorPrincipalId,
     CancellationToken cancellationToken = default);
-  Task<InternalDtos.EffectivePermissionQueryResponseDto> QueryEffectivePermission(
-    InternalDtos.EffectivePermissionQueryRequestDto request,
-    Guid tenantId,
-    CancellationToken cancellationToken = default);
+  /// <summary>
+  /// Replaces a principal's assignments with the given set. Deletes every assignment visible
+  /// to the actor, then creates the new ones; server.admin holders therefore rewrite
+  /// tenant-owned and server-scoped rows alike, while tenant actors rewrite only their own
+  /// tenant's rows. All removals and creations are change-logged.
+  /// </summary>
   Task<HttpResult> ReplaceForPrincipal(
     PermissionPrincipalKind principalKind,
     Guid principalId,
@@ -89,20 +91,17 @@ public class PermissionAssignmentManager(
       return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, scopeError);
     }
 
-    var assignment = new PermissionAssignment
-    {
-      PrincipalKind = request.PrincipalKind,
-      PrincipalId = request.PrincipalId,
-      PermissionName = request.PermissionName,
-      Effect = request.Effect,
-      ScopeKind = request.ScopeKind,
-      ScopeId = NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
-      Notes = request.Notes,
-      IsEnabled = true,
-      OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId,
-      CreatedByPrincipalType = AuthorizationChangeLogActorTypes.User,
-      CreatedByPrincipalId = actorPrincipalId.ToString()
-    };
+    var assignment = PermissionAssignment.CreateGrant(
+      request.PrincipalKind,
+      request.PrincipalId,
+      request.PermissionName,
+      request.ScopeKind,
+      NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+      tenantId,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId.ToString(),
+      request.Effect,
+      request.Notes);
 
     _appDb.PermissionAssignments.Add(assignment);
 
@@ -154,20 +153,17 @@ public class PermissionAssignmentManager(
         return HttpResult.Fail(HttpResultErrorCode.BadRequest, scopeError);
       }
 
-      var assignment = new PermissionAssignment
-      {
-        PrincipalKind = request.PrincipalKind,
-        PrincipalId = request.PrincipalId,
-        PermissionName = request.PermissionName,
-        Effect = request.Effect,
-        ScopeKind = request.ScopeKind,
-        ScopeId = NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
-        Notes = request.Notes,
-        IsEnabled = true,
-        OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId,
-        CreatedByPrincipalType = AuthorizationChangeLogActorTypes.User,
-        CreatedByPrincipalId = actorPrincipalId.ToString()
-      };
+      var assignment = PermissionAssignment.CreateGrant(
+        request.PrincipalKind,
+        request.PrincipalId,
+        request.PermissionName,
+        request.ScopeKind,
+        NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+        tenantId,
+        AuthorizationChangeLogActorTypes.User,
+        actorPrincipalId.ToString(),
+        request.Effect,
+        request.Notes);
 
       _appDb.PermissionAssignments.Add(assignment);
 
@@ -349,27 +345,6 @@ public class PermissionAssignmentManager(
     return [.. assignments.Select(MapToDto)];
   }
 
-  public async Task<InternalDtos.EffectivePermissionQueryResponseDto> QueryEffectivePermission(
-    InternalDtos.EffectivePermissionQueryRequestDto request,
-    Guid tenantId,
-    CancellationToken cancellationToken = default)
-  {
-    var principal = new PrincipalDescriptor(
-      PrincipalType: request.PrincipalKind.ToString(),
-      PrincipalId: request.PrincipalId,
-      TenantId: tenantId,
-      AuthMethod: "effective-permission-query");
-
-    var resource = new ResourceDescriptor(request.ScopeKind, request.ScopeId, tenantId);
-
-    var result = await _permissionEvaluator.Evaluate(
-      principal, request.PermissionName, resource, cancellationToken);
-
-    return new InternalDtos.EffectivePermissionQueryResponseDto(
-      result.Allowed,
-      result.Allowed ? null : result.DenialReason ?? "Permission denied by policy evaluation.");
-  }
-
   public async Task<HttpResult> ReplaceForPrincipal(
     PermissionPrincipalKind principalKind,
     Guid principalId,
@@ -443,19 +418,16 @@ public class PermissionAssignmentManager(
         return HttpResult.Fail(HttpResultErrorCode.BadRequest, scopeError);
       }
 
-      var assignment = new PermissionAssignment
-      {
-        PrincipalKind = principalKind,
-        PrincipalId = principalId,
-        PermissionName = request.PermissionName,
-        Effect = request.Effect,
-        ScopeKind = request.ScopeKind,
-        ScopeId = NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
-        IsEnabled = true,
-        OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId,
-        CreatedByPrincipalType = AuthorizationChangeLogActorTypes.User,
-        CreatedByPrincipalId = actorPrincipalId.ToString()
-      };
+      var assignment = PermissionAssignment.CreateGrant(
+        principalKind,
+        principalId,
+        request.PermissionName,
+        request.ScopeKind,
+        NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+        tenantId,
+        AuthorizationChangeLogActorTypes.User,
+        actorPrincipalId.ToString(),
+        request.Effect);
 
       _appDb.PermissionAssignments.Add(assignment);
 

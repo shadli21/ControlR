@@ -170,33 +170,20 @@ public class PermissionEvaluator(IPermissionRuleResolver ruleResolver) : IPermis
 
   /// <summary>
   /// Returns the set of permission names the principal effectively holds (allow rules not
-  /// overridden by deny), evaluated at the name level without regard to resource scope. Used
-  /// to emit permission claims for client-side policy evaluation. Assignment rows are interpreted
-  /// by <see cref="IPermissionRuleResolver"/> (direct, user-group, and the interim role-bundle
-  /// bridge). Credential-scoping and the server-service-account bypass do not apply to interactive
-  /// UI sessions, which are the only consumers of this method.
+  /// overridden by deny), evaluated at the name level without regard to resource scope.
+  /// Consumers: claim emission for client-side policy evaluation
+  /// (<c>IdentityRevalidatingAuthenticationStateProvider</c>), logon-token scope validation
+  /// (<c>LogonTokensController</c>), and the server-admin guard in
+  /// <c>PermissionAssignmentManager</c>. Assignment rows are interpreted by
+  /// <see cref="IPermissionRuleResolver"/> (direct and user-group). Credential-scoping and
+  /// the server-service-account bypass do not apply to these consumers.
   /// </summary>
   public async Task<IReadOnlySet<string>> GetEffectivePermissionNames(
     PrincipalDescriptor principal,
     CancellationToken cancellationToken)
   {
     var resolved = await _ruleResolver.Resolve(principal, cancellationToken);
-
-    var effective = new HashSet<string>();
-    foreach (var group in resolved.Rules.GroupBy(rule => rule.Assignment.PermissionName))
-    {
-      if (group.Any(rule => rule.Assignment.Effect == PermissionEffect.Deny))
-      {
-        continue;
-      }
-
-      if (group.Any(rule => rule.Assignment.Effect == PermissionEffect.Allow))
-      {
-        effective.Add(group.Key);
-      }
-    }
-
-    return effective;
+    return resolved.GetEffectivePermissionNames();
   }
 
   /// <summary>
