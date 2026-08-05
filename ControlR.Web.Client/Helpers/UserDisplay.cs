@@ -5,7 +5,7 @@ public static class UserDisplay
   public static string GetDisplayName(UserResponseDto user)
   {
     var username = user.UserName ?? user.Email ?? user.Id.ToString();
-    var displayName = string.IsNullOrWhiteSpace(user.DisplayName) ? "(none)" : user.DisplayName;
+    var displayName = string.IsNullOrWhiteSpace(user.DisplayName) ? "—" : user.DisplayName;
     return $"{username}  (Display Name: {displayName}  |  User ID: {user.Id.ToString()[..8]}...)";
   }
 }

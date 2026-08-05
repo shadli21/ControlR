@@ -13,7 +13,7 @@ public class DeviceDisplayTests
   {
     var device = CreateDevice("WS-01", alias: "Front Desk", customerName: "Acme");
 
-    var result = DeviceDisplay.GetDisplayName(device);
+    var result = DeviceDisplay.GetFullDisplayName(device);
 
     Assert.Equal($"WS-01  (Customer: Acme  |  Alias: Front Desk  |  Device ID: {DeviceIdPrefix}...)", result);
   }
@@ -23,7 +23,7 @@ public class DeviceDisplayTests
   {
     var device = CreateDevice("WS-01", alias: null, customerName: "Acme");
 
-    var result = DeviceDisplay.GetDisplayName(device);
+    var result = DeviceDisplay.GetFullDisplayName(device);
 
     Assert.Equal($"WS-01  (Customer: Acme  |  Device ID: {DeviceIdPrefix}...)", result);
   }
@@ -33,7 +33,7 @@ public class DeviceDisplayTests
   {
     var device = CreateDevice("WS-01", alias: "   ", customerName: "Acme");
 
-    var result = DeviceDisplay.GetDisplayName(device);
+    var result = DeviceDisplay.GetFullDisplayName(device);
 
     Assert.Equal($"WS-01  (Customer: Acme  |  Device ID: {DeviceIdPrefix}...)", result);
   }
@@ -43,9 +43,9 @@ public class DeviceDisplayTests
   {
     var device = CreateDevice("WS-01", alias: null, customerName: null);
 
-    var result = DeviceDisplay.GetDisplayName(device);
+    var result = DeviceDisplay.GetFullDisplayName(device);
 
-    Assert.Equal($"WS-01  (Customer: (none)  |  Device ID: {DeviceIdPrefix}...)", result);
+    Assert.Equal($"WS-01  (Customer: —  |  Device ID: {DeviceIdPrefix}...)", result);
   }
 
   [Fact]
@@ -61,7 +61,7 @@ public class DeviceDisplayTests
   {
     var device = CreateDevice("WS-01", customerName: null);
 
-    Assert.Equal("(none)", DeviceDisplay.GetCustomerDisplay(device));
+    Assert.Equal("—", DeviceDisplay.GetCustomerDisplay(device));
   }
 
   [Fact]
@@ -69,7 +69,7 @@ public class DeviceDisplayTests
   {
     var device = CreateDevice("WS-01", customerName: "  ");
 
-    Assert.Equal("(none)", DeviceDisplay.GetCustomerDisplay(device));
+    Assert.Equal("—", DeviceDisplay.GetCustomerDisplay(device));
   }
 
   private const string DeviceIdPrefix = "a1b2c3d4";

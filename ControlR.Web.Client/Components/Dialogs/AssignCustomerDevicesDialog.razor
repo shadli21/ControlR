@@ -27,7 +27,7 @@
                          Disabled="@isAssigned"
                          Color="Color.Primary"
                          Dense="true">
-              @DeviceDisplay.GetDisplayName(device)
+              @DeviceDisplay.GetFullDisplayName(device)
             </MudCheckBox>
           }
           @if (_devices.Count == 0)

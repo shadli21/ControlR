@@ -32,14 +32,14 @@ public partial class ScopeAutocomplete
   public EventCallback<Guid?> SelectedIdChanged { get; set; }
 
   private string DeviceDisplayText =>
-    _selectedDevice is null ? string.Empty : DeviceDisplay.GetDisplayName(_selectedDevice);
+    _selectedDevice is null ? string.Empty : DeviceDisplay.GetFullDisplayName(_selectedDevice);
   private string ImplicitScopeMessage => ScopeKind switch
   {
     PermissionScopeKind.Server => "Server-wide scope. No specific target is required.",
     _ => "Tenant-wide scope. No specific target is required."
   };
   private bool IsDeviceScope => ScopeKind == PermissionScopeKind.Device;
-  private bool RequiresTarget => ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant;
+  private bool RequiresTarget => ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant or PermissionScopeKind.UserGroup;
 
   protected override void OnParametersSet()
   {
@@ -87,6 +87,7 @@ public partial class ScopeAutocomplete
     {
       PermissionScopeKind.DeviceGroup => await SearchDeviceGroups(query, cancellationToken),
       PermissionScopeKind.CustomerTenant => await SearchCustomers(query, cancellationToken),
+      PermissionScopeKind.UserGroup => await SearchUserGroups(query, cancellationToken),
       _ => []
     };
   }
@@ -117,6 +118,24 @@ public partial class ScopeAutocomplete
     }
 
     var result = await ControlrApi.Internal.DeviceGroups.GetAll(cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return [];
+    }
+
+    return result.Value
+      .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+      .Select(x => new ScopeOption(x.Id, x.Name));
+  }
+
+  private async Task<IEnumerable<ScopeOption>> SearchUserGroups(string query, CancellationToken cancellationToken)
+  {
+    if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+    {
+      return [];
+    }
+
+    var result = await ControlrApi.Internal.UserGroups.GetAll(cancellationToken);
     if (!result.IsSuccess)
     {
       return [];

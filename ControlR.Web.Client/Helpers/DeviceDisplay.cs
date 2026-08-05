@@ -2,13 +2,14 @@ namespace ControlR.Web.Client.Helpers;
 
 public static class DeviceDisplay
 {
-  public static string GetCustomerDisplay(DeviceResponseDto device) =>
-    string.IsNullOrWhiteSpace(device.CustomerName) ? "(none)" : device.CustomerName;
+  public static string GetAliasDisplay(DeviceResponseDto device) =>
+    string.IsNullOrWhiteSpace(device.Alias) ? "—" : device.Alias;
 
-  public static string GetDisplayName(DeviceResponseDto device)
-  {
-    var customer = GetCustomerDisplay(device);
-    var alias = string.IsNullOrWhiteSpace(device.Alias) ? "" : $"  |  Alias: {device.Alias}";
-    return $"{device.Name}  (Customer: {customer}{alias}  |  Device ID: {device.Id.ToString()[..8]}...)";
-  }
-}
+  public static string GetCustomerDisplay(DeviceResponseDto device) =>
+    string.IsNullOrWhiteSpace(device.CustomerName) ? "—" : device.CustomerName;
+
+  public static string GetFullDisplayName(DeviceResponseDto device) =>
+    $"{device.Name}  (Customer: {GetCustomerDisplay(device)}  |  Alias: {GetAliasDisplay(device)}  |  Device ID: {GetIdDisplay(device)})";
+
+  public static string GetIdDisplay(DeviceResponseDto device) =>
+    device.Id.ToString()[..8] + "...";}

@@ -10,7 +10,7 @@
   {
     <MudSwitch T="bool" Value="@(IsDeviceToggled(device))" Color="Color.Success"
       ValueChanged="@(async isToggled => await DeviceToggled.InvokeAsync((device, isToggled)))">
-      @DeviceDisplay.GetDisplayName(device)
+      @DeviceDisplay.GetFullDisplayName(device)
     </MudSwitch>
   }
 </MudPaper>
