@@ -6,6 +6,8 @@ public sealed record ScopeOption(Guid Id, string DisplayName);
 
 public partial class ScopeAutocomplete
 {
+  private bool _initialized;
+  private IReadOnlyList<ScopeOption> _options = [];
   private PermissionScopeKind _previousScopeKind;
   private ScopeOption? _selected;
   private DeviceResponseDto? _selectedDevice;
@@ -41,18 +43,43 @@ public partial class ScopeAutocomplete
   private bool IsDeviceScope => ScopeKind == PermissionScopeKind.Device;
   private bool RequiresTarget => ScopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant or PermissionScopeKind.UserGroup;
 
-  protected override void OnParametersSet()
+  protected override async Task OnParametersSetAsync()
   {
     if (ScopeKind == _previousScopeKind)
     {
       return;
     }
 
+    var isFirstLoad = !_initialized;
+    _initialized = true;
     _previousScopeKind = ScopeKind;
     _selected = null;
     _selectedDevice = null;
-    _ = SelectedIdChanged.InvokeAsync(null);
+
+    // Preserve a pre-selected target on initial load (edit mode); clear it on later kind changes.
+    if (!isFirstLoad || SelectedId is null)
+    {
+      await SelectedIdChanged.InvokeAsync(null);
+    }
+    else if (IsDeviceScope)
+    {
+      var deviceResult = await ControlrApi.Internal.Devices.GetDevice(SelectedId.Value);
+      if (deviceResult.IsSuccess && deviceResult.Value is not null)
+      {
+        _selectedDevice = deviceResult.Value;
+      }
+    }
+
+    await LoadOptions();
+
+    if (SelectedId is { } selectedId)
+    {
+      _selected = _options.FirstOrDefault(x => x.Id == selectedId);
+    }
   }
+
+  private static bool Matches(string? value, string query) =>
+    string.IsNullOrWhiteSpace(query) || (value?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false);
 
   private async Task ClearDevice()
   {
@@ -64,6 +91,56 @@ public partial class ScopeAutocomplete
   {
     _selected = value;
     await SelectedIdChanged.InvokeAsync(value?.Id);
+  }
+
+  private async Task<IReadOnlyList<ScopeOption>> LoadCustomers(CancellationToken cancellationToken)
+  {
+    var result = await ControlrApi.Internal.Customers.GetAll(cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return [];
+    }
+
+    return [.. result.Value
+      .OrderBy(x => x.Name)
+      .Select(x => new ScopeOption(x.Id, x.Name))];
+  }
+
+  private async Task<IReadOnlyList<ScopeOption>> LoadDeviceGroups(CancellationToken cancellationToken)
+  {
+    var result = await ControlrApi.Internal.DeviceGroups.GetAll(cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return [];
+    }
+
+    return [.. result.Value
+      .OrderBy(x => x.Name)
+      .Select(x => new ScopeOption(x.Id, x.Name))];
+  }
+
+  private async Task LoadOptions(CancellationToken cancellationToken = default)
+  {
+    _options = ScopeKind switch
+    {
+      PermissionScopeKind.CustomerTenant => await LoadCustomers(cancellationToken),
+      PermissionScopeKind.DeviceGroup => await LoadDeviceGroups(cancellationToken),
+      PermissionScopeKind.UserGroup => await LoadUserGroups(cancellationToken),
+      _ => []
+    };
+  }
+
+  private async Task<IReadOnlyList<ScopeOption>> LoadUserGroups(CancellationToken cancellationToken)
+  {
+    var result = await ControlrApi.Internal.UserGroups.GetAll(cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return [];
+    }
+
+    return [.. result.Value
+      .OrderBy(x => x.Name)
+      .Select(x => new ScopeOption(x.Id, x.Name))];
   }
 
   private async Task OpenDevicePicker()
@@ -81,68 +158,9 @@ public partial class ScopeAutocomplete
     await SelectedIdChanged.InvokeAsync(device.Id);
   }
 
-  private async Task<IEnumerable<ScopeOption>> Search(string query, CancellationToken cancellationToken)
+  private Task<IEnumerable<ScopeOption>> Search(string query, CancellationToken cancellationToken)
   {
-    return ScopeKind switch
-    {
-      PermissionScopeKind.DeviceGroup => await SearchDeviceGroups(query, cancellationToken),
-      PermissionScopeKind.CustomerTenant => await SearchCustomers(query, cancellationToken),
-      PermissionScopeKind.UserGroup => await SearchUserGroups(query, cancellationToken),
-      _ => []
-    };
-  }
-
-  private async Task<IEnumerable<ScopeOption>> SearchCustomers(string query, CancellationToken cancellationToken)
-  {
-    if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
-    {
-      return [];
-    }
-
-    var result = await ControlrApi.Internal.Customers.GetAll(cancellationToken);
-    if (!result.IsSuccess)
-    {
-      return [];
-    }
-
-    return result.Value
-      .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-      .Select(x => new ScopeOption(x.Id, x.Name));
-  }
-
-  private async Task<IEnumerable<ScopeOption>> SearchDeviceGroups(string query, CancellationToken cancellationToken)
-  {
-    if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
-    {
-      return [];
-    }
-
-    var result = await ControlrApi.Internal.DeviceGroups.GetAll(cancellationToken);
-    if (!result.IsSuccess)
-    {
-      return [];
-    }
-
-    return result.Value
-      .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-      .Select(x => new ScopeOption(x.Id, x.Name));
-  }
-
-  private async Task<IEnumerable<ScopeOption>> SearchUserGroups(string query, CancellationToken cancellationToken)
-  {
-    if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
-    {
-      return [];
-    }
-
-    var result = await ControlrApi.Internal.UserGroups.GetAll(cancellationToken);
-    if (!result.IsSuccess)
-    {
-      return [];
-    }
-
-    return result.Value
-      .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-      .Select(x => new ScopeOption(x.Id, x.Name));
+    IEnumerable<ScopeOption> matches = _options.Where(x => Matches(x.DisplayName, query));
+    return Task.FromResult(matches);
   }
 }
