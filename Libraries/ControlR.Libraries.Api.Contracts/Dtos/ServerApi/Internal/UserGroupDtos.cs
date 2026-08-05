@@ -20,7 +20,9 @@ public record UpdateUserGroupRequestDto(
 
 public record UserGroupMemberDto(
   Guid UserId,
-  string UserName);
+  string UserName,
+  string? DisplayName,
+  DateTimeOffset? LastLogin);
 
 public record UserGroupDto(
   Guid Id,

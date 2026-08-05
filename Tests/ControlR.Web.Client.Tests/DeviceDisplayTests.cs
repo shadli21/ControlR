@@ -19,33 +19,33 @@ public class DeviceDisplayTests
   }
 
   [Fact]
-  public void GetDisplayName_NullAlias_OmitsAliasSegment()
+  public void GetDisplayName_NullAlias_RendersDash()
   {
     var device = CreateDevice("WS-01", alias: null, customerName: "Acme");
 
     var result = DeviceDisplay.GetFullDisplayName(device);
 
-    Assert.Equal($"WS-01  (Customer: Acme  |  Device ID: {DeviceIdPrefix}...)", result);
+    Assert.Equal($"WS-01  (Customer: Acme  |  Alias: —  |  Device ID: {DeviceIdPrefix}...)", result);
   }
 
   [Fact]
-  public void GetDisplayName_WhitespaceAlias_OmitsAliasSegment()
+  public void GetDisplayName_WhitespaceAlias_RendersDash()
   {
     var device = CreateDevice("WS-01", alias: "   ", customerName: "Acme");
 
     var result = DeviceDisplay.GetFullDisplayName(device);
 
-    Assert.Equal($"WS-01  (Customer: Acme  |  Device ID: {DeviceIdPrefix}...)", result);
+    Assert.Equal($"WS-01  (Customer: Acme  |  Alias: —  |  Device ID: {DeviceIdPrefix}...)", result);
   }
 
   [Fact]
-  public void GetDisplayName_NullCustomer_RendersNone()
+  public void GetDisplayName_NullCustomer_RendersDash()
   {
     var device = CreateDevice("WS-01", alias: null, customerName: null);
 
     var result = DeviceDisplay.GetFullDisplayName(device);
 
-    Assert.Equal($"WS-01  (Customer: —  |  Device ID: {DeviceIdPrefix}...)", result);
+    Assert.Equal($"WS-01  (Customer: —  |  Alias: —  |  Device ID: {DeviceIdPrefix}...)", result);
   }
 
   [Fact]
@@ -70,6 +70,30 @@ public class DeviceDisplayTests
     var device = CreateDevice("WS-01", customerName: "  ");
 
     Assert.Equal("—", DeviceDisplay.GetCustomerDisplay(device));
+  }
+
+  [Fact]
+  public void GetAliasDisplay_WithAlias_ReturnsAlias()
+  {
+    var device = CreateDevice("WS-01", alias: "Front Desk");
+
+    Assert.Equal("Front Desk", DeviceDisplay.GetAliasDisplay(device));
+  }
+
+  [Fact]
+  public void GetAliasDisplay_NullAlias_ReturnsDash()
+  {
+    var device = CreateDevice("WS-01", alias: null);
+
+    Assert.Equal("—", DeviceDisplay.GetAliasDisplay(device));
+  }
+
+  [Fact]
+  public void GetIdDisplay_ReturnsTruncatedId()
+  {
+    var device = CreateDevice("WS-01");
+
+    Assert.Equal($"{DeviceIdPrefix}...", DeviceDisplay.GetIdDisplay(device));
   }
 
   private const string DeviceIdPrefix = "a1b2c3d4";

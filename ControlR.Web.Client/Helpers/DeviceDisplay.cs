@@ -12,4 +12,5 @@ public static class DeviceDisplay
     $"{device.Name}  (Customer: {GetCustomerDisplay(device)}  |  Alias: {GetAliasDisplay(device)}  |  Device ID: {GetIdDisplay(device)})";
 
   public static string GetIdDisplay(DeviceResponseDto device) =>
-    device.Id.ToString()[..8] + "...";}
+    device.Id.ToString()[..8] + "...";
+}

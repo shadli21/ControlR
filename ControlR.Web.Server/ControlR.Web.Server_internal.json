@@ -12842,7 +12842,9 @@
       "UserGroupMemberDto": {
         "required": [
           "userId",
-          "userName"
+          "userName",
+          "displayName",
+          "lastLogin"
         ],
         "type": "object",
         "properties": {
@@ -12852,6 +12854,19 @@
           },
           "userName": {
             "type": "string"
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastLogin": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },

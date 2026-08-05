@@ -17,7 +17,11 @@
              Breakpoint="Breakpoint.Sm">
   <Columns>
     <PropertyColumn Property="x => x.UserName" Title="Username" />
-    <PropertyColumn Property="x => x.Email" Title="Email" />
+    <TemplateColumn Title="Display Name" Sortable="true" SortBy="@(x => x.DisplayName)">
+      <CellTemplate>
+        @(string.IsNullOrWhiteSpace(context.Item.DisplayName) ? "—" : context.Item.DisplayName)
+      </CellTemplate>
+    </TemplateColumn>
     <TemplateColumn Title="Permissions" Sortable="true" SortBy="@(x => x.Permissions.Count)">
       <CellTemplate>
         @context.Item.Permissions.Count

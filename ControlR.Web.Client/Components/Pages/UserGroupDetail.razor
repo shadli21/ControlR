@@ -66,6 +66,16 @@ else
     </ToolBarContent>
     <Columns>
       <PropertyColumn Property="x => x.UserName" Title="User" />
+      <TemplateColumn Title="Display Name" Sortable="true" SortBy="@(x => x.DisplayName)">
+        <CellTemplate>
+          @(string.IsNullOrWhiteSpace(context.Item.DisplayName) ? "—" : context.Item.DisplayName)
+        </CellTemplate>
+      </TemplateColumn>
+      <TemplateColumn Title="Last Login" Sortable="true" SortBy="@(x => x.LastLogin)">
+        <CellTemplate>
+          @(context.Item.LastLogin?.ToLocalTime().ToString() ?? "—")
+        </CellTemplate>
+      </TemplateColumn>
       <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
         <CellTemplate>
           <MudTooltip Text="Remove member">

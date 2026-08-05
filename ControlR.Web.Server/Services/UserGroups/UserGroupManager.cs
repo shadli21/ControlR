@@ -123,7 +123,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
 
     await _appDb.SaveChangesAsync(cancellationToken);
 
-    return HttpResult.Ok(MapToDetailDto(group));
+    return HttpResult.Ok(await MapToDetailDto(group, cancellationToken));
   }
 
   public async Task<HttpResult> Delete(
@@ -176,7 +176,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
       return HttpResult.Fail<InternalDtos.UserGroupDetailDto>(HttpResultErrorCode.NotFound, "User group not found.");
     }
 
-    return HttpResult.Ok(MapToDetailDto(group));
+    return HttpResult.Ok(await MapToDetailDto(group, cancellationToken));
   }
 
   public async Task<IReadOnlyList<InternalDtos.UserGroupDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default)
@@ -272,17 +272,31 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
 
     await _appDb.SaveChangesAsync(cancellationToken);
 
-    return HttpResult.Ok(MapToDetailDto(group));
+    return HttpResult.Ok(await MapToDetailDto(group, cancellationToken));
   }
 
-  private static InternalDtos.UserGroupDetailDto MapToDetailDto(UserGroup group)
+  private async Task<InternalDtos.UserGroupDetailDto> MapToDetailDto(UserGroup group, CancellationToken cancellationToken)
   {
-    var members = (group.Members ?? [])
-      .OrderBy(m => m.User?.UserName ?? string.Empty)
-      .Select(m => new InternalDtos.UserGroupMemberDto(m.UserId, m.User?.UserName ?? string.Empty))
+    var members = (group.Members ?? []).OrderBy(m => m.User?.UserName ?? string.Empty).ToList();
+
+    var memberIds = members.Select(m => m.UserId).ToList();
+
+    var displayNames = await _appDb.UserPreferences
+      .Where(x => memberIds.Contains(x.UserId) && x.Name == UserPreferenceNames.UserDisplayName)
+      .Select(x => new { x.UserId, x.Value })
+      .ToListAsync(cancellationToken);
+
+    var displayNamesLookup = displayNames.ToDictionary(x => x.UserId, x => x.Value);
+
+    var memberDtos = members
+      .Select(m => new InternalDtos.UserGroupMemberDto(
+        m.UserId,
+        m.User?.UserName ?? string.Empty,
+        displayNamesLookup.GetValueOrDefault(m.UserId),
+        m.User?.LastLogin))
       .ToList();
 
     return new InternalDtos.UserGroupDetailDto(
-      group.Id, group.Name, group.Description, group.CreatedAt, members);
+      group.Id, group.Name, group.Description, group.CreatedAt, memberDtos);
   }
 }
