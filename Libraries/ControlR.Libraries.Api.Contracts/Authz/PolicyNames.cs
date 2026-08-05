@@ -8,6 +8,7 @@ namespace ControlR.Libraries.Api.Contracts.Authz;
 public static class PolicyNames
 {
   public const string RequireAgentInstall = "RequireAgentInstall";
+  public const string RequireAuthorizationLogsRead = "RequireAuthorizationLogsRead";
   public const string RequireCustomersRead = "RequireCustomersRead";
   public const string RequireCustomersWrite = "RequireCustomersWrite";
   public const string RequireDeviceGroupAssignDevices = "RequireDeviceGroupAssignDevices";
@@ -21,6 +22,8 @@ public static class PolicyNames
   public const string RequirePersonalAccessTokensOthersWrite = "RequirePersonalAccessTokensOthersWrite";
   public const string RequireServerAdmin = "RequireServerAdmin";
   public const string RequireServerAlertsWrite = "RequireServerAlertsWrite";
+  public const string RequireServerAuthorizationLogsRead = "RequireServerAuthorizationLogsRead";
+  public const string RequireServerTenantsRead = "RequireServerTenantsRead";
   public const string RequireServerServiceAccountsRead = "RequireServerServiceAccountsRead";
   public const string RequireServerServiceAccountsRotateCredentials = "RequireServerServiceAccountsRotateCredentials";
   public const string RequireServerServiceAccountsWrite = "RequireServerServiceAccountsWrite";

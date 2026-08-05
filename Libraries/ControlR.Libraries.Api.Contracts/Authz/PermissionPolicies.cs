@@ -15,6 +15,7 @@ public static class PermissionPolicies
     new Dictionary<string, string>
     {
       [PolicyNames.RequireAgentInstall] = PermissionNames.AgentInstall,
+      [PolicyNames.RequireAuthorizationLogsRead] = PermissionNames.TenantAuthorizationLogsRead,
       [PolicyNames.RequireCustomersRead] = PermissionNames.TenantCustomersRead,
       [PolicyNames.RequireCustomersWrite] = PermissionNames.TenantCustomersWrite,
       [PolicyNames.RequireDeviceGroupAssignDevices] = PermissionNames.DeviceGroupAssignDevices,
@@ -28,6 +29,8 @@ public static class PermissionPolicies
       [PolicyNames.RequirePersonalAccessTokensOthersWrite] = PermissionNames.PersonalAccessTokenOthersWrite,
       [PolicyNames.RequireServerAdmin] = PermissionNames.ServerAdmin,
       [PolicyNames.RequireServerAlertsWrite] = PermissionNames.ServerAlertsWrite,
+      [PolicyNames.RequireServerAuthorizationLogsRead] = PermissionNames.ServerAuthorizationLogsRead,
+      [PolicyNames.RequireServerTenantsRead] = PermissionNames.ServerTenantsRead,
       [PolicyNames.RequireServerServiceAccountsRead] = PermissionNames.ServerServiceAccountsRead,
       [PolicyNames.RequireServerServiceAccountsRotateCredentials] = PermissionNames.ServerServiceAccountsRotateCredentials,
       [PolicyNames.RequireServerServiceAccountsWrite] = PermissionNames.ServerServiceAccountsWrite,

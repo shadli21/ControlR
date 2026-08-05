@@ -1,0 +1,16 @@
+@attribute [Route(ClientRoutes.ServerAuthorizationLogs)]
+@attribute [Authorize(Policy = PolicyNames.RequireServerAuthorizationLogsRead)]
+
+<PageTitle>Server Authorization Logs</PageTitle>
+
+<PrimaryTitle>
+  Server Authorization Logs
+</PrimaryTitle>
+
+<MudAlert Severity="Severity.Info" Class="mb-4">
+  Audit trail of authorization-state changes across all tenants: permission assignments,
+  credential scopes, service accounts, groups, and customers. Use the tenant filter to
+  narrow results to a specific tenant.
+</MudAlert>
+
+<AuthorizationLogsPanel ShowTenantFilter="true" />

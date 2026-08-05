@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace ControlR.Web.Server.Api.Internal;
 
 /// <summary>
-/// Authorization change log inspection. Server administrators see all entries (optionally
-/// filtered by tenant); holders of tenant.permissions.read see only their own tenant's
-/// entries. Entries with no owning tenant (server-scoped changes) are visible to server
-/// administrators only.
+/// Authorization change log inspection. Holders of server.authorization-logs.read see all
+/// entries (optionally filtered by tenant); holders of tenant.authorization-logs.read see
+/// only their own tenant's entries. Entries with no owning tenant (server-scoped changes)
+/// are visible to server.authorization-logs.read holders only.
 /// </summary>
 [Route(HttpConstants.Internal.AuthorizationChangeLogsEndpoint)]
 [ApiController]
@@ -40,16 +40,16 @@ public class AuthorizationChangeLogsController : ControllerBase
     }
 
     var effectivePermissions = await permissionEvaluator.GetEffectivePermissionNames(principal, cancellationToken);
-    var isServerAdmin = effectivePermissions.Contains(PermissionNames.ServerAdmin);
-    var canReadTenant = effectivePermissions.Contains(PermissionNames.TenantPermissionsRead);
+    var canReadServer = effectivePermissions.Contains(PermissionNames.ServerAuthorizationLogsRead);
+    var canReadTenant = effectivePermissions.Contains(PermissionNames.TenantAuthorizationLogsRead);
 
-    if (!isServerAdmin && !canReadTenant)
+    if (!canReadServer && !canReadTenant)
     {
       return Forbid();
     }
 
     Guid? scopedTenantId;
-    if (isServerAdmin)
+    if (canReadServer)
     {
       scopedTenantId = tenantId;
     }

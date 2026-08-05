@@ -39,6 +39,8 @@ public static class PermissionNames
   public const string ServerAdmin = "server.admin";
   public const string ServerAlertsRead = "server.alerts.read";
   public const string ServerAlertsWrite = "server.alerts.write";
+  public const string ServerAuthorizationLogsRead = "server.authorization-logs.read";
+  public const string ServerTenantsRead = "server.tenants.read";
   public const string ServerServiceAccountsRead = "server.service-accounts.read";
   public const string ServerServiceAccountsRotateCredentials = "server.service-accounts.rotate-credentials";
   public const string ServerServiceAccountsWrite = "server.service-accounts.write";
@@ -46,6 +48,7 @@ public static class PermissionNames
   public const string ServiceAccountRead = "service-account.read";
   public const string ServiceAccountRotateCredentials = "service-account.rotate-credentials";
   public const string ServiceAccountWrite = "service-account.write";
+  public const string TenantAuthorizationLogsRead = "tenant.authorization-logs.read";
   public const string TenantCustomersRead = "tenant.customers.read";
   public const string TenantCustomersWrite = "tenant.customers.write";
   public const string TenantDeviceGroupsRead = "tenant.device-groups.read";

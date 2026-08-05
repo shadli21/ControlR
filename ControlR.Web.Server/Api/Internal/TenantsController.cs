@@ -5,7 +5,7 @@ namespace ControlR.Web.Server.Api.Internal;
 
 [Route(HttpConstants.Internal.TenantsEndpoint)]
 [ApiController]
-[Authorize(Policy = PolicyNames.RequireServerAdmin)]
+[Authorize(Policy = PolicyNames.RequireServerTenantsRead)]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class TenantsController : ControllerBase
 {

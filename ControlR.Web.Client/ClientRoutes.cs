@@ -4,6 +4,7 @@ public static class ClientRoutes
 {
   public const string About = "/about";
   public const string AuthorizationLogs = "/authorization-logs";
+  public const string ServerAuthorizationLogs = "/server-authorization-logs";
   public const string Customers = "/customers";
   public const string Deploy = "/deploy";
   public const string DeviceAccess = "/device-access";

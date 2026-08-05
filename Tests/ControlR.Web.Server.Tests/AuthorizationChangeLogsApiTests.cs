@@ -11,8 +11,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace ControlR.Web.Server.Tests;
 
 /// <summary>
-/// Authorization change log endpoint audience scoping: server administrators see all
-/// tenants, tenant readers see only their own tenant, and other principals are forbidden.
+/// Authorization change log endpoint audience scoping: holders of server.authorization-logs.read
+/// see all tenants, holders of tenant.authorization-logs.read see only their own tenant, and
+/// other principals are forbidden.
 /// </summary>
 public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
 {
@@ -110,6 +111,15 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
         PermissionPrincipalKind.User,
         serverAdmin.Id,
         PermissionNames.ServerAdmin,
+        PermissionScopeKind.Server,
+        null,
+        tenantA.Id,
+        "test",
+        serverAdmin.Id.ToString()));
+      db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        serverAdmin.Id,
+        PermissionNames.ServerAuthorizationLogsRead,
         PermissionScopeKind.Server,
         null,
         tenantA.Id,

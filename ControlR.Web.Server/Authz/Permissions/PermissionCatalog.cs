@@ -61,6 +61,8 @@ public static class PermissionCatalog
     Add(PermissionNames.ServerAdmin, "Server Admin", "Full administrative access to server-wide settings and operations.", server, selfRemovable: false);
     Add(PermissionNames.ServerAlertsRead, "Read Server Alerts", "View server alerts and notifications.", server);
     Add(PermissionNames.ServerAlertsWrite, "Manage Server Alerts", "Create, update, and dismiss server alerts.", server);
+    Add(PermissionNames.ServerAuthorizationLogsRead, "Read Server Authorization Logs", "View authorization change logs across all tenants, including server-scoped entries.", server);
+    Add(PermissionNames.ServerTenantsRead, "Read Server Tenants", "List all tenants on the server.", server);
     Add(PermissionNames.ServerTelemetryRead, "Read Server Telemetry", "View server telemetry (logs and metrics).", server);
     Add(PermissionNames.ServerServiceAccountsRead, "Read Server Service Accounts", "View server-scoped service accounts and credentials.", server);
     Add(PermissionNames.ServerServiceAccountsWrite, "Manage Server Service Accounts", "Create and delete server-scoped service accounts.", server);
@@ -80,6 +82,7 @@ public static class PermissionCatalog
     Add(PermissionNames.TenantCustomersWrite, "Manage Customers", "Create, update, and delete customers within the tenant.", tenant);
     Add(PermissionNames.TenantTagsWrite, "Manage Tags", "Create, update, and delete tag definitions within the tenant.", tenant);
     Add(PermissionNames.TenantPermissionsRead, "Read Permissions", "View permission assignments within the tenant.", tenant);
+    Add(PermissionNames.TenantAuthorizationLogsRead, "Read Authorization Logs", "View the tenant's authorization change log.", tenant);
     Add(PermissionNames.TenantPermissionsWrite, "Manage Permissions", "Create and update allow permission assignments within the tenant.", tenant, selfRemovable: false);
     Add(PermissionNames.TenantPermissionsDeny, "Manage Deny Permissions", "Create and update deny permission assignments within the tenant.", tenant, selfRemovable: false);
 

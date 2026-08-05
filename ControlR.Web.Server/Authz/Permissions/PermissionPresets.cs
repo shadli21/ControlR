@@ -72,11 +72,14 @@ public static class PermissionPresets
         PermissionNames.ServerAdmin,
         PermissionNames.ServerAlertsRead,
         PermissionNames.ServerAlertsWrite,
+        PermissionNames.ServerAuthorizationLogsRead,
+        PermissionNames.ServerTenantsRead,
         PermissionNames.ServerTelemetryRead,
         PermissionNames.ServerServiceAccountsRead,
         PermissionNames.ServerServiceAccountsWrite,
         PermissionNames.ServerServiceAccountsRotateCredentials,
         PermissionNames.TenantPermissionsRead,
+        PermissionNames.TenantAuthorizationLogsRead,
       ],
 
       [TenantAdministrator] =
@@ -97,6 +100,7 @@ public static class PermissionPresets
         PermissionNames.TenantCustomersWrite,
         PermissionNames.TenantTagsWrite,
         PermissionNames.TenantPermissionsRead,
+        PermissionNames.TenantAuthorizationLogsRead,
         PermissionNames.TenantPermissionsWrite,
         PermissionNames.TenantPermissionsDeny,
         PermissionNames.PersonalAccessTokenSelfRead,

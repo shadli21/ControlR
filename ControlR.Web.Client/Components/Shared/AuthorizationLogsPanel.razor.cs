@@ -1,6 +1,6 @@
-namespace ControlR.Web.Client.Components.Pages;
+namespace ControlR.Web.Client.Components.Shared;
 
-public partial class AuthorizationLogs
+public partial class AuthorizationLogsPanel
 {
   private string? _actionTypeFilter;
   private AuthorizationChangeLogDto? _expandedItem;
@@ -17,7 +17,10 @@ public partial class AuthorizationLogs
   public required IControlrApi ControlrApi { get; init; }
 
   [Inject]
-  public required ILogger<AuthorizationLogs> Logger { get; init; }
+  public required ILogger<AuthorizationLogsPanel> Logger { get; init; }
+
+  [Parameter]
+  public bool ShowTenantFilter { get; set; }
 
   [Inject]
   public required ISnackbar Snackbar { get; init; }

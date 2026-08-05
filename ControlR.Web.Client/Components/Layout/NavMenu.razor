@@ -67,9 +67,9 @@
         Permissions
       </MudNavLink>
     </AuthorizeView>
-    @if (!_canSeeServerAdmin)
+    @if (!_canSeeServerAuthorizationLogs)
     {
-      <AuthorizeView Policy="@(PolicyNames.RequirePermissionAssignmentsRead)">
+      <AuthorizeView Policy="@(PolicyNames.RequireAuthorizationLogsRead)">
         <MudNavLink Href="@(ClientRoutes.AuthorizationLogs)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.History">
           Authorization Logs
         </MudNavLink>
@@ -117,8 +117,8 @@
         Effective Permissions
       </MudNavLink>
     </AuthorizeView>
-    <AuthorizeView Policy="@(PolicyNames.RequireServerAdmin)">
-      <MudNavLink Href="@(ClientRoutes.AuthorizationLogs)" Match="NavLinkMatch.Prefix"
+    <AuthorizeView Policy="@(PolicyNames.RequireServerAuthorizationLogsRead)">
+      <MudNavLink Href="@(ClientRoutes.ServerAuthorizationLogs)" Match="NavLinkMatch.Prefix"
                   Icon="@Icons.Material.Filled.History">
         Authorization Logs
       </MudNavLink>
@@ -199,6 +199,7 @@
   [
     PermissionNames.ServerServiceAccountsRead,
     PermissionNames.ServerAdmin,
+    PermissionNames.ServerAuthorizationLogsRead,
     PermissionNames.ServerTelemetryRead,
   ];
 
@@ -207,6 +208,7 @@
   private bool _isPublicRegistrationEnabled;
   private bool _canSeeTenantAdmin;
   private bool _canSeeServerAdmin;
+  private bool _canSeeServerAuthorizationLogs;
 
   public void Dispose()
   {
@@ -271,6 +273,7 @@
   {
     _canSeeTenantAdmin = HasAnyPermission(user, TenantAdminSectionPermissions);
     _canSeeServerAdmin = HasAnyPermission(user, ServerAdminSectionPermissions);
+    _canSeeServerAuthorizationLogs = user.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.ServerAuthorizationLogsRead);
   }
 
   private static bool HasAnyPermission(ClaimsPrincipal user, string[] permissions)

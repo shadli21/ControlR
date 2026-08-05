@@ -72,7 +72,7 @@
 </div>
 
 <MudDataGrid T="InternalDtos.PermissionAssignmentDto" Items="_assignments" Hover="true" Dense="true" Loading="_loading"
-                 MultiSelection="true" @bind-SelectedItems="_selectedAssignments" QuickFilter="QuickFilter">
+                 MultiSelection="true" SelectOnRowClick="false" @bind-SelectedItems="_selectedAssignments" QuickFilter="QuickFilter">
   <NoRecordsContent>
     <MudText Typo="Typo.body1" Align="Align.Center" Class="py-4">
       @(_selectedPrincipalId is null
