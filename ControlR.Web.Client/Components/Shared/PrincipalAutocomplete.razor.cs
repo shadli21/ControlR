@@ -41,6 +41,24 @@ public partial class PrincipalAutocomplete
     await base.OnParametersSetAsync();
   }
 
+  private static string FormatPatDisplayName(PersonalAccessTokenResponseDto token)
+  {
+    var lastUsed = token.LastUsed is { } used ? used.ToLocalTime().ToString("d") : "Never";
+    return $"{token.Name}  (Last Used: {lastUsed}  |  Token ID: {token.Id.ToString()[..8]}...)";
+  }
+
+  private static string FormatServiceAccountDisplayName(TenantServiceAccountDto account)
+  {
+    var enabled = account.IsEnabled ? "Yes" : "No";
+    return $"{account.Name}  (Enabled: {enabled}  |  Account ID: {account.Id.ToString()[..8]}...)";
+  }
+
+  private static string FormatUserGroupDisplayName(UserGroupDto group) =>
+    $"{group.Name}  (Members: {group.MemberCount}  |  Group ID: {group.Id.ToString()[..8]}...)";
+
+  private static bool Matches(string? value, string query) =>
+    string.IsNullOrWhiteSpace(query) || (value?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false);
+
   private async Task HandleValueChanged(PrincipalOption? value)
   {
     _selected = value;
@@ -57,7 +75,7 @@ public partial class PrincipalAutocomplete
     }
 
     var match = result.Value.FirstOrDefault(x => x.Id == id);
-    return match is null ? null : new PrincipalOption(match.Id, $"[PAT] {match.Name}", PermissionPrincipalKind.PersonalAccessToken);
+    return match is null ? null : new PrincipalOption(match.Id, FormatPatDisplayName(match), PermissionPrincipalKind.PersonalAccessToken);
   }
 
   private async Task<PrincipalOption?> ResolveSelectedAsync(Guid id)
@@ -81,7 +99,7 @@ public partial class PrincipalAutocomplete
     }
 
     var match = result.Value.FirstOrDefault(x => x.Id == id);
-    return match is null ? null : new PrincipalOption(match.Id, match.Name, PermissionPrincipalKind.ServiceAccount);
+    return match is null ? null : new PrincipalOption(match.Id, FormatServiceAccountDisplayName(match), PermissionPrincipalKind.ServiceAccount);
   }
 
   private async Task<PrincipalOption?> ResolveUser(Guid id)
@@ -93,7 +111,12 @@ public partial class PrincipalAutocomplete
     }
 
     var match = result.Value.FirstOrDefault(x => x.Id == id);
-    return match is null ? null : new PrincipalOption(match.Id, match.UserName ?? match.Email ?? match.Id.ToString(), PermissionPrincipalKind.User);
+    if (match is null)
+    {
+      return null;
+    }
+
+    return new PrincipalOption(match.Id, UserDisplay.GetDisplayName(match), PermissionPrincipalKind.User);
   }
 
   private async Task<PrincipalOption?> ResolveUserGroup(Guid id)
@@ -105,16 +128,11 @@ public partial class PrincipalAutocomplete
     }
 
     var match = result.Value.FirstOrDefault(x => x.Id == id);
-    return match is null ? null : new PrincipalOption(match.Id, match.Name, PermissionPrincipalKind.UserGroup);
+    return match is null ? null : new PrincipalOption(match.Id, FormatUserGroupDisplayName(match), PermissionPrincipalKind.UserGroup);
   }
 
   private async Task<IEnumerable<PrincipalOption>> Search(string query, CancellationToken cancellationToken)
   {
-    if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
-    {
-      return [];
-    }
-
     return PrincipalKind switch
     {
       PermissionPrincipalKind.User => await SearchUsers(query, cancellationToken),
@@ -134,8 +152,8 @@ public partial class PrincipalAutocomplete
     }
 
     return result.Value
-      .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-      .Select(x => new PrincipalOption(x.Id, $"[PAT] {x.Name}", PermissionPrincipalKind.PersonalAccessToken));
+      .Where(x => Matches(x.Name, query))
+      .Select(x => new PrincipalOption(x.Id, FormatPatDisplayName(x), PermissionPrincipalKind.PersonalAccessToken));
   }
 
   private async Task<IEnumerable<PrincipalOption>> SearchServiceAccounts(string query, CancellationToken cancellationToken)
@@ -147,8 +165,8 @@ public partial class PrincipalAutocomplete
     }
 
     return result.Value
-      .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-      .Select(x => new PrincipalOption(x.Id, x.Name, PermissionPrincipalKind.ServiceAccount));
+      .Where(x => Matches(x.Name, query))
+      .Select(x => new PrincipalOption(x.Id, FormatServiceAccountDisplayName(x), PermissionPrincipalKind.ServiceAccount));
   }
 
   private async Task<IEnumerable<PrincipalOption>> SearchUserGroups(string query, CancellationToken cancellationToken)
@@ -160,8 +178,8 @@ public partial class PrincipalAutocomplete
     }
 
     return result.Value
-      .Where(x => x.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-      .Select(x => new PrincipalOption(x.Id, x.Name, PermissionPrincipalKind.UserGroup));
+      .Where(x => Matches(x.Name, query))
+      .Select(x => new PrincipalOption(x.Id, FormatUserGroupDisplayName(x), PermissionPrincipalKind.UserGroup));
   }
 
   private async Task<IEnumerable<PrincipalOption>> SearchUsers(string query, CancellationToken cancellationToken)
@@ -172,9 +190,10 @@ public partial class PrincipalAutocomplete
       return [];
     }
 
-    return result.Value
-      .Where(x => (x.UserName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                  (x.Email?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
-      .Select(x => new PrincipalOption(x.Id, x.UserName ?? x.Email ?? x.Id.ToString(), PermissionPrincipalKind.User));
+return result.Value
+       .Where(x => Matches(x.UserName, query) ||
+                   Matches(x.Email, query) ||
+                   Matches(x.DisplayName, query))
+       .Select(x => new PrincipalOption(x.Id, UserDisplay.GetDisplayName(x), PermissionPrincipalKind.User));
   }
 }

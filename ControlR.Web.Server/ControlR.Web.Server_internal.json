@@ -13026,6 +13026,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

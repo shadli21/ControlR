@@ -24,7 +24,7 @@ public partial class AddUserGroupMembersDialog : ComponentBase
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
-  private List<InternalDtos.UserResponseDto> _filteredUsers
+  private List<InternalDtos.UserResponseDto> FilteredUsers
   {
     get
     {
@@ -34,7 +34,8 @@ public partial class AddUserGroupMembersDialog : ComponentBase
       {
         candidates = candidates.Where(u =>
           (u.UserName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-          (u.Email?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false));
+          (u.Email?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+          (u.DisplayName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false));
       }
 
       return [.. candidates.OrderBy(u => u.UserName)];

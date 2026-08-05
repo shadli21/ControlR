@@ -53,14 +53,16 @@ else
     <ToolBarContent>
       <MudText Typo="Typo.subtitle1">Members (@_group.Members.Count)</MudText>
       <MudSpacer />
-      <MudTooltip Text="Refresh">
-        <MudIconButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
-                       Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshGroup" />
-      </MudTooltip>
-      <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
-                 OnClick="AddMembers">
-        Add Members
-      </MudButton>
+      <div class="d-flex align-center gap-3">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AddMembers">
+          Add Members
+        </MudButton>
+        <MudTooltip Text="Refresh">
+          <MudIconButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
+                         Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshGroup" />
+        </MudTooltip>
+      </div>
     </ToolBarContent>
     <Columns>
       <PropertyColumn Property="x => x.UserName" Title="User" />

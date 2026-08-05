@@ -408,6 +408,11 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   private async Task OnPrincipalIdChanged(Guid? id)
   {
+    if (IsPrincipalLocked)
+    {
+      return;
+    }
+
     _selectedPrincipalId = id;
     _assignments = null;
     _selectedAssignments.Clear();
@@ -420,6 +425,11 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   private async Task OnPrincipalKindChanged(PermissionPrincipalKind kind)
   {
+    if (IsPrincipalLocked)
+    {
+      return;
+    }
+
     _principalKind = kind;
     _selectedPrincipalId = null;
     _assignments = null;

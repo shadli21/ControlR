@@ -223,6 +223,13 @@ public class UsersController : ControllerBase
 
     var userIds = users.Select(x => x.Id).ToList();
 
+    var displayNames = await appDb.UserPreferences
+      .Where(x => userIds.Contains(x.UserId) && x.Name == UserPreferenceNames.UserDisplayName)
+      .Select(x => new { x.UserId, x.Value })
+      .ToListAsync();
+
+    var displayNamesLookup = displayNames.ToDictionary(x => x.UserId, x => x.Value);
+
     var permissionsByUser = await appDb.PermissionAssignments
       .Where(x => userIds.Contains(x.PrincipalId) &&
                   x.PrincipalKind == PermissionPrincipalKind.User &&
@@ -237,7 +244,9 @@ public class UsersController : ControllerBase
 
     return users
       .Select(x => new InternalDtos.UserResponseDto(
-        x.Id, x.UserName, x.Email, x.CreatedAt, permissionsLookup.GetValueOrDefault(x.Id) ?? []))
+        x.Id, x.UserName, x.Email, x.CreatedAt,
+        permissionsLookup.GetValueOrDefault(x.Id) ?? [],
+        displayNamesLookup.GetValueOrDefault(x.Id)))
       .ToList();
   }
 

@@ -18,17 +18,17 @@
       else
       {
         <MudPaper MaxHeight="350px" Class="overflow-y-auto pa-2">
-          @foreach (var user in _filteredUsers)
+          @foreach (var user in FilteredUsers)
           {
             <MudCheckBox T="bool"
                          Value="_selectedIds.Contains(user.Id)"
                          ValueChanged="@(v => ToggleSelection(user.Id, v))"
                          Color="Color.Primary"
                          Dense="true">
-              @(user.UserName ?? user.Email ?? user.Id.ToString())
+              @UserDisplay.GetDisplayName(user)
             </MudCheckBox>
           }
-          @if (_filteredUsers.Count == 0)
+          @if (FilteredUsers.Count == 0)
           {
             <MudText Typo="Typo.body2" Class="pa-4 mud-text-secondary">No users found.</MudText>
           }

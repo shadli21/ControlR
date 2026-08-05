@@ -33,7 +33,8 @@ public partial class Users : ComponentBase
     }
 
     return (user.UserName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
-           (user.Email?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+           (user.Email?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+           (user.DisplayName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
   };
 
   protected override async Task OnInitializedAsync()

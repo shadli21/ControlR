@@ -5,4 +5,5 @@ public record UserResponseDto(
   string? UserName,
   string? Email,
   DateTimeOffset CreatedAt,
-  IReadOnlyList<string> Permissions);
+  IReadOnlyList<string> Permissions,
+  string? DisplayName = null);
