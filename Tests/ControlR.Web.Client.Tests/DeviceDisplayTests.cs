@@ -15,7 +15,7 @@ public class DeviceDisplayTests
 
     var result = DeviceDisplay.GetDisplayName(device);
 
-    Assert.Equal("Name: WS-01 | Alias: Front Desk | Customer: Acme", result);
+    Assert.Equal($"WS-01  (Customer: Acme  |  Alias: Front Desk  |  Device ID: {DeviceIdPrefix}...)", result);
   }
 
   [Fact]
@@ -25,7 +25,7 @@ public class DeviceDisplayTests
 
     var result = DeviceDisplay.GetDisplayName(device);
 
-    Assert.Equal("Name: WS-01 | Customer: Acme", result);
+    Assert.Equal($"WS-01  (Customer: Acme  |  Device ID: {DeviceIdPrefix}...)", result);
   }
 
   [Fact]
@@ -35,17 +35,17 @@ public class DeviceDisplayTests
 
     var result = DeviceDisplay.GetDisplayName(device);
 
-    Assert.Equal("Name: WS-01 | Customer: Acme", result);
+    Assert.Equal($"WS-01  (Customer: Acme  |  Device ID: {DeviceIdPrefix}...)", result);
   }
 
   [Fact]
-  public void GetDisplayName_NullCustomer_RendersEmDash()
+  public void GetDisplayName_NullCustomer_RendersNone()
   {
     var device = CreateDevice("WS-01", alias: null, customerName: null);
 
     var result = DeviceDisplay.GetDisplayName(device);
 
-    Assert.Equal("Name: WS-01 | Customer: —", result);
+    Assert.Equal($"WS-01  (Customer: (none)  |  Device ID: {DeviceIdPrefix}...)", result);
   }
 
   [Fact]
@@ -57,20 +57,22 @@ public class DeviceDisplayTests
   }
 
   [Fact]
-  public void GetCustomerDisplay_NullCustomer_ReturnsEmDash()
+  public void GetCustomerDisplay_NullCustomer_ReturnsNone()
   {
     var device = CreateDevice("WS-01", customerName: null);
 
-    Assert.Equal("—", DeviceDisplay.GetCustomerDisplay(device));
+    Assert.Equal("(none)", DeviceDisplay.GetCustomerDisplay(device));
   }
 
   [Fact]
-  public void GetCustomerDisplay_WhitespaceCustomer_ReturnsEmDash()
+  public void GetCustomerDisplay_WhitespaceCustomer_ReturnsNone()
   {
     var device = CreateDevice("WS-01", customerName: "  ");
 
-    Assert.Equal("—", DeviceDisplay.GetCustomerDisplay(device));
+    Assert.Equal("(none)", DeviceDisplay.GetCustomerDisplay(device));
   }
+
+  private const string DeviceIdPrefix = "a1b2c3d4";
 
   private static DeviceResponseDto CreateDevice(string name, string? alias = null, string? customerName = null)
   {
@@ -78,7 +80,7 @@ public class DeviceDisplayTests
       Name: name,
       AgentVersion: "1.0.0",
       CpuUtilization: 0,
-      Id: Guid.NewGuid(),
+      Id: Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
       Is64Bit: true,
       IsOnline: true,
       LastSeen: DateTimeOffset.UtcNow,
