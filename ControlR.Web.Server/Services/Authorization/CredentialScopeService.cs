@@ -113,7 +113,7 @@ public class CredentialScopeService(
         creatorUserId.ToString()));
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CredentialScopeSet,
       AuthorizationChangeLogActorTypes.User,
       creatorUserId.ToString(),

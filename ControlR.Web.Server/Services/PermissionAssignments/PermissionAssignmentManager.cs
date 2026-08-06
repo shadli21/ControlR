@@ -114,7 +114,7 @@ public class PermissionAssignmentManager(
 
     _appDb.PermissionAssignments.Add(assignment);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -183,7 +183,7 @@ public class PermissionAssignmentManager(
 
       _appDb.PermissionAssignments.Add(assignment);
 
-      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentCreated,
         AuthorizationChangeLogActorTypes.User,
         actorPrincipalId.ToString(),
@@ -249,7 +249,7 @@ public class PermissionAssignmentManager(
       }
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentDeleted,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -320,7 +320,7 @@ public class PermissionAssignmentManager(
 
     foreach (var assignment in assignments)
     {
-      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
         AuthorizationChangeLogActorTypes.User,
         actorPrincipalId.ToString(),
@@ -413,7 +413,7 @@ public class PermissionAssignmentManager(
 
     foreach (var existingAssignment in existing.Where(x => IsVisibleToTenant(x, tenantId, actorHoldsServerAdmin)))
     {
-      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
         AuthorizationChangeLogActorTypes.User,
         actorPrincipalId.ToString(),
@@ -454,7 +454,7 @@ public class PermissionAssignmentManager(
 
       _appDb.PermissionAssignments.Add(assignment);
 
-      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentCreated,
         AuthorizationChangeLogActorTypes.User,
         actorPrincipalId.ToString(),
@@ -555,7 +555,7 @@ public class PermissionAssignmentManager(
     assignment.IsEnabled = request.IsEnabled;
     assignment.OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId;
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),

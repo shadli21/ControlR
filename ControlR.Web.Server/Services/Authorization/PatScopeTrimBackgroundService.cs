@@ -87,7 +87,7 @@ public class PatScopeTrimBackgroundService(
 
     foreach (var row in excessRows)
     {
-      db.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      db.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.CredentialScopeTrim,
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,

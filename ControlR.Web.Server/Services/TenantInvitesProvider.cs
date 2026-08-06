@@ -97,7 +97,7 @@ public class TenantInvitesProvider(
 
     foreach (var assignment in staleAssignments)
     {
-      appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+      appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,

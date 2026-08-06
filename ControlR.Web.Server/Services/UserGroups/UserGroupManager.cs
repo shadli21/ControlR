@@ -72,7 +72,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
       });
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupMembersAdded,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -112,7 +112,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
 
     _appDb.UserGroups.Add(group);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -148,7 +148,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
 
     _appDb.UserGroupMembers.RemoveRange(group.Members ?? []);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupDeleted,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -215,7 +215,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
 
     _appDb.UserGroupMembers.RemoveRange(membersToRemove);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupMembersRemoved,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -260,7 +260,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
     group.Name = name;
     group.Description = description;
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),

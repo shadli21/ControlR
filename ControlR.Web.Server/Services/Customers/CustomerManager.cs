@@ -57,7 +57,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
       device.CustomerId = customerId;
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerDevicesAssigned,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -97,7 +97,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
 
     _appDb.Customers.Add(customer);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -131,7 +131,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
       device.CustomerId = null;
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerDeleted,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -213,7 +213,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
     customer.Description = description;
     customer.Notes = notes;
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),

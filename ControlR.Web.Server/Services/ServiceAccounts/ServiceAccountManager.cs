@@ -166,7 +166,7 @@ public class ServiceAccountManager(
     };
     account.Credentials.Add(credential);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -217,7 +217,7 @@ public class ServiceAccountManager(
     };
     account.Credentials.Add(credential);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -411,7 +411,7 @@ public class ServiceAccountManager(
 
     appDb.ServiceAccounts.Add(account);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -458,7 +458,7 @@ public class ServiceAccountManager(
 
     appDb.PermissionAssignments.RemoveRange(principalAssignments);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountDeleted,
       AuthorizationChangeLogActorTypes.User,
       requestingPrincipalId.ToString(),
@@ -502,7 +502,7 @@ public class ServiceAccountManager(
 
     appDb.PermissionAssignments.RemoveRange(principalAssignments);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountDeleted,
       AuthorizationChangeLogActorTypes.User,
       requestingPrincipalId.ToString(),
@@ -597,7 +597,7 @@ public class ServiceAccountManager(
 
     credential.RevokedAt = timeProvider.GetUtcNow();
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -640,7 +640,7 @@ public class ServiceAccountManager(
 
     credential.RevokedAt = timeProvider.GetUtcNow();
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -681,7 +681,7 @@ public class ServiceAccountManager(
     account.Name = name;
     account.Description = description;
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -723,7 +723,7 @@ public class ServiceAccountManager(
     account.Name = name;
     account.Description = description;
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),

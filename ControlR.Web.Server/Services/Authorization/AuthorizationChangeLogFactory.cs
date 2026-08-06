@@ -7,7 +7,7 @@ namespace ControlR.Web.Server.Services.Authorization;
 /// Factory for creating <see cref="AuthorizationChangeLog"/> entries with typed,
 /// properly-serialized before/after snapshots. Eliminates hand-interpolated JSON strings.
 /// </summary>
-public static class AuthorizationChangeLogEntry
+public static class AuthorizationChangeLogFactory
 {
   private static readonly JsonSerializerOptions _serializerOptions = new()
   {

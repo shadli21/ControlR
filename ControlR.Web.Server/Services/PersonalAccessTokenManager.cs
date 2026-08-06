@@ -136,7 +136,7 @@ public class PersonalAccessTokenManager(
             userId.ToString()));
         }
 
-        _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+        _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
           AuthorizationChangeLogActions.CredentialScopeSet,
           AuthorizationChangeLogActorTypes.User,
           userId.ToString(),

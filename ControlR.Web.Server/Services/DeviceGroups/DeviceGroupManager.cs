@@ -66,7 +66,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
       });
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupMembersAdded,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -106,7 +106,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
 
     _appDb.DeviceGroups.Add(group);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -142,7 +142,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
 
     _appDb.DeviceGroupMembers.RemoveRange(group.Members ?? []);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupDeleted,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -209,7 +209,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
 
     _appDb.DeviceGroupMembers.RemoveRange(membersToRemove);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupMembersRemoved,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),
@@ -246,7 +246,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     group.Name = name;
     group.Description = description;
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogEntry.Create(
+    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId.ToString(),

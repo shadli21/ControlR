@@ -23,11 +23,11 @@ public static class PolicyNames
   public const string RequireServerAdmin = "RequireServerAdmin";
   public const string RequireServerAlertsWrite = "RequireServerAlertsWrite";
   public const string RequireServerAuthorizationLogsRead = "RequireServerAuthorizationLogsRead";
-  public const string RequireServerTenantsRead = "RequireServerTenantsRead";
   public const string RequireServerServiceAccountsRead = "RequireServerServiceAccountsRead";
   public const string RequireServerServiceAccountsRotateCredentials = "RequireServerServiceAccountsRotateCredentials";
   public const string RequireServerServiceAccountsWrite = "RequireServerServiceAccountsWrite";
   public const string RequireServerTelemetryRead = "RequireServerTelemetryRead";
+  public const string RequireServerTenantsRead = "RequireServerTenantsRead";
   public const string RequireServiceAccountRead = "RequireServiceAccountRead";
   public const string RequireServiceAccountRotateCredentials = "RequireServiceAccountRotateCredentials";
   public const string RequireServiceAccountWrite = "RequireServiceAccountWrite";
