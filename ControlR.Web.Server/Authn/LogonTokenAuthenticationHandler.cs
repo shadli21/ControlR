@@ -66,6 +66,11 @@ public class LogonTokenAuthenticationHandler(
       new(PrincipalClaimTypes.CredentialType, PrincipalClaimTypes.LogonTokenCredentialType),
     };
 
+    if (!string.IsNullOrWhiteSpace(user.Email))
+    {
+      claims.Add(new Claim(ClaimTypes.Email, user.Email));
+    }
+
     if (!string.IsNullOrWhiteSpace(tokenValidation.SessionCorrelationId))
     {
       claims.Add(new(UserClaimTypes.SessionCorrelationId, tokenValidation.SessionCorrelationId));
