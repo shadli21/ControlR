@@ -16,6 +16,10 @@ on:
         description: "Sponsor build slot number"
         required: true
         type: number
+      image_reference:
+        description: "Full ACR image reference. When provided, overrides the derived reference."
+        required: false
+        type: string
       use_local_storage:
         description: "Use local artifact storage"
         required: false
@@ -40,6 +44,10 @@ on:
         description: "Sponsor build slot number"
         required: true
         type: number
+      image_reference:
+        description: "Full ACR image reference. When provided, overrides the derived reference."
+        required: false
+        type: string
       use_local_storage:
         description: "Use local artifact storage"
         required: false
@@ -54,11 +62,17 @@ on:
 permissions:
   actions: read
   contents: read
+  id-token: write
+
+concurrency:
+  group: acr-publish-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
+  cancel-in-progress: false
 
 jobs:
   publish:
     name: Publish to ACR
     runs-on: ${{ inputs.use_self_hosted_runners && fromJson('["self-hosted","Linux"]') || fromJson('["ubuntu-latest"]') }}
+    environment: acr-publish
 
     env:
       ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
@@ -85,6 +99,22 @@ jobs:
           fi
           echo "normalized=$NORMALIZED" >> $GITHUB_OUTPUT
           echo "Normalized sponsor login: $NORMALIZED"
+
+      - name: Resolve image reference
+        id: image-ref
+        shell: bash
+        env:
+          IMAGE_REF_INPUT: ${{ inputs.image_reference }}
+          SLOT_NUMBER: ${{ inputs.slot_number }}
+          NORMALIZED: ${{ steps.normalize.outputs.normalized }}
+        run: |
+          if [ -n "$IMAGE_REF_INPUT" ]; then
+            IMAGE_REF="$IMAGE_REF_INPUT"
+          else
+            IMAGE_REF="$ACR_LOGIN_SERVER/$NORMALIZED/controlr:$NORMALIZED-slot$SLOT_NUMBER"
+          fi
+          echo "ref=$IMAGE_REF" >> $GITHUB_OUTPUT
+          echo "Image reference: $IMAGE_REF"
 
       - name: Download Server Artifact
         uses: ./.github/actions/download-artifact
@@ -127,9 +157,18 @@ jobs:
         run: |
           cat > ./server-publish/Dockerfile << 'EOF'
           FROM mcr.microsoft.com/dotnet/aspnet:10.0
-          RUN apt update
-          RUN apt -y install curl
-          
+          RUN apt-get update \
+              && apt-get install -y --no-install-recommends curl \
+              && rm -rf /var/lib/apt/lists/*
+
+          ARG CURRENT_VERSION=unknown
+          ARG SPONSOR_LOGIN=unknown
+          ARG SLOT_NUMBER=0
+
+          LABEL org.opencontainers.image.version="${CURRENT_VERSION}" \
+                controlr.sponsor="${SPONSOR_LOGIN}" \
+                controlr.slot="${SLOT_NUMBER}"
+
           USER $APP_UID
           WORKDIR /app
           EXPOSE 8080
@@ -146,12 +185,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Login to ACR
-        uses: azure/docker-login@v2
+      - name: Azure Login (OIDC)
+        uses: azure/login@v3
         with:
-          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
-          username: ${{ secrets.ACR_CLIENT_ID }}
-          password: ${{ secrets.ACR_CLIENT_SECRET }}
+          client-id: ${{ secrets.AZURE_ACR_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        shell: bash
+        run: |
+          ACR_NAME="${ACR_LOGIN_SERVER%%.*}"
+          az acr login --name "$ACR_NAME"
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v7
@@ -159,17 +204,26 @@ jobs:
           context: ./server-publish
           file: ./server-publish/Dockerfile
           push: true
-          tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/${{ steps.normalize.outputs.normalized }}/controlr:${{ steps.normalize.outputs.normalized }}-slot${{ inputs.slot_number }}
+          tags: ${{ steps.image-ref.outputs.ref }}
+          provenance: true
+          sbom: true
           build-args: |
             CURRENT_VERSION=${{ steps.get-version.outputs.VERSION }}
+            SPONSOR_LOGIN=${{ steps.normalize.outputs.normalized }}
+            SLOT_NUMBER=${{ inputs.slot_number }}
 
       - name: Image Published
+        shell: bash
+        env:
+          SPONSOR: ${{ inputs.sponsor_login }}
+          SLOT: ${{ inputs.slot_number }}
+          VERSION: ${{ steps.get-version.outputs.VERSION }}
+          IMAGE_REF: ${{ steps.image-ref.outputs.ref }}
+          RUN_ID: ${{ inputs.run_id }}
         run: |
-          IMAGE_REF="${{ secrets.ACR_LOGIN_SERVER }}/${{ steps.normalize.outputs.normalized }}/controlr:${{ steps.normalize.outputs.normalized }}-slot${{ inputs.slot_number }}"
           echo "## ACR Publish Summary" >> $GITHUB_STEP_SUMMARY
-          echo "**Sponsor:** ${{ inputs.sponsor_login }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Slot:** ${{ inputs.slot_number }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.get-version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** ${IMAGE_REF}" >> $GITHUB_STEP_SUMMARY
-          echo "**Build Run:** ${{ inputs.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Sponsor:** $SPONSOR" >> $GITHUB_STEP_SUMMARY
+          echo "**Slot:** $SLOT" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** $IMAGE_REF" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Run:** $RUN_ID" >> $GITHUB_STEP_SUMMARY
