@@ -237,6 +237,10 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
       builder
         .Entity<DeviceGroup>()
         .HasQueryFilter(x => x.TenantId == _tenantId);
+
+      builder
+        .Entity<DeviceGroupMember>()
+        .HasQueryFilter(x => x.Device != null && x.Device.TenantId == _tenantId);
     }
   }
 
@@ -502,6 +506,10 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
       builder
         .Entity<UserGroup>()
         .HasQueryFilter(x => x.TenantId == _tenantId);
+
+      builder
+        .Entity<UserGroupMember>()
+        .HasQueryFilter(x => x.User != null && x.User.TenantId == _tenantId);
     }
   }
 
