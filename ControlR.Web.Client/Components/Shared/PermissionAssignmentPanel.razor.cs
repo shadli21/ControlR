@@ -10,8 +10,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   private InternalDtos.PermissionAssignmentDto[]? _assignments;
   private bool _bulkDeleting;
-  private bool _canWrite;
   private Guid? _currentUserId;
+  private bool _hasWritePermission;
   private bool _loading;
   private PresetApplyMode _presetMode = PresetApplyMode.Merge;
   private InternalDtos.PermissionPresetDto[] _presets = [];
@@ -60,45 +60,42 @@ public partial class PermissionAssignmentPanel : ComponentBase
            assignment.ScopeKind.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase);
   };
 
-  protected override async Task OnAfterRenderAsync(bool firstRender)
+  protected override async Task OnInitializedAsync()
   {
-    if (firstRender)
+    var state = await AuthState.GetAuthenticationStateAsync();
+    if (state.User.TryGetUserId(out var currentUserId))
     {
-      var state = await AuthState.GetAuthenticationStateAsync();
-      if (state.User.TryGetUserId(out var currentUserId))
-      {
-        _currentUserId = currentUserId;
-      }
+      _currentUserId = currentUserId;
+    }
 
-      _canWrite = state.User.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.TenantPermissionsWrite);
+    _hasWritePermission = state.User.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.TenantPermissionsWrite);
 
-      if (PermissionCatalogStore.Items.Count == 0)
-      {
-        await PermissionCatalogStore.Refresh();
-      }
+    if (PermissionCatalogStore.Items.Count == 0)
+    {
+      await PermissionCatalogStore.Refresh();
+    }
 
-      try
+    try
+    {
+      var presetsResult = await ControlrApi.Internal.PermissionAssignments.GetPresets();
+      if (presetsResult.IsSuccess)
       {
-        var presetsResult = await ControlrApi.Internal.PermissionAssignments.GetPresets();
-        if (presetsResult.IsSuccess)
-        {
-          _presets = presetsResult.Value;
-        }
-        else
-        {
-          Snackbar.Add(presetsResult.Reason, Severity.Error);
-        }
+        _presets = presetsResult.Value;
       }
-      catch (Exception ex)
+      else
       {
-        Logger.LogError(ex, "Failed to load permission presets.");
-        Snackbar.Add("Failed to load permission presets.", Severity.Error);
+        Snackbar.Add(presetsResult.Reason, Severity.Error);
       }
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Failed to load permission presets.");
+      Snackbar.Add("Failed to load permission presets.", Severity.Error);
+    }
 
-      if (IsPrincipalLocked && _selectedPrincipalId is not null)
-      {
-        await LoadAssignments();
-      }
+    if (IsPrincipalLocked && _selectedPrincipalId is not null)
+    {
+      await LoadAssignments();
     }
   }
 

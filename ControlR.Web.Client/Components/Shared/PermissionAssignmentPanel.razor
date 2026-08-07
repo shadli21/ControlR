@@ -21,7 +21,7 @@
   </MudGrid>
 </MudPaper>
 
-@if (_canWrite)
+@if (_hasWritePermission)
 {
 <MudPaper Class="pa-3 mb-3" Elevation="2">
   <MudText Typo="Typo.subtitle2" Class="mb-2">Presets</MudText>
@@ -53,7 +53,7 @@
 
 <div class="permission-toolbar-row mt-8">
   <div class="permission-toolbar-left">
-    @if (_canWrite && _selectedAssignments.Count > 0)
+    @if (_hasWritePermission && _selectedAssignments.Count > 0)
     {
       <MudText Typo="Typo.subtitle2" Class="mr-2">
         @_selectedAssignments.Count selected
@@ -66,7 +66,7 @@
   </div>
   <GridToolbar @bind-SearchValue="_searchString" OnRefresh="LoadAssignments" Disabled="@(_selectedPrincipalId is null)">
     <Actions>
-      @if (_canWrite)
+      @if (_hasWritePermission)
       {
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                    OnClick="CreateAssignment" Disabled="@(_selectedPrincipalId is null)">
@@ -87,7 +87,7 @@
     </MudText>
   </NoRecordsContent>
   <Columns>
-    @if (_canWrite)
+    @if (_hasWritePermission)
     {
       <SelectColumn ShowInFooter="false" />
     }
@@ -108,7 +108,7 @@
       <CellTemplate>
         <MudSwitch T="bool" Value="context.Item.IsEnabled"
                    ValueChanged="@((enabled) => ToggleEnabled(context.Item, enabled))" Color="Color.Primary"
-                   Disabled="@(!_canWrite || _togglingIds.Contains(context.Item.Id) || IsProtectedSelfLastGrant(context.Item))" />
+                   Disabled="@(!_hasWritePermission || _togglingIds.Contains(context.Item.Id) || IsProtectedSelfLastGrant(context.Item))" />
       </CellTemplate>
     </TemplateColumn>
     <TemplateColumn Title="Notes" Sortable="false" Filterable="false">
@@ -123,7 +123,7 @@
         </MudTooltip>
       </CellTemplate>
     </TemplateColumn>
-    @if (_canWrite)
+    @if (_hasWritePermission)
     {
       <TemplateColumn Title="" Sortable="false" Filterable="false">
         <CellTemplate>
