@@ -1,66 +1,70 @@
 ﻿@attribute [Route(ClientRoutes.PersonalAccessTokens)]
 
-<PageTitle>Personal Access Tokens</PageTitle>
+<div>
+  <PageTitle>Personal Access Tokens</PageTitle>
 
-<PrimaryTitle>
-  Personal Access Tokens
-</PrimaryTitle>
+  <PrimaryTitle>
+    Personal Access Tokens
+  </PrimaryTitle>
 
-<MudAlert Severity="Severity.Info" Class="mb-4">
-  Personal access tokens should be added to the 'x-personal-token' header to authenticate requests.
-  A token without permission assignments acts as your user with your full effective permissions.
-  Use the Permissions action to restrict a token to specific scopes; it can never exceed your own permissions.
-</MudAlert>
+  <MudAlert Severity="Severity.Info" Class="mb-4 pat-info">
+    <ul class="ms-4">
+      <li>Authenticate requests by adding the token to the <code>x-personal-token</code> header.</li>
+      <li>Without permission scopes, a token acts as your user with your full effective permissions.</li>
+      <li>Use the Permissions action to restrict a token's scopes.</li>
+    </ul>
+  </MudAlert>
 
-<MudCard Class="mb-4">
-  <MudCardContent>
-    <MudGrid>
-      <MudItem xs="12" sm="8" Class="d-flex align-end">
-        <MudTextField @bind-Value="_newTokenName" Label="Token Name" Placeholder="Enter a friendly name for the personal access token"
-          Immediate="true" OnKeyDown="OnKeyDown" Disabled="_isLoading" />
-      </MudItem>
-      <MudItem xs="12" sm="4" Class="d-flex align-end">
-        <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="CreatePersonalAccessToken"
-          Disabled="@(string.IsNullOrWhiteSpace(_newTokenName) || _isLoading)">
-          Create PAT
-        </MudButton>
-      </MudItem>
-    </MudGrid>
-  </MudCardContent>
-</MudCard>
+  <MudCard Class="mb-4">
+    <MudCardContent>
+      <MudGrid>
+        <MudItem xs="12" sm="8" Class="d-flex align-end">
+          <MudTextField @bind-Value="_newTokenName" Label="Token Name" Placeholder="Enter a friendly name for the personal access token"
+            Immediate="true" OnKeyDown="OnKeyDown" Disabled="_isLoading" />
+        </MudItem>
+        <MudItem xs="12" sm="4" Class="d-flex align-end">
+          <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="CreatePersonalAccessToken"
+            Disabled="@(string.IsNullOrWhiteSpace(_newTokenName) || _isLoading)">
+            Create PAT
+          </MudButton>
+        </MudItem>
+      </MudGrid>
+    </MudCardContent>
+  </MudCard>
 
-<MudDataGrid T="PersonalAccessTokenResponseDto" Items="@_personalAccessTokens" Loading="_isLoading" ShowColumnOptions="true" Filterable="true"
-  SortMode="SortMode.Single">
-  <ToolBarContent>
-    <MudSpacer />
-    <MudTooltip Text="Refresh">
-      <MudIconButton Variant="Variant.Outlined" Color="Color.Info" Class="ml-2"
-                     Icon="@Icons.Material.Filled.Refresh" OnClick="Refresh" />
-    </MudTooltip>
-  </ToolBarContent>
-  <Columns>
-    <PropertyColumn Property="x => x.Name" Title="Name" />
-    <PropertyColumn Property="x => x.CreatedAt" Title="Created" />
-    <PropertyColumn Property="x => x.LastUsed" Title="Last Used">
-      <CellTemplate>
-        @if (context.Item.LastUsed.HasValue)
-        {
-          @context.Item.LastUsed.Value
-        }
-        else
-        {
-          <text>Never</text>
-        }
-      </CellTemplate>
-    </PropertyColumn>
-    <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
-      <CellTemplate>
-        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
-          <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info" OnClick="() => RenamePersonalAccessToken(context.Item)">Rename</MudMenuItem>
-          <MudMenuItem Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Info" OnClick="() => ManagePermissions(context.Item)">Permissions</MudMenuItem>
-          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="() => DeletePersonalAccessToken(context.Item)">Delete</MudMenuItem>
-        </MudMenu>
-      </CellTemplate>
-    </TemplateColumn>
-  </Columns>
-</MudDataGrid>
+  <MudDataGrid T="PersonalAccessTokenResponseDto" Items="@_personalAccessTokens" Loading="_isLoading" ShowColumnOptions="true" Filterable="true"
+    SortMode="SortMode.Single">
+    <ToolBarContent>
+      <MudSpacer />
+      <MudTooltip Text="Refresh">
+        <MudIconButton Variant="Variant.Outlined" Color="Color.Info" Class="ml-2"
+                      Icon="@Icons.Material.Filled.Refresh" OnClick="Refresh" />
+      </MudTooltip>
+    </ToolBarContent>
+    <Columns>
+      <PropertyColumn Property="x => x.Name" Title="Name" />
+      <PropertyColumn Property="x => x.CreatedAt" Title="Created" />
+      <PropertyColumn Property="x => x.LastUsed" Title="Last Used">
+        <CellTemplate>
+          @if (context.Item.LastUsed.HasValue)
+          {
+            @context.Item.LastUsed.Value
+          }
+          else
+          {
+            <text>Never</text>
+          }
+        </CellTemplate>
+      </PropertyColumn>
+      <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+        <CellTemplate>
+          <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
+            <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info" OnClick="() => RenamePersonalAccessToken(context.Item)">Rename</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Info" OnClick="() => ManagePermissions(context.Item)">Permissions</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="() => DeletePersonalAccessToken(context.Item)">Delete</MudMenuItem>
+          </MudMenu>
+        </CellTemplate>
+      </TemplateColumn>
+    </Columns>
+  </MudDataGrid>
+</div>

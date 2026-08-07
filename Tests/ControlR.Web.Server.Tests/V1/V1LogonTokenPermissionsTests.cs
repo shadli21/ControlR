@@ -18,103 +18,6 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
   private readonly ITestOutputHelper _testOutput = testOutput;
 
   [Fact]
-  public async Task CreateForExternal_SameCorrelationId_MultipleTokens_IndependentGrants()
-  {
-    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
-    using var httpClient = await testServer.GetHttpClient();
-
-    var tenant = await testServer.Services.CreateTestTenant();
-    var device = await testServer.Services.CreateTestDevice(tenant.Id);
-
-    var saManager = testServer.Services.GetRequiredService<IServiceAccountManager>();
-    var saResult = await saManager.CreateForServer("ConcurrencySA", null, TestContext.Current.CancellationToken);
-    Assert.True(saResult.IsSuccess);
-
-    httpClient.DefaultRequestHeaders.Add(
-      ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
-
-    var requestA = new V1Dtos.CreateLogonTokenForExternalRequestDto(
-      DeviceId: device.Id,
-      TenantId: tenant.Id,
-      UserCorrelationId: "shared-user",
-      ExpirationMinutes: 15,
-      Permissions: [PermissionNames.DeviceTerminalUse]);
-
-    var responseA = await httpClient.PostAsJsonAsync(
-      $"{HttpConstants.V1.LogonTokensEndpoint}/external", requestA, TestContext.Current.CancellationToken);
-    Assert.Equal(HttpStatusCode.OK, responseA.StatusCode);
-    var resultA = await responseA.Content
-      .ReadFromJsonAsync<V1Dtos.LogonTokenResponseDto>(TestContext.Current.CancellationToken);
-
-    var requestB = new V1Dtos.CreateLogonTokenForExternalRequestDto(
-      DeviceId: device.Id,
-      TenantId: tenant.Id,
-      UserCorrelationId: "shared-user",
-      ExpirationMinutes: 15,
-      Permissions: [PermissionNames.DeviceRemoteControlConnect]);
-
-    var responseB = await httpClient.PostAsJsonAsync(
-      $"{HttpConstants.V1.LogonTokensEndpoint}/external", requestB, TestContext.Current.CancellationToken);
-    Assert.Equal(HttpStatusCode.OK, responseB.StatusCode);
-    var resultB = await responseB.Content
-      .ReadFromJsonAsync<V1Dtos.LogonTokenResponseDto>(TestContext.Current.CancellationToken);
-
-    Assert.NotNull(resultA);
-    Assert.NotNull(resultB);
-
-    var tokenIdA = LogonTokenTestHelper.ParseTokenId(resultA.Token!);
-    var tokenIdB = LogonTokenTestHelper.ParseTokenId(resultB.Token!);
-
-    using var scope = testServer.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
-
-    var grantsA = await db.PermissionAssignments
-      .Where(x => x.PrincipalKind == PermissionPrincipalKind.LogonToken && x.PrincipalId == tokenIdA)
-      .Select(x => x.PermissionName)
-      .ToListAsync(TestContext.Current.CancellationToken);
-
-    var grantsB = await db.PermissionAssignments
-      .Where(x => x.PrincipalKind == PermissionPrincipalKind.LogonToken && x.PrincipalId == tokenIdB)
-      .Select(x => x.PermissionName)
-      .ToListAsync(TestContext.Current.CancellationToken);
-
-    Assert.Contains(PermissionNames.DeviceTerminalUse, grantsA);
-    Assert.Contains(PermissionNames.DeviceRead, grantsA);
-    Assert.DoesNotContain(PermissionNames.DeviceRemoteControlConnect, grantsA);
-
-    Assert.Contains(PermissionNames.DeviceRemoteControlConnect, grantsB);
-    Assert.Contains(PermissionNames.DeviceRead, grantsB);
-    Assert.DoesNotContain(PermissionNames.DeviceTerminalUse, grantsB);
-
-    var extUser = await db.Users.FirstAsync(
-      x => x.UserName == "ext-shared-user" && x.TenantId == tenant.Id,
-      TestContext.Current.CancellationToken);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
-
-    var principalA = new PrincipalDescriptor(
-      PrincipalClaimTypes.User, extUser.Id, tenant.Id,
-      PrincipalClaimTypes.LogonTokenMethod, tokenIdA,
-      PrincipalClaimTypes.LogonTokenCredentialType, device.Id);
-
-    var principalB = new PrincipalDescriptor(
-      PrincipalClaimTypes.User, extUser.Id, tenant.Id,
-      PrincipalClaimTypes.LogonTokenMethod, tokenIdB,
-      PrincipalClaimTypes.LogonTokenCredentialType, device.Id);
-
-    Assert.True((await evaluator.Evaluate(
-      principalA, PermissionNames.DeviceTerminalUse, resource, TestContext.Current.CancellationToken)).Allowed);
-    Assert.False((await evaluator.Evaluate(
-      principalA, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken)).Allowed);
-
-    Assert.True((await evaluator.Evaluate(
-      principalB, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken)).Allowed);
-    Assert.False((await evaluator.Evaluate(
-      principalB, PermissionNames.DeviceTerminalUse, resource, TestContext.Current.CancellationToken)).Allowed);
-  }
-
-  [Fact]
   public async Task CreateForExternal_CreatorLacksPermission_ReturnsBadRequest()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
@@ -348,6 +251,103 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     Assert.Contains(PermissionNames.DeviceRead, grantNames);
     Assert.Contains(PermissionNames.DeviceRemoteControlConnect, grantNames);
     Assert.Contains(PermissionNames.DeviceRemoteControlInteract, grantNames);
+  }
+
+  [Fact]
+  public async Task CreateForExternal_SameCorrelationId_MultipleTokens_IndependentGrants()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+
+    var tenant = await testServer.Services.CreateTestTenant();
+    var device = await testServer.Services.CreateTestDevice(tenant.Id);
+
+    var saManager = testServer.Services.GetRequiredService<IServiceAccountManager>();
+    var saResult = await saManager.CreateForServer("ConcurrencySA", null, TestContext.Current.CancellationToken);
+    Assert.True(saResult.IsSuccess);
+
+    httpClient.DefaultRequestHeaders.Add(
+      ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
+      saResult.Value.PlainTextSecretKey);
+
+    var requestA = new V1Dtos.CreateLogonTokenForExternalRequestDto(
+      DeviceId: device.Id,
+      TenantId: tenant.Id,
+      UserCorrelationId: "shared-user",
+      ExpirationMinutes: 15,
+      Permissions: [PermissionNames.DeviceTerminalUse]);
+
+    var responseA = await httpClient.PostAsJsonAsync(
+      $"{HttpConstants.V1.LogonTokensEndpoint}/external", requestA, TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, responseA.StatusCode);
+    var resultA = await responseA.Content
+      .ReadFromJsonAsync<V1Dtos.LogonTokenResponseDto>(TestContext.Current.CancellationToken);
+
+    var requestB = new V1Dtos.CreateLogonTokenForExternalRequestDto(
+      DeviceId: device.Id,
+      TenantId: tenant.Id,
+      UserCorrelationId: "shared-user",
+      ExpirationMinutes: 15,
+      Permissions: [PermissionNames.DeviceRemoteControlConnect]);
+
+    var responseB = await httpClient.PostAsJsonAsync(
+      $"{HttpConstants.V1.LogonTokensEndpoint}/external", requestB, TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, responseB.StatusCode);
+    var resultB = await responseB.Content
+      .ReadFromJsonAsync<V1Dtos.LogonTokenResponseDto>(TestContext.Current.CancellationToken);
+
+    Assert.NotNull(resultA);
+    Assert.NotNull(resultB);
+
+    var tokenIdA = LogonTokenTestHelper.ParseTokenId(resultA.Token!);
+    var tokenIdB = LogonTokenTestHelper.ParseTokenId(resultB.Token!);
+
+    using var scope = testServer.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+
+    var grantsA = await db.PermissionAssignments
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.LogonToken && x.PrincipalId == tokenIdA)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+
+    var grantsB = await db.PermissionAssignments
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.LogonToken && x.PrincipalId == tokenIdB)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+
+    Assert.Contains(PermissionNames.DeviceTerminalUse, grantsA);
+    Assert.Contains(PermissionNames.DeviceRead, grantsA);
+    Assert.DoesNotContain(PermissionNames.DeviceRemoteControlConnect, grantsA);
+
+    Assert.Contains(PermissionNames.DeviceRemoteControlConnect, grantsB);
+    Assert.Contains(PermissionNames.DeviceRead, grantsB);
+    Assert.DoesNotContain(PermissionNames.DeviceTerminalUse, grantsB);
+
+    var extUser = await db.Users.FirstAsync(
+      x => x.UserName == "ext-shared-user" && x.TenantId == tenant.Id,
+      TestContext.Current.CancellationToken);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var principalA = new PrincipalDescriptor(
+      PrincipalClaimTypes.User, extUser.Id, tenant.Id,
+      PrincipalClaimTypes.LogonTokenMethod, tokenIdA,
+      PrincipalClaimTypes.LogonTokenCredentialType, device.Id);
+
+    var principalB = new PrincipalDescriptor(
+      PrincipalClaimTypes.User, extUser.Id, tenant.Id,
+      PrincipalClaimTypes.LogonTokenMethod, tokenIdB,
+      PrincipalClaimTypes.LogonTokenCredentialType, device.Id);
+
+    Assert.True((await evaluator.Evaluate(
+      principalA, PermissionNames.DeviceTerminalUse, resource, TestContext.Current.CancellationToken)).Allowed);
+    Assert.False((await evaluator.Evaluate(
+      principalA, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken)).Allowed);
+
+    Assert.True((await evaluator.Evaluate(
+      principalB, PermissionNames.DeviceRemoteControlConnect, resource, TestContext.Current.CancellationToken)).Allowed);
+    Assert.False((await evaluator.Evaluate(
+      principalB, PermissionNames.DeviceTerminalUse, resource, TestContext.Current.CancellationToken)).Allowed);
   }
 
   [Fact]

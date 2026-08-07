@@ -36,23 +36,28 @@ public partial class PersonalAccessTokens
 
       if (result.IsSuccess)
       {
+        var createdToken = result.Value.PersonalAccessToken;
+
         var parameters = new DialogParameters<SecretDisplayDialog>
         {
           { x => x.Title, "Personal Access Token Created" },
           { x => x.Secret, result.Value.PlainTextToken },
           { x => x.SecretLabel, "Personal Access Token" },
-          { x => x.Subtitle, result.Value.PersonalAccessToken.Name },
+          { x => x.Subtitle, createdToken.Name },
           { x => x.SubtitleLabel, "Token Name" }
         };
 
         var dialogOptions = SecretDisplayDialog.DefaultOptions;
 
-        await DialogService.ShowAsync<SecretDisplayDialog>("Personal Access Token Created", parameters, dialogOptions);
+        var dialogRef = await DialogService.ShowAsync<SecretDisplayDialog>("Personal Access Token Created", parameters, dialogOptions);
+        await dialogRef.Result;
 
         // Refresh the list and clear the input
         await LoadPersonalAccessTokens();
         _newTokenName = string.Empty;
         Snackbar.Add("Personal access token created successfully", Severity.Success);
+
+        await ManagePermissions(createdToken);
       }
       else
       {
