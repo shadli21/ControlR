@@ -188,33 +188,6 @@ public static class HostExtensions
     await context.Database.EnsureCreatedAsync();
   }
 
-  public static async Task RemoveEmptyTenants(this IHost host)
-  {
-    await using var scope = host.Services.CreateAsyncScope();
-    await using var context = scope.ServiceProvider.GetRequiredService<AppDb>();
-    var emptyTenants = await context.Tenants
-      .Where(x => x.Users!.Count == 0)
-      .ToListAsync();
-
-    if (emptyTenants.Count == 0)
-    {
-      return;
-    }
-
-    var tenantIds = emptyTenants.Select(x => x.Id).ToList();
-
-    await context.PermissionAssignments
-      .Where(x => x.OwningTenantId != null && tenantIds.Contains(x.OwningTenantId.Value))
-      .ExecuteDeleteAsync();
-
-    await context.AuthorizationChangeLogs
-      .Where(x => x.OwningTenantId != null && tenantIds.Contains(x.OwningTenantId.Value))
-      .ExecuteDeleteAsync();
-
-    context.Tenants.RemoveRange(emptyTenants);
-    await context.SaveChangesAsync();
-  }
-
   public static async Task SetAllDevicesOffline(this IHost host)
   {
     await using var scope = host.Services.CreateAsyncScope();
