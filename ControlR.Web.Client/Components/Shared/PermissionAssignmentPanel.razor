@@ -17,6 +17,12 @@
       <PrincipalAutocomplete PrincipalKind="_principalKind" SelectedId="_selectedPrincipalId"
                              SelectedIdChanged="OnPrincipalIdChanged" Label="Principal"
                              Disabled="IsPrincipalLocked" />
+      @if (_selectedPrincipalId is null)
+      {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+          Select a principal to view and manage its permission assignments.
+        </MudAlert>
+      }
     </MudItem>
   </MudGrid>
 </MudPaper>
@@ -28,7 +34,8 @@
   <MudGrid Spacing="2" Justify="Justify.FlexEnd">
     <MudItem xs="12" md="6">
       <MudSelect T="string" MultiSelection="true" SelectedValues="_selectedPresetNames"
-                 SelectedValuesChanged="OnPresetSelectionChanged" Label="Permission Presets" Dense="true">
+                 SelectedValuesChanged="OnPresetSelectionChanged" Label="Permission Presets" Dense="true"
+                 Disabled="@(_selectedPrincipalId is null)">
         @foreach (var preset in _presets)
         {
           <MudSelectItem T="string" Value="@preset.Name">@preset.Name</MudSelectItem>
@@ -36,7 +43,8 @@
       </MudSelect>
     </MudItem>
     <MudItem xs="12" md="6">
-      <MudSelect T="PresetApplyMode" @bind-Value="_presetMode" Label="Mode" Dense="true">
+      <MudSelect T="PresetApplyMode" @bind-Value="_presetMode" Label="Mode" Dense="true"
+                 Disabled="@(_selectedPrincipalId is null)">
         <MudSelectItem Value="PresetApplyMode.Merge">Merge</MudSelectItem>
         <MudSelectItem Value="PresetApplyMode.Replace">Replace</MudSelectItem>
       </MudSelect>
