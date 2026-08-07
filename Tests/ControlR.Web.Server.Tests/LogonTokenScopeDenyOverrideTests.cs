@@ -6,6 +6,7 @@ using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlR.Web.Server.Tests;
@@ -224,6 +225,55 @@ public class LogonTokenScopeDenyOverrideTests(ITestOutputHelper testOutput)
       HttpConstants.Internal.LogonTokensEndpoint, request, TestContext.Current.CancellationToken);
 
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+  }
+
+  [Fact]
+  public async Task CreateLogonToken_WithScopes_ReplacesBaseline_AndForcesDeviceRead()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = testServer.Factory.CreateClient();
+
+    var tenant = await testServer.Services.CreateTestTenant();
+    await testServer.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testServer.Services.CreateTestUser(
+      tenant.Id, $"replace-{Guid.NewGuid():N}@t.local", PermissionPresets.DeviceSuperUser);
+    var device = await testServer.Services.CreateTestDevice(tenant.Id);
+
+    var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
+    var patResult = await patManager.CreateToken(
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Replace Semantics PAT"), user.Id);
+    Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
+
+    httpClient.DefaultRequestHeaders.Add(
+      PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
+      patResult.Value.PlainTextToken);
+
+    var request = new InternalDtos.LogonTokenRequestDto(
+      device.Id,
+      ExpirationMinutes: 15,
+      Scopes: [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceTerminalUse, PermissionScopeKind.Device, device.Id)]);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Internal.LogonTokensEndpoint, request, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    var tokenResult = await response.Content
+      .ReadFromJsonAsync<InternalDtos.LogonTokenResponseDto>(TestContext.Current.CancellationToken);
+    Assert.NotNull(tokenResult);
+    Assert.NotNull(tokenResult.Token);
+
+    var tokenId = LogonTokenTestHelper.ParseTokenId(tokenResult.Token);
+
+    using var scope = testServer.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var grantNames = await db.PermissionAssignments
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.LogonToken && x.PrincipalId == tokenId)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+
+    Assert.Equal(2, grantNames.Count);
+    Assert.Contains(PermissionNames.DeviceTerminalUse, grantNames);
+    Assert.Contains(PermissionNames.DeviceRead, grantNames);
   }
 
   private static async Task SeedAssignment(TestWebServer testServer, PermissionAssignment assignment)

@@ -1,6 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.LogonTokens;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,12 +13,13 @@ public class LogonTokensController : ControllerBase
 {
   [HttpPost]
   [ProducesResponseType<InternalDtos.LogonTokenResponseDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
+  [ProducesResponseType(StatusCodes.Status500InternalServerError)]
   public async Task<ActionResult<InternalDtos.LogonTokenResponseDto>> CreateLogonToken(
     [FromServices] AppDb appDb,
-    [FromServices] ILogonTokenProvider logonTokenProvider,
     [FromServices] IAuthorizationService authorizationService,
-    [FromServices] ICredentialScopeService credentialScopeService,
+    [FromServices] ILogonTokenScopeService logonTokenScopeService,
     [FromBody] InternalDtos.LogonTokenRequestDto request)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -33,12 +33,7 @@ public class LogonTokensController : ControllerBase
     }
 
     var device = await appDb.Devices.FindAsync(request.DeviceId);
-    if (device is null)
-    {
-      return BadRequest("Device not found.");
-    }
-
-    if (device.TenantId != tenantId)
+    if (device is null || device.TenantId != tenantId)
     {
       return BadRequest("Device not found.");
     }
@@ -49,37 +44,18 @@ public class LogonTokensController : ControllerBase
       return Forbid();
     }
 
-    if (request.Scopes is { Count: > 0 })
+    var creator = PrincipalDescriptorBuilder.FromClaims(User);
+    if (creator is null)
     {
-      var creatorPrincipal = PrincipalDescriptorBuilder.FromClaims(User);
-      if (creatorPrincipal is null)
-      {
-        return BadRequest("User principal not found.");
-      }
-
-      var scopeValidation = await credentialScopeService.ValidateLogonTokenScopes(
-        creatorPrincipal, tenantId, request.Scopes, HttpContext.RequestAborted);
-      if (!scopeValidation.IsSuccess)
-      {
-        return scopeValidation.ToActionResult();
-      }
+      return BadRequest("User principal not found.");
     }
 
-    var result = await logonTokenProvider.CreateToken(
-      request.DeviceId,
-      tenantId,
-      userId,
-      request.ExpirationMinutes);
+    var result = await logonTokenScopeService.CreateTokenWithScopes(
+      LogonTokenCreationRequest.From(request, tenantId, userId), creator, HttpContext.RequestAborted);
 
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
-    }
-
-    if (request.Scopes is { Count: > 0 })
-    {
-      await credentialScopeService.WriteLogonTokenScopes(
-        result.Value.TokenId, request.DeviceId, tenantId, userId, request.Scopes, HttpContext.RequestAborted);
     }
 
     var deviceAccessUrl = new Uri(

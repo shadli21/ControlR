@@ -27,11 +27,17 @@ public interface ICredentialScopeService
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default);
 
+  /// <summary>
+  /// Writes the explicit scope grants for a logon token and records a change-log entry with the
+  /// scope count. The token is created without baseline grants when explicit scopes are supplied,
+  /// so these grants are the token's full permission set.
+  /// </summary>
   Task WriteLogonTokenScopes(
     Guid tokenId,
     Guid deviceId,
     Guid tenantId,
-    Guid creatorUserId,
+    string actorType,
+    Guid actorPrincipalId,
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default);
 }
@@ -96,7 +102,8 @@ public class CredentialScopeService(
     Guid tokenId,
     Guid deviceId,
     Guid tenantId,
-    Guid creatorUserId,
+    string actorType,
+    Guid actorPrincipalId,
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default)
   {
@@ -109,14 +116,14 @@ public class CredentialScopeService(
         scope.ScopeKind,
         scope.ScopeId ?? deviceId,
         tenantId,
-        AuthorizationChangeLogActorTypes.User,
-        creatorUserId.ToString()));
+        actorType,
+        actorPrincipalId.ToString()));
     }
 
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CredentialScopeSet,
-      AuthorizationChangeLogActorTypes.User,
-      creatorUserId.ToString(),
+      actorType,
+      actorPrincipalId.ToString(),
       AuthorizationChangeLogTargetTypes.LogonToken,
       tokenId.ToString(),
       tenantId,

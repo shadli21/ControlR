@@ -5,7 +5,7 @@ namespace ControlR.Web.Server.Extensions.Database;
 
 public static class AppDbExtensions
 {
-  public static async Task AddOrUpdate<TEntity>(
+  public static async Task<TEntity> AddOrUpdate<TEntity>(
     this DbContext db,
     TEntity entity,
     Expression<Func<TEntity, bool>> match,
@@ -19,8 +19,12 @@ public static class AppDbExtensions
     var compiled = match.Compile();
     var set = db.Set<TEntity>();
 
+    // IgnoreQueryFilters: this is a low-level upsert that must see the actual row
+    // regardless of any tenant/user global query filters applied to the context.
+    // Otherwise the existence check (and the conflict re-check after a failed insert)
+    // would be blinded to rows owned by other principals, causing duplicate inserts.
     var existing = set.Local.FirstOrDefault(compiled)
-      ?? await set.FirstOrDefaultAsync(match, cancellationToken);
+      ?? await set.IgnoreQueryFilters().FirstOrDefaultAsync(match, cancellationToken);
 
     if (existing is null)
     {
@@ -29,12 +33,12 @@ public static class AppDbExtensions
       var saveResult = await db.SaveChangesOrConfirmConflictAsync(match, cancellationToken);
 
       if (saveResult == SaveChangesResult.Saved)
-        return;
+        return entity;
 
       // Lost the race. Another thread inserted. Detach the failed Add
       // and reload to fall through to the update path below.
       db.Entry(entity).State = EntityState.Detached;
-      existing = await set.FirstOrDefaultAsync(match, cancellationToken)
+      existing = await set.IgnoreQueryFilters().FirstOrDefaultAsync(match, cancellationToken)
         ?? throw new InvalidOperationException("Expected conflicting entity after SaveChangesOrConfirmConflictAsync.");
     }
 
@@ -56,6 +60,8 @@ public static class AppDbExtensions
     }
 
     await db.SaveChangesAsync(cancellationToken);
+
+    return existing;
   }
 
   /// <summary>
@@ -80,6 +86,7 @@ public static class AppDbExtensions
     catch (DbUpdateException)
     {
       var isConflict = await db.Set<TEntity>()
+        .IgnoreQueryFilters()
         .AsNoTracking()
         .AnyAsync(conflictPredicate, cancellationToken);
 

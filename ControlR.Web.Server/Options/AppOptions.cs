@@ -205,6 +205,15 @@ public class AppOptions
   public string[] KnownProxies { get; init; } = [];
 
   /// <summary>
+  /// Number of days after which orphaned logon-token permission grant rows are cleaned up.
+  /// Grant rows outlive their tokens (deleted on consumption) because the cookie session
+  /// keeps using them; the cutoff must exceed the maximum token lifetime plus the longest
+  /// possible session lifetime. Rows older than this threshold are removed by a background
+  /// service. Set to 0 or less to disable grant cleanup.
+  /// </summary>
+  public int LogonTokenGrantCleanupAfterDays { get; init; } = 21;
+
+  /// <summary>
   /// The maximum allowed file size for transfers in the remote File System component.
   /// Set to 0 or less for no limit. Default is 100 MB (104857600 bytes).
   /// </summary>

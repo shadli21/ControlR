@@ -8,6 +8,7 @@ public static class AuthorizationChangeLogActions
 {
   public const string CredentialScopeRemoved = "credential-scope-removed";
   public const string CredentialScopeSet = "credential-scope-set";
+  public const string CredentialScopeSetFailed = "credential-scope-set-failed";
   public const string CredentialScopeTrim = "credential-scope-trim";
   public const string CustomerCreated = "customer-created";
   public const string CustomerDeleted = "customer-deleted";

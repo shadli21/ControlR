@@ -11,6 +11,39 @@ public class LogonTokenProviderTests(ITestOutputHelper testOutput)
   private readonly ITestOutputHelper _testOutput = testOutput;
 
   [Fact]
+  public async Task CreateTokenForExternal_RepeatWithSameCorrelationId_UpdatesDisplayNamePreference()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput, useInMemoryDatabase: false);
+    using var scope = testApp.App.Services.CreateScope();
+    var logonTokenProvider = scope.ServiceProvider.GetRequiredService<ILogonTokenProvider>();
+    var preferencesManager = scope.ServiceProvider.GetRequiredService<IUserPreferencesManager>();
+
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var userCorrelationId = $"test-{Guid.NewGuid():N}";
+
+    var firstResult = await logonTokenProvider.CreateTokenForExternal(
+      device.Id, tenant.Id, userCorrelationId,
+      userDisplayName: "First Name",
+      cancellationToken: TestContext.Current.CancellationToken);
+
+    Assert.True(firstResult.IsSuccess);
+
+    var secondResult = await logonTokenProvider.CreateTokenForExternal(
+      device.Id, tenant.Id, userCorrelationId,
+      userDisplayName: "Second Name",
+      cancellationToken: TestContext.Current.CancellationToken);
+
+    Assert.True(secondResult.IsSuccess);
+    Assert.Equal(firstResult.Value.UserId, secondResult.Value.UserId);
+
+    var preferences = await preferencesManager.GetAllPreferences(
+      secondResult.Value.UserId, TestContext.Current.CancellationToken);
+
+    Assert.Equal("Second Name", preferences.UserDisplayName);
+  }
+
+  [Fact]
   public async Task CreateTokenForExternal_WithExternalUser_CreatesUserAndToken()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);

@@ -91,14 +91,10 @@ public class TenantSettingsManager(
       TenantId = tenantId
     };
 
-    await _appDb.AddOrUpdate(
+    var savedSetting = await _appDb.AddOrUpdate(
       entity: entity, 
       match: x => x.Name == entity.Name && x.TenantId == entity.TenantId, 
       cancellationToken: cancellationToken);
-
-    var savedSetting = await _appDb.TenantSettings
-      .AsNoTracking()
-      .SingleAsync(x => x.TenantId == tenantId && x.Name == setting.Name, cancellationToken);
 
     return HttpResult.Ok(savedSetting.ToInternalResponseDto());
   }

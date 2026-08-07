@@ -17,6 +17,7 @@ public interface ILogonTokenProvider
     int expirationMinutes = 5,
     string? userCorrelationId = null,
     string? sessionCorrelationId = null,
+    bool writeBaselineGrants = true,
     CancellationToken cancellationToken = default);
 
   Task<HttpResult<LogonTokenResult>> CreateTokenForExternal(
@@ -26,6 +27,7 @@ public interface ILogonTokenProvider
     int expirationMinutes = 5,
     string? userDisplayName = null,
     string? sessionCorrelationId = null,
+    bool writeBaselineGrants = true,
     CancellationToken cancellationToken = default);
 
   Task<LogonTokenValidationResult> ValidateAndConsumeToken(string token, Guid deviceId, CancellationToken cancellationToken = default);
@@ -59,6 +61,7 @@ public class LogonTokenProvider(
     int expirationMinutes = 5,
     string? userCorrelationId = null,
     string? sessionCorrelationId = null,
+    bool writeBaselineGrants = true,
     CancellationToken cancellationToken = default)
   {
     await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -90,17 +93,25 @@ public class LogonTokenProvider(
 
     dbContext.LogonTokens.Add(logonToken);
 
-    foreach (var permissionName in _defaultDeviceAccessPermissions)
+    // The baseline device-access grants are written with the token unless the caller is supplying
+    // explicit scopes instead. Granting this fixed, standard set is exactly what the
+    // DeviceLogonTokenCreate permission conveys, so the creator is not validated per-permission
+    // here, unlike the explicit-scope path, which validates the creator holds each requested
+    // permission to prevent escalation.
+    if (writeBaselineGrants)
     {
-      dbContext.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
-        PermissionPrincipalKind.LogonToken,
-        logonToken.Id,
-        permissionName,
-        PermissionScopeKind.Device,
-        deviceId,
-        tenantId,
-        AuthorizationChangeLogActorTypes.System,
-        userId.ToString()));
+      foreach (var permissionName in _defaultDeviceAccessPermissions)
+      {
+        dbContext.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+          PermissionPrincipalKind.LogonToken,
+          logonToken.Id,
+          permissionName,
+          PermissionScopeKind.Device,
+          deviceId,
+          tenantId,
+          AuthorizationChangeLogActorTypes.System,
+          userId.ToString()));
+      }
     }
 
     await dbContext.SaveChangesAsync(cancellationToken);
@@ -123,6 +134,7 @@ public class LogonTokenProvider(
     int expirationMinutes = 5,
     string? userDisplayName = null,
     string? sessionCorrelationId = null,
+    bool writeBaselineGrants = true,
     CancellationToken cancellationToken = default)
   {
     using var scope = _scopeFactory.CreateScope();
@@ -176,7 +188,15 @@ public class LogonTokenProvider(
       }
     }
 
-    return await CreateToken(deviceId, tenantId, guestUser.Id, expirationMinutes, userCorrelationId, sessionCorrelationId, cancellationToken);
+    return await CreateToken(
+      deviceId,
+      tenantId,
+      guestUser.Id,
+      expirationMinutes,
+      userCorrelationId,
+      sessionCorrelationId,
+      writeBaselineGrants,
+      cancellationToken);
   }
 
   public Task<LogonTokenValidationResult> ValidateAndConsumeToken(string token, Guid deviceId, CancellationToken cancellationToken = default) =>
@@ -302,7 +322,12 @@ public class LogonTokenProvider(
         "Validated logon token for user {UserId} on device {DeviceId}.",
         userId, logonToken.DeviceId);
 
-      return LogonTokenValidationResult.Success(logonToken.Id, userId.Value, logonToken.TenantId, logonToken.SessionCorrelationId);
+      return LogonTokenValidationResult.Success(
+        logonToken.Id,
+        userId.Value,
+        logonToken.TenantId,
+        logonToken.ExpiresAt,
+        logonToken.SessionCorrelationId);
     }
     catch (Exception ex)
     {

@@ -110,14 +110,10 @@ public class UserPreferencesManager(
       Value = normalizationResult.Value ?? string.Empty
     };
 
-    await appDb.AddOrUpdate(
+    var savedPreference = await appDb.AddOrUpdate(
       entity: entity, 
       match: x => x.Name == entity.Name && x.UserId == entity.UserId, 
       cancellationToken: cancellationToken);
-
-    var savedPreference = await appDb.UserPreferences
-      .AsNoTracking()
-      .SingleAsync(x => x.UserId == userId && x.Name == preference.Name, cancellationToken);
 
     return HttpResult.Ok(savedPreference.ToInternalResponseDto());
   }

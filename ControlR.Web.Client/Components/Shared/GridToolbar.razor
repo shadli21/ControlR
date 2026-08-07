@@ -8,6 +8,7 @@
                     Adornment="Adornment.Start"
                     AdornmentIcon="@Icons.Material.Filled.Search"
                     Immediate="true"
+                    DebounceInterval="SearchDebounceInterval"
                     Disabled="Disabled"
                     Class="grid-toolbar-search-field" />
     </div>
@@ -39,6 +40,9 @@
 
   [Parameter]
   public string SearchPlaceholder { get; set; } = "Search";
+
+  [Parameter]
+  public double SearchDebounceInterval { get; set; } = 250;
 
   [Parameter]
   public EventCallback OnRefresh { get; set; }

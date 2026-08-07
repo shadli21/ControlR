@@ -5,7 +5,8 @@ namespace ControlR.Web.Server.Services.LogonTokens;
 public class LogonTokenValidationResult
 {
   public string? ErrorMessage { get; set; }
-  [MemberNotNullWhen(true, nameof(UserId), nameof(TenantId), nameof(TokenId))]
+  public DateTimeOffset? ExpiresAt { get; set; }
+  [MemberNotNullWhen(true, nameof(UserId), nameof(TenantId), nameof(TokenId), nameof(ExpiresAt))]
   public bool IsValid { get; set; }
   public string? SessionCorrelationId { get; set; }
   public Guid? TenantId { get; set; }
@@ -26,6 +27,7 @@ public class LogonTokenValidationResult
     Guid tokenId,
     Guid userId,
     Guid tenantId,
+    DateTimeOffset expiresAt,
     string? sessionCorrelationId = null)
   {
     return new LogonTokenValidationResult
@@ -34,6 +36,7 @@ public class LogonTokenValidationResult
       TokenId = tokenId,
       UserId = userId,
       TenantId = tenantId,
+      ExpiresAt = expiresAt,
       SessionCorrelationId = sessionCorrelationId
     };
   }

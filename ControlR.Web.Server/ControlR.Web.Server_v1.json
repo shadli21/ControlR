@@ -1013,14 +1013,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
+            "description": "Internal Server Error"
           }
         },
         "security": [
@@ -2185,6 +2178,16 @@
             "type": "integer",
             "format": "int32",
             "default": 15
+          },
+          "permissions": {
+            "maxItems": 100,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2223,6 +2226,16 @@
             "type": "integer",
             "format": "int32",
             "default": 15
+          },
+          "permissions": {
+            "maxItems": 100,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

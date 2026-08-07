@@ -1,12 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 
+using ControlR.Libraries.Api.Contracts.Constants;
+
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 
 [MessagePackObject(keyAsPropertyName: true)]
 public record DeleteDevicesRequestDto(Guid[] DeviceIds)
 {
-  public const int MaxDeviceIds = 1000;
-
-  [MaxLength(MaxDeviceIds)]
+  [MaxLength(DtoLimits.DeviceIdsMaxCount)]
   public Guid[] DeviceIds { get; init; } = DeviceIds;
 }

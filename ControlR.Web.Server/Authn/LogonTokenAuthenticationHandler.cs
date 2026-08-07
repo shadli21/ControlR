@@ -91,7 +91,13 @@ public class LogonTokenAuthenticationHandler(
     var principal = new ClaimsPrincipal(identity);
     var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
-    await Context.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+    var cookieProperties = new AuthenticationProperties
+    {
+      ExpiresUtc = tokenValidation.ExpiresAt,
+      IsPersistent = true,
+      AllowRefresh = false
+    };
+    await Context.SignInAsync(IdentityConstants.ApplicationScheme, principal, cookieProperties);
 
     return AuthenticateResult.Success(ticket);
   }

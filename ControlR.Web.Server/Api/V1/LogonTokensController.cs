@@ -1,6 +1,6 @@
 using Asp.Versioning;
-using ControlR.Libraries.Api.Contracts.Constants;
-using ControlR.Web.Server.Extensions;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.LogonTokens;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,8 +18,8 @@ public class LogonTokensController : ControllerBase
   [ProducesResponseType(StatusCodes.Status500InternalServerError)]
   public async Task<ActionResult<V1Dtos.LogonTokenResponseDto>> CreateForExternal(
     [FromServices] AppDb appDb,
-    [FromServices] ILogonTokenProvider logonTokenProvider,
     [FromServices] IAuthorizationService authorizationService,
+    [FromServices] ILogonTokenScopeService logonTokenScopeService,
     [FromBody] V1Dtos.CreateLogonTokenForExternalRequestDto request)
   {
     var device = await appDb.Devices.FindAsync(request.DeviceId);
@@ -39,13 +39,14 @@ public class LogonTokensController : ControllerBase
       return Forbid();
     }
 
-    var result = await logonTokenProvider.CreateTokenForExternal(
-      request.DeviceId,
-      request.TenantId,
-      request.UserCorrelationId,
-      request.ExpirationMinutes,
-      userDisplayName: request.UserDisplayName,
-      sessionCorrelationId: request.SessionCorrelationId);
+    var creator = PrincipalDescriptorBuilder.FromClaims(User);
+    if (creator is null)
+    {
+      return BadRequest("Caller principal not found.");
+    }
+
+    var result = await logonTokenScopeService.CreateTokenWithScopes(
+      LogonTokenCreationRequest.From(request), creator, HttpContext.RequestAborted);
 
     if (!result.IsSuccess)
     {
@@ -59,10 +60,11 @@ public class LogonTokensController : ControllerBase
   [ProducesResponseType<V1Dtos.LogonTokenResponseDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
+  [ProducesResponseType(StatusCodes.Status500InternalServerError)]
   public async Task<ActionResult<V1Dtos.LogonTokenResponseDto>> CreateForUser(
     [FromServices] AppDb appDb,
-    [FromServices] ILogonTokenProvider logonTokenProvider,
     [FromServices] IAuthorizationService authorizationService,
+    [FromServices] ILogonTokenScopeService logonTokenScopeService,
     [FromBody] V1Dtos.CreateLogonTokenForUserRequestDto request)
   {
     var device = await appDb.Devices.FindAsync(request.DeviceId);
@@ -82,12 +84,14 @@ public class LogonTokensController : ControllerBase
       return Forbid();
     }
 
-    var result = await logonTokenProvider.CreateToken(
-      request.DeviceId,
-      request.TenantId,
-      request.UserId,
-      request.ExpirationMinutes,
-      sessionCorrelationId: request.SessionCorrelationId);
+    var creator = PrincipalDescriptorBuilder.FromClaims(User);
+    if (creator is null)
+    {
+      return BadRequest("Caller principal not found.");
+    }
+
+    var result = await logonTokenScopeService.CreateTokenWithScopes(
+      LogonTokenCreationRequest.From(request), creator, HttpContext.RequestAborted);
 
     if (!result.IsSuccess)
     {

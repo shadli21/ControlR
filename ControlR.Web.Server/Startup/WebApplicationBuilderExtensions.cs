@@ -232,6 +232,7 @@ public static class WebApplicationBuilderExtensions
       options.RequireAuthenticationForRequester = true;
     });
     builder.Services.AddScoped<ILogonTokenProvider, LogonTokenProvider>();
+    builder.Services.AddScoped<ILogonTokenScopeService, LogonTokenScopeService>();
     builder.Services.AddSingleton<AgentInstallerKeyUsageCleanupBackgroundService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentInstallerKeyUsageCleanupBackgroundService>());
     builder.Services.AddSingleton<ExternalUserCleanupBackgroundService>();

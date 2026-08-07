@@ -36,6 +36,12 @@ public sealed record CredentialScopeSnapshot(
 public sealed record CredentialScopeSetSummary(int ScopeCount);
 
 /// <summary>
+/// Summary of a failed batch credential scope write. Written before orphan-token cleanup
+/// so the failed creation attempt leaves a trail in <see cref="AuthorizationChangeLog"/>.
+/// </summary>
+public sealed record CredentialScopeSetFailureSummary(int ScopeCount, string Reason);
+
+/// <summary>
 /// Snapshot of a customer's state at a point in time.
 /// Used for create/update/delete audit entries.
 /// </summary>

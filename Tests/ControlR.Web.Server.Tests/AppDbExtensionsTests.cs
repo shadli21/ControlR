@@ -1,8 +1,10 @@
 using ControlR.Web.Server.Data;
+using ControlR.Web.Server.Data.Configuration;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlR.Web.Server.Tests;
@@ -317,5 +319,130 @@ public class AppDbExtensionsTests(ITestOutputHelper testOutput)
 
     Assert.Equal(bool.FalseString, storedSetting.Value);
     Assert.NotEqual(default, storedSetting.CreatedAt);
+  }
+
+  [Fact]
+  public async Task AddOrUpdate_WithUserClaimsFilter_UpdatesExistingRowOwnedByAnotherUser()
+  {
+    var cancellationToken = TestContext.Current.CancellationToken;
+    await using var testApp = await TestAppBuilder.CreateTestApp(
+      _testOutput,
+      testDatabaseName: $"{Guid.NewGuid()}",
+      useInMemoryDatabase: false);
+
+    var tenant = await testApp.Services.CreateTestTenant();
+    var creator = await testApp.Services.CreateTestUser(tenant.Id, email: "creator@t.local");
+    var guest = await testApp.Services.CreateTestUser(tenant.Id, email: "guest@t.local");
+
+    string connectionString;
+    await using (var setupScope = testApp.Services.CreateAsyncScope())
+    {
+      var setupDb = setupScope.ServiceProvider.GetRequiredService<AppDb>();
+      connectionString = setupDb.Database.GetDbConnection().ConnectionString;
+
+      // The guest already has this preference. Seeded through an unfiltered context.
+      setupDb.UserPreferences.Add(new UserPreference
+      {
+        Name = "display-name",
+        UserId = guest.Id,
+        Value = "original"
+      });
+      await setupDb.SaveChangesAsync(cancellationToken);
+    }
+
+    // A context scoped to the creator's claims. Its UserPreference query filter only
+    // sees the creator's own preferences, so the guest's row is invisible to queries.
+    await using var creatorDb = CreateClaimsScopedAppDb(connectionString, tenant.Id, creator.Id);
+
+    // Upserting the guest's preference must update the existing row. Before the fix the
+    // claims filter hides the row from both the existence check and the conflict re-check,
+    // so this attempted a duplicate insert and threw DbUpdateException (23505).
+    var saved = await creatorDb.AddOrUpdate(
+      new UserPreference
+      {
+        Name = "display-name",
+        UserId = guest.Id,
+        Value = "updated"
+      },
+      x => x.Name == "display-name" && x.UserId == guest.Id,
+      cancellationToken);
+
+    Assert.Equal(guest.Id, saved.UserId);
+    Assert.Equal("updated", saved.Value);
+
+    await using var assertScope = testApp.Services.CreateAsyncScope();
+    var assertDb = assertScope.ServiceProvider.GetRequiredService<AppDb>();
+    var stored = await assertDb.UserPreferences
+      .IgnoreQueryFilters()
+      .Where(x => x.UserId == guest.Id && x.Name == "display-name")
+      .ToListAsync(cancellationToken);
+
+    var storedPreference = Assert.Single(stored);
+    Assert.Equal("updated", storedPreference.Value);
+  }
+
+  [Fact]
+  public async Task AddOrUpdate_WithUserClaimsFilter_ConcurrentUpsertsForAnotherUser_AllSucceed()
+  {
+    var cancellationToken = TestContext.Current.CancellationToken;
+    await using var testApp = await TestAppBuilder.CreateTestApp(
+      _testOutput,
+      testDatabaseName: $"{Guid.NewGuid()}",
+      useInMemoryDatabase: false);
+
+    var tenant = await testApp.Services.CreateTestTenant();
+    var creator = await testApp.Services.CreateTestUser(tenant.Id, email: "creator@t.local");
+    var guest = await testApp.Services.CreateTestUser(tenant.Id, email: "guest@t.local");
+
+    string connectionString;
+    await using (var setupScope = testApp.Services.CreateAsyncScope())
+    {
+      var setupDb = setupScope.ServiceProvider.GetRequiredService<AppDb>();
+      connectionString = setupDb.Database.GetDbConnection().ConnectionString;
+    }
+
+    // The claims filter blinds each context's existence check to the guest's row, so every
+    // context attempts an insert. Exactly one wins; the rest hit the unique index and must
+    // recover through the conflict path rather than throwing.
+    var tasks = Enumerable.Range(0, 5).Select(index => Task.Run(async () =>
+    {
+      await using var db = CreateClaimsScopedAppDb(connectionString, tenant.Id, creator.Id);
+      await db.AddOrUpdate(
+        new UserPreference
+        {
+          Name = "display-name",
+          UserId = guest.Id,
+          Value = $"value-{index}"
+        },
+        x => x.Name == "display-name" && x.UserId == guest.Id,
+        TestContext.Current.CancellationToken);
+    }));
+
+    await Task.WhenAll(tasks);
+
+    await using var assertScope = testApp.Services.CreateAsyncScope();
+    var assertDb = assertScope.ServiceProvider.GetRequiredService<AppDb>();
+    var stored = await assertDb.UserPreferences
+      .IgnoreQueryFilters()
+      .Where(x => x.UserId == guest.Id && x.Name == "display-name")
+      .ToListAsync(cancellationToken);
+
+    var storedPreference = Assert.Single(stored);
+    Assert.StartsWith("value-", storedPreference.Value);
+  }
+
+  private static AppDb CreateClaimsScopedAppDb(string connectionString, Guid tenantId, Guid userId)
+  {
+    var optionsBuilder = new DbContextOptionsBuilder<AppDb>();
+    optionsBuilder.UseNpgsql(connectionString);
+
+    var infrastructure = (IDbContextOptionsBuilderInfrastructure)optionsBuilder;
+    infrastructure.AddOrUpdateExtension(new ClaimsDbContextOptionsExtension(new ClaimsDbContextOptions
+    {
+      TenantId = tenantId,
+      UserId = userId
+    }));
+
+    return new AppDb(optionsBuilder.Options);
   }
 }

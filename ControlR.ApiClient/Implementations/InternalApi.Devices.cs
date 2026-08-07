@@ -24,10 +24,10 @@ internal partial class InternalApi
   async Task<ApiResult<InternalDtos.DeleteManyDevicesResponseDto>> IDevicesApi.DeleteManyDevices(
     InternalDtos.DeleteDevicesRequestDto request, CancellationToken cancellationToken)
   {
-    if (request.DeviceIds is { Length: > InternalDtos.DeleteDevicesRequestDto.MaxDeviceIds })
+    if (request.DeviceIds is { Length: > DtoLimits.DeviceIdsMaxCount })
     {
       return ApiResult.Fail<InternalDtos.DeleteManyDevicesResponseDto>(
-        $"Too many device IDs: {request.DeviceIds.Length}. Maximum allowed is {InternalDtos.DeleteDevicesRequestDto.MaxDeviceIds}.");
+        $"Too many device IDs: {request.DeviceIds.Length}. Maximum allowed is {DtoLimits.DeviceIdsMaxCount}.");
     }
 
     return await _client.ExecuteApiCall(async () =>
