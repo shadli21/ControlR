@@ -28,6 +28,16 @@ on:
         default: ""
         type: string
 
+      server_runtime:
+        description: "Server target runtime/OS"
+        required: false
+        default: linux-x64
+        type: choice
+        options:
+          - linux-x64
+          - win-x64
+          - linux-arm64
+
       notarize_mac_bundle:
         description: "Notarize macOS bundle"
         required: false
@@ -797,7 +807,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -Path "ControlR.Web.Server/bin/publish" -ItemType Directory -Force | Out-Null
-          dotnet publish ControlR.Web.Server/ -p:ExcludeApp_Data=true --runtime linux-x64 --configuration Release -p:Version=$env:VERSION -p:FileVersion=$env:VERSION --output ControlR.Web.Server/bin/publish --self-contained true
+          dotnet publish ControlR.Web.Server/ -p:ExcludeApp_Data=true --runtime ${{ inputs.server_runtime }} --configuration Release -p:Version=$env:VERSION -p:FileVersion=$env:VERSION --output ControlR.Web.Server/bin/publish --self-contained true
 
       - name: Create Dockerfile
         shell: pwsh
