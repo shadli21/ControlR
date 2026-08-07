@@ -1,4 +1,6 @@
+using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.ServiceAccounts;
+using ControlR.Web.Server.Services.Tenants;
 
 namespace ControlR.Web.Server.Extensions.Dtos.V1;
 
@@ -39,5 +41,19 @@ internal static class ModelToV1DtoExtensions
   public static CreateServiceAccountCredentialResponseDto ToDto(this CreateServiceAccountCredentialResult result)
   {
     return new CreateServiceAccountCredentialResponseDto(result.Credential.ToDto(), result.PlainTextSecretKey);
+  }
+
+  public static CreateTenantResponseDto ToV1CreateTenantDto(this TenantResult result)
+  {
+    return new CreateTenantResponseDto(
+      result.Id,
+      result.Name);
+  }
+
+  public static GetTenantResponseDto ToV1GetTenantDto(this TenantResult result)
+  {
+    return new GetTenantResponseDto(
+      result.Id,
+      result.Name);
   }
 }

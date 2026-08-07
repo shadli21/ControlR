@@ -1,4 +1,3 @@
-using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services.Tenants;
@@ -18,10 +17,10 @@ public class TenantProvisioningServiceTests(ITestOutputHelper testOutput)
     var service = scope.ServiceProvider.GetRequiredService<ITenantProvisioningService>();
     await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
 
-    var result = await service.CreateTenant(new CreateTenantRequestDto("DB Tenant"), TestContext.Current.CancellationToken);
+    var result = await service.CreateTenant("DB Tenant", TestContext.Current.CancellationToken);
 
     Assert.True(result.IsSuccess);
-    var tenant = await appDb.Tenants.FindAsync([result.Value.TenantId], TestContext.Current.CancellationToken);
+    var tenant = await appDb.Tenants.FindAsync([result.Value.Id], TestContext.Current.CancellationToken);
     Assert.NotNull(tenant);
     Assert.Equal("DB Tenant", tenant.Name);
   }
@@ -34,7 +33,7 @@ public class TenantProvisioningServiceTests(ITestOutputHelper testOutput)
 
     var service = scope.ServiceProvider.GetRequiredService<ITenantProvisioningService>();
 
-    var result = await service.CreateTenant(new CreateTenantRequestDto(""), TestContext.Current.CancellationToken);
+    var result = await service.CreateTenant("", TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
     Assert.Contains("Tenant name is required", result.Reason);
@@ -48,7 +47,7 @@ public class TenantProvisioningServiceTests(ITestOutputHelper testOutput)
 
     var service = scope.ServiceProvider.GetRequiredService<ITenantProvisioningService>();
 
-    var result = await service.CreateTenant(new CreateTenantRequestDto("   "), TestContext.Current.CancellationToken);
+    var result = await service.CreateTenant("   ", TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
     Assert.Contains("Tenant name is required", result.Reason);
@@ -62,11 +61,11 @@ public class TenantProvisioningServiceTests(ITestOutputHelper testOutput)
 
     var service = scope.ServiceProvider.GetRequiredService<ITenantProvisioningService>();
 
-    var result = await service.CreateTenant(new CreateTenantRequestDto("New Tenant"), TestContext.Current.CancellationToken);
+    var result = await service.CreateTenant("New Tenant", TestContext.Current.CancellationToken);
 
     Assert.True(result.IsSuccess);
-    Assert.NotEqual(Guid.Empty, result.Value.TenantId);
-    Assert.Equal("New Tenant", result.Value.TenantName);
+    Assert.NotEqual(Guid.Empty, result.Value.Id);
+    Assert.Equal("New Tenant", result.Value.Name);
   }
 
   [Fact]
@@ -99,8 +98,8 @@ public class TenantProvisioningServiceTests(ITestOutputHelper testOutput)
     var result = await service.GetTenant(existing.Id, TestContext.Current.CancellationToken);
 
     Assert.True(result.IsSuccess);
-    Assert.Equal(existing.Id, result.Value.TenantId);
-    Assert.Equal("Existing Tenant", result.Value.TenantName);
+    Assert.Equal(existing.Id, result.Value.Id);
+    Assert.Equal("Existing Tenant", result.Value.Name);
   }
 
   [Fact]

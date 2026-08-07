@@ -34,6 +34,19 @@ public static class HttpResultExtensions
     return CreateProblemResult(result.ToHttpResult());
   }
 
+  /// <summary>
+  /// Converts an HttpResult&lt;T&gt; to an ActionResult&lt;TDto&gt; by mapping the value on success.
+  /// </summary>
+  public static ActionResult<TDto> ToActionResult<T, TDto>(this HttpResult<T> result, Func<T, TDto> mapper)
+  {
+    if (result.IsSuccess)
+    {
+      return new OkObjectResult(mapper(result.Value));
+    }
+
+    return CreateProblemResult(result.ToHttpResult());
+  }
+
   private static ObjectResult CreateProblemResult(HttpResult result)
   {
     var (statusCode, title) = result.ErrorCode switch
