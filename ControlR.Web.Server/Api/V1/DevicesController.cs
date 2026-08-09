@@ -212,7 +212,12 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
       .FilterByOnlineOffline(requestDto.HideOfflineDevices)
       .FilterByColumnFilters(requestDto.FilterDefinitions, isRelationalDatabase, logger);
 
-    var scopedQuery = filteredQuery.FilterByTagIds(requestDto.TagIds, requestDto.IncludeUntaggedDevices);
+    var scopedQuery = filteredQuery.FilterByTagsAndDeviceGroups(
+      requestDto.TagIds,
+      requestDto.TagFilterMatchMode,
+      requestDto.DeviceGroupIds,
+      requestDto.DeviceGroupFilterMatchMode,
+      requestDto.IncludeUntaggedDevices);
     var totalCount = await scopedQuery.CountAsync(cancellationToken);
 
     var devices = await scopedQuery

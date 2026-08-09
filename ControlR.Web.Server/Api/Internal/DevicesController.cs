@@ -205,11 +205,17 @@ public class DevicesController(
       .FilterByColumnFilters(requestDto.FilterDefinitions, isRelationalDatabase, logger)
       .FilterByCustomerIds(requestDto.CustomerIds);
 
+    var scopedQuery = filteredQuery.FilterByTagsAndDeviceGroups(
+      requestDto.TagIds,
+      requestDto.TagFilterMatchMode,
+      requestDto.DeviceGroupIds,
+      requestDto.DeviceGroupFilterMatchMode,
+      requestDto.IncludeUntaggedDevices);
+
     var hiddenUntaggedDevices = requestDto.IncludeUntaggedDevices
       ? 0
-      : await filteredQuery.CountAsync(x => !x.Tags!.Any());
+      : await scopedQuery.CountAsync(x => !x.Tags!.Any());
 
-    var scopedQuery = filteredQuery.FilterByTagIds(requestDto.TagIds, requestDto.IncludeUntaggedDevices);
     var filterCounts = await GetFilterCounts(scopedQuery);
     var totalCount = await scopedQuery.CountAsync();
 

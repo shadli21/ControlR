@@ -28,11 +28,7 @@
 
   <MudPaper Elevation="0" Class="pa-3 mb-3">
     <div class="dashboard-toolbar-main">
-      <div class="dashboard-scope-controls">
-        <div class="dashboard-tags-selector">
-          <UserTagsSelector @bind-SelectedTags:get="_selectedTags" @bind-SelectedTags:set="@OnSelectedTagsChanged" />
-        </div>
-
+      <div class="dashboard-filter-fields">
         <div class="dashboard-customer-filter">
           <MudSelect T="Guid" MultiSelection="true"
                      SelectedValues="_selectedCustomerIds"
@@ -51,16 +47,60 @@
           </MudSelect>
         </div>
 
-        <div class="dashboard-toolbar-options">
-          <MudCheckBox T="bool" Value="_includeUntaggedDevices" ValueChanged="IncludeUntaggedDevicesChanged"
-                       Label="Include untagged" Class="dashboard-checkbox" />
+        <div class="dashboard-device-group-filter">
+          <MudSelect T="Guid" MultiSelection="true"
+                     SelectedValues="_selectedDeviceGroupIds"
+                     SelectedValuesChanged="OnSelectedDeviceGroupsChanged"
+                     Label="Filter by device group"
+                     Dense="true"
+                     MultiSelectionTextFunc="@GetDeviceGroupMultiSelectText"
+                     Text="@GetDeviceGroupSelectText()"
+                     AdornmentIcon="@Icons.Material.Filled.Devices" Adornment="Adornment.End"
+                     Clearable="true">
 
-          <MudCheckBox T="bool" Value="_hideOfflineDevices" ValueChanged="HideOfflineDevicesChanged"
-                       Label="Hide offline" Disabled="ShouldBypassHideOfflineDevices" Class="dashboard-checkbox" />
-
-          <MudCheckBox T="bool" Value="_openDeviceInNewTab" ValueChanged="OpenDeviceInNewTabChanged"
-                       Label="Open in new tab" Class="dashboard-checkbox" />
+            @foreach (var group in _deviceGroups)
+            {
+              <MudSelectItem T="Guid" Value="@group.Id">@group.Name</MudSelectItem>
+            }
+          </MudSelect>
         </div>
+
+        <div class="dashboard-tags-selector">
+          <UserTagsSelector @bind-SelectedTags:get="_selectedTags" @bind-SelectedTags:set="@OnSelectedTagsChanged" />
+        </div>
+      </div>
+
+      <div class="dashboard-toolbar-options">
+        <div class="dashboard-combine-control">
+          <MudText Typo="Typo.caption" Class="dashboard-combine-label">Match tags</MudText>
+          <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
+                          Value="_tagFilterMatchMode"
+                          ValueChanged="OnTagFilterMatchModeChanged"
+                          Outlined="true" Color="Color.Primary" Size="Size.Small">
+            <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="OR" />
+            <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="AND" />
+          </MudToggleGroup>
+        </div>
+
+        <div class="dashboard-combine-control">
+          <MudText Typo="Typo.caption" Class="dashboard-combine-label">Match groups</MudText>
+          <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
+                          Value="_deviceGroupFilterMatchMode"
+                          ValueChanged="OnDeviceGroupFilterMatchModeChanged"
+                          Outlined="true" Color="Color.Primary" Size="Size.Small">
+            <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="OR" />
+            <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="AND" />
+          </MudToggleGroup>
+        </div>
+
+        <MudCheckBox T="bool" Value="_includeUntaggedDevices" ValueChanged="IncludeUntaggedDevicesChanged"
+                     Label="Include untagged" Class="dashboard-checkbox" />
+
+        <MudCheckBox T="bool" Value="_hideOfflineDevices" ValueChanged="HideOfflineDevicesChanged"
+                     Label="Hide offline" Disabled="ShouldBypassHideOfflineDevices" Class="dashboard-checkbox" />
+
+        <MudCheckBox T="bool" Value="_openDeviceInNewTab" ValueChanged="OpenDeviceInNewTabChanged"
+                     Label="Open in new tab" Class="dashboard-checkbox" />
       </div>
     </div>
 

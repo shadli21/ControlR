@@ -11011,6 +11011,19 @@
               "format": "uuid"
             }
           },
+          "deviceGroupFilterMatchMode": {
+            "$ref": "#/components/schemas/FilterMatchMode"
+          },
+          "deviceGroupIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           "filterDefinitions": {
             "type": [
               "null",
@@ -11050,6 +11063,9 @@
             "items": {
               "$ref": "#/components/schemas/DeviceColumnSort"
             }
+          },
+          "tagFilterMatchMode": {
+            "$ref": "#/components/schemas/FilterMatchMode"
           },
           "tagIds": {
             "type": [
@@ -11399,6 +11415,9 @@
             "format": "int64"
           }
         }
+      },
+      "FilterMatchMode": {
+        "type": "integer"
       },
       "ForgotPasswordRequest": {
         "required": [

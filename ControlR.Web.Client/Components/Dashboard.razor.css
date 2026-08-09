@@ -27,31 +27,25 @@
 
 .dashboard-toolbar-main {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 1.5rem;
-  align-items: end;
-}
-
-.dashboard-scope-controls {
-  display: flex;
   flex-direction: column;
   flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.dashboard-filter-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 0.75rem;
-  align-items: stretch;
-  flex: 1 1 420px;
+  align-items: end;
+  width: 100%;
   min-width: 0;
 }
 
-.dashboard-tags-selector {
+.dashboard-tags-selector,
+.dashboard-customer-filter,
+.dashboard-device-group-filter {
   width: 100%;
-  min-width: 240px;
-  max-width: 420px;
-}
-
-.dashboard-customer-filter {
-  width: 100%;
-  min-width: 240px;
-  max-width: 420px;
+  min-width: 0;
 }
 
 .dashboard-toolbar-options {
@@ -61,6 +55,17 @@
   align-items: center;
   width: 100%;
   min-width: 0;
+}
+
+.dashboard-combine-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
+.dashboard-combine-label {
+  line-height: 1;
 }
 
 .dashboard-pager-stats {
@@ -100,14 +105,6 @@
 
   ::deep .dashboard-search {
     min-width: 0;
-  }
-
-  .dashboard-tags-selector {
-    max-width: none;
-  }
-
-  .dashboard-customer-filter {
-    max-width: none;
   }
 
   .dashboard-toolbar-options {

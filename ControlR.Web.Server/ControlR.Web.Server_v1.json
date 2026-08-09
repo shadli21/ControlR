@@ -2610,6 +2610,19 @@
       "DeviceSearchRequestDto": {
         "type": "object",
         "properties": {
+          "deviceGroupFilterMatchMode": {
+            "$ref": "#/components/schemas/FilterMatchMode"
+          },
+          "deviceGroupIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           "filterDefinitions": {
             "type": [
               "null",
@@ -2653,6 +2666,9 @@
             "items": {
               "$ref": "#/components/schemas/DeviceColumnSort"
             }
+          },
+          "tagFilterMatchMode": {
+            "$ref": "#/components/schemas/FilterMatchMode"
           },
           "tagIds": {
             "type": [
@@ -2746,6 +2762,9 @@
           "CDRom",
           "Ram"
         ]
+      },
+      "FilterMatchMode": {
+        "type": "integer"
       },
       "GetTenantResponseDto": {
         "required": [

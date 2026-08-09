@@ -120,6 +120,7 @@ public static class DeviceQueryExtensions
     }
     return query;
   }
+
   public static IQueryable<Device> FilterBySearchText(
     this IQueryable<Device> query,
     string? searchText,
@@ -136,8 +137,8 @@ public static class DeviceQueryExtensions
           EF.Functions.ILike(d.Name ?? "", $"%{searchText}%") ||
           EF.Functions.ILike(d.Alias ?? "", $"%{searchText}%") ||
           EF.Functions.ILike(d.DnsHostName ?? "", $"%{searchText}%") ||
-          // Maybe add these back when surfaced in the UI.
-          //EF.Functions.ILike(d.OsDescription ?? "", $"%{searchText}%") ||
+          EF.Functions.ILike(d.OsDescription ?? "", $"%{searchText}%") ||
+          // Maybe add this back when surfaced in the UI.
           //EF.Functions.ILike(d.ConnectionId ?? "", $"%{searchText}%") ||
           EF.Functions.ILike(string.Join("", d.CurrentUsers) ?? "", $"%{searchText}%"));
     }
@@ -146,27 +147,43 @@ public static class DeviceQueryExtensions
       d.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
       d.Alias.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
       d.DnsHostName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-      // Maybe add these back when surfaced in the UI.
-      //d.OsDescription.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+      d.OsDescription.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+      // Maybe add this back when surfaced in the UI.
       //d.ConnectionId.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
       string.Join("", d.CurrentUsers).Contains(searchText, StringComparison.OrdinalIgnoreCase));
   }
 
-  public static IQueryable<Device> FilterByTagIds(
+  public static IQueryable<Device> FilterByTagsAndDeviceGroups(
     this IQueryable<Device> query,
     List<Guid>? tagIds,
+    FilterMatchMode tagMode,
+    List<Guid>? deviceGroupIds,
+    FilterMatchMode deviceGroupMode,
     bool includeUntaggedDevices)
   {
-    if (tagIds is not { Count: > 0 })
+    var hasTags = tagIds is { Count: > 0 };
+    var hasGroups = deviceGroupIds is { Count: > 0 };
+
+    if (!hasTags && !hasGroups)
     {
       return includeUntaggedDevices
         ? query.Where(d => !d.Tags!.Any())
         : query;
     }
 
-    return includeUntaggedDevices
-      ? query.Where(d => d.Tags!.Any(t => tagIds.Contains(t.Id)) || !d.Tags!.Any())
-      : query.Where(d => d.Tags!.Any(t => tagIds.Contains(t.Id)));
+    if (hasTags && hasGroups)
+    {
+      var tagPredicate = BuildTagMatchPredicate(tagIds, tagMode, includeUntaggedDevices);
+      var groupPredicate = BuildDeviceGroupMatchPredicate(deviceGroupIds, deviceGroupMode);
+      return query.Where(CombinePredicates(tagPredicate, groupPredicate));
+    }
+
+    if (hasTags)
+    {
+      return query.Where(BuildTagMatchPredicate(tagIds, tagMode, includeUntaggedDevices));
+    }
+
+    return query.Where(BuildDeviceGroupMatchPredicate(deviceGroupIds, deviceGroupMode));
   }
 
   private static IOrderedQueryable<Device> ApplySort<TKey>(
@@ -195,6 +212,20 @@ public static class DeviceQueryExtensions
       : Expression.Not(propertyExpression);
 
     return Expression.Lambda<Func<Device, bool>>(comparisonExpression, parameter);
+  }
+
+  private static Expression<Func<Device, bool>> BuildDeviceGroupMatchPredicate(
+    List<Guid>? deviceGroupIds,
+    FilterMatchMode mode)
+  {
+    if (mode == FilterMatchMode.All)
+    {
+      return d =>
+        d.DeviceGroupMembers!.Any() &&
+        deviceGroupIds!.All(id => d.DeviceGroupMembers!.Any(m => m.DeviceGroupId == id));
+    }
+
+    return d => d.DeviceGroupMembers!.Any(m => deviceGroupIds!.Contains(m.DeviceGroupId));
   }
 
   private static Expression<Func<Device, bool>> BuildDoubleExpression(
@@ -227,6 +258,33 @@ public static class DeviceQueryExtensions
     return Expression.Lambda<Func<Device, bool>>(replacedCondition!, parameter);
   }
 
+  private static Expression<Func<Device, bool>> BuildTagMatchPredicate(
+    List<Guid>? tagIds,
+    FilterMatchMode mode,
+    bool includeUntaggedDevices)
+  {
+    if (mode == FilterMatchMode.All)
+    {
+      return d =>
+        (d.Tags!.Any() && tagIds!.All(id => d.Tags!.Any(t => t.Id == id))) ||
+        (includeUntaggedDevices && !d.Tags!.Any());
+    }
+
+    return d =>
+      d.Tags!.Any(t => tagIds!.Contains(t.Id)) ||
+      (includeUntaggedDevices && !d.Tags!.Any());
+  }
+
+  private static Expression<Func<Device, bool>> CombinePredicates(
+    Expression<Func<Device, bool>> left,
+    Expression<Func<Device, bool>> right)
+  {
+    var parameter = left.Parameters[0];
+    var rightBody = new ParameterReplacerVisitor(right.Parameters[0], parameter).Visit(right.Body)!;
+    return Expression.Lambda<Func<Device, bool>>(
+      Expression.AndAlso(left.Body, rightBody), parameter);
+  }
+
   private static IQueryable<Device> FilterByBooleanColumn(
     this IQueryable<Device> query,
     string filterOperator,
@@ -250,6 +308,7 @@ public static class DeviceQueryExtensions
         return query;
     }
   }
+
   private static IQueryable<Device> FilterByDoubleColumn(
     this IQueryable<Device> query,
     string filterOperator,
@@ -356,6 +415,7 @@ public static class DeviceQueryExtensions
       }
     }
   }
+
   private class ParameterReplacerVisitor(ParameterExpression oldParameter, Expression newExpression) : ExpressionVisitor
   {
     private readonly Expression _newExpression = newExpression;

@@ -5,6 +5,8 @@ namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 public class DeviceSearchRequestDto
 {
   public List<Guid>? CustomerIds { get; set; }
+  public FilterMatchMode DeviceGroupFilterMatchMode { get; set; }
+  public List<Guid>? DeviceGroupIds { get; set; }
   public List<DeviceColumnFilter>? FilterDefinitions { get; set; }
   public bool HideOfflineDevices { get; set; }
   public bool IncludeUntaggedDevices { get; set; }
@@ -12,5 +14,6 @@ public class DeviceSearchRequestDto
   public int PageSize { get; set; }
   public string? SearchText { get; set; }
   public List<DeviceColumnSort>? SortDefinitions { get; set; }
+  public FilterMatchMode TagFilterMatchMode { get; set; }
   public List<Guid>? TagIds { get; set; }
 }

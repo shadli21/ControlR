@@ -22,6 +22,8 @@ public partial class Dashboard : IAsyncDisposable
   private bool? _anyDevicesForUser;
   private List<CustomerDto> _customers = [];
   private MudDataGrid<DeviceViewModel>? _dataGrid;
+  private FilterMatchMode _deviceGroupFilterMatchMode = FilterMatchMode.Any;
+  private List<DeviceGroupDto> _deviceGroups = [];
   private DeviceSearchFilterCountsDto _filterCounts = new();
   private int _hiddenUntaggedDevices;
   private bool _hideOfflineDevices;
@@ -31,8 +33,10 @@ public partial class Dashboard : IAsyncDisposable
   private int _rowsPerPage = 25;
   private string? _searchText;
   private HashSet<Guid> _selectedCustomerIds = [];
+  private HashSet<Guid> _selectedDeviceGroupIds = [];
   private ImmutableArray<TagViewModel> _selectedTags = [];
   private HashSet<Guid> _subscribedDeviceIds = [];
+  private FilterMatchMode _tagFilterMatchMode = FilterMatchMode.Any;
   private int _totalFilteredDevices;
 
   [Inject]
@@ -132,6 +136,12 @@ public partial class Dashboard : IAsyncDisposable
         _customers = [.. customersResult.Value];
       }
 
+      var deviceGroupsResult = await ControlrApi.Internal.DeviceGroups.GetAll();
+      if (deviceGroupsResult.IsSuccess)
+      {
+        _deviceGroups = [.. deviceGroupsResult.Value];
+      }
+
       _disposables.AddRange(
         Messenger.Register<HubConnectionStateChangedMessage>(this, HandleHubConnectionStateChangedMessage),
         Messenger.Register<DtoReceivedMessage<DeviceResponseDto>>(this, HandleDeviceDtoReceived)
@@ -166,6 +176,26 @@ public partial class Dashboard : IAsyncDisposable
     }
     var tagNoun = _selectedCustomerIds.Count > 1 ? "customers" : "customer";
     return $"{_selectedCustomerIds.Count} {tagNoun} selected";
+  }
+
+  private string GetDeviceGroupMultiSelectText(IReadOnlyList<string> deviceGroups)
+  {
+    if (deviceGroups.Count == 0)
+    {
+      return string.Empty;
+    }
+    var groupNoun = deviceGroups.Count > 1 ? "groups" : "group";
+    return $"{deviceGroups.Count} {groupNoun} selected";
+  }
+
+  private string GetDeviceGroupSelectText()
+  {
+    if (_selectedDeviceGroupIds.Count == 0)
+    {
+      return string.Empty;
+    }
+    var groupNoun = _selectedDeviceGroupIds.Count > 1 ? "groups" : "group";
+    return $"{_selectedDeviceGroupIds.Count} {groupNoun} selected";
   }
 
   private async Task HandleDeviceDtoReceived(object subscriber, DtoReceivedMessage<DeviceResponseDto> message)
@@ -276,6 +306,9 @@ public partial class Dashboard : IAsyncDisposable
       IncludeUntaggedDevices = _includeUntaggedDevices,
       TagIds = tagIds,
       CustomerIds = _selectedCustomerIds.Count > 0 ? [.. _selectedCustomerIds] : null,
+      DeviceGroupIds = _selectedDeviceGroupIds.Count > 0 ? [.. _selectedDeviceGroupIds] : null,
+      DeviceGroupFilterMatchMode = _deviceGroupFilterMatchMode,
+      TagFilterMatchMode = _tagFilterMatchMode,
       Page = state.Page,
       PageSize = state.PageSize,
       SortDefinitions = [.. state.SortDefinitions
@@ -335,6 +368,12 @@ public partial class Dashboard : IAsyncDisposable
     };
   }
 
+  private async Task OnDeviceGroupFilterMatchModeChanged(FilterMatchMode mode)
+  {
+    _deviceGroupFilterMatchMode = mode;
+    await ReloadGridData();
+  }
+
   private async Task OnSearch(string text)
   {
     _searchText = text;
@@ -347,9 +386,21 @@ public partial class Dashboard : IAsyncDisposable
     await ReloadGridData();
   }
 
+  private async Task OnSelectedDeviceGroupsChanged(IEnumerable<Guid> deviceGroupIds)
+  {
+    _selectedDeviceGroupIds = [.. deviceGroupIds];
+    await ReloadGridData();
+  }
+
   private async Task OnSelectedTagsChanged(ImmutableArray<TagViewModel> tags)
   {
     _selectedTags = [.. tags];
+    await ReloadGridData();
+  }
+
+  private async Task OnTagFilterMatchModeChanged(FilterMatchMode mode)
+  {
+    _tagFilterMatchMode = mode;
     await ReloadGridData();
   }
 
