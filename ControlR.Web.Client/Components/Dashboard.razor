@@ -29,7 +29,7 @@
   <MudPaper Elevation="0" Class="pa-3 mb-3">
     <div class="dashboard-toolbar-main">
       <div class="dashboard-filter-fields">
-        <div class="dashboard-customer-filter">
+        <div class="dashboard-filter-field">
           <MudSelect T="Guid" MultiSelection="true"
                      SelectedValues="_selectedCustomerIds"
                      SelectedValuesChanged="OnSelectedCustomersChanged"
@@ -47,7 +47,7 @@
           </MudSelect>
         </div>
 
-        <div class="dashboard-device-group-filter">
+        <div class="dashboard-filter-field">
           <MudSelect T="Guid" MultiSelection="true"
                      SelectedValues="_selectedDeviceGroupIds"
                      SelectedValuesChanged="OnSelectedDeviceGroupsChanged"
@@ -63,36 +63,36 @@
               <MudSelectItem T="Guid" Value="@group.Id">@group.Name</MudSelectItem>
             }
           </MudSelect>
+
+          <div class="dashboard-filter-match">
+            <MudText Typo="Typo.caption" Class="dashboard-filter-match-label">Match</MudText>
+            <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
+                            Value="_deviceGroupFilterMatchMode"
+                            ValueChanged="OnDeviceGroupFilterMatchModeChanged"
+                            Outlined="true" Color="Color.Primary" Size="Size.Small">
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="any" />
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="all" />
+            </MudToggleGroup>
+          </div>
         </div>
 
-        <div class="dashboard-tags-selector">
+        <div class="dashboard-filter-field">
           <UserTagsSelector @bind-SelectedTags:get="_selectedTags" @bind-SelectedTags:set="@OnSelectedTagsChanged" />
+
+          <div class="dashboard-filter-match">
+            <MudText Typo="Typo.caption" Class="dashboard-filter-match-label">Match</MudText>
+            <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
+                            Value="_tagFilterMatchMode"
+                            ValueChanged="OnTagFilterMatchModeChanged"
+                            Outlined="true" Color="Color.Primary" Size="Size.Small">
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="any" />
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="all" />
+            </MudToggleGroup>
+          </div>
         </div>
       </div>
 
       <div class="dashboard-toolbar-options">
-        <div class="dashboard-combine-control">
-          <MudText Typo="Typo.caption" Class="dashboard-combine-label">Match tags</MudText>
-          <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
-                          Value="_tagFilterMatchMode"
-                          ValueChanged="OnTagFilterMatchModeChanged"
-                          Outlined="true" Color="Color.Primary" Size="Size.Small">
-            <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="OR" />
-            <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="AND" />
-          </MudToggleGroup>
-        </div>
-
-        <div class="dashboard-combine-control">
-          <MudText Typo="Typo.caption" Class="dashboard-combine-label">Match groups</MudText>
-          <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
-                          Value="_deviceGroupFilterMatchMode"
-                          ValueChanged="OnDeviceGroupFilterMatchModeChanged"
-                          Outlined="true" Color="Color.Primary" Size="Size.Small">
-            <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="OR" />
-            <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="AND" />
-          </MudToggleGroup>
-        </div>
-
         <MudCheckBox T="bool" Value="_includeUntaggedDevices" ValueChanged="IncludeUntaggedDevicesChanged"
                      Label="Include untagged" Class="dashboard-checkbox" />
 

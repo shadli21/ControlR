@@ -4,11 +4,13 @@ using System.Runtime.InteropServices;
 using System.Security.Claims;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos;
 using ControlR.Libraries.Api.Contracts.Dtos.Devices;
+using ControlR.Libraries.Api.Contracts.FilterSort;
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.DeviceManagement;
 using ControlR.Web.Server.Tests.Helpers;
@@ -411,6 +413,67 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.True(device.IsOnline);
     Assert.NotNull(device.TagIds);
     Assert.Contains(tagId, device.TagIds!);
+  }
+
+  [Fact]
+  public void SearchDevices_TagAndDeviceGroupMatchModes_CombineCorrectly()
+  {
+    // Exercises FilterByTagsAndDeviceGroups, the shared helper both the Internal and
+    // V1 search endpoints delegate to. LINQ-to-objects avoids the EF in-memory provider's
+    // inability to translate List.All(...) sub-queries, which the relational SQL does support.
+    var tagA = Guid.NewGuid();
+    var tagB = Guid.NewGuid();
+    var groupX = Guid.NewGuid();
+    var groupY = Guid.NewGuid();
+
+    Device Dev(Guid[] tags, Guid[] groups) => new()
+    {
+      Id = Guid.NewGuid(),
+      Tags = tags.Select(t => new Tag { Id = t, Name = t.ToString() }).ToList(),
+      DeviceGroupMembers = groups.Select(g => new DeviceGroupMember { DeviceGroupId = g }).ToList()
+    };
+
+    // d1: tag A, group X | d2: A+B, X | d3: A, X+Y | d4: B, Y | d5: A+B, X+Y
+    var devices = new[]
+    {
+      Dev([tagA], [groupX]),
+      Dev([tagA, tagB], [groupX]),
+      Dev([tagA], [groupX, groupY]),
+      Dev([tagB], [groupY]),
+      Dev([tagA, tagB], [groupX, groupY])
+    }.AsQueryable();
+
+    int Count(List<Guid>? tags, FilterMatchMode tagMode, List<Guid>? groups, FilterMatchMode groupMode, bool includeUntagged = false)
+      => devices
+        .FilterByTagsAndDeviceGroups(tags, tagMode, groups, groupMode, includeUntagged)
+        .Count();
+
+    // Tags, Any over [A,B]: every device carries at least one → 5.
+    Assert.Equal(5, Count([tagA, tagB], FilterMatchMode.Any, null, FilterMatchMode.Any));
+    // Tags, All over [A,B]: only BOTH A and B → d2, d5 → 2.
+    Assert.Equal(2, Count([tagA, tagB], FilterMatchMode.All, null, FilterMatchMode.Any));
+    // Groups, Any over [X,Y]: every device is in a group → 5.
+    Assert.Equal(5, Count(null, FilterMatchMode.Any, [groupX, groupY], FilterMatchMode.Any));
+    // Groups, All over [X,Y]: only BOTH X and Y → d3, d5 → 2.
+    Assert.Equal(2, Count(null, FilterMatchMode.Any, [groupX, groupY], FilterMatchMode.All));
+    // Cross, Tags Any [A] + Groups Any [Y]: has A and in Y → d3, d5 → 2.
+    Assert.Equal(2, Count([tagA], FilterMatchMode.Any, [groupY], FilterMatchMode.Any));
+    // Cross, Tags All [A,B] + Groups All [X,Y]: only d5 → 1.
+    Assert.Equal(1, Count([tagA, tagB], FilterMatchMode.All, [groupX, groupY], FilterMatchMode.All));
+    // Default (Any) Tags [A]: d1, d2, d3, d5 → 4.
+    Assert.Equal(4, Count([tagA], FilterMatchMode.Any, null, FilterMatchMode.Any));
+
+    // Include untagged with Tags All [A]: matching tagged devices + the untagged one → 5.
+    var untagged = new Device
+    {
+      Id = Guid.NewGuid(),
+      Tags = [],
+      DeviceGroupMembers = []
+    };
+    var withUntagged = devices.Concat([untagged]).AsQueryable();
+    Assert.Equal(
+      5,
+      withUntagged.FilterByTagsAndDeviceGroups([tagA], FilterMatchMode.All, null, FilterMatchMode.Any, includeUntaggedDevices: true).Count());
   }
 
   [Fact]

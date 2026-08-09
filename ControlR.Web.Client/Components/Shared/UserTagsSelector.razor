@@ -3,7 +3,8 @@
 
 @inject ITagStore TagStore
 
-<MudSelect T="string" MultiSelection="true" QuickSearchInterval="@(TimeSpan.FromMilliseconds(50))" Text="@GetText()"
+<MudSelect T="string" MultiSelection="true" QuickSearchInterval="@(TimeSpan.FromMilliseconds(50))" Label="Filter by tags"
+           Text="@GetText()"
            MultiSelectionTextFunc="@GetTagsMultiSelectText" AdornmentIcon="@Icons.Material.Filled.Tag" Adornment="Adornment.End"
            SelectedValues="_selectedTagNames" SelectedValuesChanged="HandleSelectedTagsChanged" SelectAll="true" FullWidth="true"
            SelectAllText="All Tags" Immediate="true">
@@ -45,7 +46,7 @@
   {
     if (tags.Count == 0)
     {
-      return "No tags selected";
+      return string.Empty;
     }
 
     if (_selectedTagNames.Count == TagStore.Items.Count)
@@ -61,7 +62,7 @@
   {
     if (_selectedTagNames.Count == 0)
     {
-      return "No tag filter";
+      return string.Empty;
     }
 
     if (_selectedTagNames.Count == TagStore.Items.Count)
