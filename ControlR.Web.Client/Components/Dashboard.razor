@@ -69,9 +69,10 @@
             <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
                             Value="_deviceGroupFilterMatchMode"
                             ValueChanged="OnDeviceGroupFilterMatchModeChanged"
-                            Outlined="true" Color="Color.Primary" Size="Size.Small">
-              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="any" />
-              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="all" />
+                            Outlined="true" Color="Color.Primary" Size="Size.Small"
+                            Class="dashboard-filter-match-toggle">
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="Any" />
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="All" />
             </MudToggleGroup>
           </div>
         </div>
@@ -84,9 +85,10 @@
             <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
                             Value="_tagFilterMatchMode"
                             ValueChanged="OnTagFilterMatchModeChanged"
-                            Outlined="true" Color="Color.Primary" Size="Size.Small">
-              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="any" />
-              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="all" />
+                            Outlined="true" Color="Color.Primary" Size="Size.Small"
+                            Class="dashboard-filter-match-toggle">
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="Any" />
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="All" />
             </MudToggleGroup>
           </div>
         </div>

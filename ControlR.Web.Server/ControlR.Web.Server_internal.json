@@ -9816,11 +9816,19 @@
       },
       "AssignCustomerDevicesRequestDto": {
         "required": [
-          "deviceIds"
+          "deviceIds",
+          "removeDeviceIds"
         ],
         "type": "object",
         "properties": {
           "deviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "removeDeviceIds": {
             "type": "array",
             "items": {
               "type": "string",

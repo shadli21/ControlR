@@ -11,7 +11,7 @@ namespace ControlR.Web.Server.Services.Customers;
 public interface ICustomerManager
 {
   Task<HttpResult> AssignDevices(
-    Guid customerId, List<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid customerId, List<Guid> deviceIds, List<Guid>? removeDeviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.CustomerDto>> Create(
     string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult> Delete(
@@ -28,7 +28,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
   private readonly AppDb _appDb = appDb;
 
   public async Task<HttpResult> AssignDevices(
-    Guid customerId, List<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid customerId, List<Guid> deviceIds, List<Guid>? removeDeviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
   {
     var customerExists = await _appDb.Customers
       .AnyAsync(x => x.Id == customerId && x.TenantId == tenantId, cancellationToken);
@@ -38,23 +38,44 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
       return HttpResult.Fail(HttpResultErrorCode.NotFound, "Customer not found.");
     }
 
-    if (deviceIds.Count == 0)
+    var totalAffected = 0;
+
+    if (deviceIds.Count > 0)
+    {
+      var devices = await _appDb.Devices
+        .Where(x => x.TenantId == tenantId && deviceIds.Contains(x.Id))
+        .ToListAsync(cancellationToken);
+
+      if (devices.Count != deviceIds.Count)
+      {
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, "One or more devices were not found in this tenant.");
+      }
+
+      foreach (var device in devices)
+      {
+        device.CustomerId = customerId;
+      }
+
+      totalAffected += devices.Count;
+    }
+
+    if (removeDeviceIds is { Count: > 0 })
+    {
+      var removals = await _appDb.Devices
+        .Where(x => x.TenantId == tenantId && x.CustomerId == customerId && removeDeviceIds.Contains(x.Id))
+        .ToListAsync(cancellationToken);
+
+      foreach (var device in removals)
+      {
+        device.CustomerId = null;
+      }
+
+      totalAffected += removals.Count;
+    }
+
+    if (totalAffected == 0)
     {
       return HttpResult.Ok();
-    }
-
-    var devices = await _appDb.Devices
-      .Where(x => x.TenantId == tenantId && deviceIds.Contains(x.Id))
-      .ToListAsync(cancellationToken);
-
-    if (devices.Count != deviceIds.Count)
-    {
-      return HttpResult.Fail(HttpResultErrorCode.BadRequest, "One or more devices were not found in this tenant.");
-    }
-
-    foreach (var device in devices)
-    {
-      device.CustomerId = customerId;
     }
 
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
@@ -64,7 +85,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
       AuthorizationChangeLogTargetTypes.Customer,
       customerId.ToString(),
       tenantId,
-      after: new CustomerDeviceAssignmentChange(devices.Count)));
+      after: new CustomerDeviceAssignmentChange(totalAffected)));
 
     await _appDb.SaveChangesAsync(cancellationToken);
 

@@ -33,4 +33,5 @@ public record CustomerDto(
   int DeviceCount);
 
 public record AssignCustomerDevicesRequestDto(
-  List<Guid> DeviceIds);
+  List<Guid> DeviceIds,
+  List<Guid> RemoveDeviceIds);

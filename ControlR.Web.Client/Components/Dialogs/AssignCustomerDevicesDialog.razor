@@ -20,11 +20,9 @@
         <MudPaper MaxHeight="350px" Class="overflow-y-auto pa-2">
           @foreach (var device in _devices)
           {
-            var isAssigned = device.CustomerId == CustomerId;
             <MudCheckBox T="bool"
-                         Value="@(isAssigned || _selectedIds.Contains(device.Id))"
-                         ValueChanged="@(v => ToggleSelection(device.Id, v))"
-                         Disabled="@isAssigned"
+                         Value="@IsChecked(device)"
+                         ValueChanged="@(v => ToggleSelection(device, v))"
                          Color="Color.Primary"
                          Dense="true">
               @DeviceDisplay.GetFullDisplayName(device)
@@ -42,8 +40,8 @@
   </DialogContent>
   <DialogActions>
     <MudButton OnClick="Cancel">Cancel</MudButton>
-    <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="Assign" Disabled="@(_selectedIds.Count == 0)">
-      Assign (@_selectedIds.Count)
+    <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="Assign" Disabled="@(!HasChanges)">
+      Save changes (@TotalChanges)
     </MudButton>
   </DialogActions>
 </MudDialog>

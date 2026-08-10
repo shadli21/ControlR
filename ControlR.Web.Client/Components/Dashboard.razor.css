@@ -61,6 +61,14 @@
   color: var(--mud-palette-text-secondary);
 }
 
+
+::deep .dashboard-filter-match-toggle .mud-toggle-item {
+  padding: 0 0.5rem;
+  font-size: 0.65rem;
+  text-transform: none;
+}
+
+
 .dashboard-toolbar-options {
   display: flex;
   flex-wrap: wrap;

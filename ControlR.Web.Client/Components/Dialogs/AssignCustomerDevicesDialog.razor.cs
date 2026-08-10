@@ -7,11 +7,13 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
 {
   private const int PageSize = 10;
 
+  private readonly HashSet<Guid> _removedIds = [];
+  private readonly HashSet<Guid> _selectedIds = [];
+
   private int _currentPage = 1;
   private List<DeviceResponseDto> _devices = [];
   private bool _loading;
   private string _searchText = string.Empty;
-  private HashSet<Guid> _selectedIds = [];
   private int _totalPages = 1;
 
   [Inject]
@@ -29,6 +31,9 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
+  private bool HasChanges => _selectedIds.Count > 0 || _removedIds.Count > 0;
+  private int TotalChanges => _selectedIds.Count + _removedIds.Count;
+
   protected override async Task OnInitializedAsync()
   {
     await LoadDevices();
@@ -39,7 +44,8 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
     try
     {
       var result = await ControlrApi.Internal.Customers.AssignDevices(
-        CustomerId, new InternalDtos.AssignCustomerDevicesRequestDto([.. _selectedIds]));
+        CustomerId,
+        new InternalDtos.AssignCustomerDevicesRequestDto([.. _selectedIds], [.. _removedIds]));
 
       if (!result.IsSuccess)
       {
@@ -47,7 +53,17 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
         return;
       }
 
-      Snackbar.Add($"Assigned {_selectedIds.Count} device(s)", Severity.Success);
+      var changes = new List<string>();
+      if (_selectedIds.Count > 0)
+      {
+        changes.Add($"{_selectedIds.Count} assigned");
+      }
+      if (_removedIds.Count > 0)
+      {
+        changes.Add($"{_removedIds.Count} unassigned");
+      }
+
+      Snackbar.Add(string.Join(" and ", changes), Severity.Success);
       MudDialog.Close(DialogResult.Ok(true));
     }
     catch (Exception ex)
@@ -58,6 +74,17 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
   }
 
   private void Cancel() => MudDialog.Cancel();
+
+  private bool IsChecked(DeviceResponseDto device)
+  {
+    if (_removedIds.Contains(device.Id))
+    {
+      return false;
+    }
+
+    return (device.CustomerId.HasValue && device.CustomerId.Value == CustomerId) ||
+      _selectedIds.Contains(device.Id);
+  }
 
   private async Task LoadDevices()
   {
@@ -109,15 +136,29 @@ public partial class AssignCustomerDevicesDialog : ComponentBase
     await LoadDevices();
   }
 
-  private void ToggleSelection(Guid deviceId, bool isSelected)
+  private void ToggleSelection(DeviceResponseDto device, bool isSelected)
   {
-    if (isSelected)
+    if (!device.CustomerId.HasValue || device.CustomerId.Value != CustomerId)
     {
-      _selectedIds.Add(deviceId);
+      if (isSelected)
+      {
+        _selectedIds.Add(device.Id);
+      }
+      else
+      {
+        _selectedIds.Remove(device.Id);
+      }
     }
     else
     {
-      _selectedIds.Remove(deviceId);
+      if (isSelected)
+      {
+        _removedIds.Remove(device.Id);
+      }
+      else
+      {
+        _removedIds.Add(device.Id);
+      }
     }
   }
 }

@@ -29,7 +29,7 @@ public class CustomersController(ICustomerManager customerManager) : ControllerB
     }
 
     var result = await _customerManager.AssignDevices(
-      customerId, request.DeviceIds, tenantId, userId, cancellationToken);
+      customerId, request.DeviceIds, request.RemoveDeviceIds, tenantId, userId, cancellationToken);
 
     if (!result.IsSuccess)
     {
