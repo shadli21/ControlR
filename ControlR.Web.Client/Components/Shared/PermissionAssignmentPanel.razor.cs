@@ -201,7 +201,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
   private PermissionScopeKind BroadestLegalScope(string permissionName)
   {
     var entry = PermissionCatalogStore.Items.FirstOrDefault(p => p.Name == permissionName);
-    if (entry?.AllowedScopeKinds is { Length: > 0 } kinds)
+    if (entry?.AllowedScopeKinds is { Count: > 0 } kinds)
     {
       return kinds.MaxBy(Breadth);
     }

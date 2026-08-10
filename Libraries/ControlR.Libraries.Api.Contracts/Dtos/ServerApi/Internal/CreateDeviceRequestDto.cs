@@ -7,5 +7,5 @@ public record CreateDeviceRequestDto(
   DeviceUpdateRequestDto Device,
   Guid InstallerKeyId,
   string InstallerKeySecret,
-  Guid[]? TagIds = null,
+  IReadOnlyList<Guid>? TagIds = null,
   string? PublicKey = null);

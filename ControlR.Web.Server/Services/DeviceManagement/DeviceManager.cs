@@ -27,7 +27,7 @@ public interface IDeviceManager
   ///   If an empty array is provided, all tags will be removed, if any exist.
   /// </param>
   /// <returns>The added or updated <see cref="Device"/> entity.</returns>
-  Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, Guid[]? tagIds = null, string? publicKeyBase64 = null);
+  Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null);
 
   /// <summary>
   /// Determines whether the specified user is authorized to install an agent on the given device.
@@ -64,7 +64,7 @@ public interface IDeviceManager
   ///   A <see cref="Result{Device}"/> containing the updated device if successful,
   ///   or a failure result if the device does not exist.
   /// </returns>
-  Task<Result<Device>> UpdateDevice(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, Guid[]? tagIds = null, string? publicKeyBase64 = null);
+  Task<Result<Device>> UpdateDevice(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null);
 }
 
 public class DeviceManager(
@@ -80,7 +80,7 @@ public class DeviceManager(
   private readonly ILogger<DeviceManager> _logger = logger;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
 
-  public async Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, Guid[]? tagIds = null, string? publicKeyBase64 = null)
+  public async Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null)
   {
     var entity = await _appDb.Devices
       .IgnoreQueryFilters()
@@ -133,7 +133,7 @@ public class DeviceManager(
     return Result.Ok(entity);
   }
 
-  public async Task<Result<Device>> UpdateDevice(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, Guid[]? tagIds = null, string? publicKeyBase64 = null)
+  public async Task<Result<Device>> UpdateDevice(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null)
   {
     var entity = await _appDb.Devices
       .IgnoreQueryFilters()
@@ -218,7 +218,7 @@ public class DeviceManager(
     DeviceUpdateRequestDto deviceDto,
     DeviceConnectionContext context,
     EntityState entityState,
-    Guid[]? tagIds = null,
+    IReadOnlyList<Guid>? tagIds = null,
     string? publicKeyBase64 = null)
   {
     var entry = _appDb.Entry(entity);

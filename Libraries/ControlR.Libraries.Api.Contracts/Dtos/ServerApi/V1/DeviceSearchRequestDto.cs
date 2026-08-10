@@ -7,8 +7,8 @@ namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 public class DeviceSearchRequestDto
 {
   public FilterMatchMode DeviceGroupFilterMatchMode { get; set; }
-  public List<Guid>? DeviceGroupIds { get; set; }
-  public List<DeviceColumnFilter>? FilterDefinitions { get; set; }
+  public IReadOnlyList<Guid>? DeviceGroupIds { get; set; }
+  public IReadOnlyList<DeviceColumnFilter>? FilterDefinitions { get; set; }
   public bool HideOfflineDevices { get; set; }
   public bool IncludeUntaggedDevices { get; set; }
 
@@ -18,7 +18,7 @@ public class DeviceSearchRequestDto
   [Range(1, int.MaxValue)]
   public int PageSize { get; set; }
   public string? SearchText { get; set; }
-  public List<DeviceColumnSort>? SortDefinitions { get; set; }
+  public IReadOnlyList<DeviceColumnSort>? SortDefinitions { get; set; }
   public FilterMatchMode TagFilterMatchMode { get; set; }
-  public List<Guid>? TagIds { get; set; }
+  public IReadOnlyList<Guid>? TagIds { get; set; }
 }

@@ -11,7 +11,7 @@ namespace ControlR.Web.Server.Services.UserGroups;
 public interface IUserGroupManager
 {
   Task<HttpResult> AddMembers(
-    Guid userGroupId, List<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
 
   Task<HttpResult<InternalDtos.UserGroupDetailDto>> Create(
     string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
@@ -25,7 +25,7 @@ public interface IUserGroupManager
   Task<IReadOnlyList<InternalDtos.UserGroupDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default);
 
   Task<HttpResult> RemoveMembers(
-    Guid userGroupId, List<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
 
   Task<HttpResult<InternalDtos.UserGroupDetailDto>> Update(
     Guid userGroupId, string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
@@ -36,7 +36,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
   private readonly AppDb _appDb = appDb;
 
   public async Task<HttpResult> AddMembers(
-    Guid userGroupId, List<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.UserGroups
       .Include(x => x.Members)
@@ -193,7 +193,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
   }
 
   public async Task<HttpResult> RemoveMembers(
-    Guid userGroupId, List<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.UserGroups
       .Include(x => x.Members)

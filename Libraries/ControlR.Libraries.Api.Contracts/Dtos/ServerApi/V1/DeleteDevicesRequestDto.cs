@@ -5,8 +5,8 @@ using ControlR.Libraries.Api.Contracts.Constants;
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 
 [MessagePackObject(keyAsPropertyName: true)]
-public record DeleteDevicesRequestDto(Guid[] DeviceIds)
+public record DeleteDevicesRequestDto(IReadOnlyList<Guid> DeviceIds)
 {
   [MaxLength(DtoLimits.DeviceIdsMaxCount)]
-  public Guid[] DeviceIds { get; init; } = DeviceIds;
+  public IReadOnlyList<Guid> DeviceIds { get; init; } = DeviceIds;
 }

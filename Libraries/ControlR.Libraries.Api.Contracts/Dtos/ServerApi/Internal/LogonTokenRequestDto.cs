@@ -8,4 +8,4 @@ public record LogonTokenRequestDto(
   Guid DeviceId,
   [property: Range(DtoLimits.ExpirationMinutesMin, DtoLimits.ExpirationMinutesMax)]
   int ExpirationMinutes = DtoLimits.ExpirationMinutesDefault,
-  List<CredentialScopeDto>? Scopes = null);
+  IReadOnlyList<CredentialScopeDto>? Scopes = null);

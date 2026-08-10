@@ -11,7 +11,7 @@ namespace ControlR.Web.Server.Services.Customers;
 public interface ICustomerManager
 {
   Task<HttpResult> AssignDevices(
-    Guid customerId, List<Guid> deviceIds, List<Guid>? removeDeviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid customerId, IReadOnlyList<Guid> deviceIds, IReadOnlyList<Guid>? removeDeviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.CustomerDto>> Create(
     string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult> Delete(
@@ -28,7 +28,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
   private readonly AppDb _appDb = appDb;
 
   public async Task<HttpResult> AssignDevices(
-    Guid customerId, List<Guid> deviceIds, List<Guid>? removeDeviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid customerId, IReadOnlyList<Guid> deviceIds, IReadOnlyList<Guid>? removeDeviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
   {
     var customerExists = await _appDb.Customers
       .AnyAsync(x => x.Id == customerId && x.TenantId == tenantId, cancellationToken);

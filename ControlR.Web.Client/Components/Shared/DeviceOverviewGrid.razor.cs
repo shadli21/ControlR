@@ -84,18 +84,18 @@ public partial class DeviceOverviewGrid
 
   private string GetCurrentUsersDisplay()
   {
-    if (Device.CurrentUsers == null || Device.CurrentUsers.Length == 0)
+    if (Device.CurrentUsers == null || Device.CurrentUsers.Count == 0)
     {
       return "No active users";
     }
 
-    if (Device.CurrentUsers.Length == 1)
+    if (Device.CurrentUsers.Count == 1)
     {
       return Device.CurrentUsers[0];
     }
 
     var currentUser = Device.CurrentUsers[0];
-    var additionalUsersCount = Device.CurrentUsers.Length - 1;
+    var additionalUsersCount = Device.CurrentUsers.Count - 1;
     return $"{currentUser} and {additionalUsersCount} more";
   }
 

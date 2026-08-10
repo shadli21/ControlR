@@ -37,7 +37,7 @@ public record DeviceGroupDetailDto(
   IReadOnlyList<DeviceGroupMemberDto> Members);
 
 public record AddDeviceGroupMembersRequestDto(
-  List<Guid> DeviceIds);
+  IReadOnlyList<Guid> DeviceIds);
 
 public record RemoveDeviceGroupMembersRequestDto(
-  List<Guid> DeviceIds);
+  IReadOnlyList<Guid> DeviceIds);

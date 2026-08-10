@@ -139,7 +139,7 @@ public partial class FileSystem : JsInteropableComponent
 
       // Build the tree hierarchy using the path segments from the agent
       var segments = responseDto.PathSegments;
-      if (segments.Length == 0)
+      if (segments.Count == 0)
       {
         Logger.LogWarning("No path segments returned for {TargetPath}", targetPath);
         Snackbar.Add($"Error validating path '{targetPath}'", Severity.Error);
@@ -151,7 +151,7 @@ public partial class FileSystem : JsInteropableComponent
       IReadOnlyCollection<ITreeItemData<string>> currentItems = InitialTreeItems;
 
       // Navigate through each segment, expanding the tree as needed
-      for (var i = 1; i < segments.Length; i++)
+      for (var i = 1; i < segments.Count; i++)
       {
         var segmentToFind = segments[i];
 
@@ -703,7 +703,7 @@ public partial class FileSystem : JsInteropableComponent
 
       // Get the parent path by removing the last segment
       var segments = responseDto.PathSegments;
-      if (segments.Length <= 1)
+      if (segments.Count <= 1)
       {
         // Already at root level
         return;
@@ -711,7 +711,7 @@ public partial class FileSystem : JsInteropableComponent
 
       // Build the parent path from all segments except the last one
       var parentPath = segments[0];
-      for (var i = 1; i < segments.Length - 1; i++)
+      for (var i = 1; i < segments.Count - 1; i++)
       {
         parentPath = CombinePaths(parentPath, segments[i], responseDto.PathSeparator);
       }

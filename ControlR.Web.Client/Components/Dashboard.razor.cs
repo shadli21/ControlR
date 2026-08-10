@@ -610,13 +610,13 @@ public partial class Dashboard : IAsyncDisposable
   {
     try
     {
-      if (device.Dto.MacAddresses.Length == 0)
+      if (device.Dto.MacAddresses.Count == 0)
       {
         Snackbar.Add("No MAC addresses on device", Severity.Warning);
         return;
       }
 
-      await MainHub.Server.SendWakeDevice(device.Id, device.Dto.MacAddresses);
+      await MainHub.Server.SendWakeDevice(device.Id, device.Dto.MacAddresses.ToArray());
       Snackbar.Add("Wake command sent", Severity.Success);
     }
     catch (Exception ex)

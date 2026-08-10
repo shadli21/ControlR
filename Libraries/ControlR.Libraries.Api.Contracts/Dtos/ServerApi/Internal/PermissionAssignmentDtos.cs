@@ -48,12 +48,12 @@ public record UpdatePermissionAssignmentRequestDto(
 
   bool IsEnabled);
 
-public record DeleteManyPermissionAssignmentsRequestDto(Guid[] AssignmentIds)
+public record DeleteManyPermissionAssignmentsRequestDto(IReadOnlyList<Guid> AssignmentIds)
 {
   public const int MaxAssignmentIds = 1000;
 
   [MaxLength(MaxAssignmentIds)]
-  public Guid[] AssignmentIds { get; init; } = AssignmentIds;
+  public IReadOnlyList<Guid> AssignmentIds { get; init; } = AssignmentIds;
 }
 
 public record DeleteManyPermissionAssignmentsResponseDto(
@@ -62,7 +62,7 @@ public record DeleteManyPermissionAssignmentsResponseDto(
 
 public record CreateManyPermissionAssignmentsRequestDto(
   [property: MinLength(1)]
-  CreatePermissionAssignmentRequestDto[] Assignments);
+  IReadOnlyList<CreatePermissionAssignmentRequestDto> Assignments);
 
 public record ReplacePermissionAssignmentsRequestDto(
   PermissionPrincipalKind PrincipalKind,
@@ -70,7 +70,7 @@ public record ReplacePermissionAssignmentsRequestDto(
   Guid PrincipalId,
 
   [property: MinLength(1)]
-  CreatePermissionAssignmentRequestDto[] Assignments);
+  IReadOnlyList<CreatePermissionAssignmentRequestDto> Assignments);
 
 public record EffectivePermissionQueryRequestDto(
   PermissionPrincipalKind PrincipalKind,
@@ -89,4 +89,4 @@ public record EffectivePermissionQueryResponseDto(
   bool IsAllowed,
   string? DenyReason);
 
-public record PermissionPresetDto(string Name, string[] Permissions);
+public record PermissionPresetDto(string Name, IReadOnlyList<string> Permissions);

@@ -476,13 +476,13 @@ public partial class FileSystemViewModel : ViewModelBase<FileSystemView>, IFileS
         return;
       }
 
-      if (result.Value.PathSegments.Length <= 1)
+      if (result.Value.PathSegments.Count <= 1)
       {
         return;
       }
 
       var parentPath = result.Value.PathSegments[0];
-      for (var index = 1; index < result.Value.PathSegments.Length - 1; index++)
+      for (var index = 1; index < result.Value.PathSegments.Count - 1; index++)
       {
         parentPath = CombinePaths(parentPath, result.Value.PathSegments[index], result.Value.PathSeparator);
       }
@@ -649,7 +649,7 @@ public partial class FileSystemViewModel : ViewModelBase<FileSystemView>, IFileS
         var currentItems = RootItems.AsEnumerable();
         var traversalCompleted = true;
 
-        for (var index = 1; index < result.Value.PathSegments.Length; index++)
+        for (var index = 1; index < result.Value.PathSegments.Count; index++)
         {
           var treeItem = FindTreeItem(currentItems, currentPath);
           if (treeItem is null)

@@ -10,7 +10,7 @@ namespace ControlR.Web.Server.Services.DeviceGroups;
 public interface IDeviceGroupManager
 {
   Task<HttpResult> AddMembers(
-    Guid deviceGroupId, List<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.DeviceGroupDetailDto>> Create(
     string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult> Delete(
@@ -19,7 +19,7 @@ public interface IDeviceGroupManager
     Guid deviceGroupId, Guid tenantId, CancellationToken cancellationToken = default);
   Task<IReadOnlyList<InternalDtos.DeviceGroupDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default);
   Task<HttpResult> RemoveMembers(
-    Guid deviceGroupId, List<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.DeviceGroupDetailDto>> Update(
     Guid deviceGroupId, string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
 }
@@ -29,7 +29,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
   private readonly AppDb _appDb = appDb;
 
   public async Task<HttpResult> AddMembers(
-    Guid deviceGroupId, List<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.DeviceGroups
       .Include(x => x.Members)
@@ -187,7 +187,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
   }
 
   public async Task<HttpResult> RemoveMembers(
-    Guid deviceGroupId, List<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.DeviceGroups
       .Include(x => x.Members)

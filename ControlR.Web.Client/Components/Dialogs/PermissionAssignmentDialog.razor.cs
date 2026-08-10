@@ -94,7 +94,7 @@ public partial class PermissionAssignmentDialog : ComponentBase
 
   private static PermissionScopeKind BroadestLegalScope(InternalDtos.PermissionCatalogEntryDto? entry)
   {
-    if (entry?.AllowedScopeKinds is { Length: > 0 } kinds)
+    if (entry?.AllowedScopeKinds is { Count: > 0 } kinds)
     {
       return kinds.MaxBy(Breadth);
     }

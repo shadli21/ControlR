@@ -371,7 +371,7 @@ internal class AgentHubClient(
 
       _logger.LogDebug(
         "Path segments result - Success: {Success}, PathExists: {PathExists}, Segments: {SegmentCount}",
-        result.Success, result.PathExists, result.PathSegments.Length);
+        result.Success, result.PathExists, result.PathSegments.Count);
 
       return result;
     }

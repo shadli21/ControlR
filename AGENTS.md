@@ -60,6 +60,15 @@ DTOs live in `Dtos/ServerApi/` under `ControlR.Libraries.Api.Contracts.Dtos.Serv
 **Rules:**
 - Every DTO belongs to exactly one route root's folder (`Internal/`, `V1/`, …). There is no shared root `Dtos/ServerApi/` folder for DTOs.
 
+### Readonly Collections on DTOs
+
+- ServerApi request/response DTO collection properties and record parameters must be **read-only collection types**: `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, `IEnumerable<T>`, or `ImmutableArray<T>`.
+  - ✅ `IReadOnlyList<Guid> DeviceIds`, `ImmutableArray<Guid>? TagIds`
+  - ❌ `List<Guid> DeviceIds`, `Guid[] DeviceIds`, `HashSet<Guid>` — never expose mutable or array collections on a DTO.
+- Exception: **raw binary `byte[]` payloads** (image/video/stream data such as `JpegData`, `PacketData`, `Signature`) stay `byte[]`. Hub, IPC, and remote-control wire-format DTOs are out of scope for this rule.
+- When a DTO collection changes, **propagate the read-only type downstream** (service/manager/EF query-extension method parameters) instead of converting with `.ToList()`/`.ToArray()` at the controller boundary — only convert where an out-of-scope target (e.g. a `string[]` hub contract) requires it.
+- Use `.Count` (not `.Length`) when consuming `IReadOnlyList`/`IReadOnlyCollection` members.
+
 ## API Routing & Versioning
 
 **Two route roots, two stability levels** — never cross them:

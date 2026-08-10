@@ -8,7 +8,7 @@ public static class DeviceQueryExtensions
 {
   public static IQueryable<Device> ApplySorting(
     this IQueryable<Device> query,
-    List<DeviceColumnSort>? sortDefinitions)
+    IReadOnlyList<DeviceColumnSort>? sortDefinitions)
   {
     if (sortDefinitions is not { Count: > 0 })
     {
@@ -40,7 +40,7 @@ public static class DeviceQueryExtensions
 
   public static IQueryable<Device> FilterByColumnFilters(
     this IQueryable<Device> query,
-    List<DeviceColumnFilter>? filterDefinitions,
+    IReadOnlyList<DeviceColumnFilter>? filterDefinitions,
     bool isRelationalDatabase,
     ILogger logger)
   {
@@ -100,7 +100,7 @@ public static class DeviceQueryExtensions
 
   public static IQueryable<Device> FilterByCustomerIds(
     this IQueryable<Device> query,
-    List<Guid>? customerIds)
+    IReadOnlyList<Guid>? customerIds)
   {
     if (customerIds is not { Count: > 0 })
     {
@@ -155,9 +155,9 @@ public static class DeviceQueryExtensions
 
   public static IQueryable<Device> FilterByTagsAndDeviceGroups(
     this IQueryable<Device> query,
-    List<Guid>? tagIds,
+    IReadOnlyList<Guid>? tagIds,
     FilterMatchMode tagMode,
-    List<Guid>? deviceGroupIds,
+    IReadOnlyList<Guid>? deviceGroupIds,
     FilterMatchMode deviceGroupMode,
     bool includeUntaggedDevices)
   {
@@ -215,7 +215,7 @@ public static class DeviceQueryExtensions
   }
 
   private static Expression<Func<Device, bool>> BuildDeviceGroupMatchPredicate(
-    List<Guid>? deviceGroupIds,
+    IReadOnlyList<Guid>? deviceGroupIds,
     FilterMatchMode mode)
   {
     if (mode == FilterMatchMode.All)
@@ -259,7 +259,7 @@ public static class DeviceQueryExtensions
   }
 
   private static Expression<Func<Device, bool>> BuildTagMatchPredicate(
-    List<Guid>? tagIds,
+    IReadOnlyList<Guid>? tagIds,
     FilterMatchMode mode,
     bool includeUntaggedDevices)
   {
