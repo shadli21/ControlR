@@ -66,6 +66,16 @@ else
     </ToolBarContent>
     <Columns>
       <PropertyColumn Property="x => x.DeviceName" Title="Device" />
+      <PropertyColumn Property="x => x.Alias" Title="Alias">
+        <CellTemplate>
+          @(string.IsNullOrWhiteSpace(context.Item.Alias) ? "—" : context.Item.Alias)
+        </CellTemplate>
+      </PropertyColumn>
+      <PropertyColumn Property="x => x.CustomerName" Title="Customer">
+        <CellTemplate>
+          @(string.IsNullOrWhiteSpace(context.Item.CustomerName) ? "—" : context.Item.CustomerName)
+        </CellTemplate>
+      </PropertyColumn>
       <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
         <CellTemplate>
           <MudTooltip Text="Remove member">

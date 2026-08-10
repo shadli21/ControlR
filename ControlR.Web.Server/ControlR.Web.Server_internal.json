@@ -10804,7 +10804,9 @@
       "DeviceGroupMemberDto": {
         "required": [
           "deviceId",
-          "deviceName"
+          "deviceName",
+          "alias",
+          "customerName"
         ],
         "type": "object",
         "properties": {
@@ -10814,6 +10816,18 @@
           },
           "deviceName": {
             "type": "string"
+          },
+          "alias": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -11095,11 +11109,6 @@
           },
           "filterCounts": {
             "$ref": "#/components/schemas/DeviceSearchFilterCountsDto"
-          },
-          "hiddenUntaggedDevices": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "format": "int32"
           },
           "items": {
             "type": [

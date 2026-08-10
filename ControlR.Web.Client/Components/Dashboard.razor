@@ -112,14 +112,6 @@
         Select at least one tag or include untagged devices.
       </MudAlert>
     }
-
-    @if (!_loading && HasHiddenUntaggedDevices)
-    {
-      <MudAlert Severity="Severity.Warning" Dense="true" Class="dashboard-inline-alert mt-3"
-                Icon="@(Icons.Material.Filled.LabelOff)">
-        @HiddenUntaggedAlertText
-      </MudAlert>
-    }
   </MudPaper>
 
   <MudDataGrid T="DeviceViewModel" @ref="_dataGrid" ServerData="LoadServerData" @bind-RowsPerPage="_rowsPerPage"
@@ -226,28 +218,11 @@
         </CellTemplate>
       </PropertyColumn>
 
-      <TemplateColumn T="DeviceViewModel" Sortable="false" Filterable="false" Title="Tags">
+      <PropertyColumn Title="Customer" Property="x => x.Dto.CustomerName" Sortable="true" Filterable="true">
         <CellTemplate>
-          @{
-            var tagCount = context.Item.Dto.TagIds?.Length ?? 0;
-          }
-
-          @if (tagCount == 0)
-          {
-            <MudTooltip Text="Untagged device">
-              <MudText Typo="Typo.body2" Color="Color.Warning">
-                <strong>0</strong>
-              </MudText>
-            </MudTooltip>
-          }
-          else
-          {
-            <MudTooltip Text="@($"{tagCount} tag{(tagCount == 1 ? string.Empty : "s")}")">
-              <MudText Typo="Typo.body2">@tagCount</MudText>
-            </MudTooltip>
-          }
+          @(string.IsNullOrWhiteSpace(context.Item.Dto.CustomerName) ? "—" : context.Item.Dto.CustomerName)
         </CellTemplate>
-      </TemplateColumn>
+      </PropertyColumn>
 
       <PropertyColumn Property="@(x => x.Dto.Platform)" Sortable="true" Filterable="true" Title="Platform">
         <CellTemplate>

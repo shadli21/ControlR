@@ -163,6 +163,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     var group = await _appDb.DeviceGroups
       .Include(x => x.Members!)
         .ThenInclude(m => m.Device)
+          .ThenInclude(d => d!.Customer)
       .FirstOrDefaultAsync(x => x.Id == deviceGroupId && x.TenantId == tenantId, cancellationToken);
 
     if (group is null)
@@ -234,11 +235,12 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     var group = await _appDb.DeviceGroups
       .Include(x => x.Members!)
         .ThenInclude(m => m.Device)
+          .ThenInclude(d => d!.Customer)
       .FirstOrDefaultAsync(x => x.Id == deviceGroupId && x.TenantId == tenantId, cancellationToken);
 
     if (group is null)
     {
-      return HttpResult.Fail<InternalDtos.DeviceGroupDetailDto>(HttpResultErrorCode.NotFound, "Device group not found.");
+      return HttpResult.Fail<InternalDtos.DeviceGroupDetailDto>(HttpResultErrorCode.BadRequest, "Device group not found.");
     }
 
     var before = new DeviceGroupSnapshot(group.Name, group.Description);
@@ -265,7 +267,11 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
   {
     var members = (group.Members ?? [])
       .OrderBy(m => m.Device?.Name ?? string.Empty)
-      .Select(m => new InternalDtos.DeviceGroupMemberDto(m.DeviceId, m.Device?.Name ?? string.Empty))
+      .Select(m => new InternalDtos.DeviceGroupMemberDto(
+        m.DeviceId,
+        m.Device?.Name ?? string.Empty,
+        string.IsNullOrWhiteSpace(m.Device?.Alias) ? null : m.Device?.Alias,
+        m.Device?.Customer?.Name))
       .ToList();
 
     return new InternalDtos.DeviceGroupDetailDto(

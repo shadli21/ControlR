@@ -20,7 +20,9 @@ public record UpdateDeviceGroupRequestDto(
 
 public record DeviceGroupMemberDto(
   Guid DeviceId,
-  string DeviceName);
+  string DeviceName,
+  string? Alias,
+  string? CustomerName);
 
 public record DeviceGroupDto(
   Guid Id,

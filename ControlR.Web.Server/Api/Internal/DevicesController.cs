@@ -212,10 +212,6 @@ public class DevicesController(
       requestDto.DeviceGroupFilterMatchMode,
       requestDto.IncludeUntaggedDevices);
 
-    var hiddenUntaggedDevices = requestDto.IncludeUntaggedDevices
-      ? 0
-      : await scopedQuery.CountAsync(x => !x.Tags!.Any());
-
     var filterCounts = await GetFilterCounts(scopedQuery);
     var totalCount = await scopedQuery.CountAsync();
 
@@ -242,7 +238,6 @@ public class DevicesController(
     {
       AnyDevicesForUser = anyDevices,
       FilterCounts = filterCounts,
-      HiddenUntaggedDevices = hiddenUntaggedDevices,
       Items = pagedDtos,
       TotalItems = totalCount
     };

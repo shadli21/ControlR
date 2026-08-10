@@ -25,7 +25,6 @@ public partial class Dashboard : IAsyncDisposable
   private FilterMatchMode _deviceGroupFilterMatchMode = FilterMatchMode.Any;
   private List<DeviceGroupDto> _deviceGroups = [];
   private DeviceSearchFilterCountsDto _filterCounts = new();
-  private int _hiddenUntaggedDevices;
   private bool _hideOfflineDevices;
   private bool _includeUntaggedDevices;
   private bool _loading = true;
@@ -75,14 +74,8 @@ public partial class Dashboard : IAsyncDisposable
   [Inject]
   public required IDeviceContentWindowStore WindowStore { get; init; }
 
-  private bool HasHiddenUntaggedDevices =>
-    !_includeUntaggedDevices && _hiddenUntaggedDevices > 0;
   private bool HasScopeSelection =>
     _selectedTags.Length > 0 || _includeUntaggedDevices;
-  private string HiddenUntaggedAlertText =>
-    _hiddenUntaggedDevices == 1
-      ? "1 untagged device is currently hidden by scope."
-      : $"{_hiddenUntaggedDevices} untagged devices are currently hidden by scope.";
   private bool ShouldBypassHideOfflineDevices =>
     !string.IsNullOrWhiteSpace(_searchText);
 
@@ -285,7 +278,6 @@ public partial class Dashboard : IAsyncDisposable
     if (!HasScopeSelection)
     {
       _filterCounts = new DeviceSearchFilterCountsDto();
-      _hiddenUntaggedDevices = 0;
       _totalFilteredDevices = 0;
       await InvokeAsync(StateHasChanged);
       await SyncHeartbeatSubscriptions([]);
@@ -331,7 +323,6 @@ public partial class Dashboard : IAsyncDisposable
     if (!result.IsSuccess)
     {
       _filterCounts = new DeviceSearchFilterCountsDto();
-      _hiddenUntaggedDevices = 0;
       _totalFilteredDevices = 0;
       await InvokeAsync(StateHasChanged);
       Snackbar.Add("Failed to load devices", Severity.Error);
@@ -341,7 +332,6 @@ public partial class Dashboard : IAsyncDisposable
 
     _anyDevicesForUser = result.Value.AnyDevicesForUser;
     _filterCounts = result.Value.FilterCounts;
-    _hiddenUntaggedDevices = result.Value.HiddenUntaggedDevices;
     _totalFilteredDevices = result.Value.TotalItems;
     await InvokeAsync(StateHasChanged);
 

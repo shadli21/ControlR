@@ -1508,7 +1508,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(5, response1.FilterCounts.OfflineDevices);
     Assert.Equal(4, response1.FilterCounts.TaggedDevices);
     Assert.Equal(6, response1.FilterCounts.UntaggedDevices);
-    Assert.Equal(6, response1.HiddenUntaggedDevices);
 
     // Test case 2: Filter by online status
     Assert.NotNull(response2);
@@ -1519,7 +1518,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(0, response2.FilterCounts.OfflineDevices);
     Assert.Equal(2, response2.FilterCounts.TaggedDevices);
     Assert.Equal(3, response2.FilterCounts.UntaggedDevices);
-    Assert.Equal(3, response2.HiddenUntaggedDevices);
     Assert.NotNull(response3);
     Assert.NotNull(response3.Items);
     Assert.All(response3.Items, device => Assert.NotNull(device.TagIds));
@@ -1527,7 +1525,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(4, response3.TotalItems);
     Assert.Equal(4, response3.FilterCounts.TaggedDevices);
     Assert.Equal(0, response3.FilterCounts.UntaggedDevices);
-    Assert.Equal(6, response3.HiddenUntaggedDevices);
 
     // Test case 4: Search by name
     Assert.NotNull(response4);
@@ -1550,7 +1547,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(5, response6.FilterCounts.OfflineDevices);
     Assert.Equal(4, response6.FilterCounts.TaggedDevices);
     Assert.Equal(6, response6.FilterCounts.UntaggedDevices);
-    Assert.Equal(0, response6.HiddenUntaggedDevices);
     Assert.Contains(response6.Items, device => device.TagIds is { Length: 0 });
     Assert.Contains(response6.Items, device => device.TagIds?.Contains(tagIds[0]) == true);
 
@@ -1560,7 +1556,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(6, response7.Items.Count);
     Assert.Equal(0, response7.FilterCounts.TaggedDevices);
     Assert.Equal(6, response7.FilterCounts.UntaggedDevices);
-    Assert.Equal(0, response7.HiddenUntaggedDevices);
     Assert.All(response7.Items, device => Assert.True(device.TagIds is null or { Length: 0 }));
   }
 
@@ -1735,7 +1730,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(1, response.FilterCounts.UntaggedDevices);
     Assert.Equal(1, response.FilterCounts.OnlineDevices);
     Assert.Equal(0, response.FilterCounts.OfflineDevices);
-    Assert.Equal(1, response.HiddenUntaggedDevices);
   }
 
   [Fact]
