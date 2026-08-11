@@ -9,7 +9,8 @@ public class DeviceSearchRequestDto
   public IReadOnlyList<Guid>? DeviceGroupIds { get; set; }
   public IReadOnlyList<DeviceColumnFilter>? FilterDefinitions { get; set; }
   public bool HideOfflineDevices { get; set; }
-  public bool IncludeUntaggedDevices { get; set; }
+  public bool ShowOnlyUntaggedDevices { get; set; }
+  public bool ShowOnlyUngroupedDevices { get; set; }
   public int Page { get; set; }
   public int PageSize { get; set; }
   public string? SearchText { get; set; }

@@ -56,7 +56,8 @@
                      MultiSelectionTextFunc="@GetDeviceGroupMultiSelectText"
                      Text="@GetDeviceGroupSelectText()"
                      AdornmentIcon="@Icons.Material.Filled.Devices" Adornment="Adornment.End"
-                     Clearable="true">
+                     Clearable="true"
+                     Disabled="_showOnlyUngrouped">
 
             @foreach (var group in _deviceGroups)
             {
@@ -70,34 +71,40 @@
                             Value="_deviceGroupFilterMatchMode"
                             ValueChanged="OnDeviceGroupFilterMatchModeChanged"
                             Outlined="true" Color="Color.Primary" Size="Size.Small"
+                            Disabled="_showOnlyUngrouped"
                             Class="dashboard-filter-match-toggle">
               <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="Any" />
               <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="All" />
             </MudToggleGroup>
           </div>
+
+          <MudSwitch T="bool" Value="_showOnlyUngrouped" ValueChanged="ShowOnlyUngroupedChanged"
+                     Label="Show only ungrouped" Color="Color.Primary" Size="Size.Small" />
         </div>
 
         <div class="dashboard-filter-field">
-          <UserTagsSelector @bind-SelectedTags:get="_selectedTags" @bind-SelectedTags:set="@OnSelectedTagsChanged" />
+          <UserTagsSelector @bind-SelectedTags:get="_selectedTags" @bind-SelectedTags:set="@OnSelectedTagsChanged"
+                            Disabled="_showOnlyUntagged" />
 
           <div class="dashboard-filter-match">
             <MudText Typo="Typo.caption" Class="dashboard-filter-match-label">Match</MudText>
             <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
                             Value="_tagFilterMatchMode"
                             ValueChanged="OnTagFilterMatchModeChanged"
+                            Disabled="_showOnlyUntagged"
                             Outlined="true" Color="Color.Primary" Size="Size.Small"
                             Class="dashboard-filter-match-toggle">
               <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="Any" />
               <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="All" />
             </MudToggleGroup>
           </div>
+
+          <MudSwitch T="bool" Value="_showOnlyUntagged" ValueChanged="ShowOnlyUntaggedChanged"
+                     Label="Show only untagged" Color="Color.Primary" Size="Size.Small" />
         </div>
       </div>
 
       <div class="dashboard-toolbar-options">
-        <MudCheckBox T="bool" Value="_includeUntaggedDevices" ValueChanged="IncludeUntaggedDevicesChanged"
-                     Label="Include untagged" Class="dashboard-checkbox" />
-
         <MudCheckBox T="bool" Value="_hideOfflineDevices" ValueChanged="HideOfflineDevicesChanged"
                      Label="Hide offline" Disabled="ShouldBypassHideOfflineDevices" Class="dashboard-checkbox" />
 
@@ -105,13 +112,6 @@
                      Label="Open in new tab" Class="dashboard-checkbox" />
       </div>
     </div>
-
-    @if (!_loading && !HasScopeSelection)
-    {
-      <MudAlert Severity="Severity.Info" Dense="true" Class="dashboard-inline-alert mt-3">
-        Select at least one tag or include untagged devices.
-      </MudAlert>
-    }
   </MudPaper>
 
   <MudDataGrid T="DeviceViewModel" @ref="_dataGrid" ServerData="LoadServerData" @bind-RowsPerPage="_rowsPerPage"

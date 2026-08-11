@@ -10,7 +10,6 @@ public static class UserPreferenceNames
   public const string EnableDirectX = "enable-directx";
   public const string EncodingFormat = "encoding-format";
   public const string HideOfflineDevices = "hide-offline-devices";
-  public const string IncludeUntaggedDevices = "include-untagged-devices";
   public const string IsAutoQualityEnabled = "is-auto-quality-enabled";
   public const string IsMaxBandwidthEnabled = "is-max-bandwidth-enabled";
   public const string KeyboardInputMode = "keyboard-input-mode";
@@ -18,6 +17,8 @@ public static class UserPreferenceNames
   public const string MaxBandwidthMbps = "max-bandwidth-mbps";
   public const string NotifyUserOnSessionStart = "notify-user-on-session-start";
   public const string OpenDeviceInNewTab = "open-device-in-new-tab";
+  public const string ShowOnlyUngroupedDevices = "show-only-ungrouped-devices";
+  public const string ShowOnlyUntaggedDevices = "show-only-untagged-devices";
   public const string ThemeMode = "theme-mode";
   public const string UserDisplayName = "user-display-name";
   public const string ViewMode = "view-mode";

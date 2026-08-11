@@ -159,31 +159,59 @@ public static class DeviceQueryExtensions
     FilterMatchMode tagMode,
     IReadOnlyList<Guid>? deviceGroupIds,
     FilterMatchMode deviceGroupMode,
-    bool includeUntaggedDevices)
+    bool showOnlyUntaggedDevices,
+    bool showOnlyUngroupedDevices = false)
   {
     var hasTags = tagIds is { Count: > 0 };
     var hasGroups = deviceGroupIds is { Count: > 0 };
 
     if (!hasTags && !hasGroups)
     {
-      return includeUntaggedDevices
-        ? query.Where(d => !d.Tags!.Any())
-        : query;
+      if (showOnlyUntaggedDevices && showOnlyUngroupedDevices)
+      {
+        return query.Where(d => !d.Tags!.Any() && !d.DeviceGroupMembers!.Any());
+      }
+      if (showOnlyUntaggedDevices)
+      {
+        return query.Where(d => !d.Tags!.Any());
+      }
+      if (showOnlyUngroupedDevices)
+      {
+        return query.Where(d => !d.DeviceGroupMembers!.Any());
+      }
+      return query;
     }
 
     if (hasTags && hasGroups)
     {
-      var tagPredicate = BuildTagMatchPredicate(tagIds, tagMode, includeUntaggedDevices);
+      var tagPredicate = BuildTagMatchPredicate(tagIds, tagMode, showOnlyUntaggedDevices);
       var groupPredicate = BuildDeviceGroupMatchPredicate(deviceGroupIds, deviceGroupMode);
-      return query.Where(CombinePredicates(tagPredicate, groupPredicate));
+      query = query.Where(CombinePredicates(tagPredicate, groupPredicate));
     }
-
-    if (hasTags)
+    else if (hasTags)
     {
-      return query.Where(BuildTagMatchPredicate(tagIds, tagMode, includeUntaggedDevices));
+      query = query.Where(BuildTagMatchPredicate(tagIds, tagMode, showOnlyUntaggedDevices));
+    }
+    else
+    {
+      var groupPredicate = BuildDeviceGroupMatchPredicate(deviceGroupIds, deviceGroupMode);
+      if (showOnlyUntaggedDevices)
+      {
+        Expression<Func<Device, bool>> untaggedPredicate = d => !d.Tags!.Any();
+        query = query.Where(CombinePredicates(groupPredicate, untaggedPredicate));
+      }
+      else
+      {
+        query = query.Where(groupPredicate);
+      }
     }
 
-    return query.Where(BuildDeviceGroupMatchPredicate(deviceGroupIds, deviceGroupMode));
+    if (showOnlyUngroupedDevices)
+    {
+      query = query.Where(d => !d.DeviceGroupMembers!.Any());
+    }
+
+    return query;
   }
 
   private static IOrderedQueryable<Device> ApplySort<TKey>(
@@ -261,18 +289,18 @@ public static class DeviceQueryExtensions
   private static Expression<Func<Device, bool>> BuildTagMatchPredicate(
     IReadOnlyList<Guid>? tagIds,
     FilterMatchMode mode,
-    bool includeUntaggedDevices)
+    bool showOnlyUntaggedDevices)
   {
     if (mode == FilterMatchMode.All)
     {
       return d =>
         (d.Tags!.Any() && tagIds!.All(id => d.Tags!.Any(t => t.Id == id))) ||
-        (includeUntaggedDevices && !d.Tags!.Any());
+        (showOnlyUntaggedDevices && !d.Tags!.Any());
     }
 
     return d =>
       d.Tags!.Any(t => tagIds!.Contains(t.Id)) ||
-      (includeUntaggedDevices && !d.Tags!.Any());
+      (showOnlyUntaggedDevices && !d.Tags!.Any());
   }
 
   private static Expression<Func<Device, bool>> CombinePredicates(

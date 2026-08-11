@@ -2,9 +2,6 @@ using System.Collections.Frozen;
 using System.Globalization;
 using System.Reflection;
 using ControlR.Libraries.Api.Contracts.Constants;
-using ControlR.Libraries.Api.Contracts.Dtos.RemoteControlDtos;
-using ControlR.Libraries.Api.Contracts.Dtos.ServerApi;
-using ControlR.Libraries.Api.Contracts.Enums;
 
 namespace ControlR.Libraries.Api.Contracts.Settings;
 
@@ -18,13 +15,14 @@ public static class UserPreferenceDefinitions
   public const bool DefaultEnableDirectX = true;
   public const ImageFormat DefaultEncodingFormat = ImageFormat.Jpeg;
   public const bool DefaultHideOfflineDevices = true;
-  public const bool DefaultIncludeUntaggedDevices = false;
   public const bool DefaultIsAutoQualityEnabled = false;
   public const bool DefaultIsMaxBandwidthEnabled = false;
   public const int DefaultManualQuality = 75;
   public const double DefaultMaxBandwidthMbps = 15d;
   public const bool DefaultNotifyUserOnSessionStart = true;
   public const bool DefaultOpenDeviceInNewTab = true;
+  public const bool DefaultShowOnlyUntaggedDevices = false;
+  public const bool DefaultShowOnlyUngroupedDevices = false;
 
   public static SettingDefinition<double> AutoQualityLowerThresholdMbps { get; } =
     SettingDefinition.CreateDouble(UserPreferenceNames.AutoQualityLowerThresholdMbps, DefaultAutoQualityLowerThresholdMbps, 0.1d);
@@ -42,8 +40,6 @@ public static class UserPreferenceDefinitions
     SettingDefinition.CreateEnum(UserPreferenceNames.EncodingFormat, DefaultEncodingFormat);
   public static SettingDefinition<bool> HideOfflineDevices { get; } =
     SettingDefinition.CreateBoolean(UserPreferenceNames.HideOfflineDevices, DefaultHideOfflineDevices);
-  public static SettingDefinition<bool> IncludeUntaggedDevices { get; } =
-    SettingDefinition.CreateBoolean(UserPreferenceNames.IncludeUntaggedDevices, DefaultIncludeUntaggedDevices);
   public static SettingDefinition<bool> IsAutoQualityEnabled { get; } =
     SettingDefinition.CreateBoolean(UserPreferenceNames.IsAutoQualityEnabled, DefaultIsAutoQualityEnabled);
   public static SettingDefinition<bool> IsMaxBandwidthEnabled { get; } =
@@ -58,6 +54,10 @@ public static class UserPreferenceDefinitions
     SettingDefinition.CreateBoolean(UserPreferenceNames.NotifyUserOnSessionStart, DefaultNotifyUserOnSessionStart);
   public static SettingDefinition<bool> OpenDeviceInNewTab { get; } =
     SettingDefinition.CreateBoolean(UserPreferenceNames.OpenDeviceInNewTab, DefaultOpenDeviceInNewTab);
+  public static SettingDefinition<bool> ShowOnlyUntaggedDevices { get; } =
+    SettingDefinition.CreateBoolean(UserPreferenceNames.ShowOnlyUntaggedDevices, DefaultShowOnlyUntaggedDevices);
+  public static SettingDefinition<bool> ShowOnlyUngroupedDevices { get; } =
+    SettingDefinition.CreateBoolean(UserPreferenceNames.ShowOnlyUngroupedDevices, DefaultShowOnlyUngroupedDevices);
   public static SettingDefinition<ThemeMode> ThemeMode { get; } =
     SettingDefinition.CreateEnum(UserPreferenceNames.ThemeMode, Enums.ThemeMode.Dark);
   public static SettingDefinition<string> UserDisplayName { get; } =

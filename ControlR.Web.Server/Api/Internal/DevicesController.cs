@@ -210,7 +210,8 @@ public class DevicesController(
       requestDto.TagFilterMatchMode,
       requestDto.DeviceGroupIds,
       requestDto.DeviceGroupFilterMatchMode,
-      requestDto.IncludeUntaggedDevices);
+      requestDto.ShowOnlyUntaggedDevices,
+      requestDto.ShowOnlyUngroupedDevices);
 
     var filterCounts = await GetFilterCounts(scopedQuery);
     var totalCount = await scopedQuery.CountAsync();

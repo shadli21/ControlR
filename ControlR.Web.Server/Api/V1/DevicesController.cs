@@ -217,7 +217,8 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
       requestDto.TagFilterMatchMode,
       requestDto.DeviceGroupIds,
       requestDto.DeviceGroupFilterMatchMode,
-      requestDto.IncludeUntaggedDevices);
+      requestDto.ShowOnlyUntaggedDevices,
+      requestDto.ShowOnlyUngroupedDevices);
     var totalCount = await scopedQuery.CountAsync(cancellationToken);
 
     var devices = await scopedQuery

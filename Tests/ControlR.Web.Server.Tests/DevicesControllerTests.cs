@@ -1468,7 +1468,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var request6 = new InternalDtos.DeviceSearchRequestDto
     {
       TagIds = [tagIds[0]],
-      IncludeUntaggedDevices = true,
+      ShowOnlyUntaggedDevices = true,
       Page = 0,
       PageSize = 20
     };
@@ -1484,7 +1484,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     // Test case 7: Filter by untagged devices only
     var request7 = new InternalDtos.DeviceSearchRequestDto
     {
-      IncludeUntaggedDevices = true,
+      ShowOnlyUntaggedDevices = true,
       Page = 0,
       PageSize = 20
     };
@@ -1787,10 +1787,46 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
       Tags = [],
       DeviceGroupMembers = []
     };
-    var withUntagged = devices.Concat([untagged]).AsQueryable();
+    var untaggedInGroupX = new Device
+    {
+      Id = Guid.NewGuid(),
+      Tags = [],
+      DeviceGroupMembers = [new DeviceGroupMember { DeviceGroupId = groupX }]
+    };
+    var withUntagged = devices.Concat([untagged, untaggedInGroupX]).AsQueryable();
     Assert.Equal(
-      5,
-      withUntagged.FilterByTagsAndDeviceGroups([tagA], FilterMatchMode.All, null, FilterMatchMode.Any, includeUntaggedDevices: true).Count());
+      6,
+      withUntagged.FilterByTagsAndDeviceGroups([tagA], FilterMatchMode.All, null, FilterMatchMode.Any, showOnlyUntaggedDevices: true).Count());
+
+    // Groups [X] + includeUntagged: untagged devices in group X → untaggedInGroupX → 1.
+    Assert.Equal(
+      1,
+      withUntagged.FilterByTagsAndDeviceGroups(null, FilterMatchMode.Any, [groupX], FilterMatchMode.Any, showOnlyUntaggedDevices: true).Count());
+
+    // Groups [X,Y] All + includeUntagged: no untagged device in both X and Y → 0.
+    Assert.Equal(
+      0,
+      withUntagged.FilterByTagsAndDeviceGroups(null, FilterMatchMode.Any, [groupX, groupY], FilterMatchMode.All, showOnlyUntaggedDevices: true).Count());
+
+    // includeUngrouped only: devices with no group membership → untagged (no groups) → 1.
+    Assert.Equal(
+      1,
+      withUntagged.FilterByTagsAndDeviceGroups(null, FilterMatchMode.Any, null, FilterMatchMode.Any, showOnlyUntaggedDevices: false, showOnlyUngroupedDevices: true).Count());
+
+    // Tags [A] + includeUngrouped: tagged A AND no group → 0 (all A-tagged devices are in groups).
+    Assert.Equal(
+      0,
+      withUntagged.FilterByTagsAndDeviceGroups([tagA], FilterMatchMode.Any, null, FilterMatchMode.Any, showOnlyUntaggedDevices: false, showOnlyUngroupedDevices: true).Count());
+
+    // Tags [B] + includeUngrouped: tagged B AND no group → 0 (d4 has B but is in group Y).
+    Assert.Equal(
+      0,
+      withUntagged.FilterByTagsAndDeviceGroups([tagB], FilterMatchMode.Any, null, FilterMatchMode.Any, showOnlyUntaggedDevices: false, showOnlyUngroupedDevices: true).Count());
+
+    // includeUntagged + includeUngrouped: no tags AND no groups → untagged (the only such device) → 1.
+    Assert.Equal(
+      1,
+      withUntagged.FilterByTagsAndDeviceGroups(null, FilterMatchMode.Any, null, FilterMatchMode.Any, showOnlyUntaggedDevices: true, showOnlyUngroupedDevices: true).Count());
   }
 
   [Fact]

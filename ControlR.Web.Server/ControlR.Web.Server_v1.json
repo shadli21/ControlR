@@ -2635,9 +2635,6 @@
           "hideOfflineDevices": {
             "type": "boolean"
           },
-          "includeUntaggedDevices": {
-            "type": "boolean"
-          },
           "page": {
             "maximum": 2147483647,
             "minimum": 0,
@@ -2657,6 +2654,12 @@
               "null",
               "string"
             ]
+          },
+          "showOnlyUngroupedDevices": {
+            "type": "boolean"
+          },
+          "showOnlyUntaggedDevices": {
+            "type": "boolean"
           },
           "sortDefinitions": {
             "type": [

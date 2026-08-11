@@ -26,7 +26,6 @@ public partial class Dashboard : IAsyncDisposable
   private List<DeviceGroupDto> _deviceGroups = [];
   private DeviceSearchFilterCountsDto _filterCounts = new();
   private bool _hideOfflineDevices;
-  private bool _includeUntaggedDevices;
   private bool _loading = true;
   private bool _openDeviceInNewTab;
   private int _rowsPerPage = 25;
@@ -34,6 +33,8 @@ public partial class Dashboard : IAsyncDisposable
   private HashSet<Guid> _selectedCustomerIds = [];
   private HashSet<Guid> _selectedDeviceGroupIds = [];
   private ImmutableArray<TagViewModel> _selectedTags = [];
+  private bool _showOnlyUntagged;
+  private bool _showOnlyUngrouped;
   private HashSet<Guid> _subscribedDeviceIds = [];
   private FilterMatchMode _tagFilterMatchMode = FilterMatchMode.Any;
   private int _totalFilteredDevices;
@@ -74,8 +75,6 @@ public partial class Dashboard : IAsyncDisposable
   [Inject]
   public required IDeviceContentWindowStore WindowStore { get; init; }
 
-  private bool HasScopeSelection =>
-    _selectedTags.Length > 0 || _includeUntaggedDevices;
   private bool ShouldBypassHideOfflineDevices =>
     !string.IsNullOrWhiteSpace(_searchText);
 
@@ -106,21 +105,12 @@ public partial class Dashboard : IAsyncDisposable
       var preferences = await UserPreferences.GetPreferences();
       _hideOfflineDevices = preferences.HideOfflineDevices;
       _openDeviceInNewTab = preferences.OpenDeviceInNewTab;
+      _showOnlyUntagged = preferences.ShowOnlyUntaggedDevices;
+      _showOnlyUngrouped = preferences.ShowOnlyUngroupedDevices;
 
       if (TagStore.Items.Count == 0)
       {
         await TagStore.Refresh();
-      }
-
-      if (TagStore.Items.Count == 0)
-      {
-        _selectedTags = [];
-        _includeUntaggedDevices = true;
-      }
-      else
-      {
-        _selectedTags = [.. TagStore.Items];
-        _includeUntaggedDevices = preferences.IncludeUntaggedDevices;
       }
 
       var customersResult = await ControlrApi.Internal.Customers.GetAll();
@@ -224,13 +214,6 @@ public partial class Dashboard : IAsyncDisposable
     await ReloadGridData();
   }
 
-  private async Task IncludeUntaggedDevicesChanged(bool isChecked)
-  {
-    _includeUntaggedDevices = isChecked;
-    await UserPreferences.SetPreference(UserPreferenceNames.IncludeUntaggedDevices, isChecked);
-    await ReloadGridData();
-  }
-
   private async Task LaunchDeviceAccess(DeviceViewModel device)
   {
     var uri = $"{NavMan.BaseUri.TrimEnd('/')}/device-access?deviceId={device.Id}";
@@ -275,30 +258,20 @@ public partial class Dashboard : IAsyncDisposable
       await _componentLoadedSignal.Wait(cts.Token);
     }
 
-    if (!HasScopeSelection)
-    {
-      _filterCounts = new DeviceSearchFilterCountsDto();
-      _totalFilteredDevices = 0;
-      await InvokeAsync(StateHasChanged);
-      await SyncHeartbeatSubscriptions([]);
-
-      return new GridData<DeviceViewModel>
-      {
-        TotalItems = 0,
-        Items = []
-      };
-    }
-
-    var tagIds = _selectedTags.Select(t => t.Id).ToList();
+    var tagIds = _showOnlyUntagged ? null : _selectedTags.Select(t => t.Id).ToList();
+    IReadOnlyList<Guid>? groupIds = _showOnlyUngrouped
+      ? null
+      : _selectedDeviceGroupIds.Count > 0 ? [.. _selectedDeviceGroupIds] : null;
 
     var request = new DeviceSearchRequestDto
     {
       SearchText = _searchText,
       HideOfflineDevices = _hideOfflineDevices && !ShouldBypassHideOfflineDevices,
-      IncludeUntaggedDevices = _includeUntaggedDevices,
+      ShowOnlyUntaggedDevices = _showOnlyUntagged,
+      ShowOnlyUngroupedDevices = _showOnlyUngrouped,
       TagIds = tagIds,
       CustomerIds = _selectedCustomerIds.Count > 0 ? [.. _selectedCustomerIds] : null,
-      DeviceGroupIds = _selectedDeviceGroupIds.Count > 0 ? [.. _selectedDeviceGroupIds] : null,
+      DeviceGroupIds = groupIds,
       DeviceGroupFilterMatchMode = _deviceGroupFilterMatchMode,
       TagFilterMatchMode = _tagFilterMatchMode,
       Page = state.Page,
@@ -379,12 +352,22 @@ public partial class Dashboard : IAsyncDisposable
   private async Task OnSelectedDeviceGroupsChanged(IEnumerable<Guid> deviceGroupIds)
   {
     _selectedDeviceGroupIds = [.. deviceGroupIds];
+    if (_showOnlyUngrouped && _selectedDeviceGroupIds.Count > 0)
+    {
+      _showOnlyUngrouped = false;
+      await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUngroupedDevices, false);
+    }
     await ReloadGridData();
   }
 
   private async Task OnSelectedTagsChanged(ImmutableArray<TagViewModel> tags)
   {
     _selectedTags = [.. tags];
+    if (_showOnlyUntagged && _selectedTags.Length > 0)
+    {
+      _showOnlyUntagged = false;
+      await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUntaggedDevices, false);
+    }
     await ReloadGridData();
   }
 
@@ -497,6 +480,28 @@ public partial class Dashboard : IAsyncDisposable
     {
       Logger.LogError(ex, "Error while restarting device.");
     }
+  }
+
+  private async Task ShowOnlyUntaggedChanged(bool isChecked)
+  {
+    _showOnlyUntagged = isChecked;
+    await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUntaggedDevices, isChecked);
+    if (isChecked)
+    {
+      _selectedTags = [];
+    }
+    await ReloadGridData();
+  }
+
+  private async Task ShowOnlyUngroupedChanged(bool isChecked)
+  {
+    _showOnlyUngrouped = isChecked;
+    await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUngroupedDevices, isChecked);
+    if (isChecked)
+    {
+      _selectedDeviceGroupIds = [];
+    }
+    await ReloadGridData();
   }
 
   private async Task ShutdownDevice(DeviceViewModel device)

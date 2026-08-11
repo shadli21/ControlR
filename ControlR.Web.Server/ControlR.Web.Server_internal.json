@@ -11058,7 +11058,10 @@
           "hideOfflineDevices": {
             "type": "boolean"
           },
-          "includeUntaggedDevices": {
+          "showOnlyUntaggedDevices": {
+            "type": "boolean"
+          },
+          "showOnlyUngroupedDevices": {
             "type": "boolean"
           },
           "page": {
@@ -12970,7 +12973,8 @@
           "encodingFormat",
           "enableDirectX",
           "hideOfflineDevices",
-          "includeUntaggedDevices",
+          "showOnlyUntaggedDevices",
+          "showOnlyUngroupedDevices",
           "isAutoQualityEnabled",
           "isMaxBandwidthEnabled",
           "keyboardInputMode",
@@ -13016,7 +13020,10 @@
           "hideOfflineDevices": {
             "type": "boolean"
           },
-          "includeUntaggedDevices": {
+          "showOnlyUntaggedDevices": {
+            "type": "boolean"
+          },
+          "showOnlyUngroupedDevices": {
             "type": "boolean"
           },
           "isAutoQualityEnabled": {
