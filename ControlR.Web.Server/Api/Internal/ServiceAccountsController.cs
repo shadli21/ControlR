@@ -177,7 +177,7 @@ public class ServiceAccountsController(IServiceAccountManager serviceAccountMana
     }
 
     var result = await _serviceAccountManager.UpdateForTenant(
-      serviceAccountId, tenantId, request.Name, request.Description, userId, cancellationToken);
+      serviceAccountId, tenantId, request.Name, request.Description, request.IsEnabled, userId, cancellationToken);
 
     if (!result.IsSuccess)
     {

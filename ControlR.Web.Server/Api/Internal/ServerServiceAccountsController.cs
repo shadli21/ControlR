@@ -132,7 +132,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     }
 
     var result = await _serviceAccountManager.UpdateForServer(
-      serviceAccountId, request.Name, request.Description, userId, cancellationToken);
+      serviceAccountId, request.Name, request.Description, request.IsEnabled, userId, cancellationToken);
 
     if (!result.IsSuccess)
     {

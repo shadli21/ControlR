@@ -93,16 +93,16 @@ public interface IServiceAccountManager
     Guid serviceAccountId, Guid credentialId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Updates a server-scoped service account's name and description. Emits AuthorizationChangeLog.
+  /// Updates a server-scoped service account's name, description, and enabled state. Emits AuthorizationChangeLog.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> UpdateForServer(
-    Guid serviceAccountId, string name, string? description, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, string name, string? description, bool isEnabled, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Updates a tenant-scoped service account's name and description. Emits AuthorizationChangeLog.
+  /// Updates a tenant-scoped service account's name, description, and enabled state. Emits AuthorizationChangeLog.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> UpdateForTenant(
-    Guid serviceAccountId, Guid tenantId, string name, string? description, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, Guid tenantId, string name, string? description, bool isEnabled, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Validates a <c>{hex_id}:{plaintext_secret}</c> API key against a service account credential.
@@ -659,6 +659,7 @@ public class ServiceAccountManager(
     Guid serviceAccountId,
     string name,
     string? description,
+    bool isEnabled,
     Guid actorPrincipalId,
     CancellationToken cancellationToken)
   {
@@ -680,6 +681,7 @@ public class ServiceAccountManager(
 
     account.Name = name;
     account.Description = description;
+    account.IsEnabled = isEnabled;
 
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
@@ -689,7 +691,7 @@ public class ServiceAccountManager(
       serviceAccountId.ToString(),
       null,
       before: before,
-      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Server, description, account.IsEnabled)));
+      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Server, description, isEnabled)));
 
     await appDb.SaveChangesAsync(cancellationToken);
 
@@ -701,6 +703,7 @@ public class ServiceAccountManager(
     Guid tenantId,
     string name,
     string? description,
+    bool isEnabled,
     Guid actorPrincipalId,
     CancellationToken cancellationToken)
   {
@@ -722,6 +725,7 @@ public class ServiceAccountManager(
 
     account.Name = name;
     account.Description = description;
+    account.IsEnabled = isEnabled;
 
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
@@ -731,7 +735,7 @@ public class ServiceAccountManager(
       serviceAccountId.ToString(),
       tenantId,
       before: before,
-      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Tenant, description, account.IsEnabled)));
+      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Tenant, description, isEnabled)));
 
     await appDb.SaveChangesAsync(cancellationToken);
 

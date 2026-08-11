@@ -16,7 +16,9 @@ public record UpdateTenantServiceAccountRequestDto(
   string Name,
 
   [property: StringLength(500)]
-  string? Description);
+  string? Description,
+
+  bool IsEnabled);
 
 public record CreateTenantServiceAccountCredentialRequestDto(
   [property: Required]

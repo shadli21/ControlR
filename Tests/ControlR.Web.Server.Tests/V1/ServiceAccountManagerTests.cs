@@ -1,5 +1,9 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +13,12 @@ namespace ControlR.Web.Server.Tests.V1;
 
 public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
 {
+  private static readonly JsonSerializerOptions _snapshotJsonOptions = new()
+  {
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    Converters = { new JsonStringEnumConverter() }
+  };
+
   [Fact]
   public async Task DeleteForTenant_RemovesPermissionAssignments()
   {
@@ -101,5 +111,80 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
 
     var allAccounts = await manager.GetAllForServer(TestContext.Current.CancellationToken);
     Assert.DoesNotContain(allAccounts, a => a.Id == accountId);
+  }
+
+  [Fact]
+  public async Task UpdateForServer_WhenDisablingAccount_SetsIsEnabledAndLogsChange()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+
+    using var managerScope = testApp.CreateScope();
+    var manager = managerScope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var createResult = await manager.CreateForServer(
+      "Toggle SA", null, TestContext.Current.CancellationToken);
+    Assert.True(createResult.IsSuccess);
+
+    var accountId = createResult.Value.ServiceAccount.Id;
+    Assert.True(createResult.Value.ServiceAccount.IsEnabled);
+
+    var updateResult = await manager.UpdateForServer(
+      accountId, "Toggle SA", null, isEnabled: false, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(updateResult.IsSuccess);
+    Assert.False(updateResult.Value.IsEnabled);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var db = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+    var log = await db.AuthorizationChangeLogs
+      .IgnoreQueryFilters()
+      .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountUpdated &&
+                        x.TargetId == accountId.ToString(),
+        TestContext.Current.CancellationToken);
+
+    var before = JsonSerializer.Deserialize<ServiceAccountSnapshot>(log.BeforeJson!, _snapshotJsonOptions);
+    var after = JsonSerializer.Deserialize<ServiceAccountSnapshot>(log.AfterJson!, _snapshotJsonOptions);
+
+    Assert.NotNull(before);
+    Assert.NotNull(after);
+    Assert.True(before.IsEnabled);
+    Assert.False(after.IsEnabled);
+  }
+
+  [Fact]
+  public async Task UpdateForTenant_WhenDisablingAccount_SetsIsEnabledAndLogsChange()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+
+    using var managerScope = testApp.CreateScope();
+    var manager = managerScope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var createResult = await manager.CreateForTenant(
+      "Toggle SA", null, tenant.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(createResult.IsSuccess);
+
+    var accountId = createResult.Value.ServiceAccount.Id;
+    Assert.True(createResult.Value.ServiceAccount.IsEnabled);
+
+    var updateResult = await manager.UpdateForTenant(
+      accountId, tenant.Id, "Toggle SA", null, isEnabled: false, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(updateResult.IsSuccess);
+    Assert.False(updateResult.Value.IsEnabled);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var db = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+    var log = await db.AuthorizationChangeLogs
+      .IgnoreQueryFilters()
+      .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountUpdated &&
+                        x.TargetId == accountId.ToString(),
+        TestContext.Current.CancellationToken);
+
+    var before = JsonSerializer.Deserialize<ServiceAccountSnapshot>(log.BeforeJson!, _snapshotJsonOptions);
+    var after = JsonSerializer.Deserialize<ServiceAccountSnapshot>(log.AfterJson!, _snapshotJsonOptions);
+
+    Assert.NotNull(before);
+    Assert.NotNull(after);
+    Assert.True(before.IsEnabled);
+    Assert.False(after.IsEnabled);
   }
 }

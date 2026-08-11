@@ -1,12 +1,13 @@
 using ControlR.Web.Client.Components.Shared;
-using ControlR.Web.Client.Services;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Pages;
 
 public partial class ServiceAccounts : ComponentBase
 {
-  private IEnumerable<InternalDtos.TenantServiceAccountDto> _accounts = [];
+  private readonly HashSet<Guid> _togglingIds = [];
+
+  private InternalDtos.TenantServiceAccountDto[] _accounts = [];
   private bool _loading;
   private string _searchString = string.Empty;
 
@@ -22,6 +23,9 @@ public partial class ServiceAccounts : ComponentBase
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
+  [Inject]
+  public required TimeProvider TimeProvider { get; init; }
+
   private Func<InternalDtos.TenantServiceAccountDto, bool> QuickFilter => account =>
   {
     if (string.IsNullOrWhiteSpace(_searchString))
@@ -36,6 +40,11 @@ public partial class ServiceAccounts : ComponentBase
   protected override async Task OnInitializedAsync()
   {
     await Refresh();
+  }
+
+  private static string TruncateId(Guid id)
+  {
+    return $"{id.ToString()[..8]}...";
   }
 
   private async Task AddCredential(InternalDtos.TenantServiceAccountDto account)
@@ -117,6 +126,45 @@ public partial class ServiceAccounts : ComponentBase
     await Refresh();
   }
 
+  private async Task EditAccount(InternalDtos.TenantServiceAccountDto account)
+  {
+    var parameters = new DialogParameters<EditServiceAccountDialog>
+    {
+      { x => x.Name, account.Name },
+      { x => x.Description, account.Description }
+    };
+
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+    var dialog = await DialogService.ShowAsync<EditServiceAccountDialog>($"Edit {account.Name}", parameters, options);
+    var result = await dialog.Result;
+
+    if (result is null || result.Canceled || result.Data is not EditServiceAccountDialogResult editResult)
+    {
+      return;
+    }
+
+    var index = Array.FindIndex(_accounts, x => x.Id == account.Id);
+    var currentEnabled = index >= 0 ? _accounts[index].IsEnabled : account.IsEnabled;
+
+    var updateResult = await ControlrApi.Internal.ServiceAccounts.Update(
+      account.Id, new InternalDtos.UpdateTenantServiceAccountRequestDto(editResult.Name, editResult.Description, currentEnabled));
+
+    if (!updateResult.IsSuccess)
+    {
+      Snackbar.Add(updateResult.Reason, Severity.Error);
+      return;
+    }
+
+    Snackbar.Add("Service account updated", Severity.Success);
+    await Refresh();
+  }
+
+  private int GetActiveCount(IReadOnlyList<InternalDtos.TenantServiceAccountCredentialDto> credentials)
+  {
+    return credentials.Count(cred =>
+      cred.RevokedAt is null && (cred.ExpiresAt is null || cred.ExpiresAt > TimeProvider.GetUtcNow()));
+  }
+
   private async Task Refresh()
   {
     _loading = true;
@@ -141,6 +189,29 @@ public partial class ServiceAccounts : ComponentBase
     }
   }
 
+  private async Task RevokeCredential(Guid serviceAccountId, Guid credentialId)
+  {
+    var confirmed = await DialogService.ShowMessageBoxAsync(
+      "Revoke Credential",
+      "Are you sure you want to revoke this credential? The holder will no longer be able to authenticate.",
+      "Revoke", "Cancel");
+
+    if (!confirmed.GetValueOrDefault())
+    {
+      return;
+    }
+
+    var result = await ControlrApi.Internal.ServiceAccounts.RevokeCredential(serviceAccountId, credentialId);
+    if (!result.IsSuccess)
+    {
+      Snackbar.Add(result.Reason, Severity.Error);
+      return;
+    }
+
+    Snackbar.Add("Credential revoked", Severity.Success);
+    await Refresh();
+  }
+
   private async Task ShowSecretDialog(string title, string secret, string subtitle)
   {
     var parameters = new DialogParameters<SecretDisplayDialog>
@@ -157,8 +228,35 @@ public partial class ServiceAccounts : ComponentBase
     await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
   }
 
-  private string TruncateId(Guid id)
+  private async Task ToggleEnabled(InternalDtos.TenantServiceAccountDto account, bool enabled)
   {
-    return $"{id.ToString()[..8]}...";
+    if (_togglingIds.Contains(account.Id)) return;
+
+    _togglingIds.Add(account.Id);
+    try
+    {
+      var index = Array.FindIndex(_accounts, x => x.Id == account.Id);
+      if (index < 0) return;
+
+      var latest = _accounts[index];
+      var result = await ControlrApi.Internal.ServiceAccounts.Update(latest.Id,
+        new InternalDtos.UpdateTenantServiceAccountRequestDto(latest.Name, latest.Description, enabled));
+
+      if (!result.IsSuccess)
+      {
+        Snackbar.Add(result.Reason, Severity.Error);
+        return;
+      }
+
+      index = Array.FindIndex(_accounts, x => x.Id == account.Id);
+      if (index >= 0)
+      {
+        _accounts = [.. _accounts[..index], result.Value, .. _accounts[(index + 1)..]];
+      }
+    }
+    finally
+    {
+      _togglingIds.Remove(account.Id);
+    }
   }
 }

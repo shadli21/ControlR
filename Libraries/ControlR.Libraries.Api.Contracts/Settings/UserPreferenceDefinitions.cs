@@ -21,8 +21,8 @@ public static class UserPreferenceDefinitions
   public const double DefaultMaxBandwidthMbps = 15d;
   public const bool DefaultNotifyUserOnSessionStart = true;
   public const bool DefaultOpenDeviceInNewTab = true;
-  public const bool DefaultShowOnlyUntaggedDevices = false;
   public const bool DefaultShowOnlyUngroupedDevices = false;
+  public const bool DefaultShowOnlyUntaggedDevices = false;
 
   public static SettingDefinition<double> AutoQualityLowerThresholdMbps { get; } =
     SettingDefinition.CreateDouble(UserPreferenceNames.AutoQualityLowerThresholdMbps, DefaultAutoQualityLowerThresholdMbps, 0.1d);
@@ -54,10 +54,10 @@ public static class UserPreferenceDefinitions
     SettingDefinition.CreateBoolean(UserPreferenceNames.NotifyUserOnSessionStart, DefaultNotifyUserOnSessionStart);
   public static SettingDefinition<bool> OpenDeviceInNewTab { get; } =
     SettingDefinition.CreateBoolean(UserPreferenceNames.OpenDeviceInNewTab, DefaultOpenDeviceInNewTab);
-  public static SettingDefinition<bool> ShowOnlyUntaggedDevices { get; } =
-    SettingDefinition.CreateBoolean(UserPreferenceNames.ShowOnlyUntaggedDevices, DefaultShowOnlyUntaggedDevices);
   public static SettingDefinition<bool> ShowOnlyUngroupedDevices { get; } =
     SettingDefinition.CreateBoolean(UserPreferenceNames.ShowOnlyUngroupedDevices, DefaultShowOnlyUngroupedDevices);
+  public static SettingDefinition<bool> ShowOnlyUntaggedDevices { get; } =
+    SettingDefinition.CreateBoolean(UserPreferenceNames.ShowOnlyUntaggedDevices, DefaultShowOnlyUntaggedDevices);
   public static SettingDefinition<ThemeMode> ThemeMode { get; } =
     SettingDefinition.CreateEnum(UserPreferenceNames.ThemeMode, Enums.ThemeMode.Dark);
   public static SettingDefinition<string> UserDisplayName { get; } =

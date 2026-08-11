@@ -11058,12 +11058,6 @@
           "hideOfflineDevices": {
             "type": "boolean"
           },
-          "showOnlyUntaggedDevices": {
-            "type": "boolean"
-          },
-          "showOnlyUngroupedDevices": {
-            "type": "boolean"
-          },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
@@ -11079,6 +11073,12 @@
               "null",
               "string"
             ]
+          },
+          "showOnlyUngroupedDevices": {
+            "type": "boolean"
+          },
+          "showOnlyUntaggedDevices": {
+            "type": "boolean"
           },
           "sortDefinitions": {
             "type": [
@@ -12759,7 +12759,8 @@
       "UpdateServerServiceAccountRequestDto": {
         "required": [
           "name",
-          "description"
+          "description",
+          "isEnabled"
         ],
         "type": "object",
         "properties": {
@@ -12775,13 +12776,17 @@
               "null",
               "string"
             ]
+          },
+          "isEnabled": {
+            "type": "boolean"
           }
         }
       },
       "UpdateTenantServiceAccountRequestDto": {
         "required": [
           "name",
-          "description"
+          "description",
+          "isEnabled"
         ],
         "type": "object",
         "properties": {
@@ -12797,6 +12802,9 @@
               "null",
               "string"
             ]
+          },
+          "isEnabled": {
+            "type": "boolean"
           }
         }
       },

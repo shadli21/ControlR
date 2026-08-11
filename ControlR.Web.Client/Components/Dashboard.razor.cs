@@ -33,8 +33,8 @@ public partial class Dashboard : IAsyncDisposable
   private HashSet<Guid> _selectedCustomerIds = [];
   private HashSet<Guid> _selectedDeviceGroupIds = [];
   private ImmutableArray<TagViewModel> _selectedTags = [];
-  private bool _showOnlyUntagged;
   private bool _showOnlyUngrouped;
+  private bool _showOnlyUntagged;
   private HashSet<Guid> _subscribedDeviceIds = [];
   private FilterMatchMode _tagFilterMatchMode = FilterMatchMode.Any;
   private int _totalFilteredDevices;
@@ -482,17 +482,6 @@ public partial class Dashboard : IAsyncDisposable
     }
   }
 
-  private async Task ShowOnlyUntaggedChanged(bool isChecked)
-  {
-    _showOnlyUntagged = isChecked;
-    await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUntaggedDevices, isChecked);
-    if (isChecked)
-    {
-      _selectedTags = [];
-    }
-    await ReloadGridData();
-  }
-
   private async Task ShowOnlyUngroupedChanged(bool isChecked)
   {
     _showOnlyUngrouped = isChecked;
@@ -500,6 +489,17 @@ public partial class Dashboard : IAsyncDisposable
     if (isChecked)
     {
       _selectedDeviceGroupIds = [];
+    }
+    await ReloadGridData();
+  }
+
+  private async Task ShowOnlyUntaggedChanged(bool isChecked)
+  {
+    _showOnlyUntagged = isChecked;
+    await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUntaggedDevices, isChecked);
+    if (isChecked)
+    {
+      _selectedTags = [];
     }
     await ReloadGridData();
   }
