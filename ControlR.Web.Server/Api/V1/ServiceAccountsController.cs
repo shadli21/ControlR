@@ -33,7 +33,7 @@ public class ServiceAccountsController(
       return Unauthorized();
     }
 
-    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, principalId, cancellationToken);
+    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, expiresAt: null, principalId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();

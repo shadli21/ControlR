@@ -23,7 +23,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User ID not found.");
     }
 
-    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, userId, cancellationToken);
+    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, request.ExpiresAt, userId, cancellationToken);
 
     if (!result.IsSuccess)
     {

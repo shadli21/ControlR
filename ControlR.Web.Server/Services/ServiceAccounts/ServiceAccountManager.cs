@@ -18,15 +18,17 @@ public interface IServiceAccountManager
   /// <summary>
   /// Adds a new credential to an existing server service account. Returns the credential
   /// metadata and the plaintext secret, which is only exposed this once. Emits AuthorizationChangeLog.
+  /// A null <paramref name="expiresAt"/> creates a credential that never expires.
   /// </summary>
   Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredential(
-    Guid serviceAccountId, string name, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, string name, DateTimeOffset? expiresAt, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Adds a new credential to a tenant-scoped service account. Emits AuthorizationChangeLog.
+  /// A null <paramref name="expiresAt"/> creates a credential that never expires.
   /// </summary>
   Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForTenant(
-    Guid serviceAccountId, Guid tenantId, string name, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, Guid tenantId, string name, DateTimeOffset? expiresAt, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Creates the bootstrapped server service account and its initial credential when the
@@ -134,12 +136,18 @@ public class ServiceAccountManager(
   public async Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredential(
     Guid serviceAccountId,
     string name,
+    DateTimeOffset? expiresAt,
     Guid actorPrincipalId,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
       return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.BadRequest, "Credential name is required.");
+    }
+
+    if (!ValidateExpiration(expiresAt, out var expirationError))
+    {
+      return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.BadRequest, expirationError);
     }
 
     var account = await appDb.ServiceAccounts
@@ -162,7 +170,8 @@ public class ServiceAccountManager(
     var credential = new ServiceAccountCredential
     {
       Name = name,
-      HashedSecret = hashedSecret
+      HashedSecret = hashedSecret,
+      ExpiresAt = expiresAt
     };
     account.Credentials.Add(credential);
 
@@ -185,12 +194,18 @@ public class ServiceAccountManager(
     Guid serviceAccountId,
     Guid tenantId,
     string name,
+    DateTimeOffset? expiresAt,
     Guid actorPrincipalId,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
       return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.BadRequest, "Credential name is required.");
+    }
+
+    if (!ValidateExpiration(expiresAt, out var expirationError))
+    {
+      return HttpResult.Fail<CreateServiceAccountCredentialResult>(HttpResultErrorCode.BadRequest, expirationError);
     }
 
     var account = await appDb.ServiceAccounts
@@ -213,7 +228,8 @@ public class ServiceAccountManager(
     var credential = new ServiceAccountCredential
     {
       Name = name,
-      HashedSecret = hashedSecret
+      HashedSecret = hashedSecret,
+      ExpiresAt = expiresAt
     };
     account.Credentials.Add(credential);
 
@@ -921,5 +937,22 @@ public class ServiceAccountManager(
     }
     credential.LastUsedAt = now;
     await appDb.SaveChangesAsync(cancellationToken);
+  }
+
+  private bool ValidateExpiration(DateTimeOffset? expiresAt, out string error)
+  {
+    error = string.Empty;
+    if (expiresAt is null)
+    {
+      return true;
+    }
+
+    if (expiresAt <= timeProvider.GetUtcNow())
+    {
+      error = "Credential expiration must be in the future.";
+      return false;
+    }
+
+    return true;
   }
 }

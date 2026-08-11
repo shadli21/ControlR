@@ -34,6 +34,7 @@ public class ServiceAccountSecretLoggingTests(ITestOutputHelper testOutput)
     var addCredResult = await manager.AddCredential(
       accountId,
       "Secret Log Test Credential",
+      expiresAt: null,
       Guid.NewGuid(),
       TestContext.Current.CancellationToken);
     Assert.True(addCredResult.IsSuccess);

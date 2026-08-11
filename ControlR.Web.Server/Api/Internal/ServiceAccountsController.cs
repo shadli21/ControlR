@@ -31,7 +31,7 @@ public class ServiceAccountsController(IServiceAccountManager serviceAccountMana
     }
 
     var result = await _serviceAccountManager.AddCredentialForTenant(
-      serviceAccountId, tenantId, request.Name, userId, cancellationToken);
+      serviceAccountId, tenantId, request.Name, request.ExpiresAt, userId, cancellationToken);
 
     if (!result.IsSuccess)
     {

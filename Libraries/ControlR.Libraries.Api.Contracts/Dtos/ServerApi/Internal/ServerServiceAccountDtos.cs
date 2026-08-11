@@ -23,7 +23,9 @@ public record UpdateServerServiceAccountRequestDto(
 public record CreateServerServiceAccountCredentialRequestDto(
   [property: Required]
   [property: StringLength(100, MinimumLength = 1)]
-  string Name);
+  string Name,
+
+  DateTimeOffset? ExpiresAt = null);
 
 public record ServerServiceAccountCredentialDto(
   Guid Id,

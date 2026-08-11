@@ -10285,6 +10285,13 @@
             "maxLength": 100,
             "minLength": 1,
             "type": "string"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -10350,6 +10357,13 @@
             "maxLength": 100,
             "minLength": 1,
             "type": "string"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },

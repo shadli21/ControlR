@@ -49,26 +49,26 @@ public partial class ServiceAccounts : ComponentBase
 
   private async Task AddCredential(InternalDtos.TenantServiceAccountDto account)
   {
-    var name = await DialogService.ShowPrompt(
-      "Add Credential",
-      $"Enter a name for the new credential on \"{account.Name}\".",
-      "Credential name");
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+    var dialog = await DialogService.ShowAsync<CreateServiceAccountCredentialDialog>(
+      $"Add Credential to \"{account.Name}\"", options);
+    var result = await dialog.Result;
 
-    if (string.IsNullOrWhiteSpace(name))
+    if (result is null || result.Canceled || result.Data is not CreateServiceAccountCredentialDialogResult dialogResult)
     {
       return;
     }
 
-    var result = await ControlrApi.Internal.ServiceAccounts.AddCredential(
-      account.Id, new InternalDtos.CreateTenantServiceAccountCredentialRequestDto(name));
+    var apiResult = await ControlrApi.Internal.ServiceAccounts.AddCredential(
+      account.Id, new InternalDtos.CreateTenantServiceAccountCredentialRequestDto(dialogResult.Name, dialogResult.ExpiresAt));
 
-    if (!result.IsSuccess)
+    if (!apiResult.IsSuccess)
     {
-      Snackbar.Add(result.Reason, Severity.Error);
+      Snackbar.Add(apiResult.Reason, Severity.Error);
       return;
     }
 
-    await ShowSecretDialog("Credential Created", result.Value.PlainTextSecretKey, result.Value.Credential.Name);
+    await ShowSecretDialog("Credential Created", apiResult.Value.PlainTextSecretKey, apiResult.Value.Credential.Name);
     await Refresh();
   }
 

@@ -23,7 +23,9 @@ public record UpdateTenantServiceAccountRequestDto(
 public record CreateTenantServiceAccountCredentialRequestDto(
   [property: Required]
   [property: StringLength(100, MinimumLength = 1)]
-  string Name);
+  string Name,
+
+  DateTimeOffset? ExpiresAt = null);
 
 public record TenantServiceAccountCredentialDto(
   Guid Id,

@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Tests.Helpers;
@@ -18,6 +19,83 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     Converters = { new JsonStringEnumConverter() }
   };
+
+  [Fact]
+  public async Task AddCredentialForTenant_WhenExpiresAtInPast_ReturnsBadRequest()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var createResult = await manager.CreateForTenant(
+      "Tenant Expiration SA", null, tenant.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(createResult.IsSuccess);
+    var accountId = createResult.Value.ServiceAccount.Id;
+
+    var addCredResult = await manager.AddCredentialForTenant(
+      accountId,
+      tenant.Id,
+      "Expired at creation",
+      DateTimeOffset.UtcNow.AddMinutes(-5),
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+
+    Assert.False(addCredResult.IsSuccess);
+    Assert.Equal(HttpResultErrorCode.BadRequest, addCredResult.ErrorCode);
+  }
+
+  [Fact]
+  public async Task AddCredential_WhenExpiresAtInFuture_StoresExpirationAndValidates()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var createResult = await manager.CreateForServer(
+      "Expiration SA", null, TestContext.Current.CancellationToken);
+    Assert.True(createResult.IsSuccess);
+    var accountId = createResult.Value.ServiceAccount.Id;
+
+    var expiresAt = DateTimeOffset.UtcNow.AddDays(30);
+    var addCredResult = await manager.AddCredential(
+      accountId,
+      "Expiring credential",
+      expiresAt,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+
+    Assert.True(addCredResult.IsSuccess);
+    Assert.Equal(expiresAt, addCredResult.Value.Credential.ExpiresAt);
+
+    var validateResult = await manager.ValidateCredential(
+      addCredResult.Value.PlainTextSecretKey, TestContext.Current.CancellationToken);
+    Assert.True(validateResult.IsSuccess);
+  }
+
+  [Fact]
+  public async Task AddCredential_WhenExpiresAtInPast_ReturnsBadRequest()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var createResult = await manager.CreateForServer(
+      "Expiration SA", null, TestContext.Current.CancellationToken);
+    Assert.True(createResult.IsSuccess);
+    var accountId = createResult.Value.ServiceAccount.Id;
+
+    var addCredResult = await manager.AddCredential(
+      accountId,
+      "Expired at creation",
+      DateTimeOffset.UtcNow.AddMinutes(-5),
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+
+    Assert.False(addCredResult.IsSuccess);
+    Assert.Equal(HttpResultErrorCode.BadRequest, addCredResult.ErrorCode);
+  }
 
   [Fact]
   public async Task DeleteForTenant_RemovesPermissionAssignments()
@@ -93,6 +171,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var addCredResult = await manager.AddCredential(
       accountId,
       "Secondary key",
+      expiresAt: null,
       Guid.NewGuid(),
       TestContext.Current.CancellationToken);
     Assert.True(addCredResult.IsSuccess);
