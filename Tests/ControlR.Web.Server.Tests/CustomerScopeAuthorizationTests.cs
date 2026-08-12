@@ -1,11 +1,8 @@
-#pragma warning disable BB0001 // Member order is incorrect
 using System.Security.Claims;
 using ControlR.Web.Server.Authn;
-using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Primitives;
-using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
 using ControlR.Web.Server.Services.PermissionAssignments;
 using ControlR.Web.Server.Tests.Helpers;
@@ -16,6 +13,33 @@ namespace ControlR.Web.Server.Tests;
 public class CustomerScopeAuthorizationTests(ITestOutputHelper testOutput)
 {
   private readonly ITestOutputHelper _testOutput = testOutput;
+
+  [Fact]
+  public async Task Create_CustomerScopeWithoutScopeId_ReturnsBadRequest()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    using var scope = testApp.App.Services.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
+
+    var result = await manager.Create(
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.User,
+        user.Id,
+        PermissionNames.DeviceRead,
+        PermissionEffect.Allow,
+        PermissionScopeKind.CustomerTenant,
+        null,
+        null),
+      tenant.Id,
+      user.Id,
+      TestContext.Current.CancellationToken);
+
+    Assert.False(result.IsSuccess);
+    Assert.Equal(HttpResultErrorCode.BadRequest, result.ErrorCode);
+  }
 
   [Fact]
   public async Task Resolve_CustomerScopeAssignment_ReturnsForCustomers()
@@ -50,32 +74,5 @@ public class CustomerScopeAuthorizationTests(ITestOutputHelper testOutput)
 
     Assert.Equal(DeviceAccessScopeKind.Customers, result.Kind);
     Assert.Contains(customerId, result.CustomerIds);
-  }
-
-  [Fact]
-  public async Task Create_CustomerScopeWithoutScopeId_ReturnsBadRequest()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-
-    using var scope = testApp.App.Services.CreateScope();
-    var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
-
-    var result = await manager.Create(
-      new InternalDtos.CreatePermissionAssignmentRequestDto(
-        PermissionPrincipalKind.User,
-        user.Id,
-        PermissionNames.DeviceRead,
-        PermissionEffect.Allow,
-        PermissionScopeKind.CustomerTenant,
-        null,
-        null),
-      tenant.Id,
-      user.Id,
-      TestContext.Current.CancellationToken);
-
-    Assert.False(result.IsSuccess);
-    Assert.Equal(HttpResultErrorCode.BadRequest, result.ErrorCode);
   }
 }

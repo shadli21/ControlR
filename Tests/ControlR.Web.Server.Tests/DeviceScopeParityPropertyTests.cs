@@ -1,4 +1,3 @@
-#pragma warning disable BB0001 // Member order is incorrect
 using System.Security.Claims;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
@@ -21,8 +20,8 @@ namespace ControlR.Web.Server.Tests;
 /// </summary>
 public class DeviceScopeParityPropertyTests(ITestOutputHelper testOutput)
 {
-  private const int ScenarioCount = 40;
   private const int RandomSeed = 20260804;
+  private const int ScenarioCount = 40;
 
   private readonly ITestOutputHelper _testOutput = testOutput;
 

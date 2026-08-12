@@ -1,4 +1,4 @@
-#pragma warning disable BB0001 // Member order is incorrect
+#pragma warning disable BB0001 // Member order is incorrect.  This bypass is a special case.  Don't replicate.
 using ControlR.Web.Client.Services;
 
 namespace ControlR.Web.Client.Tests;

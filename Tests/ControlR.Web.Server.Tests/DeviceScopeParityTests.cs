@@ -1,10 +1,8 @@
-#pragma warning disable BB0001 // Member order is incorrect
 using System.Security.Claims;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
-using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
@@ -24,75 +22,6 @@ namespace ControlR.Web.Server.Tests;
 public class DeviceScopeParityTests(ITestOutputHelper testOutput)
 {
   private readonly ITestOutputHelper _testOutput = testOutput;
-
-  [Fact]
-  public async Task Parity_DeviceScopedAssignment()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
-    var deviceB = await testApp.App.Services.CreateTestDevice(tenant.Id);
-
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.User,
-      PrincipalId = user.Id,
-      PermissionName = PermissionNames.DeviceRead,
-      Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.Device,
-      ScopeId = deviceA.Id,
-      OwningTenantId = tenant.Id,
-      IsEnabled = true
-    });
-
-    var (claims, principal) = CreateUserPrincipalPair(user.Id, tenant.Id);
-
-    await AssertResolverEvaluatorParity(testApp, tenant.Id, claims, principal,
-    [
-      new ParityDevice(deviceA.Id, null, []),
-      new ParityDevice(deviceB.Id, null, [])
-    ]);
-  }
-
-  [Fact]
-  public async Task Parity_DeviceGroupScopedAssignment()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
-    var deviceB = await testApp.App.Services.CreateTestDevice(tenant.Id);
-    var groupId = Guid.NewGuid();
-
-    using (var scope = testApp.App.Services.CreateScope())
-    {
-      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      db.DeviceGroups.Add(new DeviceGroup { Id = groupId, Name = $"group-{groupId:N}", TenantId = tenant.Id });
-      db.DeviceGroupMembers.Add(new DeviceGroupMember { DeviceId = deviceA.Id, DeviceGroupId = groupId });
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.User,
-      PrincipalId = user.Id,
-      PermissionName = PermissionNames.DeviceRead,
-      Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.DeviceGroup,
-      ScopeId = groupId,
-      OwningTenantId = tenant.Id,
-      IsEnabled = true
-    });
-
-    var (claims, principal) = CreateUserPrincipalPair(user.Id, tenant.Id);
-
-    await AssertResolverEvaluatorParity(testApp, tenant.Id, claims, principal,
-    [
-      new ParityDevice(deviceA.Id, null, [groupId]),
-      new ParityDevice(deviceB.Id, null, [])
-    ]);
-  }
 
   [Fact]
   public async Task Parity_CustomerScopedAssignment()
@@ -137,7 +66,46 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task Parity_TenantScopedAssignment()
+  public async Task Parity_DeviceGroupScopedAssignment()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var groupId = Guid.NewGuid();
+
+    using (var scope = testApp.App.Services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.DeviceGroups.Add(new DeviceGroup { Id = groupId, Name = $"group-{groupId:N}", TenantId = tenant.Id });
+      db.DeviceGroupMembers.Add(new DeviceGroupMember { DeviceId = deviceA.Id, DeviceGroupId = groupId });
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.DeviceGroup,
+      ScopeId = groupId,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var (claims, principal) = CreateUserPrincipalPair(user.Id, tenant.Id);
+
+    await AssertResolverEvaluatorParity(testApp, tenant.Id, claims, principal,
+    [
+      new ParityDevice(deviceA.Id, null, [groupId]),
+      new ParityDevice(deviceB.Id, null, [])
+    ]);
+  }
+
+  [Fact]
+  public async Task Parity_DeviceScopedAssignment()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
@@ -151,8 +119,8 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       PrincipalId = user.Id,
       PermissionName = PermissionNames.DeviceRead,
       Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.Tenant,
-      ScopeId = tenant.Id,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = deviceA.Id,
       OwningTenantId = tenant.Id,
       IsEnabled = true
     });
@@ -254,6 +222,36 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       Effect = PermissionEffect.Deny,
       ScopeKind = PermissionScopeKind.Device,
       ScopeId = deviceB.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var (claims, principal) = CreateUserPrincipalPair(user.Id, tenant.Id);
+
+    await AssertResolverEvaluatorParity(testApp, tenant.Id, claims, principal,
+    [
+      new ParityDevice(deviceA.Id, null, []),
+      new ParityDevice(deviceB.Id, null, [])
+    ]);
+  }
+
+  [Fact]
+  public async Task Parity_TenantScopedAssignment()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
       OwningTenantId = tenant.Id,
       IsEnabled = true
     });

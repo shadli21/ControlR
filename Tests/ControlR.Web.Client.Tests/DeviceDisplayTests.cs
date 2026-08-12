@@ -1,6 +1,4 @@
-#pragma warning disable BB0001 // Member order is incorrect
 using System.Runtime.InteropServices;
-using ControlR.Libraries.Api.Contracts.Dtos.Devices;
 using ControlR.Libraries.Api.Contracts.Enums;
 using ControlR.Web.Client.Helpers;
 
@@ -8,6 +6,48 @@ namespace ControlR.Web.Client.Tests;
 
 public class DeviceDisplayTests
 {
+  private const string DeviceIdPrefix = "a1b2c3d4";
+
+  [Fact]
+  public void GetAliasDisplay_NullAlias_ReturnsDash()
+  {
+    var device = CreateDevice("WS-01", alias: null);
+
+    Assert.Equal("—", DeviceDisplay.GetAliasDisplay(device));
+  }
+
+  [Fact]
+  public void GetAliasDisplay_WithAlias_ReturnsAlias()
+  {
+    var device = CreateDevice("WS-01", alias: "Front Desk");
+
+    Assert.Equal("Front Desk", DeviceDisplay.GetAliasDisplay(device));
+  }
+
+  [Fact]
+  public void GetCustomerDisplay_NullCustomer_ReturnsNone()
+  {
+    var device = CreateDevice("WS-01", customerName: null);
+
+    Assert.Equal("—", DeviceDisplay.GetCustomerDisplay(device));
+  }
+
+  [Fact]
+  public void GetCustomerDisplay_WhitespaceCustomer_ReturnsNone()
+  {
+    var device = CreateDevice("WS-01", customerName: "  ");
+
+    Assert.Equal("—", DeviceDisplay.GetCustomerDisplay(device));
+  }
+
+  [Fact]
+  public void GetCustomerDisplay_WithCustomer_ReturnsName()
+  {
+    var device = CreateDevice("WS-01", customerName: "Acme");
+
+    Assert.Equal("Acme", DeviceDisplay.GetCustomerDisplay(device));
+  }
+
   [Fact]
   public void GetDisplayName_NameAliasCustomer_ReturnsAllSegments()
   {
@@ -29,16 +69,6 @@ public class DeviceDisplayTests
   }
 
   [Fact]
-  public void GetDisplayName_WhitespaceAlias_RendersDash()
-  {
-    var device = CreateDevice("WS-01", alias: "   ", customerName: "Acme");
-
-    var result = DeviceDisplay.GetFullDisplayName(device);
-
-    Assert.Equal($"WS-01  (Customer: Acme  |  Alias: —  |  Device ID: {DeviceIdPrefix}...)", result);
-  }
-
-  [Fact]
   public void GetDisplayName_NullCustomer_RendersDash()
   {
     var device = CreateDevice("WS-01", alias: null, customerName: null);
@@ -49,43 +79,13 @@ public class DeviceDisplayTests
   }
 
   [Fact]
-  public void GetCustomerDisplay_WithCustomer_ReturnsName()
+  public void GetDisplayName_WhitespaceAlias_RendersDash()
   {
-    var device = CreateDevice("WS-01", customerName: "Acme");
+    var device = CreateDevice("WS-01", alias: "   ", customerName: "Acme");
 
-    Assert.Equal("Acme", DeviceDisplay.GetCustomerDisplay(device));
-  }
+    var result = DeviceDisplay.GetFullDisplayName(device);
 
-  [Fact]
-  public void GetCustomerDisplay_NullCustomer_ReturnsNone()
-  {
-    var device = CreateDevice("WS-01", customerName: null);
-
-    Assert.Equal("—", DeviceDisplay.GetCustomerDisplay(device));
-  }
-
-  [Fact]
-  public void GetCustomerDisplay_WhitespaceCustomer_ReturnsNone()
-  {
-    var device = CreateDevice("WS-01", customerName: "  ");
-
-    Assert.Equal("—", DeviceDisplay.GetCustomerDisplay(device));
-  }
-
-  [Fact]
-  public void GetAliasDisplay_WithAlias_ReturnsAlias()
-  {
-    var device = CreateDevice("WS-01", alias: "Front Desk");
-
-    Assert.Equal("Front Desk", DeviceDisplay.GetAliasDisplay(device));
-  }
-
-  [Fact]
-  public void GetAliasDisplay_NullAlias_ReturnsDash()
-  {
-    var device = CreateDevice("WS-01", alias: null);
-
-    Assert.Equal("—", DeviceDisplay.GetAliasDisplay(device));
+    Assert.Equal($"WS-01  (Customer: Acme  |  Alias: —  |  Device ID: {DeviceIdPrefix}...)", result);
   }
 
   [Fact]
@@ -95,8 +95,6 @@ public class DeviceDisplayTests
 
     Assert.Equal($"{DeviceIdPrefix}...", DeviceDisplay.GetIdDisplay(device));
   }
-
-  private const string DeviceIdPrefix = "a1b2c3d4";
 
   private static DeviceResponseDto CreateDevice(string name, string? alias = null, string? customerName = null)
   {

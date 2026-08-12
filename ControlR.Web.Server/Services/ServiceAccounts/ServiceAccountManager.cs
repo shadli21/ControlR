@@ -443,7 +443,7 @@ public class ServiceAccountManager(
       return HttpResult.Fail(HttpResultErrorCode.NotFound, "Server service account not found.");
     }
 
-    await EvictAccountFromCacheAsync(serviceAccountId, cancellationToken);
+    await EvictAccountFromCache(serviceAccountId, cancellationToken);
 
     // Cascade: remove PermissionAssignment rows where this service account is the principal.
     var principalAssignments = await appDb.PermissionAssignments
@@ -487,7 +487,7 @@ public class ServiceAccountManager(
       return HttpResult.Fail(HttpResultErrorCode.NotFound, "Service account not found.");
     }
 
-    await EvictAccountFromCacheAsync(serviceAccountId, cancellationToken);
+    await EvictAccountFromCache(serviceAccountId, cancellationToken);
 
     // Cascade: remove PermissionAssignment rows where this service account is the principal.
     var principalAssignments = await appDb.PermissionAssignments
@@ -674,6 +674,8 @@ public class ServiceAccountManager(
 
     var before = new ServiceAccountSnapshot(account.Name, ServiceAccountKind.Server, account.Description, account.IsEnabled);
 
+    var isEnabledChanged = before.IsEnabled != isEnabled;
+
     account.Name = name;
     account.Description = description;
     account.IsEnabled = isEnabled;
@@ -689,6 +691,11 @@ public class ServiceAccountManager(
       after: new ServiceAccountSnapshot(name, ServiceAccountKind.Server, description, isEnabled)));
 
     await appDb.SaveChangesAsync(cancellationToken);
+
+    if (isEnabledChanged)
+    {
+      await EvictAccountFromCache(serviceAccountId, cancellationToken);
+    }
 
     return HttpResult.Ok(MapToResult(account));
   }
@@ -718,6 +725,8 @@ public class ServiceAccountManager(
 
     var before = new ServiceAccountSnapshot(account.Name, ServiceAccountKind.Tenant, account.Description, account.IsEnabled);
 
+    var isEnabledChanged = before.IsEnabled != isEnabled;
+
     account.Name = name;
     account.Description = description;
     account.IsEnabled = isEnabled;
@@ -733,6 +742,11 @@ public class ServiceAccountManager(
       after: new ServiceAccountSnapshot(name, ServiceAccountKind.Tenant, description, isEnabled)));
 
     await appDb.SaveChangesAsync(cancellationToken);
+
+    if (isEnabledChanged)
+    {
+      await EvictAccountFromCache(serviceAccountId, cancellationToken);
+    }
 
     return HttpResult.Ok(MapToResult(account));
   }
@@ -779,7 +793,7 @@ public class ServiceAccountManager(
       else
       {
         cachedResult.Credential.LastUsedAt = now;
-        await PersistLastUsedAtAsync(credentialId, now, cancellationToken);
+        await PersistLastUsedAt(credentialId, now, cancellationToken);
 
         return HttpResult.Ok(cachedResult);
       }
@@ -867,7 +881,7 @@ public class ServiceAccountManager(
         .ToList());
   }
 
-  private async Task EvictAccountFromCacheAsync(Guid serviceAccountId, CancellationToken cancellationToken)
+  private async Task EvictAccountFromCache(Guid serviceAccountId, CancellationToken cancellationToken)
   {
     try
     {
@@ -895,7 +909,7 @@ public class ServiceAccountManager(
     memoryCache.Remove(credentialId);
   }
 
-  private async Task PersistLastUsedAtAsync(Guid credentialId, DateTimeOffset now, CancellationToken cancellationToken)
+  private async Task PersistLastUsedAt(Guid credentialId, DateTimeOffset now, CancellationToken cancellationToken)
   {
     if (appDb.Database.IsRelational())
     {
