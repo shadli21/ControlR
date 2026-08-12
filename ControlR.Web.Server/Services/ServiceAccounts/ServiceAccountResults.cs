@@ -1,3 +1,5 @@
+using ControlR.Libraries.Api.Contracts.Enums;
+
 namespace ControlR.Web.Server.Services.ServiceAccounts;
 
 /// <summary>
@@ -8,7 +10,7 @@ public sealed record ServiceAccountResult(
   Guid Id,
   string Name,
   string? Description,
-  string Kind,
+  ServiceAccountKind Kind,
   bool IsEnabled,
   DateTimeOffset CreatedAt,
   IReadOnlyList<ServiceAccountCredentialResult> Credentials);
@@ -23,14 +25,6 @@ public sealed record ServiceAccountCredentialResult(
   DateTimeOffset? ExpiresAt,
   DateTimeOffset? RevokedAt,
   DateTimeOffset? LastUsedAt);
-
-/// <summary>
-/// Returned when a new service account is created. Includes the plaintext secret
-/// which is only available at creation time.
-/// </summary>
-public sealed record CreateServiceAccountResult(
-  ServiceAccountResult ServiceAccount,
-  string PlainTextSecretKey);
 
 /// <summary>
 /// Returned when a new credential is added to a service account. Includes the

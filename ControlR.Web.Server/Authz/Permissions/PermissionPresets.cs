@@ -14,6 +14,7 @@ public static class PermissionPresets
   public const string DeviceSuperUser = "Device Superuser";
   public const string InstallerKeyManager = "Installer Key Manager";
   public const string ServerAdministrator = "Server Administrator";
+  public const string ServiceAccountManager = "Service Account Manager";
   public const string TenantAdministrator = "Tenant Administrator";
 
   public static IReadOnlyDictionary<string, IReadOnlyList<string>> All { get; } = BuildPresets();
@@ -155,6 +156,13 @@ public static class PermissionPresets
         PermissionNames.InstallerKeyRead,
         PermissionNames.InstallerKeyWrite,
         PermissionNames.AgentInstall,
+      ],
+
+      [ServiceAccountManager] =
+      [
+        PermissionNames.ServiceAccountRead,
+        PermissionNames.ServiceAccountWrite,
+        PermissionNames.ServiceAccountRotateCredentials,
       ],
     };
   }

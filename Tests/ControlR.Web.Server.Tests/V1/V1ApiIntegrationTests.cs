@@ -21,9 +21,18 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var tenant = await testServer.Services.CreateTestTenant();
     var user = await testServer.Services.CreateTestUser(tenant.Id, email: "ik-int@test.local");
@@ -53,9 +62,18 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var tenant = await testServer.Services.CreateTestTenant();
     var user = await testServer.Services.CreateTestUser(tenant.Id, email: "lt-int@test.local");

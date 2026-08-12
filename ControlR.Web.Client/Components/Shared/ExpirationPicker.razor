@@ -1,0 +1,12 @@
+<MudSelect T="int" Value="_choice" ValueChanged="OnChoiceChanged" Label="Expires">
+  <MudSelectItem Value="NeverValue">Never</MudSelectItem>
+  <MudSelectItem Value="30">In 30 days</MudSelectItem>
+  <MudSelectItem Value="90">In 90 days</MudSelectItem>
+  <MudSelectItem Value="365">In 1 year</MudSelectItem>
+  <MudSelectItem Value="CustomValue">Custom</MudSelectItem>
+</MudSelect>
+@if (_choice == CustomValue)
+{
+  <MudDatePicker Date="_customDate" DateChanged="OnDateChanged" Label="Expiration Date" MinDate="MinDate" Required="true" />
+  <MudTimePicker Time="_customTime" TimeChanged="OnTimeChanged" Label="Expiration Time" AmPm="true" Required="true" />
+}

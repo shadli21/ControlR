@@ -5175,17 +5175,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateServerServiceAccountResponseDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateServerServiceAccountResponseDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateServerServiceAccountResponseDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               }
             }
@@ -5738,17 +5738,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateTenantServiceAccountResponseDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateTenantServiceAccountResponseDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateTenantServiceAccountResponseDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               }
             }
@@ -10332,21 +10332,6 @@
           }
         }
       },
-      "CreateServerServiceAccountResponseDto": {
-        "required": [
-          "serviceAccount",
-          "plainTextSecretKey"
-        ],
-        "type": "object",
-        "properties": {
-          "serviceAccount": {
-            "$ref": "#/components/schemas/ServerServiceAccountDto"
-          },
-          "plainTextSecretKey": {
-            "type": "string"
-          }
-        }
-      },
       "CreateTenantServiceAccountCredentialRequestDto": {
         "required": [
           "name"
@@ -10401,21 +10386,6 @@
               "null",
               "string"
             ]
-          }
-        }
-      },
-      "CreateTenantServiceAccountResponseDto": {
-        "required": [
-          "serviceAccount",
-          "plainTextSecretKey"
-        ],
-        "type": "object",
-        "properties": {
-          "serviceAccount": {
-            "$ref": "#/components/schemas/TenantServiceAccountDto"
-          },
-          "plainTextSecretKey": {
-            "type": "string"
           }
         }
       },

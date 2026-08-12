@@ -1225,17 +1225,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateServiceAccountResponseDto"
+                  "$ref": "#/components/schemas/ServiceAccountDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateServiceAccountResponseDto"
+                  "$ref": "#/components/schemas/ServiceAccountDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateServiceAccountResponseDto"
+                  "$ref": "#/components/schemas/ServiceAccountDto"
                 }
               }
             }
@@ -1531,6 +1531,136 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServiceAccountDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ServiceAccountCredential": [ ]
+          },
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "ServiceAccounts"
+        ],
+        "parameters": [
+          {
+            "name": "serviceAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceAccountRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceAccountRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceAccountRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccountDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccountDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccountDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -2249,6 +2379,13 @@
             "maxLength": 100,
             "minLength": 1,
             "type": "string"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -2286,21 +2423,6 @@
               "null",
               "string"
             ]
-          }
-        }
-      },
-      "CreateServiceAccountResponseDto": {
-        "required": [
-          "serviceAccount",
-          "plainTextSecretKey"
-        ],
-        "type": "object",
-        "properties": {
-          "serviceAccount": {
-            "$ref": "#/components/schemas/ServiceAccountDto"
-          },
-          "plainTextSecretKey": {
-            "type": "string"
           }
         }
       },
@@ -2916,7 +3038,7 @@
             ]
           },
           "kind": {
-            "type": "string"
+            "$ref": "#/components/schemas/ServiceAccountKind"
           },
           "isEnabled": {
             "type": "boolean"
@@ -2932,6 +3054,12 @@
             }
           }
         }
+      },
+      "ServiceAccountKind": {
+        "enum": [
+          "Tenant",
+          "Server"
+        ]
       },
       "SystemPlatform": {
         "type": "integer"
@@ -2952,6 +3080,32 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "UpdateServiceAccountRequestDto": {
+        "required": [
+          "name",
+          "description",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean"
           }
         }
       },

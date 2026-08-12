@@ -10,7 +10,7 @@ public interface IServiceAccountsApi
   Task<ApiResult<InternalDtos.CreateTenantServiceAccountCredentialResponseDto>> AddCredential(Guid serviceAccountId, InternalDtos.CreateTenantServiceAccountCredentialRequestDto request, CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.Internal.ServiceAccountsEndpoint}", "POST")]
-  Task<ApiResult<InternalDtos.CreateTenantServiceAccountResponseDto>> Create(InternalDtos.CreateTenantServiceAccountRequestDto request, CancellationToken cancellationToken = default);
+  Task<ApiResult<InternalDtos.TenantServiceAccountDto>> Create(InternalDtos.CreateTenantServiceAccountRequestDto request, CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.Internal.ServiceAccountsEndpoint}/{{serviceAccountId}}", "DELETE")]
   Task<ApiResult> Delete(Guid serviceAccountId, CancellationToken cancellationToken = default);

@@ -33,11 +33,6 @@ internal static class ModelToV1DtoExtensions
       result.LastUsedAt);
   }
 
-  public static CreateServiceAccountResponseDto ToDto(this CreateServiceAccountResult result)
-  {
-    return new CreateServiceAccountResponseDto(result.ServiceAccount.ToDto(), result.PlainTextSecretKey);
-  }
-
   public static CreateServiceAccountCredentialResponseDto ToDto(this CreateServiceAccountCredentialResult result)
   {
     return new CreateServiceAccountCredentialResponseDto(result.Credential.ToDto(), result.PlainTextSecretKey);

@@ -147,9 +147,18 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var tenantA = await testServer.Services.CreateTestTenant("Tenant A");
     var tenantB = await testServer.Services.CreateTestTenant("Tenant B");
@@ -186,9 +195,18 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var tenantOther = await testServer.Services.CreateTestTenant("Any Tenant");
 

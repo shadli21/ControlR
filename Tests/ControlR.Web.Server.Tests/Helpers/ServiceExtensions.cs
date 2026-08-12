@@ -48,9 +48,9 @@ internal static class ServiceExtensions
   /// <returns>The configured controller instance</returns>
   public static async Task<T> CreateControllerWithServerPrincipal<T>(this IServiceScope scope, string? accountName = null) where T : ControllerBase
   {
-    var serverPrincipal = await scope.ServiceProvider.CreateServerPrincipal(accountName);
+    var (principal, _, _) = await TestPrincipalHelper.CreateServerServiceAccountAsync(scope.ServiceProvider, accountName);
     var controller = scope.CreateController<T>();
-    controller.ControllerContext.HttpContext.User = serverPrincipal;
+    controller.ControllerContext.HttpContext.User = principal;
     return controller;
   }
 
@@ -109,10 +109,15 @@ internal static class ServiceExtensions
   {
     var manager = services.GetRequiredService<IServiceAccountManager>();
     var accountNameValue = accountName ?? $"server-principal-{Guid.NewGuid():N}";
-    var result = await manager.CreateForServer(accountNameValue, null, TestContext.Current.CancellationToken);
+    var accountResult = await manager.CreateForServer(accountNameValue, null, TestContext.Current.CancellationToken);
 
-    Assert.True(result.IsSuccess);
-    return TestPrincipalHelper.CreateServerServiceAccountPrincipal(result.Value);
+    Assert.True(accountResult.IsSuccess);
+
+    var credResult = await manager.AddCredential(
+      accountResult.Value.Id, "Credential", expiresAt: null, accountResult.Value.Id, TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
+    return TestPrincipalHelper.CreateServerServiceAccountPrincipal(accountResult.Value, credResult.Value.Credential);
   }
 
   /// <summary>

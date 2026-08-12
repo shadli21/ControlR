@@ -37,7 +37,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
 
   [HttpPost]
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsWrite)]
-  public async Task<ActionResult<InternalDtos.CreateServerServiceAccountResponseDto>> Create(
+  public async Task<ActionResult<InternalDtos.ServerServiceAccountDto>> Create(
     [FromBody] InternalDtos.CreateServerServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
@@ -48,9 +48,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
       return result.ToHttpResult().ToActionResult();
     }
 
-    return Ok(new InternalDtos.CreateServerServiceAccountResponseDto(
-      MapToDto(result.Value.ServiceAccount),
-      result.Value.PlainTextSecretKey));
+    return Ok(MapToDto(result.Value));
   }
 
   [HttpDelete("{serviceAccountId:guid}")]

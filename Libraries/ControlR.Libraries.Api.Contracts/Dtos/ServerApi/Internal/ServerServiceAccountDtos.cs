@@ -43,10 +43,6 @@ public record ServerServiceAccountDto(
   DateTimeOffset CreatedAt,
   IReadOnlyList<ServerServiceAccountCredentialDto> Credentials);
 
-public record CreateServerServiceAccountResponseDto(
-  ServerServiceAccountDto ServiceAccount,
-  string PlainTextSecretKey);
-
 public record CreateServerServiceAccountCredentialResponseDto(
   ServerServiceAccountCredentialDto Credential,
   string PlainTextSecretKey);

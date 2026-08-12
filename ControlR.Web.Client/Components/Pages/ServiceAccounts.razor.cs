@@ -1,4 +1,5 @@
 using ControlR.Web.Client.Components.Shared;
+using Microsoft.AspNetCore.Components.Authorization;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Pages;
@@ -10,6 +11,9 @@ public partial class ServiceAccounts : ComponentBase
   private InternalDtos.TenantServiceAccountDto[] _accounts = [];
   private bool _loading;
   private string _searchString = string.Empty;
+
+  [Inject]
+  public required AuthenticationStateProvider AuthState { get; init; }
 
   [Inject]
   public required IClipboardManager ClipboardManager { get; init; }
@@ -80,26 +84,53 @@ public partial class ServiceAccounts : ComponentBase
 
   private async Task CreateAccount()
   {
-    var name = await DialogService.ShowPrompt(
-      "Create Service Account",
-      "Enter a name for the new service account.",
-      "Account name");
+    var canIssueCredential = await HasPermission(PermissionNames.ServiceAccountRotateCredentials);
 
-    if (string.IsNullOrWhiteSpace(name))
+    var parameters = new DialogParameters<CreateServiceAccountDialog>
+    {
+      { x => x.CanIssueCredential, canIssueCredential },
+      { x => x.RotatePermissionLabel, "Rotate Service Account Credentials" }
+    };
+
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+    var dialog = await DialogService.ShowAsync<CreateServiceAccountDialog>("Create Service Account", parameters, options);
+    var result = await dialog.Result;
+
+    if (result is null || result.Canceled || result.Data is not CreateServiceAccountDialogResult dialogResult)
     {
       return;
     }
 
-    var result = await ControlrApi.Internal.ServiceAccounts.Create(
-      new InternalDtos.CreateTenantServiceAccountRequestDto(name, null));
+    var createResult = await ControlrApi.Internal.ServiceAccounts.Create(
+      new InternalDtos.CreateTenantServiceAccountRequestDto(dialogResult.Name, dialogResult.Description));
 
-    if (!result.IsSuccess)
+    if (!createResult.IsSuccess)
     {
-      Snackbar.Add(result.Reason, Severity.Error);
+      Snackbar.Add(createResult.Reason, Severity.Error);
       return;
     }
 
-    await ShowSecretDialog("Service Account Created", result.Value.PlainTextSecretKey, result.Value.ServiceAccount.Name);
+    var account = createResult.Value;
+
+    if (dialogResult.CredentialName is { } credentialName)
+    {
+      var credResult = await ControlrApi.Internal.ServiceAccounts.AddCredential(
+        account.Id, new InternalDtos.CreateTenantServiceAccountCredentialRequestDto(credentialName, dialogResult.CredentialExpiresAt));
+
+      if (!credResult.IsSuccess)
+      {
+        Snackbar.Add($"Account created, but credential creation failed: {credResult.Reason}", Severity.Warning);
+        await Refresh();
+        return;
+      }
+
+      await ShowSecretDialog("Service Account Created", credResult.Value.PlainTextSecretKey, account.Name);
+    }
+    else
+    {
+      Snackbar.Add("Service account created without a credential", Severity.Success);
+    }
+
     await Refresh();
   }
 
@@ -163,6 +194,12 @@ public partial class ServiceAccounts : ComponentBase
   {
     return credentials.Count(cred =>
       cred.RevokedAt is null && (cred.ExpiresAt is null || cred.ExpiresAt > TimeProvider.GetUtcNow()));
+  }
+
+  private async Task<bool> HasPermission(string permissionName)
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    return state.User.HasClaim(PermissionPolicies.PermissionClaimType, permissionName);
   }
 
   private async Task Refresh()

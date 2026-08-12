@@ -69,9 +69,13 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("ForcedReadSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var request = new V1Dtos.CreateLogonTokenForExternalRequestDto(
       DeviceId: device.Id,
@@ -117,9 +121,13 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("EmptyPermSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var request = new V1Dtos.CreateLogonTokenForExternalRequestDto(
       DeviceId: device.Id,
@@ -220,9 +228,13 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("BaselineSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var request = new V1Dtos.CreateLogonTokenForExternalRequestDto(
       DeviceId: device.Id,
@@ -266,9 +278,13 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("ConcurrencySA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var requestA = new V1Dtos.CreateLogonTokenForExternalRequestDto(
       DeviceId: device.Id,
@@ -363,9 +379,13 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("UnknownPermSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var request = new V1Dtos.CreateLogonTokenForExternalRequestDto(
       DeviceId: device.Id,
@@ -397,9 +417,13 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("PermTestSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
+    var credResult = await saManager.AddCredential(
+      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var request = new V1Dtos.CreateLogonTokenForExternalRequestDto(
       DeviceId: device.Id,

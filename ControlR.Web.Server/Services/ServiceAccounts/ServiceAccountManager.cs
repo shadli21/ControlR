@@ -38,15 +38,16 @@ public interface IServiceAccountManager
   Task<HttpResult> BootstrapServerServiceAccount(CancellationToken cancellationToken);
 
   /// <summary>
-  /// Creates a new server-scoped service account and its first credential. Returns the new
-  /// account and the plaintext secret, which is only exposed this once.
+  /// Creates a new server-scoped service account. The account is created without any credential;
+  /// issue one via <see cref="AddCredential"/>.
   /// </summary>
-  Task<HttpResult<CreateServiceAccountResult>> CreateForServer(string name, string? description, CancellationToken cancellationToken);
+  Task<HttpResult<ServiceAccountResult>> CreateForServer(string name, string? description, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Creates a new tenant-scoped service account and its first credential. Emits AuthorizationChangeLog.
+  /// Creates a new tenant-scoped service account. The account is created without any credential;
+  /// issue one via <see cref="AddCredentialForTenant"/>. Emits AuthorizationChangeLog.
   /// </summary>
-  Task<HttpResult<CreateServiceAccountResult>> CreateForTenant(
+  Task<HttpResult<ServiceAccountResult>> CreateForTenant(
     string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
@@ -336,25 +337,22 @@ public class ServiceAccountManager(
     return HttpResult.Ok();
   }
 
-  public async Task<HttpResult<CreateServiceAccountResult>> CreateForServer(
+  public async Task<HttpResult<ServiceAccountResult>> CreateForServer(
     string name,
     string? description,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
-      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.BadRequest, "Name is required.");
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.BadRequest, "Name is required.");
     }
 
     var nameConflict = await appDb.ServiceAccounts
       .AnyAsync(x => x.Kind == ServiceAccountKind.Server && x.Name == name, cancellationToken);
     if (nameConflict)
     {
-      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
     }
-
-    var plainTextSecret = RandomGenerator.CreateApiKey();
-    var hashedSecret = passwordHasher.HashPassword(string.Empty, plainTextSecret);
 
     var account = new ServiceAccount
     {
@@ -365,13 +363,6 @@ public class ServiceAccountManager(
       IsEnabled = true
     };
 
-    var credential = new ServiceAccountCredential
-    {
-      Name = "Initial Credential",
-      HashedSecret = hashedSecret
-    };
-    account.Credentials.Add(credential);
-
     appDb.ServiceAccounts.Add(account);
 
     var saveResult = await appDb.SaveChangesOrConfirmConflictAsync<ServiceAccount>(
@@ -380,14 +371,13 @@ public class ServiceAccountManager(
 
     if (saveResult == SaveChangesResult.ConflictDetected)
     {
-      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
     }
 
-    var apiKey = FormatApiKey(credential.Id, plainTextSecret);
-    return HttpResult.Ok(new CreateServiceAccountResult(MapToResult(account), apiKey));
+    return HttpResult.Ok(MapToResult(account));
   }
 
-  public async Task<HttpResult<CreateServiceAccountResult>> CreateForTenant(
+  public async Task<HttpResult<ServiceAccountResult>> CreateForTenant(
     string name,
     string? description,
     Guid tenantId,
@@ -396,18 +386,15 @@ public class ServiceAccountManager(
   {
     if (string.IsNullOrWhiteSpace(name))
     {
-      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.BadRequest, "Name is required.");
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.BadRequest, "Name is required.");
     }
 
     var nameConflict = await appDb.ServiceAccounts
       .AnyAsync(x => x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId && x.Name == name, cancellationToken);
     if (nameConflict)
     {
-      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.Conflict, "A service account with that name already exists in this tenant.");
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.Conflict, "A service account with that name already exists in this tenant.");
     }
-
-    var plainTextSecret = RandomGenerator.CreateApiKey();
-    var hashedSecret = passwordHasher.HashPassword(string.Empty, plainTextSecret);
 
     var account = new ServiceAccount
     {
@@ -417,13 +404,6 @@ public class ServiceAccountManager(
       Description = description,
       IsEnabled = true
     };
-
-    var credential = new ServiceAccountCredential
-    {
-      Name = "Initial Credential",
-      HashedSecret = hashedSecret
-    };
-    account.Credentials.Add(credential);
 
     appDb.ServiceAccounts.Add(account);
 
@@ -442,11 +422,10 @@ public class ServiceAccountManager(
 
     if (saveResult == SaveChangesResult.ConflictDetected)
     {
-      return HttpResult.Fail<CreateServiceAccountResult>(HttpResultErrorCode.Conflict, "A service account with that name already exists in this tenant.");
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.Conflict, "A service account with that name already exists in this tenant.");
     }
 
-    var apiKey = FormatApiKey(credential.Id, plainTextSecret);
-    return HttpResult.Ok(new CreateServiceAccountResult(MapToResult(account), apiKey));
+    return HttpResult.Ok(MapToResult(account));
   }
 
   public async Task<HttpResult> Delete(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken)
@@ -878,7 +857,7 @@ public class ServiceAccountManager(
       account.Id,
       account.Name,
       account.Description,
-      account.Kind.ToString(),
+      account.Kind,
       account.IsEnabled,
       account.CreatedAt,
       account.Credentials

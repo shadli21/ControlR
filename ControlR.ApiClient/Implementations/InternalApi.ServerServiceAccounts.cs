@@ -19,13 +19,13 @@ internal partial class InternalApi
     });
   }
 
-  async Task<ApiResult<InternalDtos.CreateServerServiceAccountResponseDto>> IServerServiceAccountsApi.Create(InternalDtos.CreateServerServiceAccountRequestDto request, CancellationToken cancellationToken)
+  async Task<ApiResult<InternalDtos.ServerServiceAccountDto>> IServerServiceAccountsApi.Create(InternalDtos.CreateServerServiceAccountRequestDto request, CancellationToken cancellationToken)
   {
     return await _client.ExecuteApiCall(async () =>
     {
       using var response = await _client.HttpClient.PostAsJsonAsync(HttpConstants.Internal.ServerServiceAccountsEndpoint, request, cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
-      return await response.Content.ReadFromJsonAsync<InternalDtos.CreateServerServiceAccountResponseDto>(cancellationToken);
+      return await response.Content.ReadFromJsonAsync<InternalDtos.ServerServiceAccountDto>(cancellationToken);
     });
   }
 

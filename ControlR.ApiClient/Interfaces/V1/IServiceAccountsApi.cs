@@ -9,7 +9,7 @@ public interface IServiceAccountsApi
   [ApiRoute($"{HttpConstants.V1.ServiceAccountsEndpoint}/{{serviceAccountId}}/credentials", "POST")]
   Task<ApiResult<CreateServiceAccountCredentialResponseDto>> AddCredential(Guid serviceAccountId, CreateServiceAccountCredentialRequestDto request, CancellationToken cancellationToken = default);
   [ApiRoute($"{HttpConstants.V1.ServiceAccountsEndpoint}", "POST")]
-  Task<ApiResult<CreateServiceAccountResponseDto>> Create(CreateServiceAccountRequestDto request, CancellationToken cancellationToken = default);
+  Task<ApiResult<ServiceAccountDto>> Create(CreateServiceAccountRequestDto request, CancellationToken cancellationToken = default);
   [ApiRoute($"{HttpConstants.V1.ServiceAccountsEndpoint}/{{serviceAccountId}}", "DELETE")]
   Task<ApiResult> Delete(Guid serviceAccountId, CancellationToken cancellationToken = default);
   [ApiRoute($"{HttpConstants.V1.ServiceAccountsEndpoint}/{{serviceAccountId}}", "GET")]
@@ -18,4 +18,6 @@ public interface IServiceAccountsApi
   Task<ApiResult<List<ServiceAccountDto>>> GetAll(CancellationToken cancellationToken = default);
   [ApiRoute($"{HttpConstants.V1.ServiceAccountsEndpoint}/{{serviceAccountId}}/credentials/{{credentialId}}", "DELETE")]
   Task<ApiResult> RevokeCredential(Guid serviceAccountId, Guid credentialId, CancellationToken cancellationToken = default);
+  [ApiRoute($"{HttpConstants.V1.ServiceAccountsEndpoint}/{{serviceAccountId}}", "PUT")]
+  Task<ApiResult<ServiceAccountDto>> Update(Guid serviceAccountId, UpdateServiceAccountRequestDto request, CancellationToken cancellationToken = default);
 }

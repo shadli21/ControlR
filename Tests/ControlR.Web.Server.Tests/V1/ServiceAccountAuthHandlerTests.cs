@@ -50,8 +50,16 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
         TestContext.Current.CancellationToken);
       Assert.True(createResult.IsSuccess);
 
-      var credentialId = createResult.Value.ServiceAccount.Credentials[0].Id;
-      plainTextSecretKey = createResult.Value.PlainTextSecretKey;
+      var credResult = await serviceAccountManager.AddCredential(
+        createResult.Value.Id,
+        "Test Credential",
+        expiresAt: null,
+        Guid.NewGuid(),
+        TestContext.Current.CancellationToken);
+      Assert.True(credResult.IsSuccess);
+
+      var credentialId = credResult.Value.Credential.Id;
+      plainTextSecretKey = credResult.Value.PlainTextSecretKey;
 
       await using var appDb = services.GetRequiredService<AppDb>();
       var credential = await appDb.ServiceAccountCredentials.FindAsync([credentialId], TestContext.Current.CancellationToken);
@@ -118,15 +126,23 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
-    var accountId = createResult.Value.ServiceAccount.Id;
-    var credentialId = createResult.Value.ServiceAccount.Credentials[0].Id;
+    var credResult = await serviceAccountManager.AddCredential(
+      createResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
+    var accountId = createResult.Value.Id;
+    var credentialId = credResult.Value.Credential.Id;
     await serviceAccountManager.RevokeCredential(
       accountId,
       credentialId,
       Guid.NewGuid(),
       TestContext.Current.CancellationToken);
 
-    var apiKey = createResult.Value.PlainTextSecretKey;
+    var apiKey = credResult.Value.PlainTextSecretKey;
     var context = CreateHttpContext(apiKey);
     var handler = await CreateHandler(services, context);
 
@@ -148,7 +164,16 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
-    var plainTextSecretKey = createResult.Value.PlainTextSecretKey;
+
+    var credResult = await serviceAccountManager.AddCredential(
+      createResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
+    var plainTextSecretKey = credResult.Value.PlainTextSecretKey;
 
     var context = CreateHttpContext(plainTextSecretKey);
     var handler = await CreateHandler(services, context);

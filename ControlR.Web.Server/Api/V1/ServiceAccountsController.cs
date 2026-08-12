@@ -33,7 +33,7 @@ public class ServiceAccountsController(
       return Unauthorized();
     }
 
-    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, expiresAt: null, principalId, cancellationToken);
+    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, request.ExpiresAt, principalId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -44,10 +44,10 @@ public class ServiceAccountsController(
 
   [HttpPost]
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsWrite)]
-  [ProducesResponseType<CreateServiceAccountResponseDto>(StatusCodes.Status201Created)]
+  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status201Created)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status409Conflict)]
-  public async Task<ActionResult<CreateServiceAccountResponseDto>> Create(
+  public async Task<ActionResult<ServiceAccountDto>> Create(
     [FromBody] CreateServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
@@ -57,7 +57,7 @@ public class ServiceAccountsController(
       return result.ToHttpResult().ToActionResult();
     }
 
-    return CreatedAtAction(nameof(Get), new { serviceAccountId = result.Value.ServiceAccount.Id }, result.Value.ToDto());
+    return CreatedAtAction(nameof(Get), new { serviceAccountId = result.Value.Id }, result.Value.ToDto());
   }
 
   [HttpDelete("{serviceAccountId:guid}")]
@@ -137,5 +137,31 @@ public class ServiceAccountsController(
     }
 
     return NoContent();
+  }
+
+  [HttpPut("{serviceAccountId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServerServiceAccountsWrite)]
+  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status400BadRequest)]
+  [ProducesResponseType(StatusCodes.Status404NotFound)]
+  public async Task<ActionResult<ServiceAccountDto>> Update(
+    Guid serviceAccountId,
+    [FromBody] UpdateServiceAccountRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
+    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
+    {
+      return Unauthorized();
+    }
+
+    var result = await _serviceAccountManager.UpdateForServer(
+      serviceAccountId, request.Name, request.Description, request.IsEnabled, principalId, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToHttpResult().ToActionResult();
+    }
+
+    return Ok(result.Value.ToDto());
   }
 }

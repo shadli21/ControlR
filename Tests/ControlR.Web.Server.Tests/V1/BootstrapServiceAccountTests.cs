@@ -37,7 +37,7 @@ public class BootstrapServiceAccountTests(ITestOutputHelper testOutput)
       .FirstOrDefaultAsync(x => x.Name == AccountName, TestContext.Current.CancellationToken);
 
     Assert.NotNull(account);
-    Assert.Equal(ControlR.Web.Server.Data.Enums.ServiceAccountKind.Server, account.Kind);
+    Assert.Equal(ServiceAccountKind.Server, account.Kind);
     Assert.Null(account.TenantId);
     Assert.True(account.IsEnabled);
 

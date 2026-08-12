@@ -4,9 +4,10 @@ using ControlR.Libraries.Api.Contracts.Constants;
 
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.ServiceAccounts;
 
-public record CreateServiceAccountCredentialRequestDto(
+public record UpdateServiceAccountRequestDto(
   [property: Required]
   [property: StringLength(DtoLimits.ServiceAccountNameMaxLength, MinimumLength = DtoLimits.ServiceAccountNameMinLength)]
   string Name,
-
-  DateTimeOffset? ExpiresAt = null);
+  [property: StringLength(DtoLimits.ServiceAccountDescriptionMaxLength)]
+  string? Description,
+  bool IsEnabled);

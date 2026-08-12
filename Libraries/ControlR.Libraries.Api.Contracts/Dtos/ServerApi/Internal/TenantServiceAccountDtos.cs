@@ -43,10 +43,6 @@ public record TenantServiceAccountDto(
   DateTimeOffset CreatedAt,
   IReadOnlyList<TenantServiceAccountCredentialDto> Credentials);
 
-public record CreateTenantServiceAccountResponseDto(
-  TenantServiceAccountDto ServiceAccount,
-  string PlainTextSecretKey);
-
 public record CreateTenantServiceAccountCredentialResponseDto(
   TenantServiceAccountCredentialDto Credential,
   string PlainTextSecretKey);

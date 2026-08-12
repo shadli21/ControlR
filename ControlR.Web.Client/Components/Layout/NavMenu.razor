@@ -48,7 +48,7 @@
       </MudNavLink>
     </AuthorizeView>
     <AuthorizeView Policy="@(PolicyNames.RequireUserGroupsRead)">
-      <MudNavLink Href="@(ClientRoutes.UserGroups)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">
+      <MudNavLink Href="@(ClientRoutes.UserGroups)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Groups">
         User Groups
       </MudNavLink>
     </AuthorizeView>
@@ -107,7 +107,7 @@
     </div>
     <AuthorizeView Policy="@(PolicyNames.RequireServerServiceAccountsRead)">
       <MudNavLink Href="@(ClientRoutes.ServerServiceAccounts)" Match="NavLinkMatch.Prefix"
-                  Icon="@Icons.Material.Filled.AdminPanelSettings">
+                  Icon="@Icons.Material.Filled.SupervisorAccount">
         Server Service Accounts
       </MudNavLink>
     </AuthorizeView>
@@ -131,7 +131,7 @@
     </AuthorizeView>
     <AuthorizeView Policy="@(PolicyNames.RequireServerTelemetryRead)">
       <MudNavLink Href="@(ClientRoutes.ServerStats)" Match="NavLinkMatch.Prefix"
-                  Icon="@Icons.Material.Filled.AdminPanelSettings">
+                  Icon="@Icons.Material.Filled.QueryStats">
         Server Stats
       </MudNavLink>
     </AuthorizeView>

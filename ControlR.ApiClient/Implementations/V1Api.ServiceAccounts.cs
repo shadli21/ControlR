@@ -22,7 +22,7 @@ internal partial class V1Api
     });
   }
 
-  async Task<ApiResult<CreateServiceAccountResponseDto>> IServiceAccountsApi.Create(
+  async Task<ApiResult<ServiceAccountDto>> IServiceAccountsApi.Create(
     CreateServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
@@ -30,7 +30,7 @@ internal partial class V1Api
     {
       using var response = await _client.HttpClient.PostAsJsonAsync(HttpConstants.V1.ServiceAccountsEndpoint, request, cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
-      return await response.Content.ReadFromJsonAsync<CreateServiceAccountResponseDto>(cancellationToken);
+      return await response.Content.ReadFromJsonAsync<ServiceAccountDto>(cancellationToken);
     });
   }
 
@@ -79,6 +79,20 @@ internal partial class V1Api
       using var response = await _client.HttpClient.DeleteAsync(
         $"{HttpConstants.V1.ServiceAccountsEndpoint}/{serviceAccountId}/credentials/{credentialId}", cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
+    });
+  }
+
+  async Task<ApiResult<ServiceAccountDto>> IServiceAccountsApi.Update(
+    Guid serviceAccountId,
+    UpdateServiceAccountRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+    {
+      using var response = await _client.HttpClient.PutAsJsonAsync(
+        $"{HttpConstants.V1.ServiceAccountsEndpoint}/{serviceAccountId}", request, cancellationToken);
+      await response.EnsureSuccessStatusCodeWithDetails();
+      return await response.Content.ReadFromJsonAsync<ServiceAccountDto>(cancellationToken);
     });
   }
 }

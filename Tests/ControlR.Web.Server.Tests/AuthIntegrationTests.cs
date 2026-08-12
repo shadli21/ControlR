@@ -119,9 +119,17 @@ public class AuthIntegrationTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
+    var credResult = await serviceAccountManager.AddCredential(
+      createResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       "X-Api-Key",
-      createResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var response = await httpClient.PostAsJsonAsync(
       HttpConstants.V1.TenantsEndpoint,
