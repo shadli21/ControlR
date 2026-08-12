@@ -77,6 +77,51 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
     Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
   }
 
+  [Fact]
+  public async Task Get_WithSearchText_MatchesExactAndPartialGuid()
+  {
+    // Real Postgres exercises the Npgsql translation of Guid?.Value.ToString() in the filter.
+    using var testServer = await TestWebServerBuilder.CreateTestServer(
+      _testOutput, useInMemoryDatabase: false);
+    var (tenantA, _, serverAdmin, _) = await SetupTenantsWithEntries(testServer);
+
+    using var httpClient = await CreatePatClient(testServer, serverAdmin.Id);
+
+    // The tenant-admin assignment created in Setup creates a change-log row with a real target ID.
+    var allResponse = await httpClient.GetAsync(
+      HttpConstants.Internal.AuthorizationChangeLogsEndpoint, TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, allResponse.StatusCode);
+    var allResult = await allResponse.Content.ReadFromJsonAsync<InternalDtos.AuthorizationChangeLogSearchResponseDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(allResult);
+    Assert.NotEmpty(allResult.Items);
+
+    var targetId = allResult.Items.First().TargetId;
+    Assert.NotNull(targetId);
+
+    // Exact GUID match.
+    var exactResponse = await httpClient.GetAsync(
+      $"{HttpConstants.Internal.AuthorizationChangeLogsEndpoint}?searchText={Uri.EscapeDataString(targetId.Value.ToString())}",
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, exactResponse.StatusCode);
+    var exactResult = await exactResponse.Content.ReadFromJsonAsync<InternalDtos.AuthorizationChangeLogSearchResponseDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(exactResult);
+    Assert.NotEmpty(exactResult.Items);
+    Assert.Contains(exactResult.Items, x => x.TargetId == targetId);
+
+    // Partial GUID match (first 8 hex chars).
+    var partial = targetId.Value.ToString("D")[..8];
+    var partialResponse = await httpClient.GetAsync(
+      $"{HttpConstants.Internal.AuthorizationChangeLogsEndpoint}?searchText={partial}",
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, partialResponse.StatusCode);
+    var partialResult = await partialResponse.Content.ReadFromJsonAsync<InternalDtos.AuthorizationChangeLogSearchResponseDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(partialResult);
+    Assert.NotEmpty(partialResult.Items);
+  }
+
   private async Task<HttpClient> CreatePatClient(TestWebServer testServer, Guid userId)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();

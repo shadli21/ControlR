@@ -8,8 +8,7 @@ public class AuthorizationChangeLog : EntityBase
   [StringLength(100)]
   public required string ActionType { get; set; }
 
-  [StringLength(50)]
-  public string? ActorPrincipalId { get; set; }
+  public Guid? ActorPrincipalId { get; set; }
 
   [StringLength(50)]
   public required string ActorPrincipalType { get; set; }
@@ -26,8 +25,7 @@ public class AuthorizationChangeLog : EntityBase
 
   public Guid? OwningTenantId { get; set; }
 
-  [StringLength(100)]
-  public string? TargetId { get; set; }
+  public Guid? TargetId { get; set; }
 
   [StringLength(100)]
   public required string TargetType { get; set; }

@@ -81,9 +81,9 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerDevicesAssigned,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.Customer,
-      customerId.ToString(),
+      customerId,
       tenantId,
       after: new CustomerDeviceAssignmentChange(totalAffected)));
 
@@ -118,12 +118,14 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
 
     _appDb.Customers.Add(customer);
 
+    await _appDb.SaveChangesAsync(cancellationToken);
+
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerCreated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.Customer,
-      customer.Id.ToString(),
+      customer.Id,
       tenantId,
       after: new CustomerSnapshot(name, description, notes)));
 
@@ -155,9 +157,9 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerDeleted,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.Customer,
-      customerId.ToString(),
+      customerId,
       tenantId,
       before: new CustomerSnapshot(customer.Name, customer.Description, customer.Notes)));
 
@@ -237,9 +239,9 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerUpdated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.Customer,
-      customerId.ToString(),
+      customerId,
       tenantId,
       before: before,
       after: new CustomerSnapshot(name, description, notes)));

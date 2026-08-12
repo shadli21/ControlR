@@ -181,7 +181,7 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
 
     var changeLogCount = await db.AuthorizationChangeLogs
       .IgnoreQueryFilters()
-      .CountAsync(x => x.TargetId == tokenId.ToString(), TestContext.Current.CancellationToken);
+      .CountAsync(x => x.TargetId == tokenId, TestContext.Current.CancellationToken);
     Assert.Equal(1, changeLogCount);
   }
 }

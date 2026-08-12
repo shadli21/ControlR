@@ -76,9 +76,9 @@
     <MudTd DataLabel="Time (Local)">@context.CreatedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
     <MudTd DataLabel="Action">@context.ActionType</MudTd>
     <MudTd DataLabel="Actor Type">@context.ActorPrincipalType</MudTd>
-    <MudTd DataLabel="Actor ID"><MudText Typo="Typo.caption">@context.ActorPrincipalId</MudText></MudTd>
+    <MudTd DataLabel="Actor ID"><MudText Typo="Typo.caption">@FormatId(context.ActorPrincipalId)</MudText></MudTd>
     <MudTd DataLabel="Target Type">@context.TargetType</MudTd>
-    <MudTd DataLabel="Target ID"><MudText Typo="Typo.caption">@context.TargetId</MudText></MudTd>
+    <MudTd DataLabel="Target ID"><MudText Typo="Typo.caption">@FormatId(context.TargetId)</MudText></MudTd>
     @if (_tenants.Length > 0)
     {
       <MudTd DataLabel="Tenant">@GetTenantName(context.OwningTenantId)</MudTd>

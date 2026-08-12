@@ -256,7 +256,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var log = await db.AuthorizationChangeLogs
       .IgnoreQueryFilters()
       .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountUpdated &&
-                        x.TargetId == accountId.ToString(),
+                        x.TargetId == accountId,
         TestContext.Current.CancellationToken);
 
     var before = JsonSerializer.Deserialize<ServiceAccountSnapshot>(log.BeforeJson!, _snapshotJsonOptions);
@@ -294,7 +294,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var log = await db.AuthorizationChangeLogs
       .IgnoreQueryFilters()
       .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountUpdated &&
-                        x.TargetId == accountId.ToString(),
+                        x.TargetId == accountId,
         TestContext.Current.CancellationToken);
 
     var before = JsonSerializer.Deserialize<ServiceAccountSnapshot>(log.BeforeJson!, _snapshotJsonOptions);

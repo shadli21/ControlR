@@ -92,7 +92,7 @@ public class PatScopeTrimBackgroundService(
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
-        row.Id.ToString(),
+        row.Id,
         row.OwningTenantId,
         before: new CredentialScopeSnapshot(
           row.PermissionName, row.ScopeKind, row.ScopeId)));

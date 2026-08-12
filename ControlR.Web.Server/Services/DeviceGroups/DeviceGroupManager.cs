@@ -69,9 +69,9 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupMembersAdded,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.DeviceGroup,
-      deviceGroupId.ToString(),
+      deviceGroupId,
       tenantId,
       after: new DeviceGroupMembershipChange(newDeviceIds.Count)));
 
@@ -106,12 +106,14 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
 
     _appDb.DeviceGroups.Add(group);
 
+    await _appDb.SaveChangesAsync(cancellationToken);
+
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupCreated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.DeviceGroup,
-      group.Id.ToString(),
+      group.Id,
       tenantId,
       after: new DeviceGroupSnapshot(name, description)));
 
@@ -145,9 +147,9 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupDeleted,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.DeviceGroup,
-      deviceGroupId.ToString(),
+      deviceGroupId,
       tenantId,
       before: new DeviceGroupSnapshot(group.Name, group.Description)));
 
@@ -213,9 +215,9 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupMembersRemoved,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.DeviceGroup,
-      deviceGroupId.ToString(),
+      deviceGroupId,
       tenantId,
       after: new DeviceGroupMembershipChange(membersToRemove.Count)));
 
@@ -251,9 +253,9 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupUpdated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.DeviceGroup,
-      deviceGroupId.ToString(),
+      deviceGroupId,
       tenantId,
       before: before,
       after: new DeviceGroupSnapshot(name, description)));

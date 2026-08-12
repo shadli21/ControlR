@@ -114,12 +114,14 @@ public class PermissionAssignmentManager(
 
     _appDb.PermissionAssignments.Add(assignment);
 
+    await _appDb.SaveChangesAsync(cancellationToken);
+
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentCreated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.PermissionAssignment,
-      assignment.Id.ToString(),
+      assignment.Id,
       tenantId,
       after: new PermissionAssignmentSnapshot(
         request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
@@ -155,6 +157,8 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.Forbidden, "Server-scoped assignments can only be granted by a server administrator.");
     }
 
+    var created = new List<PermissionAssignment>(requests.Count);
+
     foreach (var request in requests)
     {
       if (ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId) is { } scopeError)
@@ -182,13 +186,22 @@ public class PermissionAssignmentManager(
         request.Notes);
 
       _appDb.PermissionAssignments.Add(assignment);
+      created.Add(assignment);
+    }
 
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    // Log after save so the assignment IDs are real (not Guid.Empty).
+    for (var i = 0; i < requests.Count; i++)
+    {
+      var request = requests[i];
+      var assignment = created[i];
       _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentCreated,
         AuthorizationChangeLogActorTypes.User,
-        actorPrincipalId.ToString(),
+        actorPrincipalId,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
-        assignment.Id.ToString(),
+        assignment.Id,
         tenantId,
         after: new PermissionAssignmentSnapshot(
           request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
@@ -252,9 +265,9 @@ public class PermissionAssignmentManager(
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentDeleted,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.PermissionAssignment,
-      assignmentId.ToString(),
+      assignmentId,
       tenantId,
       before: new PermissionAssignmentSnapshot(
         assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));
@@ -323,9 +336,9 @@ public class PermissionAssignmentManager(
       _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
         AuthorizationChangeLogActorTypes.User,
-        actorPrincipalId.ToString(),
+        actorPrincipalId,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
-        assignment.Id.ToString(),
+        assignment.Id,
         tenantId,
         before: new PermissionAssignmentSnapshot(
           assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));
@@ -416,9 +429,9 @@ public class PermissionAssignmentManager(
       _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
         AuthorizationChangeLogActorTypes.User,
-        actorPrincipalId.ToString(),
+        actorPrincipalId,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
-        existingAssignment.Id.ToString(),
+        existingAssignment.Id,
         tenantId,
         before: new PermissionAssignmentSnapshot(
           existingAssignment.PermissionName, existingAssignment.Effect,
@@ -426,6 +439,8 @@ public class PermissionAssignmentManager(
 
       _appDb.PermissionAssignments.Remove(existingAssignment);
     }
+
+    var created = new List<PermissionAssignment>(assignments.Count);
 
     foreach (var request in assignments)
     {
@@ -453,13 +468,22 @@ public class PermissionAssignmentManager(
         request.Effect);
 
       _appDb.PermissionAssignments.Add(assignment);
+      created.Add(assignment);
+    }
 
+    await _appDb.SaveChangesAsync(cancellationToken);
+
+    // Log the created assignments after save so their IDs are real (not Guid.Empty).
+    for (var i = 0; i < created.Count; i++)
+    {
+      var assignment = created[i];
+      var request = assignments[i];
       _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentCreated,
         AuthorizationChangeLogActorTypes.User,
-        actorPrincipalId.ToString(),
+        actorPrincipalId,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
-        assignment.Id.ToString(),
+        assignment.Id,
         tenantId,
         after: new PermissionAssignmentSnapshot(
           request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
@@ -558,9 +582,9 @@ public class PermissionAssignmentManager(
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentUpdated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.PermissionAssignment,
-      assignment.Id.ToString(),
+      assignment.Id,
       tenantId,
       before: before,
       after: new PermissionAssignmentSnapshot(

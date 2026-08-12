@@ -127,7 +127,7 @@ public class LogonTokenCleanupBackgroundService(
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,
         AuthorizationChangeLogTargetTypes.LogonToken,
-        tokenGroup.Key.ToString(),
+        tokenGroup.Key,
         tokenGroup.First().OwningTenantId,
         before: new CredentialScopeSetSummary(tokenGroup.Count())));
     }

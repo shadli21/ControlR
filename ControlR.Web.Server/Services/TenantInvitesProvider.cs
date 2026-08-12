@@ -102,7 +102,7 @@ public class TenantInvitesProvider(
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
-        assignment.Id.ToString(),
+        assignment.Id,
         invite.TenantId,
         before: new PermissionAssignmentSnapshot(
           assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));

@@ -18,9 +18,7 @@ Cross-platform remote access and control. .NET 10 backend (ASP.NET Core), Blazor
 
 ## General Instructions
 
-- *IMPORTANT* Use `semantic_search` as your default tool for searching and exploring the codebase.
-- *IMPORTANT* Do not default to `Glob`, `Grep`, `Read`, and similar tools.  Use these only after trying `semantic_search`.
-- `brave-search_brave_web_search` is available for web searches. Use when external data is needed.
+- Various web search tools are available. Use them when external data is needed, when you need info about specific libraries or APIs, etc.
 
 ## Service Registration Locations
 

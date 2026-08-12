@@ -123,9 +123,9 @@ public class CredentialScopeService(
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.CredentialScopeSet,
       actorType,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.LogonToken,
-      tokenId.ToString(),
+      tokenId,
       tenantId,
       after: new CredentialScopeSetSummary(scopes.Count)));
 

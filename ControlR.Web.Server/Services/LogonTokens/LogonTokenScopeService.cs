@@ -63,7 +63,7 @@ public class LogonTokenScopeService(
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,
         AuthorizationChangeLogTargetTypes.LogonToken,
-        tokenId.ToString(),
+        tokenId,
         orphaned.TenantId,
         after: new CredentialScopeSetFailureSummary(attemptedScopeCount, "scope-write-failed")));
 

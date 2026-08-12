@@ -30,6 +30,9 @@ public partial class AuthorizationLogsPanel
     await LoadTenants();
   }
 
+  private static string FormatId(Guid? id) =>
+    id is { } value ? value.ToString("D") : "—";
+
   private static IEnumerable<string> SearchVocabulary(IReadOnlyList<string> values, string query) =>
     string.IsNullOrWhiteSpace(query)
       ? values

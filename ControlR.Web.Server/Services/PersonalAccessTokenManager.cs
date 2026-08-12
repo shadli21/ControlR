@@ -121,9 +121,12 @@ public class PersonalAccessTokenManager(
 
       _appDb.PersonalAccessTokens.Add(personalAccessToken);
 
-      if (request.Scopes is { Count: > 0 } && ownerTenantId is { } tenantId)
+      var hasScopes = request.Scopes is { Count: > 0 };
+      var tenantId = hasScopes ? ownerTenantId : null;
+
+      if (hasScopes && tenantId is { } scopeTenantId)
       {
-        foreach (var scope in request.Scopes)
+        foreach (var scope in request.Scopes!)
         {
           _appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
             PermissionPrincipalKind.PersonalAccessToken,
@@ -131,22 +134,27 @@ public class PersonalAccessTokenManager(
             scope.PermissionName,
             scope.ScopeKind,
             scope.ScopeId,
-            tenantId,
+            scopeTenantId,
             AuthorizationChangeLogActorTypes.User,
             userId.ToString()));
         }
-
-        _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
-          AuthorizationChangeLogActions.CredentialScopeSet,
-          AuthorizationChangeLogActorTypes.User,
-          userId.ToString(),
-          AuthorizationChangeLogTargetTypes.PersonalAccessToken,
-          personalAccessToken.Id.ToString(),
-          tenantId,
-          after: new CredentialScopeSetSummary(request.Scopes.Count)));
       }
 
       await _appDb.SaveChangesAsync();
+
+      if (hasScopes && tenantId is { } logTenantId)
+      {
+        _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+          AuthorizationChangeLogActions.CredentialScopeSet,
+          AuthorizationChangeLogActorTypes.User,
+          userId,
+          AuthorizationChangeLogTargetTypes.PersonalAccessToken,
+          personalAccessToken.Id,
+          logTenantId,
+          after: new CredentialScopeSetSummary(request.Scopes!.Count)));
+
+        await _appDb.SaveChangesAsync();
+      }
 
       var hexId = Convert.ToHexString(personalAccessToken.Id.ToByteArray());
       var combinedKey = $"{hexId}:{plainTextKey}";

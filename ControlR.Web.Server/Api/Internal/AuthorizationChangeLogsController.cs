@@ -88,9 +88,21 @@ public class AuthorizationChangeLogsController : ControllerBase
     if (!string.IsNullOrWhiteSpace(searchText))
     {
       var trimmed = searchText.Trim();
-      query = query.Where(x =>
-        (x.ActorPrincipalId != null && x.ActorPrincipalId.Contains(trimmed)) ||
-        (x.TargetId != null && x.TargetId.Contains(trimmed)));
+
+      // Exact GUID lookup when the query parses as a full UUID.
+      if (Guid.TryParse(trimmed, out var parsedGuid))
+      {
+        query = query.Where(x =>
+          x.ActorPrincipalId == parsedGuid ||
+          x.TargetId == parsedGuid);
+      }
+      else
+      {
+        // Partial ID query: match against the canonical text form of the UUID.
+        query = query.Where(x =>
+          (x.ActorPrincipalId != null && x.ActorPrincipalId.Value.ToString().Contains(trimmed)) ||
+          (x.TargetId != null && x.TargetId.Value.ToString().Contains(trimmed)));
+      }
     }
 
     if (from.HasValue)

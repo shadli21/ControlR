@@ -75,9 +75,9 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupMembersAdded,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.UserGroup,
-      userGroupId.ToString(),
+      userGroupId,
       tenantId,
       after: new UserGroupMembershipChange(newUserIds.Count)));
 
@@ -112,12 +112,14 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
 
     _appDb.UserGroups.Add(group);
 
+    await _appDb.SaveChangesAsync(cancellationToken);
+
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupCreated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.UserGroup,
-      group.Id.ToString(),
+      group.Id,
       tenantId,
       after: new UserGroupSnapshot(name, description)));
 
@@ -151,9 +153,9 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupDeleted,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.UserGroup,
-      userGroupId.ToString(),
+      userGroupId,
       tenantId,
       before: new UserGroupSnapshot(group.Name, group.Description)));
 
@@ -218,9 +220,9 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupMembersRemoved,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.UserGroup,
-      userGroupId.ToString(),
+      userGroupId,
       tenantId,
       after: new UserGroupMembershipChange(membersToRemove.Count)));
 
@@ -263,9 +265,9 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupUpdated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.UserGroup,
-      userGroupId.ToString(),
+      userGroupId,
       tenantId,
       before: before,
       after: new UserGroupSnapshot(name, description)));

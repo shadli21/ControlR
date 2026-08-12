@@ -61,7 +61,7 @@ public class LogonTokenGrantCleanupTests(ITestOutputHelper testOutput)
     var changeLog = await db2.AuthorizationChangeLogs
       .Where(x => x.ActionType == AuthorizationChangeLogActions.CredentialScopeRemoved &&
                   x.TargetType == AuthorizationChangeLogTargetTypes.LogonToken &&
-                  x.TargetId == tokenId.ToString())
+                  x.TargetId == tokenId)
       .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
     Assert.NotNull(changeLog);

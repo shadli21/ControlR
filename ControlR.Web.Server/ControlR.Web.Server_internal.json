@@ -9867,7 +9867,8 @@
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "format": "uuid"
           },
           "targetType": {
             "type": "string"
@@ -9876,7 +9877,8 @@
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "format": "uuid"
           },
           "owningTenantId": {
             "type": [

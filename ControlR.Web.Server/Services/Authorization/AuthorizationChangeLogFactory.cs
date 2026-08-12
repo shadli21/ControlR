@@ -19,9 +19,9 @@ public static class AuthorizationChangeLogFactory
   public static AuthorizationChangeLog Create(
     string actionType,
     string actorPrincipalType,
-    string? actorPrincipalId,
+    Guid? actorPrincipalId,
     string targetType,
-    string? targetId,
+    Guid? targetId,
     Guid? owningTenantId,
     object? before = null,
     object? after = null)
@@ -30,12 +30,20 @@ public static class AuthorizationChangeLogFactory
     {
       ActionType = actionType,
       ActorPrincipalType = actorPrincipalType,
-      ActorPrincipalId = actorPrincipalId,
+      ActorPrincipalId = NormalizeEmptyGuid(actorPrincipalId),
       TargetType = targetType,
-      TargetId = targetId,
+      TargetId = NormalizeEmptyGuid(targetId),
       OwningTenantId = owningTenantId,
       BeforeJson = before is not null ? JsonSerializer.Serialize(before, _serializerOptions) : null,
       AfterJson = after is not null ? JsonSerializer.Serialize(after, _serializerOptions) : null
     };
   }
+
+  /// <summary>
+  /// Normalizes a <see cref="Guid.Empty"/> to <see langword="null"/> so an unresolved
+  /// (e.g. pre-save) entity ID can never be written to the audit log as a literal
+  /// <c>00000000-0000-0000-0000-000000000000</c>.
+  /// </summary>
+  private static Guid? NormalizeEmptyGuid(Guid? value) =>
+    value is { } nonNull && nonNull != Guid.Empty ? nonNull : null;
 }

@@ -176,12 +176,14 @@ public class ServiceAccountManager(
     };
     account.Credentials.Add(credential);
 
+    await appDb.SaveChangesAsync(cancellationToken);
+
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
-      credential.Id.ToString(),
+      credential.Id,
       null,
       after: new ServiceAccountCredentialSnapshot(name, serviceAccountId)));
 
@@ -234,12 +236,14 @@ public class ServiceAccountManager(
     };
     account.Credentials.Add(credential);
 
+    await appDb.SaveChangesAsync(cancellationToken);
+
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
-      credential.Id.ToString(),
+      credential.Id,
       tenantId,
       after: new ServiceAccountCredentialSnapshot(name, serviceAccountId)));
 
@@ -407,15 +411,6 @@ public class ServiceAccountManager(
 
     appDb.ServiceAccounts.Add(account);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
-      AuthorizationChangeLogActions.ServiceAccountCreated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
-      AuthorizationChangeLogTargetTypes.ServiceAccount,
-      account.Id.ToString(),
-      tenantId,
-      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Tenant, description, true)));
-
     var saveResult = await appDb.SaveChangesOrConfirmConflictAsync<ServiceAccount>(
       x => x.Kind == ServiceAccountKind.Tenant && x.TenantId == tenantId && x.Name == name,
       cancellationToken);
@@ -424,6 +419,17 @@ public class ServiceAccountManager(
     {
       return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.Conflict, "A service account with that name already exists in this tenant.");
     }
+
+    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+      AuthorizationChangeLogActions.ServiceAccountCreated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId,
+      AuthorizationChangeLogTargetTypes.ServiceAccount,
+      account.Id,
+      tenantId,
+      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Tenant, description, true)));
+
+    await appDb.SaveChangesAsync(cancellationToken);
 
     return HttpResult.Ok(MapToResult(account));
   }
@@ -456,9 +462,9 @@ public class ServiceAccountManager(
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountDeleted,
       AuthorizationChangeLogActorTypes.User,
-      requestingPrincipalId.ToString(),
+      requestingPrincipalId,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
-      serviceAccountId.ToString(),
+      serviceAccountId,
       null,
       before: new ServiceAccountSnapshot(account.Name, ServiceAccountKind.Server, account.Description, account.IsEnabled)));
 
@@ -500,9 +506,9 @@ public class ServiceAccountManager(
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountDeleted,
       AuthorizationChangeLogActorTypes.User,
-      requestingPrincipalId.ToString(),
+      requestingPrincipalId,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
-      serviceAccountId.ToString(),
+      serviceAccountId,
       tenantId,
       before: new ServiceAccountSnapshot(account.Name, ServiceAccountKind.Tenant, account.Description, account.IsEnabled)));
 
@@ -595,9 +601,9 @@ public class ServiceAccountManager(
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
-      credentialId.ToString(),
+      credentialId,
       null,
       before: new ServiceAccountCredentialSnapshot(credential.Name, serviceAccountId)));
 
@@ -638,9 +644,9 @@ public class ServiceAccountManager(
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
-      credentialId.ToString(),
+      credentialId,
       tenantId,
       before: new ServiceAccountCredentialSnapshot(credential.Name, serviceAccountId)));
 
@@ -683,9 +689,9 @@ public class ServiceAccountManager(
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
-      serviceAccountId.ToString(),
+      serviceAccountId,
       null,
       before: before,
       after: new ServiceAccountSnapshot(name, ServiceAccountKind.Server, description, isEnabled)));
@@ -734,9 +740,9 @@ public class ServiceAccountManager(
     appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
       AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId.ToString(),
+      actorPrincipalId,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
-      serviceAccountId.ToString(),
+      serviceAccountId,
       tenantId,
       before: before,
       after: new ServiceAccountSnapshot(name, ServiceAccountKind.Tenant, description, isEnabled)));
