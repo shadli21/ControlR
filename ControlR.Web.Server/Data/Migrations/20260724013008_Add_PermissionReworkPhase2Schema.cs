@@ -35,14 +35,14 @@ public partial class Add_PermissionReworkPhase2Schema : Migration
         {
           Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
           ActionType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-          ActorPrincipalId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+          ActorPrincipalId = table.Column<Guid>(type: "uuid", nullable: true),
           ActorPrincipalType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
           AfterJson = table.Column<string>(type: "text", nullable: true),
           BeforeJson = table.Column<string>(type: "text", nullable: true),
           CorrelationId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
           IpAddress = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
           OwningTenantId = table.Column<Guid>(type: "uuid", nullable: true),
-          TargetId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+          TargetId = table.Column<Guid>(type: "uuid", nullable: true),
           TargetType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
           CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
         },

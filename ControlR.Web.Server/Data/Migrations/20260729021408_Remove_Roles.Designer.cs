@@ -205,9 +205,8 @@ namespace ControlR.Web.Server.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("ActorPrincipalId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                    b.Property<Guid?>("ActorPrincipalId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ActorPrincipalType")
                         .IsRequired()
@@ -236,9 +235,8 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.Property<Guid?>("OwningTenantId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("TargetId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("TargetType")
                         .IsRequired()
