@@ -45,9 +45,6 @@ public partial class PermissionAssignmentDialog : ComponentBase
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
-  [Parameter]
-  public bool UseServerAssignmentApi { get; set; }
-
   private bool IsEdit => ExistingAssignment is not null;
 
   protected override async Task OnInitializedAsync()
@@ -153,9 +150,7 @@ public partial class PermissionAssignmentDialog : ComponentBase
           string.IsNullOrWhiteSpace(_notes) ? null : _notes,
           _isEnabled);
 
-        var result = UseServerAssignmentApi || AccountKind == ServiceAccountKind.Server
-          ? await ControlrApi.Internal.ServerPermissionAssignments.Update(existing.Id, updateRequest)
-          : await ControlrApi.Internal.PermissionAssignments.Update(existing.Id, updateRequest);
+        var result = await ControlrApi.Internal.PermissionAssignments.Update(existing.Id, updateRequest);
         if (!result.IsSuccess)
         {
           Snackbar.Add(result.Reason, Severity.Error);
@@ -184,9 +179,7 @@ public partial class PermissionAssignmentDialog : ComponentBase
         _scopeId,
         string.IsNullOrWhiteSpace(_notes) ? null : _notes);
 
-      var createResult = UseServerAssignmentApi || AccountKind == ServiceAccountKind.Server
-        ? await ControlrApi.Internal.ServerPermissionAssignments.Create(createRequest)
-        : await ControlrApi.Internal.PermissionAssignments.Create(createRequest);
+      var createResult = await ControlrApi.Internal.PermissionAssignments.Create(createRequest);
       if (!createResult.IsSuccess)
       {
         Snackbar.Add(createResult.Reason, Severity.Error);

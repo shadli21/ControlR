@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Primitives;
@@ -21,6 +22,21 @@ public class CustomerScopeAuthorizationTests(ITestOutputHelper testOutput)
     var tenant = await testApp.App.Services.CreateTestTenant();
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
 
+    await using (var setupScope = testApp.App.Services.CreateAsyncScope())
+    {
+      var db = setupScope.ServiceProvider.GetRequiredService<AppDb>();
+      db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        user.Id,
+        PermissionNames.TenantPermissionsWrite,
+        PermissionScopeKind.Tenant,
+        tenant.Id,
+        tenant.Id,
+        "test",
+        user.Id.ToString()));
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
     using var scope = testApp.App.Services.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
 
@@ -34,7 +50,7 @@ public class CustomerScopeAuthorizationTests(ITestOutputHelper testOutput)
         null,
         null),
       tenant.Id,
-      user.Id,
+      new PrincipalDescriptor(PrincipalClaimTypes.User, user.Id, tenant.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);

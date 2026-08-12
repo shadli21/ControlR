@@ -146,6 +146,8 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
     var serverAdmin = await testServer.Services.CreateTestUser(tenantA.Id, $"server-admin-{Guid.NewGuid():N}@t.local");
     var tenantAdminA = await testServer.Services.CreateTestUser(
       tenantA.Id, $"tenant-admin-{Guid.NewGuid():N}@t.local", PermissionPresets.TenantAdministrator);
+    var tenantAdminB = await testServer.Services.CreateTestUser(
+      tenantB.Id, $"tenant-admin-{Guid.NewGuid():N}@t.local", PermissionPresets.TenantAdministrator);
     var targetA = await testServer.Services.CreateTestUser(tenantA.Id, $"target-a-{Guid.NewGuid():N}@t.local");
     var targetB = await testServer.Services.CreateTestUser(tenantB.Id, $"target-b-{Guid.NewGuid():N}@t.local");
 
@@ -181,14 +183,14 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
         new InternalDtos.CreatePermissionAssignmentRequestDto(
           PermissionPrincipalKind.User, targetA.Id, PermissionNames.DeviceRead,
           PermissionEffect.Allow, PermissionScopeKind.Tenant, tenantA.Id, null),
-        tenantA.Id, tenantAdminA.Id, TestContext.Current.CancellationToken);
+        tenantA.Id, new PrincipalDescriptor(PrincipalClaimTypes.User, tenantAdminA.Id, tenantA.Id, "test"), TestContext.Current.CancellationToken);
       Assert.True(createA.IsSuccess, $"Tenant A assignment failed: {createA.Reason}");
 
       var createB = await manager.Create(
         new InternalDtos.CreatePermissionAssignmentRequestDto(
           PermissionPrincipalKind.User, targetB.Id, PermissionNames.DeviceRead,
           PermissionEffect.Allow, PermissionScopeKind.Tenant, tenantB.Id, null),
-        tenantB.Id, serverAdmin.Id, TestContext.Current.CancellationToken);
+        tenantB.Id, new PrincipalDescriptor(PrincipalClaimTypes.User, tenantAdminB.Id, tenantB.Id, "test"), TestContext.Current.CancellationToken);
       Assert.True(createB.IsSuccess, $"Tenant B assignment failed: {createB.Reason}");
     }
 

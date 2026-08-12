@@ -8,6 +8,17 @@ namespace ControlR.ApiClient;
 
 internal partial class InternalApi
 {
+  async Task<ApiResult<int>> IPermissionAssignmentsApi.ApplyPresets(InternalDtos.ApplyPermissionPresetsRequestDto request, CancellationToken cancellationToken)
+  {
+    return await _client.ExecuteApiCall(async () =>
+    {
+      using var response = await _client.HttpClient.PostAsJsonAsync(
+        $"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/presets/apply", request, cancellationToken);
+      await response.EnsureSuccessStatusCodeWithDetails();
+      return await response.Content.ReadFromJsonAsync<int>(cancellationToken);
+    });
+  }
+
   async Task<ApiResult<InternalDtos.PermissionAssignmentDto>> IPermissionAssignmentsApi.Create(InternalDtos.CreatePermissionAssignmentRequestDto request, CancellationToken cancellationToken)
   {
     return await _client.ExecuteApiCall(async () =>

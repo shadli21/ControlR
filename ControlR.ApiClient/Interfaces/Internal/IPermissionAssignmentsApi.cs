@@ -6,6 +6,9 @@ namespace ControlR.ApiClient.Interfaces.Internal;
 
 public interface IPermissionAssignmentsApi
 {
+  [ApiRoute($"{HttpConstants.Internal.PermissionAssignmentsEndpoint}/presets/apply", "POST")]
+  Task<ApiResult<int>> ApplyPresets(InternalDtos.ApplyPermissionPresetsRequestDto request, CancellationToken cancellationToken = default);
+
   [ApiRoute($"{HttpConstants.Internal.PermissionAssignmentsEndpoint}", "POST")]
   Task<ApiResult<InternalDtos.PermissionAssignmentDto>> Create(InternalDtos.CreatePermissionAssignmentRequestDto request, CancellationToken cancellationToken = default);
 

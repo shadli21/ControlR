@@ -12,8 +12,6 @@ public partial class PermissionAssignmentPanel : ComponentBase
   private InternalDtos.PermissionAssignmentDto[]? _assignments;
   private bool _bulkDeleting;
   private Guid? _currentUserId;
-  private bool _hasServerReadPermission;
-  private bool _hasServerWritePermission;
   private bool _hasTenantWritePermission;
   private bool _hasWritePermission;
   private bool _loading;
@@ -66,9 +64,6 @@ public partial class PermissionAssignmentPanel : ComponentBase
            assignment.Effect.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
            assignment.ScopeKind.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase);
   };
-  private bool UsesServerAssignmentApi =>
-    AccountKind == ServiceAccountKind.Server || (_hasServerReadPermission && _hasServerWritePermission);
-
   protected override async Task OnInitializedAsync()
   {
     var state = await AuthState.GetAuthenticationStateAsync();
@@ -77,12 +72,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
       _currentUserId = currentUserId;
     }
 
-    _hasServerReadPermission = HasPermission(state.User, PermissionNames.ServerPermissionsRead);
-    _hasServerWritePermission = HasPermission(state.User, PermissionNames.ServerPermissionsWrite);
     _hasTenantWritePermission = HasPermission(state.User, PermissionNames.TenantPermissionsWrite);
-    _hasWritePermission = AccountKind == ServiceAccountKind.Server
-      ? _hasServerWritePermission
-      : _hasTenantWritePermission || (_hasServerReadPermission && _hasServerWritePermission);
+    _hasWritePermission = _hasTenantWritePermission || HasPermission(state.User, PermissionNames.ServerPermissionsWrite);
 
     if (PermissionCatalogStore.Items.Count == 0)
     {
@@ -138,88 +129,32 @@ public partial class PermissionAssignmentPanel : ComponentBase
       return;
     }
 
-    if (PermissionCatalogStore.Items.Count == 0)
-    {
-      await PermissionCatalogStore.Refresh();
-    }
-
-    var permissionNames = _selectedPresetNames
-      .SelectMany(name => _presets.FirstOrDefault(p => p.Name == name)?.Permissions ?? [])
-      .Distinct()
-      .ToList();
-
-    if (permissionNames.Count == 0)
-    {
-      return;
-    }
-
-    var assignmentRequests = permissionNames
-      .Select(name => new InternalDtos.CreatePermissionAssignmentRequestDto(
-        _principalKind,
-        _selectedPrincipalId.Value,
-        name,
-        PermissionEffect.Allow,
-        BroadestLegalScope(name),
-        null,
-        null))
-      .ToArray();
-
-    if (assignmentRequests.Any(r => r.ScopeKind == PermissionScopeKind.Server) && !_hasServerWritePermission)
-    {
-      Snackbar.Add("Assigning server-scoped permissions requires the server.permissions.write permission.", Severity.Error);
-      return;
-    }
-
-    ApiResult result;
     if (_presetMode == PresetApplyMode.Replace)
     {
       var confirmed = await DialogService.ShowMessageBoxAsync(
         "Replace Assignments",
-        $"This will replace all existing assignments with the selected preset permissions ({permissionNames.Count} permission(s)). Continue?",
+        "This will replace all existing assignments with the selected preset permissions. Continue?",
         "Replace", "Cancel");
 
       if (!confirmed.GetValueOrDefault())
       {
         return;
       }
-
-      result = UsesServerAssignmentApi
-        ? await ControlrApi.Internal.ServerPermissionAssignments.Replace(
-          new InternalDtos.ReplacePermissionAssignmentsRequestDto(
-            _principalKind, _selectedPrincipalId.Value, assignmentRequests))
-        : await ControlrApi.Internal.PermissionAssignments.Replace(
-          new InternalDtos.ReplacePermissionAssignmentsRequestDto(
-            _principalKind, _selectedPrincipalId.Value, assignmentRequests));
-    }
-    else
-    {
-      var existingKeyed = (_assignments ?? [])
-        .Select(a => (a.PermissionName, a.ScopeKind))
-        .ToHashSet();
-
-      assignmentRequests = [.. assignmentRequests
-        .Where(r => !existingKeyed.Contains((r.PermissionName, r.ScopeKind)))];
-
-      if (assignmentRequests.Length == 0)
-      {
-        Snackbar.Add("All preset permissions already assigned", Severity.Info);
-        return;
-      }
-
-      result = UsesServerAssignmentApi
-        ? await ControlrApi.Internal.ServerPermissionAssignments.CreateMany(
-          new InternalDtos.CreateManyPermissionAssignmentsRequestDto(assignmentRequests))
-        : await ControlrApi.Internal.PermissionAssignments.CreateMany(
-          new InternalDtos.CreateManyPermissionAssignmentsRequestDto(assignmentRequests));
     }
 
+    var result = await ControlrApi.Internal.PermissionAssignments.ApplyPresets(
+      new InternalDtos.ApplyPermissionPresetsRequestDto(
+        _principalKind,
+        _selectedPrincipalId.Value,
+        [.. _selectedPresetNames],
+        _presetMode == PresetApplyMode.Replace));
     if (!result.IsSuccess)
     {
       Snackbar.Add(result.Reason, Severity.Error);
       return;
     }
 
-    Snackbar.Add($"Applied {assignmentRequests.Length} permission(s)", Severity.Success);
+    Snackbar.Add($"Applied {result.Value} permission(s)", Severity.Success);
     await LoadAssignments();
   }
 
@@ -240,8 +175,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
     {
       { x => x.PrincipalKind, kind },
       { x => x.PrincipalId, principalId },
-      { x => x.AccountKind, AccountKind },
-      { x => x.UseServerAssignmentApi, UsesServerAssignmentApi }
+      { x => x.AccountKind, AccountKind }
     };
 
     var dialogOptions = PermissionAssignmentDialog.DefaultOptions;
@@ -267,9 +201,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
       return;
     }
 
-    var result = UsesServerAssignmentApi
-      ? await ControlrApi.Internal.ServerPermissionAssignments.Delete(assignment.Id)
-      : await ControlrApi.Internal.PermissionAssignments.Delete(assignment.Id);
+    var result = await ControlrApi.Internal.PermissionAssignments.Delete(assignment.Id);
     if (!result.IsSuccess)
     {
       Snackbar.Add(result.Reason, Severity.Error);
@@ -303,13 +235,9 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
     try
     {
-      var result = UsesServerAssignmentApi
-        ? await ControlrApi.Internal.ServerPermissionAssignments.DeleteMany(
-          new InternalDtos.DeleteManyPermissionAssignmentsRequestDto(
-            [.. selected.Select(x => x.Id)]))
-        : await ControlrApi.Internal.PermissionAssignments.DeleteMany(
-          new InternalDtos.DeleteManyPermissionAssignmentsRequestDto(
-            [.. selected.Select(x => x.Id)]));
+      var result = await ControlrApi.Internal.PermissionAssignments.DeleteMany(
+        new InternalDtos.DeleteManyPermissionAssignmentsRequestDto(
+          [.. selected.Select(x => x.Id)]));
 
       if (!result.IsSuccess)
       {
@@ -350,8 +278,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
       { x => x.ExistingAssignment, assignment },
       { x => x.PrincipalId, assignment.PrincipalId },
       { x => x.PrincipalKind, assignment.PrincipalKind },
-      { x => x.AccountKind, AccountKind },
-      { x => x.UseServerAssignmentApi, UsesServerAssignmentApi }
+      { x => x.AccountKind, AccountKind }
     };
 
     var dialogOptions = PermissionAssignmentDialog.DefaultOptions;
@@ -408,11 +335,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
     try
     {
-      var result = UsesServerAssignmentApi
-        ? await ControlrApi.Internal.ServerPermissionAssignments.GetByPrincipal(
-          _principalKind.ToString(), _selectedPrincipalId.Value)
-        : await ControlrApi.Internal.PermissionAssignments.GetByPrincipal(
-          _principalKind.ToString(), _selectedPrincipalId.Value);
+      var result = await ControlrApi.Internal.PermissionAssignments.GetByPrincipal(
+        _principalKind.ToString(), _selectedPrincipalId.Value);
       if (result.IsSuccess)
       {
         _assignments = result.Value;
@@ -516,9 +440,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
         assignment.Notes,
         enabled);
 
-      var result = UsesServerAssignmentApi
-        ? await ControlrApi.Internal.ServerPermissionAssignments.Update(assignment.Id, updateRequest)
-        : await ControlrApi.Internal.PermissionAssignments.Update(assignment.Id, updateRequest);
+      var result = await ControlrApi.Internal.PermissionAssignments.Update(assignment.Id, updateRequest);
       if (!result.IsSuccess)
       {
         Snackbar.Add(result.Reason, Severity.Error);

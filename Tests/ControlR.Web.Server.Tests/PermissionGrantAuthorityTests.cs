@@ -24,6 +24,51 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
 {
   private readonly ITestOutputHelper _testOutput = testOutput;
 
+    [Fact]
+    public async Task ApplyPresets_WithMixedScopesAndRequiredPermissions_Succeeds()
+    {
+      await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+      var tenant = await testApp.App.Services.CreateTestTenant();
+      await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+      var actor = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"actor-{Guid.NewGuid():N}@t.local");
+      var target = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"target-{Guid.NewGuid():N}@t.local");
+
+      await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        actor.Id,
+        PermissionNames.ServerPermissionsWrite,
+        PermissionScopeKind.Server,
+        null,
+        tenant.Id,
+        "test",
+        actor.Id.ToString()));
+      await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        actor.Id,
+        PermissionNames.TenantPermissionsWrite,
+        PermissionScopeKind.Tenant,
+        tenant.Id,
+        tenant.Id,
+        "test",
+        actor.Id.ToString()));
+
+      using var scope = testApp.CreateScope();
+      var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
+
+      var result = await manager.ApplyPresets(
+        new InternalDtos.ApplyPermissionPresetsRequestDto(
+          PermissionPrincipalKind.User,
+          target.Id,
+          [PermissionPresets.ServerAdministrator],
+          ReplaceExisting: false),
+        tenant.Id,
+        Actor(actor.Id, tenant.Id),
+        TestContext.Current.CancellationToken);
+
+      Assert.True(result.IsSuccess, $"Expected preset application to succeed: {result.Reason}");
+      Assert.Equal(PermissionPresets.GetPermissions(PermissionPresets.ServerAdministrator).Count, result.Value);
+    }
+
   [Fact]
   public async Task Create_ServerScoped_ByNonServerAdmin_Forbidden()
   {
@@ -46,11 +91,11 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         null,
         null),
       tenant.Id,
-      actor.Id,
+        Actor(actor.Id, tenant.Id),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
-    Assert.Equal(HttpResultErrorCode.BadRequest, result.ErrorCode);
+      Assert.Equal(HttpResultErrorCode.Forbidden, result.ErrorCode);
   }
 
   [Fact]
@@ -85,21 +130,30 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         null,
         null),
       tenant.Id,
-      actor.Id,
-      TestContext.Current.CancellationToken,
-      PermissionAssignmentAuthority.Server);
+        Actor(actor.Id, tenant.Id),
+        TestContext.Current.CancellationToken);
 
     Assert.True(result.IsSuccess, $"Expected server-admin grant to succeed: {result.Reason}");
   }
 
   [Fact]
-  public async Task Create_TenantScopedPermission_NotHeldByActor_Succeeds()
+  public async Task Create_TenantScopedPermission_WithTenantPermissionsWrite_Succeeds()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
     await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
     var actor = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"actor-{Guid.NewGuid():N}@t.local");
     var target = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"target-{Guid.NewGuid():N}@t.local");
+
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.TenantPermissionsWrite,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
 
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
@@ -114,9 +168,8 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         tenant.Id,
         null),
       tenant.Id,
-      actor.Id,
-      TestContext.Current.CancellationToken,
-      PermissionAssignmentAuthority.Tenant);
+        Actor(actor.Id, tenant.Id),
+        TestContext.Current.CancellationToken);
 
     Assert.True(result.IsSuccess, $"Expected delegated-admin grant to succeed: {result.Reason}");
   }
@@ -172,6 +225,24 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       tenant.Id,
       "test",
       actor.Id.ToString()));
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.TenantPermissionsWrite,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.ServerPermissionsRead,
+      PermissionScopeKind.Server,
+      null,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
 
     var tenantRow = PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
@@ -203,7 +274,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionPrincipalKind.User,
       target.Id,
       tenant.Id,
-      actor.Id,
+        Actor(actor.Id, tenant.Id),
       [
         new InternalDtos.CreatePermissionAssignmentRequestDto(
           PermissionPrincipalKind.User,
@@ -214,17 +285,155 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
           tenant.Id,
           null)
       ],
-      TestContext.Current.CancellationToken,
-      PermissionAssignmentAuthority.Server);
+        TestContext.Current.CancellationToken);
 
     Assert.True(replaceResult.IsSuccess, $"Expected replace to succeed: {replaceResult.Reason}");
 
     var remaining = await manager.GetByPrincipal(
-      PermissionPrincipalKind.User, target.Id, tenant.Id, actor.Id, TestContext.Current.CancellationToken);
+      PermissionPrincipalKind.User,
+      target.Id,
+      tenant.Id,
+        Actor(actor.Id, tenant.Id),
+        TestContext.Current.CancellationToken);
 
-    Assert.Single(remaining);
-    Assert.Equal(PermissionNames.DeviceLogsRead, remaining[0].PermissionName);
+    Assert.Equal(2, remaining.Count);
+    Assert.Contains(remaining, assignment => assignment.PermissionName == PermissionNames.DeviceLogsRead);
+    Assert.Contains(remaining, assignment => assignment.PermissionName == PermissionNames.ServerAlertsRead);
   }
+
+  [Fact]
+  public async Task Replace_ByServerAdmin_WithServerScopedAssignments_PreservesTenantRows()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var actor = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"actor-{Guid.NewGuid():N}@t.local");
+    var target = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"target-{Guid.NewGuid():N}@t.local");
+
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.ServerPermissionsWrite,
+      PermissionScopeKind.Server,
+      null,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.ServerPermissionsRead,
+      PermissionScopeKind.Server,
+      null,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
+
+    var tenantRow = PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      target.Id,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString());
+    var serverRow = PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      target.Id,
+      PermissionNames.ServerAlertsRead,
+      PermissionScopeKind.Server,
+      null,
+      tenant.Id,
+      "test",
+      actor.Id.ToString());
+
+    await SeedAssignment(testApp, tenantRow);
+    await SeedAssignment(testApp, serverRow);
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
+
+    var replaceResult = await manager.ReplaceForPrincipal(
+      PermissionPrincipalKind.User,
+      target.Id,
+      tenant.Id,
+        Actor(actor.Id, tenant.Id),
+      [
+        new InternalDtos.CreatePermissionAssignmentRequestDto(
+          PermissionPrincipalKind.User,
+          target.Id,
+          PermissionNames.ServerTelemetryRead,
+          PermissionEffect.Allow,
+          PermissionScopeKind.Server,
+          null,
+          null)
+      ],
+        TestContext.Current.CancellationToken);
+
+    Assert.True(replaceResult.IsSuccess, $"Expected replace to succeed: {replaceResult.Reason}");
+
+    var remaining = await manager.GetByPrincipal(
+      PermissionPrincipalKind.User,
+      target.Id,
+      tenant.Id,
+        Actor(actor.Id, tenant.Id),
+        TestContext.Current.CancellationToken);
+
+    Assert.Contains(remaining, x => x.Id == tenantRow.Id && x.PermissionName == PermissionNames.DeviceRead);
+    Assert.DoesNotContain(remaining, x => x.Id == serverRow.Id);
+    Assert.Contains(remaining, x => x.PermissionName == PermissionNames.ServerTelemetryRead);
+  }
+
+    [Fact]
+    public async Task Update_ServerScopeToTenantScope_WithoutTenantPermissionsWrite_Forbidden()
+    {
+      await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+      var tenant = await testApp.App.Services.CreateTestTenant();
+      await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+      var actor = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"actor-{Guid.NewGuid():N}@t.local");
+      var target = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"target-{Guid.NewGuid():N}@t.local");
+
+      await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        actor.Id,
+        PermissionNames.ServerPermissionsWrite,
+        PermissionScopeKind.Server,
+        null,
+        tenant.Id,
+        "test",
+        actor.Id.ToString()));
+
+      var assignment = PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        target.Id,
+        PermissionNames.ServerAlertsRead,
+        PermissionScopeKind.Server,
+        null,
+        tenant.Id,
+        "test",
+        actor.Id.ToString());
+      await SeedAssignment(testApp, assignment);
+
+      using var scope = testApp.CreateScope();
+      var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
+
+      var result = await manager.Update(
+        assignment.Id,
+        new InternalDtos.UpdatePermissionAssignmentRequestDto(
+          PermissionNames.DeviceRead,
+          PermissionEffect.Allow,
+          PermissionScopeKind.Tenant,
+          tenant.Id,
+          null,
+          true),
+        tenant.Id,
+        Actor(actor.Id, tenant.Id),
+        TestContext.Current.CancellationToken);
+
+      Assert.False(result.IsSuccess);
+      Assert.Equal(HttpResultErrorCode.Forbidden, result.ErrorCode);
+    }
 
   [Fact]
   public async Task Update_ToServerScope_ByNonServerAdmin_Forbidden()
@@ -260,12 +469,15 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         null,
         true),
       tenant.Id,
-      actor.Id,
+        Actor(actor.Id, tenant.Id),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
-    Assert.Equal(HttpResultErrorCode.BadRequest, result.ErrorCode);
+      Assert.Equal(HttpResultErrorCode.Forbidden, result.ErrorCode);
   }
+
+    private static PrincipalDescriptor Actor(Guid principalId, Guid tenantId) =>
+      new(PrincipalClaimTypes.User, principalId, tenantId, "test");
 
   private static async Task SeedAssignment(TestApp testApp, PermissionAssignment assignment)
   {

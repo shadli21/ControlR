@@ -90,3 +90,13 @@ public record EffectivePermissionQueryResponseDto(
   string? DenyReason);
 
 public record PermissionPresetDto(string Name, IReadOnlyList<string> Permissions);
+
+public record ApplyPermissionPresetsRequestDto(
+  PermissionPrincipalKind PrincipalKind,
+
+  Guid PrincipalId,
+
+  [property: MinLength(1)]
+  IReadOnlyList<string> PresetNames,
+
+  bool ReplaceExisting);

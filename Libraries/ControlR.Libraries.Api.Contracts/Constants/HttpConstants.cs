@@ -29,7 +29,6 @@ public static class HttpConstants
     public const string PublicServerSettingsEndpoint = "/api/public-server-settings";
     public const string ServerAlertEndpoint = "/api/server-alert";
     public const string ServerLogsEndpoint = "/api/server-logs";
-    public const string ServerPermissionAssignmentsEndpoint = "/api/server-permission-assignments";
     public const string ServerServiceAccountsEndpoint = "/api/server-service-accounts";
     public const string ServerStatsEndpoint = "/api/server-stats";
     public const string ServiceAccountsEndpoint = "/api/service-accounts";

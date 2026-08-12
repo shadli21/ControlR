@@ -1,5 +1,7 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -8,28 +10,44 @@ namespace ControlR.Web.Server.Api.Internal;
 [ApiController]
 [Authorize]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
-public class PermissionAssignmentsController(IPermissionAssignmentManager permissionAssignmentManager) : ControllerBase
+public class PermissionAssignmentsController(
+  IPermissionAssignmentManager permissionAssignmentManager,
+  IPermissionEvaluator permissionEvaluator) : ControllerBase
 {
   private readonly IPermissionAssignmentManager _permissionAssignmentManager = permissionAssignmentManager;
+  private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
+
+  [HttpPost("presets/apply")]
+  public async Task<ActionResult<int>> ApplyPresets(
+    [FromBody] InternalDtos.ApplyPermissionPresetsRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    if (!TryGetContext(out var tenantId, out var actor))
+    {
+      return BadRequest("Permission assignment context not found.");
+    }
+
+    var result = await _permissionAssignmentManager.ApplyPresets(request, tenantId, actor, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToHttpResult().ToActionResult();
+    }
+
+    return Ok(result.Value);
+  }
 
   [HttpPost]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<ActionResult<InternalDtos.PermissionAssignmentDto>> Create(
     [FromBody] InternalDtos.CreatePermissionAssignmentRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetTenantId(out var tenantId))
+    if (!TryGetContext(out var tenantId, out var actor))
     {
-      return BadRequest("User tenant not found.");
-    }
-
-    if (!User.TryGetUserId(out var userId))
-    {
-      return BadRequest("User ID not found.");
+      return BadRequest("Permission assignment context not found.");
     }
 
     var result = await _permissionAssignmentManager.Create(
-      request, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      request, tenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -39,23 +57,17 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpPost("create-many")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<IActionResult> CreateMany(
     [FromBody] InternalDtos.CreateManyPermissionAssignmentsRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetTenantId(out var tenantId))
+    if (!TryGetContext(out var tenantId, out var actor))
     {
-      return BadRequest("User tenant not found.");
-    }
-
-    if (!User.TryGetUserId(out var userId))
-    {
-      return BadRequest("User ID not found.");
+      return BadRequest("Permission assignment context not found.");
     }
 
     var result = await _permissionAssignmentManager.CreateMany(
-      request.Assignments, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      request.Assignments, tenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -65,23 +77,17 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpDelete("{assignmentId:guid}")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<IActionResult> Delete(
     [FromRoute] Guid assignmentId,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetTenantId(out var tenantId))
+    if (!TryGetContext(out var tenantId, out var actor))
     {
-      return BadRequest("User tenant not found.");
-    }
-
-    if (!User.TryGetUserId(out var userId))
-    {
-      return BadRequest("User ID not found.");
+      return BadRequest("Permission assignment context not found.");
     }
 
     var result = await _permissionAssignmentManager.Delete(
-      assignmentId, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      assignmentId, tenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -91,23 +97,17 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpPost("delete-many")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<ActionResult<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>> DeleteMany(
     [FromBody] InternalDtos.DeleteManyPermissionAssignmentsRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetTenantId(out var tenantId))
+    if (!TryGetContext(out var tenantId, out var actor))
     {
-      return BadRequest("User tenant not found.");
-    }
-
-    if (!User.TryGetUserId(out var userId))
-    {
-      return BadRequest("User ID not found.");
+      return BadRequest("Permission assignment context not found.");
     }
 
     var result = await _permissionAssignmentManager.DeleteMany(
-      request.AssignmentIds, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      request.AssignmentIds, tenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -117,35 +117,39 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpGet]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
   public async Task<ActionResult<IReadOnlyList<InternalDtos.PermissionAssignmentDto>>> GetByPrincipal(
     [FromQuery] PermissionPrincipalKind principalKind,
     [FromQuery] Guid principalId,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetTenantId(out var tenantId))
+    if (!TryGetContext(out var tenantId, out var actor))
     {
-      return BadRequest("User tenant not found.");
+      return BadRequest("Permission assignment context not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (!await CanReadAssignments(actor, cancellationToken))
     {
-      return BadRequest("User ID not found.");
+      return Forbid();
     }
 
     var assignments = await _permissionAssignmentManager.GetByPrincipal(
-      principalKind, principalId, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      principalKind, principalId, tenantId, actor, cancellationToken);
 
     return Ok(assignments);
   }
 
   [HttpGet("catalog")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
-  public ActionResult<IReadOnlyList<InternalDtos.PermissionCatalogEntryDto>> GetCatalog()
+  public async Task<ActionResult<IReadOnlyList<InternalDtos.PermissionCatalogEntryDto>>> GetCatalog(
+    CancellationToken cancellationToken)
   {
-    if (!User.TryGetTenantId(out _))
+    if (!TryGetContext(out _, out var actor))
     {
-      return BadRequest("User tenant not found.");
+      return BadRequest("Permission assignment context not found.");
+    }
+
+    if (!await CanReadAssignments(actor, cancellationToken))
+    {
+      return Forbid();
     }
 
     var entries = PermissionCatalog.All.Values
@@ -158,12 +162,17 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpGet("presets")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
-  public ActionResult<IReadOnlyList<InternalDtos.PermissionPresetDto>> GetPresets()
+  public async Task<ActionResult<IReadOnlyList<InternalDtos.PermissionPresetDto>>> GetPresets(
+    CancellationToken cancellationToken)
   {
-    if (!User.TryGetTenantId(out _))
+    if (!TryGetContext(out _, out var actor))
     {
-      return BadRequest("User tenant not found.");
+      return BadRequest("Permission assignment context not found.");
+    }
+
+    if (!await CanReadAssignments(actor, cancellationToken))
+    {
+      return Forbid();
     }
 
     var presets = PermissionPresets.All
@@ -175,29 +184,22 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpPost("replace")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<IActionResult> Replace(
     [FromBody] InternalDtos.ReplacePermissionAssignmentsRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetTenantId(out var tenantId))
+    if (!TryGetContext(out var tenantId, out var actor))
     {
-      return BadRequest("User tenant not found.");
-    }
-
-    if (!User.TryGetUserId(out var userId))
-    {
-      return BadRequest("User ID not found.");
+      return BadRequest("Permission assignment context not found.");
     }
 
     var result = await _permissionAssignmentManager.ReplaceForPrincipal(
       request.PrincipalKind,
       request.PrincipalId,
       tenantId,
-      userId,
+      actor,
       request.Assignments,
-      cancellationToken,
-      PermissionAssignmentAuthority.Tenant);
+      cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -207,29 +209,58 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpPut("{assignmentId:guid}")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
   public async Task<ActionResult<InternalDtos.PermissionAssignmentDto>> Update(
     [FromRoute] Guid assignmentId,
     [FromBody] InternalDtos.UpdatePermissionAssignmentRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetTenantId(out var tenantId))
+    if (!TryGetContext(out var tenantId, out var actor))
     {
-      return BadRequest("User tenant not found.");
-    }
-
-    if (!User.TryGetUserId(out var userId))
-    {
-      return BadRequest("User ID not found.");
+      return BadRequest("Permission assignment context not found.");
     }
 
     var result = await _permissionAssignmentManager.Update(
-      assignmentId, request, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      assignmentId, request, tenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
     }
 
     return Ok(result.Value);
+  }
+
+  private async Task<bool> CanReadAssignments(PrincipalDescriptor actor, CancellationToken cancellationToken)
+  {
+    var permissions = await _permissionEvaluator.GetEffectivePermissionNames(actor, cancellationToken);
+    return permissions.Contains(PermissionNames.TenantPermissionsRead) ||
+          permissions.Contains(PermissionNames.TenantPermissionsWrite) ||
+          permissions.Contains(PermissionNames.ServerPermissionsRead) ||
+          permissions.Contains(PermissionNames.ServerPermissionsWrite);
+  }
+
+  private bool TryGetContext(out Guid tenantId, out PrincipalDescriptor actor)
+  {
+    var principal = PrincipalDescriptorBuilder.FromClaims(User);
+    if (principal is null)
+    {
+      actor = new PrincipalDescriptor(string.Empty, Guid.Empty, null, "unknown");
+      tenantId = Guid.Empty;
+      return false;
+    }
+
+    actor = principal;
+    if (User.TryGetTenantId(out tenantId))
+    {
+      return true;
+    }
+
+    if (principal.PrincipalType == PrincipalClaimTypes.ServerServiceAccount)
+    {
+      tenantId = Guid.Empty;
+      return true;
+    }
+
+    tenantId = Guid.Empty;
+    return false;
   }
 }

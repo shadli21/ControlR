@@ -1,4 +1,5 @@
 using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Data.Enums;
@@ -25,7 +26,10 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
     await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local");
+    var user = await testApp.App.Services.CreateTestUser(
+      tenant.Id,
+      $"pat-owner-{Guid.NewGuid():N}@t.local",
+      PermissionPresets.TenantAdministrator);
     var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
 
     using var scope = testApp.CreateScope();
@@ -48,7 +52,7 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
         device.Id,
         null),
       tenant.Id,
-      user.Id,
+      new PrincipalDescriptor(PrincipalClaimTypes.User, user.Id, tenant.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
@@ -62,7 +66,10 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
     var tenant = await testApp.App.Services.CreateTestTenant();
     await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
     var user = await testApp.App.Services.CreateTestUser(
-      tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local", PermissionPresets.DeviceSuperUser);
+      tenant.Id,
+      $"pat-owner-{Guid.NewGuid():N}@t.local",
+      PermissionPresets.DeviceSuperUser,
+      PermissionPresets.TenantAdministrator);
     var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
 
     using var scope = testApp.CreateScope();
@@ -85,7 +92,7 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
         device.Id,
         null),
       tenant.Id,
-      user.Id,
+      new PrincipalDescriptor(PrincipalClaimTypes.User, user.Id, tenant.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.True(result.IsSuccess, $"Expected panel assignment to succeed: {result.Reason}");
