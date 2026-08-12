@@ -69,7 +69,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("ForcedReadSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await saManager.AddCredential(
+    var credResult = await saManager.AddCredentialForServer(
       saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -121,7 +121,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("EmptyPermSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await saManager.AddCredential(
+    var credResult = await saManager.AddCredentialForServer(
       saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -153,8 +153,9 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
       .Select(x => x.PermissionName)
       .ToListAsync(TestContext.Current.CancellationToken);
 
-    Assert.Equal(3, grantNames.Count);
+    Assert.Equal(4, grantNames.Count);
     Assert.Contains(PermissionNames.DeviceRead, grantNames);
+    Assert.Contains(PermissionNames.DeviceOverviewRead, grantNames);
     Assert.Contains(PermissionNames.DeviceRemoteControlConnect, grantNames);
     Assert.Contains(PermissionNames.DeviceRemoteControlInteract, grantNames);
   }
@@ -228,7 +229,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("BaselineSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await saManager.AddCredential(
+    var credResult = await saManager.AddCredentialForServer(
       saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -259,8 +260,9 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
       .Select(x => x.PermissionName)
       .ToListAsync(TestContext.Current.CancellationToken);
 
-    Assert.Equal(3, grantNames.Count);
+    Assert.Equal(4, grantNames.Count);
     Assert.Contains(PermissionNames.DeviceRead, grantNames);
+    Assert.Contains(PermissionNames.DeviceOverviewRead, grantNames);
     Assert.Contains(PermissionNames.DeviceRemoteControlConnect, grantNames);
     Assert.Contains(PermissionNames.DeviceRemoteControlInteract, grantNames);
   }
@@ -278,7 +280,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("ConcurrencySA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await saManager.AddCredential(
+    var credResult = await saManager.AddCredentialForServer(
       saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -379,7 +381,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("UnknownPermSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await saManager.AddCredential(
+    var credResult = await saManager.AddCredentialForServer(
       saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -417,7 +419,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer("PermTestSA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await saManager.AddCredential(
+    var credResult = await saManager.AddCredentialForServer(
       saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 

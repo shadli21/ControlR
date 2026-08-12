@@ -23,7 +23,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User ID not found.");
     }
 
-    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, request.ExpiresAt, userId, cancellationToken);
+    var result = await _serviceAccountManager.AddCredentialForServer(serviceAccountId, request.Name, request.ExpiresAt, userId, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -62,7 +62,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User ID not found.");
     }
 
-    var result = await _serviceAccountManager.Delete(serviceAccountId, userId, cancellationToken);
+    var result = await _serviceAccountManager.DeleteForServer(serviceAccountId, userId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -77,7 +77,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromRoute] Guid serviceAccountId,
     CancellationToken cancellationToken)
   {
-    var result = await _serviceAccountManager.Get(serviceAccountId, cancellationToken);
+    var result = await _serviceAccountManager.GetForServer(serviceAccountId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();

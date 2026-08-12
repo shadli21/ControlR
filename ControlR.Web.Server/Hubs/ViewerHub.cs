@@ -59,7 +59,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.ChatSend) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -139,7 +139,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.RemoteControlConnect) is not { IsSuccess: true } authResult)
       {
         return [];
       }
@@ -154,11 +154,47 @@ public class ViewerHub(
     }
   }
 
+  public async Task<HubResult<DeviceAccessPermissionsDto>> GetDeviceAccessPermissions(Guid deviceId)
+  {
+    try
+    {
+      var device = await _appDb.Devices
+        .AsNoTracking()
+        .FirstOrDefaultAsync(x => x.Id == deviceId);
+
+      if (device is null)
+      {
+        return HubResult.Fail<DeviceAccessPermissionsDto>("Device not found.");
+      }
+
+      if (!await CanAccessDevice(device, DeviceResourcePolicies.Read))
+      {
+        return HubResult.Fail<DeviceAccessPermissionsDto>("Unauthorized.");
+      }
+
+      var permissions = new DeviceAccessPermissionsDto(
+        await CanAccessDevice(device, DeviceResourcePolicies.OverviewRead),
+        await CanAccessDevice(device, DeviceResourcePolicies.RemoteControlConnect),
+        await CanAccessDevice(device, DeviceResourcePolicies.TerminalUse),
+        await CanAccessDevice(device, DeviceResourcePolicies.ChatSend),
+        await CanAccessDevice(device, DeviceResourcePolicies.FileSystemRead),
+        await CanAccessDevice(device, DeviceResourcePolicies.LogsRead),
+        await CanAccessDevice(device, DeviceResourcePolicies.VncRelayConnect));
+
+      return HubResult.Ok(permissions);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error while resolving device-access permissions for device {DeviceId}.", deviceId);
+      return HubResult.Fail<DeviceAccessPermissionsDto>("An error occurred while resolving device permissions.");
+    }
+  }
+
   public async Task<HubResult<PwshCompletionsResponseDto>> GetPwshCompletions(PwshCompletionsRequestDto request)
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(request.DeviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(request.DeviceId, DeviceResourcePolicies.TerminalUse) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail<PwshCompletionsResponseDto>("Forbidden.");
       }
@@ -187,7 +223,7 @@ public class ViewerHub(
         targetDesktopProcessId,
         Context.UserIdentifier);
 
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.CtrlAltDelSend) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -287,7 +323,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.Read) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -306,7 +342,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.VncRelayConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -350,7 +386,7 @@ public class ViewerHub(
         deviceId,
         remoteIp);
 
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.RemoteControlConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -386,7 +422,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.VncRelayConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -463,7 +499,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.Read) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -482,7 +518,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.ChatSend) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -543,7 +579,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.PowerManage) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -589,7 +625,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.WakeSend) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -718,7 +754,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(guid) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(guid, DeviceResourcePolicies.VncRelayConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -780,7 +816,7 @@ public class ViewerHub(
 
       var deviceId = fileUploadMetadata.DeviceId;
 
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.FileSystemWrite) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -868,6 +904,17 @@ public class ViewerHub(
     }
 
     return displayName.AsTaskResult();
+  }
+
+  private async Task<bool> CanAccessDevice(Device device, string policyName)
+  {
+    if (Context.User is not { } user)
+    {
+      return false;
+    }
+
+    var result = await _authorizationService.AuthorizeAsync(user, device, policyName);
+    return result.Succeeded;
   }
 
   private async Task<HubResult<string>> GetDisplayName(Guid userId)

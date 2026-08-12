@@ -33,7 +33,7 @@ public class ServiceAccountsController(
       return Unauthorized();
     }
 
-    var result = await _serviceAccountManager.AddCredential(serviceAccountId, request.Name, request.ExpiresAt, principalId, cancellationToken);
+    var result = await _serviceAccountManager.AddCredentialForServer(serviceAccountId, request.Name, request.ExpiresAt, principalId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -81,7 +81,7 @@ public class ServiceAccountsController(
       return Unauthorized();
     }
 
-    var result = await _serviceAccountManager.Delete(serviceAccountId, principalId, cancellationToken);
+    var result = await _serviceAccountManager.DeleteForServer(serviceAccountId, principalId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -98,7 +98,7 @@ public class ServiceAccountsController(
     Guid serviceAccountId,
     CancellationToken cancellationToken)
   {
-    var result = await _serviceAccountManager.Get(serviceAccountId, cancellationToken);
+    var result = await _serviceAccountManager.GetForServer(serviceAccountId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();

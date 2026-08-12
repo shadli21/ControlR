@@ -16,7 +16,7 @@ namespace ControlR.Web.Server.Tests;
 
 /// <summary>
 /// Grant-authority matrix: locks down who may grant what. Delegated administration (a
-/// tenant writer may grant permissions they do not hold), the server.admin requirement for
+/// tenant writer may grant permissions they do not hold), the server.permissions.write requirement for
 /// server-scoped grants, replace visibility semantics, and the policy-layer gate for
 /// principals without tenant.permissions.write.
 /// </summary>
@@ -50,7 +50,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
-    Assert.Equal(HttpResultErrorCode.Forbidden, result.ErrorCode);
+    Assert.Equal(HttpResultErrorCode.BadRequest, result.ErrorCode);
   }
 
   [Fact]
@@ -65,7 +65,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       actor.Id,
-      PermissionNames.ServerAdmin,
+      PermissionNames.ServerPermissionsWrite,
       PermissionScopeKind.Server,
       null,
       tenant.Id,
@@ -86,7 +86,8 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         null),
       tenant.Id,
       actor.Id,
-      TestContext.Current.CancellationToken);
+      TestContext.Current.CancellationToken,
+      PermissionAssignmentAuthority.Server);
 
     Assert.True(result.IsSuccess, $"Expected server-admin grant to succeed: {result.Reason}");
   }
@@ -114,7 +115,8 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         null),
       tenant.Id,
       actor.Id,
-      TestContext.Current.CancellationToken);
+      TestContext.Current.CancellationToken,
+      PermissionAssignmentAuthority.Tenant);
 
     Assert.True(result.IsSuccess, $"Expected delegated-admin grant to succeed: {result.Reason}");
   }
@@ -164,7 +166,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       actor.Id,
-      PermissionNames.ServerAdmin,
+      PermissionNames.ServerPermissionsWrite,
       PermissionScopeKind.Server,
       null,
       tenant.Id,
@@ -212,7 +214,8 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
           tenant.Id,
           null)
       ],
-      TestContext.Current.CancellationToken);
+      TestContext.Current.CancellationToken,
+      PermissionAssignmentAuthority.Server);
 
     Assert.True(replaceResult.IsSuccess, $"Expected replace to succeed: {replaceResult.Reason}");
 
@@ -261,7 +264,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
-    Assert.Equal(HttpResultErrorCode.Forbidden, result.ErrorCode);
+    Assert.Equal(HttpResultErrorCode.BadRequest, result.ErrorCode);
   }
 
   private static async Task SeedAssignment(TestApp testApp, PermissionAssignment assignment)

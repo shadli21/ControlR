@@ -59,7 +59,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var accountId = createResult.Value.Id;
 
     var expiresAt = DateTimeOffset.UtcNow.AddDays(30);
-    var addCredResult = await manager.AddCredential(
+    var addCredResult = await manager.AddCredentialForServer(
       accountId,
       "Expiring credential",
       expiresAt,
@@ -86,7 +86,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     Assert.True(createResult.IsSuccess);
     var accountId = createResult.Value.Id;
 
-    var addCredResult = await manager.AddCredential(
+    var addCredResult = await manager.AddCredentialForServer(
       accountId,
       "Expired at creation",
       DateTimeOffset.UtcNow.AddMinutes(-5),
@@ -192,7 +192,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
 
     var accountId = createResult.Value.Id;
 
-    var primaryCredResult = await manager.AddCredential(
+    var primaryCredResult = await manager.AddCredentialForServer(
       accountId,
       "Primary key",
       expiresAt: null,
@@ -207,7 +207,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     Assert.True(validateResult.IsSuccess);
     Assert.Equal(accountId, validateResult.Value.ServiceAccount.Id);
 
-    var addCredResult = await manager.AddCredential(
+    var addCredResult = await manager.AddCredentialForServer(
       accountId,
       "Secondary key",
       expiresAt: null,
@@ -225,7 +225,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     Assert.True(shouldPass.IsSuccess);
 
     // Authorization isn't exercised here — any valid principal ID is acceptable.
-    await manager.Delete(accountId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    await manager.DeleteForServer(accountId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
     var allAccounts = await manager.GetAllForServer(TestContext.Current.CancellationToken);
     Assert.DoesNotContain(allAccounts, a => a.Id == accountId);

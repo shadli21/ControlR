@@ -18,6 +18,9 @@ public partial class PermissionAssignmentDialog : ComponentBase
     BackdropClick = false
   };
 
+  [Parameter]
+  public ServiceAccountKind AccountKind { get; set; } = ServiceAccountKind.Tenant;
+
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
 
@@ -41,6 +44,9 @@ public partial class PermissionAssignmentDialog : ComponentBase
 
   [Inject]
   public required ISnackbar Snackbar { get; init; }
+
+  [Parameter]
+  public bool UseServerAssignmentApi { get; set; }
 
   private bool IsEdit => ExistingAssignment is not null;
 
@@ -81,25 +87,9 @@ public partial class PermissionAssignmentDialog : ComponentBase
     }
   }
 
-  private static int Breadth(PermissionScopeKind scopeKind) => scopeKind switch
-  {
-    PermissionScopeKind.Device => 0,
-    PermissionScopeKind.DeviceGroup => 1,
-    PermissionScopeKind.UserGroup => 1,
-    PermissionScopeKind.CustomerTenant => 2,
-    PermissionScopeKind.Tenant => 3,
-    PermissionScopeKind.Server => 4,
-    _ => 0
-  };
-
   private static PermissionScopeKind BroadestLegalScope(InternalDtos.PermissionCatalogEntryDto? entry)
   {
-    if (entry?.AllowedScopeKinds is { Count: > 0 } kinds)
-    {
-      return kinds.MaxBy(Breadth);
-    }
-
-    return PermissionScopeKind.Tenant;
+    return PermissionScopeKinds.GetBroadestLegalScope(entry?.AllowedScopeKinds ?? []) ?? PermissionScopeKind.Tenant;
   }
 
   private static string ScopeKindLabel(PermissionScopeKind scopeKind) => scopeKind switch
@@ -163,7 +153,9 @@ public partial class PermissionAssignmentDialog : ComponentBase
           string.IsNullOrWhiteSpace(_notes) ? null : _notes,
           _isEnabled);
 
-        var result = await ControlrApi.Internal.PermissionAssignments.Update(existing.Id, updateRequest);
+        var result = UseServerAssignmentApi || AccountKind == ServiceAccountKind.Server
+          ? await ControlrApi.Internal.ServerPermissionAssignments.Update(existing.Id, updateRequest)
+          : await ControlrApi.Internal.PermissionAssignments.Update(existing.Id, updateRequest);
         if (!result.IsSuccess)
         {
           Snackbar.Add(result.Reason, Severity.Error);
@@ -192,7 +184,9 @@ public partial class PermissionAssignmentDialog : ComponentBase
         _scopeId,
         string.IsNullOrWhiteSpace(_notes) ? null : _notes);
 
-      var createResult = await ControlrApi.Internal.PermissionAssignments.Create(createRequest);
+      var createResult = UseServerAssignmentApi || AccountKind == ServiceAccountKind.Server
+        ? await ControlrApi.Internal.ServerPermissionAssignments.Create(createRequest)
+        : await ControlrApi.Internal.PermissionAssignments.Create(createRequest);
       if (!createResult.IsSuccess)
       {
         Snackbar.Add(createResult.Reason, Severity.Error);

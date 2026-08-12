@@ -7,6 +7,9 @@ public partial class PrincipalAutocomplete
   private PrincipalOption? _selected;
 
   [Parameter]
+  public ServiceAccountKind AccountKind { get; set; } = ServiceAccountKind.Tenant;
+
+  [Parameter]
   public string? Class { get; set; }
 
   [Inject]
@@ -47,10 +50,15 @@ public partial class PrincipalAutocomplete
     return $"{token.Name}  (Last Used: {lastUsed}  |  Token ID: {token.Id.ToString()[..8]}...)";
   }
 
-  private static string FormatServiceAccountDisplayName(TenantServiceAccountDto account)
+  private static string FormatServiceAccountDisplayName(
+    string name,
+    bool isEnabled,
+    Guid id,
+    ServiceAccountKind accountKind)
   {
-    var enabled = account.IsEnabled ? "Yes" : "No";
-    return $"{account.Name}  (Enabled: {enabled}  |  Account ID: {account.Id.ToString()[..8]}...)";
+    var enabled = isEnabled ? "Yes" : "No";
+    var kind = accountKind == ServiceAccountKind.Server ? "Server" : "Tenant";
+    return $"{name}  ({kind}  |  Enabled: {enabled}  |  Account ID: {id.ToString()[..8]}...)";
   }
 
   private static string FormatUserGroupDisplayName(UserGroupDto group) =>
@@ -92,14 +100,38 @@ public partial class PrincipalAutocomplete
 
   private async Task<PrincipalOption?> ResolveServiceAccount(Guid id)
   {
-    var result = await ControlrApi.Internal.ServiceAccounts.GetAll();
-    if (!result.IsSuccess)
+    if (AccountKind == ServiceAccountKind.Server)
+    {
+      var serverResult = await ControlrApi.Internal.ServerServiceAccounts.GetAll();
+      if (!serverResult.IsSuccess)
+      {
+        return null;
+      }
+
+      var serverMatch = serverResult.Value.FirstOrDefault(x => x.Id == id);
+      return serverMatch is null
+        ? null
+        : new PrincipalOption(
+          serverMatch.Id,
+          FormatServiceAccountDisplayName(
+            serverMatch.Name, serverMatch.IsEnabled, serverMatch.Id, ServiceAccountKind.Server),
+          PermissionPrincipalKind.ServiceAccount);
+    }
+
+    var tenantResult = await ControlrApi.Internal.ServiceAccounts.GetAll();
+    if (!tenantResult.IsSuccess)
     {
       return null;
     }
 
-    var match = result.Value.FirstOrDefault(x => x.Id == id);
-    return match is null ? null : new PrincipalOption(match.Id, FormatServiceAccountDisplayName(match), PermissionPrincipalKind.ServiceAccount);
+    var tenantMatch = tenantResult.Value.FirstOrDefault(x => x.Id == id);
+    return tenantMatch is null
+      ? null
+      : new PrincipalOption(
+        tenantMatch.Id,
+        FormatServiceAccountDisplayName(
+          tenantMatch.Name, tenantMatch.IsEnabled, tenantMatch.Id, ServiceAccountKind.Tenant),
+        PermissionPrincipalKind.ServiceAccount);
   }
 
   private async Task<PrincipalOption?> ResolveUser(Guid id)
@@ -158,15 +190,34 @@ public partial class PrincipalAutocomplete
 
   private async Task<IEnumerable<PrincipalOption>> SearchServiceAccounts(string query, CancellationToken cancellationToken)
   {
-    var result = await ControlrApi.Internal.ServiceAccounts.GetAll(cancellationToken);
-    if (!result.IsSuccess)
+    if (AccountKind == ServiceAccountKind.Server)
+    {
+      var serverResult = await ControlrApi.Internal.ServerServiceAccounts.GetAll(cancellationToken);
+      if (!serverResult.IsSuccess)
+      {
+        return [];
+      }
+
+      return serverResult.Value
+        .Where(x => Matches(x.Name, query))
+        .Select(x => new PrincipalOption(
+          x.Id,
+          FormatServiceAccountDisplayName(x.Name, x.IsEnabled, x.Id, ServiceAccountKind.Server),
+          PermissionPrincipalKind.ServiceAccount));
+    }
+
+    var tenantResult = await ControlrApi.Internal.ServiceAccounts.GetAll(cancellationToken);
+    if (!tenantResult.IsSuccess)
     {
       return [];
     }
 
-    return result.Value
+    return tenantResult.Value
       .Where(x => Matches(x.Name, query))
-      .Select(x => new PrincipalOption(x.Id, FormatServiceAccountDisplayName(x), PermissionPrincipalKind.ServiceAccount));
+      .Select(x => new PrincipalOption(
+        x.Id,
+        FormatServiceAccountDisplayName(x.Name, x.IsEnabled, x.Id, ServiceAccountKind.Tenant),
+        PermissionPrincipalKind.ServiceAccount));
   }
 
   private async Task<IEnumerable<PrincipalOption>> SearchUserGroups(string query, CancellationToken cancellationToken)

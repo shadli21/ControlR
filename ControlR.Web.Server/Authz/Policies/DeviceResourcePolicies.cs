@@ -8,6 +8,8 @@ namespace ControlR.Web.Server.Authz.Policies;
 public static class DeviceResourcePolicies
 {
   public const string AliasWrite = "DeviceAliasWrite";
+  public const string ChatSend = "DeviceChatSend";
+  public const string CtrlAltDelSend = "DeviceCtrlAltDelSend";
   public const string Delete = "DeviceDelete";
   public const string DesktopPreviewRead = "DeviceDesktopPreviewRead";
   public const string FileSystemDelete = "DeviceFileSystemDelete";
@@ -17,21 +19,31 @@ public static class DeviceResourcePolicies
   public const string FileSystemWrite = "DeviceFileSystemWrite";
   public const string LogonTokenCreate = "DeviceLogonTokenCreate";
   public const string LogsRead = "DeviceLogsRead";
+  public const string OverviewRead = "DeviceOverviewRead";
+  public const string PowerManage = "DevicePowerManage";
   public const string Read = "DeviceRead";
+  public const string RemoteControlConnect = "DeviceRemoteControlConnect";
   public const string TagsRead = "DeviceTagsRead";
   public const string TagsWrite = "DeviceTagsWrite";
   public const string TerminalUse = "DeviceTerminalUse";
+  public const string VncRelayConnect = "DeviceVncRelayConnect";
+  public const string WakeSend = "DeviceWakeSend";
 
   public static IReadOnlyDictionary<string, string> PolicyToPermission { get; } =
     new Dictionary<string, string>
     {
       [Read] = PermissionNames.DeviceRead,
+      [RemoteControlConnect] = PermissionNames.DeviceRemoteControlConnect,
       [Delete] = PermissionNames.DeviceDelete,
       [AliasWrite] = PermissionNames.DeviceAliasWrite,
+      [ChatSend] = PermissionNames.DeviceChatSend,
+      [CtrlAltDelSend] = PermissionNames.DeviceCtrlAltDelSend,
       [DesktopPreviewRead] = PermissionNames.DeviceDesktopPreviewRead,
       [TerminalUse] = PermissionNames.DeviceTerminalUse,
       [LogonTokenCreate] = PermissionNames.DeviceLogonTokenCreate,
       [LogsRead] = PermissionNames.DeviceLogsRead,
+      [OverviewRead] = PermissionNames.DeviceOverviewRead,
+      [PowerManage] = PermissionNames.DevicePowerManage,
       [TagsRead] = PermissionNames.DeviceTagsRead,
       [TagsWrite] = PermissionNames.DeviceTagsWrite,
       [FileSystemRead] = PermissionNames.DeviceFileSystemRead,
@@ -39,5 +51,7 @@ public static class DeviceResourcePolicies
       [FileSystemDelete] = PermissionNames.DeviceFileSystemDelete,
       [FileSystemTransferDownload] = PermissionNames.DeviceFileSystemTransferDownload,
       [FileSystemTransferUpload] = PermissionNames.DeviceFileSystemTransferUpload,
+      [VncRelayConnect] = PermissionNames.DeviceVncRelayConnect,
+      [WakeSend] = PermissionNames.DeviceWakeSend,
     };
 }

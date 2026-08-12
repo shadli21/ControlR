@@ -6,6 +6,7 @@ namespace ControlR.Web.Client.Components.Layout.DeviceAccess;
 public partial class DeviceAccessLayout
 {
   private bool _canGoBack;
+  private DeviceAccessPermissionsDto? _deviceAccessPermissions;
   private Guid _deviceId;
   private string? _deviceName;
   private string? _errorText;
@@ -125,6 +126,7 @@ public partial class DeviceAccessLayout
 
       await GetDeviceInfo();
       _previousDeviceId = _deviceId;
+      _deviceAccessPermissions = null;
 
       // Registrations are removed in BaseLayout when disposing.
       Messenger.Value.Register<DtoReceivedMessage<DeviceResponseDto>>(this, HandleDeviceDtoReceivedMessage);
@@ -138,6 +140,7 @@ public partial class DeviceAccessLayout
       }
       else
       {
+        await RefreshDeviceAccessPermissions();
         await StartDeviceAccessActivity();
         await SyncHeartbeatSubscription();
       }
@@ -166,7 +169,23 @@ public partial class DeviceAccessLayout
     {
       await GetDeviceInfo();
       _previousDeviceId = _deviceId;
+      _deviceAccessPermissions = null;
+      await RefreshDeviceAccessPermissions();
       await SyncHeartbeatSubscription();
+    }
+  }
+
+  private void EnforceCurrentPagePermission()
+  {
+    if (_deviceAccessPermissions is null)
+    {
+      return;
+    }
+
+    var currentPath = new Uri(NavManager.Uri).AbsolutePath;
+    if (!DeviceAccessPagePermissions.CanAccess(_deviceAccessPermissions, currentPath))
+    {
+      NavigateToFirstAllowedPage();
     }
   }
 
@@ -275,6 +294,7 @@ public partial class DeviceAccessLayout
     {
       // Server-side group memberships reset on (re)connect; re-subscribe to the device heartbeat.
       _subscribedDeviceId = Guid.Empty;
+      await RefreshDeviceAccessPermissions();
       await StartDeviceAccessActivity();
       await SyncHeartbeatSubscription();
     }
@@ -284,6 +304,31 @@ public partial class DeviceAccessLayout
   private void NavigateBackToDashboard()
   {
     NavManager.NavigateTo("/");
+  }
+
+  private void NavigateToFirstAllowedPage()
+  {
+    var targetPath = DeviceAccessPagePermissions.FirstAllowedRoute(_deviceAccessPermissions);
+    if (targetPath is null)
+    {
+      _errorText = "You are not authorized to access any device-access page.";
+      return;
+    }
+
+    NavManager.NavigateTo($"{targetPath}?deviceId={_deviceId}", replace: true);
+  }
+
+  private async Task RefreshDeviceAccessPermissions()
+  {
+    if (!ViewerHub.Value.IsConnected || _deviceId == Guid.Empty)
+    {
+      return;
+    }
+
+    var result = await ViewerHub.Value.Server.GetDeviceAccessPermissions(_deviceId);
+    _deviceAccessPermissions = result.IsSuccess ? result.Value : null;
+    EnforceCurrentPagePermission();
+    await InvokeAsync(StateHasChanged);
   }
 
   private async Task StartDeviceAccessActivity()

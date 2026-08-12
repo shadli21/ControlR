@@ -23,6 +23,8 @@ public static class PolicyNames
   public const string RequireServerAdmin = "RequireServerAdmin";
   public const string RequireServerAlertsWrite = "RequireServerAlertsWrite";
   public const string RequireServerAuthorizationLogsRead = "RequireServerAuthorizationLogsRead";
+  public const string RequireServerPermissionsRead = "RequireServerPermissionsRead";
+  public const string RequireServerPermissionsWrite = "RequireServerPermissionsWrite";
   public const string RequireServerServiceAccountsRead = "RequireServerServiceAccountsRead";
   public const string RequireServerServiceAccountsRotateCredentials = "RequireServerServiceAccountsRotateCredentials";
   public const string RequireServerServiceAccountsWrite = "RequireServerServiceAccountsWrite";

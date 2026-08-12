@@ -94,7 +94,7 @@ public static class HostExtensions
 
     logger.LogInformation("Bootstrap admin user created: {Email}.", options.AdminEmail);
 
-    await PermissionPresets.SeedAssignmentsAsync(
+    await PermissionPresets.SeedAssignments(
       sp.GetRequiredService<AppDb>(),
       user.Id,
       user.TenantId,

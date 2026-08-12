@@ -31,7 +31,7 @@ public class ServiceAccountSecretLoggingTests(ITestOutputHelper testOutput)
     Assert.True(createResult.IsSuccess);
     var accountId = createResult.Value.Id;
 
-    var addCredResult = await manager.AddCredential(
+    var addCredResult = await manager.AddCredentialForServer(
       accountId,
       "Secret Log Test Credential",
       expiresAt: null,
@@ -73,7 +73,7 @@ public class ServiceAccountSecretLoggingTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
-    var addCredResult = await manager.AddCredential(
+    var addCredResult = await manager.AddCredentialForServer(
       createResult.Value.Id,
       "Secret Log Test Credential",
       expiresAt: null,

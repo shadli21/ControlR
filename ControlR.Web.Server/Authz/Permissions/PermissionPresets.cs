@@ -29,13 +29,14 @@ public static class PermissionPresets
   /// no ScopeId or OwningTenantId; everything else lands at Tenant scope targeting the given
   /// tenant, matching the PermissionEvaluator's ScopeMatches requirements.
   /// </summary>
-  public static async Task SeedAssignmentsAsync(
+  public static async Task SeedAssignments(
     AppDb appDb,
     Guid userId,
     Guid tenantId,
     IEnumerable<string> presetNames,
     CancellationToken cancellationToken = default)
   {
+    var seeded = new HashSet<string>();
     foreach (var presetName in presetNames)
     {
       var permissions = GetPermissions(presetName);
@@ -46,6 +47,11 @@ public static class PermissionPresets
 
       foreach (var permission in permissions)
       {
+        if (!seeded.Add(permission))
+        {
+          continue;
+        }
+
         var scopeKind = PermissionCatalog.GetBroadestLegalScope(permission) ?? PermissionScopeKind.Tenant;
         var scopeId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
 
@@ -79,6 +85,8 @@ public static class PermissionPresets
         PermissionNames.ServerServiceAccountsRead,
         PermissionNames.ServerServiceAccountsWrite,
         PermissionNames.ServerServiceAccountsRotateCredentials,
+        PermissionNames.ServerPermissionsRead,
+        PermissionNames.ServerPermissionsWrite,
         PermissionNames.TenantPermissionsRead,
         PermissionNames.TenantAuthorizationLogsRead,
       ],

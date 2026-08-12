@@ -16,6 +16,7 @@
     <MudItem xs="12" md="9">
       <PrincipalAutocomplete PrincipalKind="_principalKind" SelectedId="_selectedPrincipalId"
                              SelectedIdChanged="OnPrincipalIdChanged" Label="Principal"
+                             AccountKind="AccountKind"
                              Disabled="IsPrincipalLocked" />
       @if (_selectedPrincipalId is null)
       {

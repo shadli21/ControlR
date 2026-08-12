@@ -193,7 +193,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await manager.AddCredential(
+    var credResult = await manager.AddCredentialForServer(
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
@@ -286,7 +286,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var saResult = await manager.CreateForServer("Revoke Credential SA", null, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await manager.AddCredential(
+    var credResult = await manager.AddCredentialForServer(
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,

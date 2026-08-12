@@ -31,7 +31,7 @@ public class PermissionAssignmentTenantIsolationTests(ITestOutputHelper testOutp
         null),
       TestContext.Current.CancellationToken);
 
-    Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
   }
 
   [Fact]

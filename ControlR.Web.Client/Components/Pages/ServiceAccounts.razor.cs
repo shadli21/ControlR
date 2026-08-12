@@ -190,6 +190,18 @@ public partial class ServiceAccounts : ComponentBase
     await Refresh();
   }
 
+  private async Task EditPermissions(InternalDtos.TenantServiceAccountDto account)
+  {
+    var parameters = new DialogParameters<PermissionAssignmentPanelDialog>
+    {
+      { x => x.PrincipalKind, PermissionPrincipalKind.ServiceAccount },
+      { x => x.PrincipalId, account.Id }
+    };
+
+    await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
+      $"Permissions: {account.Name}", parameters, PermissionAssignmentPanelDialog.DefaultOptions);
+  }
+
   private int GetActiveCount(IReadOnlyList<InternalDtos.TenantServiceAccountCredentialDto> credentials)
   {
     return credentials.Count(cred =>

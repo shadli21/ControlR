@@ -20,6 +20,7 @@ public interface IControlrInternalApi
   IPublicServerSettingsApi PublicServerSettings { get; }
   IServerAlertApi ServerAlert { get; }
   IServerLogsApi ServerLogs { get; }
+  IServerPermissionAssignmentsApi ServerPermissionAssignments { get; }
   IServerServiceAccountsApi ServerServiceAccounts { get; }
   IServerStatsApi ServerStats { get; }
   IServiceAccountsApi ServiceAccounts { get; }

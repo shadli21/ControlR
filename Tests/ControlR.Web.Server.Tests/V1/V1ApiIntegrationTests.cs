@@ -22,7 +22,7 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await saManager.AddCredential(
+    var credResult = await saManager.AddCredentialForServer(
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
@@ -63,7 +63,7 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
-    var credResult = await saManager.AddCredential(
+    var credResult = await saManager.AddCredentialForServer(
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,

@@ -152,7 +152,7 @@ public interface IUserCreator
         return new CreateUserResult(false, IdentityResult.Failed(err));
       }
 
-      await PermissionPresets.SeedAssignmentsAsync(_appDb, user.Id, user.TenantId, presetNames, cancellationToken);
+      await PermissionPresets.SeedAssignments(_appDb, user.Id, user.TenantId, presetNames, cancellationToken);
     }
 
     return new CreateUserResult(true, result.IdentityResult, user);
@@ -273,7 +273,7 @@ public interface IUserCreator
         _logger.LogInformation(
           "First user created. User: {UserName}. Assigning server administrator preset.",
           user.UserName);
-        await PermissionPresets.SeedAssignmentsAsync(
+        await PermissionPresets.SeedAssignments(
           _appDb, user.Id, user.TenantId, [PermissionPresets.ServerAdministrator], cancellationToken);
       }
 
@@ -286,7 +286,7 @@ public interface IUserCreator
       if (isNewTenant)
       {
         _logger.LogInformation("Assigning default presets for newly-created tenant admin user.");
-        await PermissionPresets.SeedAssignmentsAsync(
+        await PermissionPresets.SeedAssignments(
           _appDb,
           user.Id,
           user.TenantId,

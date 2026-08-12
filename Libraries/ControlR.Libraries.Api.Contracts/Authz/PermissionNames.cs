@@ -19,6 +19,7 @@ public static class PermissionNames
   public const string DeviceGroupAssignDevices = "device-group.assign-devices";
   public const string DeviceLogonTokenCreate = "device.logon-token.create";
   public const string DeviceLogsRead = "device.logs.read";
+  public const string DeviceOverviewRead = "device.overview.read";
   public const string DevicePowerManage = "device.power.manage";
   public const string DeviceRead = "device.read";
   public const string DeviceRemoteControlBlockInput = "device.remote-control.block-input";
@@ -28,6 +29,7 @@ public static class PermissionNames
   public const string DeviceTagsRead = "device.tags.read";
   public const string DeviceTagsWrite = "device.tags.write";
   public const string DeviceTerminalUse = "device.terminal.use";
+  public const string DeviceVncRelayConnect = "device.vnc-relay.connect";
   public const string DeviceWakeSend = "device.wake.send";
   public const string InstallerKeyManageAll = "installer-key.manage-all";
   public const string InstallerKeyRead = "installer-key.read";
@@ -40,6 +42,8 @@ public static class PermissionNames
   public const string ServerAlertsRead = "server.alerts.read";
   public const string ServerAlertsWrite = "server.alerts.write";
   public const string ServerAuthorizationLogsRead = "server.authorization-logs.read";
+  public const string ServerPermissionsRead = "server.permissions.read";
+  public const string ServerPermissionsWrite = "server.permissions.write";
   public const string ServerServiceAccountsRead = "server.service-accounts.read";
   public const string ServerServiceAccountsRotateCredentials = "server.service-accounts.rotate-credentials";
   public const string ServerServiceAccountsWrite = "server.service-accounts.write";

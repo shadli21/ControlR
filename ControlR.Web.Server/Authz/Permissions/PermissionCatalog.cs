@@ -26,22 +26,11 @@ public static class PermissionCatalog
       return null;
     }
 
-    return kinds.MaxBy(Breadth);
+    return PermissionScopeKinds.GetBroadestLegalScope(kinds);
   }
 
   private static PermissionScopeKind[]? AllowedKinds(string permissionName) =>
     _permissions.GetValueOrDefault(permissionName)?.AllowedScopeKinds;
-
-  private static int Breadth(PermissionScopeKind scopeKind) => scopeKind switch
-  {
-    PermissionScopeKind.Device => 0,
-    PermissionScopeKind.DeviceGroup => 1,
-    PermissionScopeKind.UserGroup => 1,
-    PermissionScopeKind.CustomerTenant => 2,
-    PermissionScopeKind.Tenant => 3,
-    PermissionScopeKind.Server => 4,
-    _ => 0
-  };
 
   private static Dictionary<string, PermissionMetadata> BuildCatalog()
   {
@@ -62,6 +51,8 @@ public static class PermissionCatalog
     Add(PermissionNames.ServerAlertsRead, "Read Server Alerts", "View server alerts and notifications.", server);
     Add(PermissionNames.ServerAlertsWrite, "Manage Server Alerts", "Create, update, and dismiss server alerts.", server);
     Add(PermissionNames.ServerAuthorizationLogsRead, "Read Server Authorization Logs", "View authorization change logs across all tenants, including server-scoped entries.", server);
+    Add(PermissionNames.ServerPermissionsRead, "Read Server Permission Assignments", "View server-scoped permission assignments.", server);
+    Add(PermissionNames.ServerPermissionsWrite, "Manage Server Permission Assignments", "Create, update, and delete server-scoped permission assignments.", server, selfRemovable: false);
     Add(PermissionNames.ServerTenantsRead, "Read Server Tenants", "List all tenants on the server.", server);
     Add(PermissionNames.ServerTelemetryRead, "Read Server Telemetry", "View server telemetry (logs and metrics).", server);
     Add(PermissionNames.ServerServiceAccountsRead, "Read Server Service Accounts", "View server-scoped service accounts and credentials.", server);
@@ -93,6 +84,7 @@ public static class PermissionCatalog
     Add(PermissionNames.DeviceTagsWrite, "Manage Device Tags", "Add and remove tags on a device.", deviceResources);
     Add(PermissionNames.DeviceDesktopPreviewRead, "View Desktop Preview", "View the desktop preview thumbnail for a device.", deviceResources);
     Add(PermissionNames.DeviceLogsRead, "Read Device Logs", "View remote log files from a device.", deviceResources);
+    Add(PermissionNames.DeviceOverviewRead, "Read Device Overview", "View the overview page for a device.", deviceResources);
 
     Add(PermissionNames.DeviceRemoteControlConnect, "Connect Remote Control", "Initiate a remote control session to a device.", deviceResources);
     Add(PermissionNames.DeviceRemoteControlInteract, "Interact Remote Control", "Send input during a remote control session.", deviceResources);
@@ -102,6 +94,7 @@ public static class PermissionCatalog
     Add(PermissionNames.DeviceClipboardRead, "Read Device Clipboard", "Read the clipboard contents from a remote device.", deviceResources);
     Add(PermissionNames.DeviceClipboardWrite, "Write Device Clipboard", "Write to the clipboard on a remote device.", deviceResources);
     Add(PermissionNames.DeviceChatSend, "Chat with Device", "Send chat messages to a remote device user.", deviceResources);
+    Add(PermissionNames.DeviceVncRelayConnect, "Connect VNC Relay", "Connect to a VNC server through a remote device.", deviceResources);
 
     Add(PermissionNames.DeviceFileSystemRead, "Read Device File System", "Browse and read files on a remote device.", deviceResources);
     Add(PermissionNames.DeviceFileSystemWrite, "Write Device File System", "Create and modify files on a remote device.", deviceResources);

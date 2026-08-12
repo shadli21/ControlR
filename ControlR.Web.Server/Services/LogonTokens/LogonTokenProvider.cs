@@ -44,6 +44,7 @@ public class LogonTokenProvider(
   private static readonly string[] _defaultDeviceAccessPermissions =
   [
     PermissionNames.DeviceRead,
+    PermissionNames.DeviceOverviewRead,
     PermissionNames.DeviceRemoteControlConnect,
     PermissionNames.DeviceRemoteControlInteract
   ];

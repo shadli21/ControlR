@@ -30,6 +30,8 @@ public static class PermissionPolicies
       [PolicyNames.RequireServerAdmin] = PermissionNames.ServerAdmin,
       [PolicyNames.RequireServerAlertsWrite] = PermissionNames.ServerAlertsWrite,
       [PolicyNames.RequireServerAuthorizationLogsRead] = PermissionNames.ServerAuthorizationLogsRead,
+      [PolicyNames.RequireServerPermissionsRead] = PermissionNames.ServerPermissionsRead,
+      [PolicyNames.RequireServerPermissionsWrite] = PermissionNames.ServerPermissionsWrite,
       [PolicyNames.RequireServerTenantsRead] = PermissionNames.ServerTenantsRead,
       [PolicyNames.RequireServerServiceAccountsRead] = PermissionNames.ServerServiceAccountsRead,
       [PolicyNames.RequireServerServiceAccountsRotateCredentials] = PermissionNames.ServerServiceAccountsRotateCredentials,

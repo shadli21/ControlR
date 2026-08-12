@@ -10,6 +10,9 @@ public partial class PermissionAssignmentPanelDialog : ComponentBase
     BackdropClick = false
   };
 
+  [Parameter]
+  public ServiceAccountKind AccountKind { get; set; } = ServiceAccountKind.Tenant;
+
   [CascadingParameter]
   public required IMudDialogInstance MudDialog { get; init; }
 

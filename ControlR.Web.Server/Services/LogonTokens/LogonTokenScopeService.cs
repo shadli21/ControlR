@@ -168,7 +168,7 @@ public class LogonTokenScopeService(
 
   /// <summary>
   /// Builds and validates the explicit scope list. Explicit scopes replace the baseline defaults
-  /// (with <c>device.read</c> unioned in, since the device-access page requires it), and the
+  /// (with <c>device.read</c> unioned in, since device resource resolution requires it), and the
   /// creator must hold every requested permission at the target device. Unlike the baseline path —
   /// where <c>DeviceLogonTokenCreate</c> alone conveys authority to grant the fixed standard
   /// device-access set — the explicit path can request arbitrary permissions, so each one is

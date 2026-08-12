@@ -44,7 +44,7 @@ internal static class TestPrincipalHelper
       throw new InvalidOperationException($"Failed to create server service account: {account.Reason}");
     }
 
-    var credResult = await manager.AddCredential(
+    var credResult = await manager.AddCredentialForServer(
       account.Value.Id, "Test Credential", expiresAt: null, account.Value.Id, cancellationToken);
 
     if (!credResult.IsSuccess)

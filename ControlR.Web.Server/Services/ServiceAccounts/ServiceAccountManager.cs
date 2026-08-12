@@ -1,6 +1,4 @@
 using ControlR.Libraries.Shared.Helpers;
-using ControlR.Web.Server.Data.Enums;
-using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
 using Microsoft.Extensions.Caching.Memory;
@@ -20,7 +18,7 @@ public interface IServiceAccountManager
   /// metadata and the plaintext secret, which is only exposed this once. Emits AuthorizationChangeLog.
   /// A null <paramref name="expiresAt"/> creates a credential that never expires.
   /// </summary>
-  Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredential(
+  Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForServer(
     Guid serviceAccountId, string name, DateTimeOffset? expiresAt, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
@@ -39,7 +37,7 @@ public interface IServiceAccountManager
 
   /// <summary>
   /// Creates a new server-scoped service account. The account is created without any credential;
-  /// issue one via <see cref="AddCredential"/>.
+  /// issue one via <see cref="AddCredentialForServer"/>.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> CreateForServer(string name, string? description, CancellationToken cancellationToken);
 
@@ -54,18 +52,13 @@ public interface IServiceAccountManager
   /// Deletes a server service account. Credentials cascade-delete. Emits AuthorizationChangeLog
   /// and removes orphaned PermissionAssignment rows where this account is the principal.
   /// </summary>
-  Task<HttpResult> Delete(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken);
+  Task<HttpResult> DeleteForServer(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Deletes a tenant-scoped service account. Emits AuthorizationChangeLog and removes
   /// orphaned PermissionAssignment rows where this account is the principal.
   /// </summary>
   Task<HttpResult> DeleteForTenant(Guid serviceAccountId, Guid tenantId, Guid requestingPrincipalId, CancellationToken cancellationToken);
-
-  /// <summary>
-  /// Returns a single server-scoped service account with its credential metadata.
-  /// </summary>
-  Task<HttpResult<ServiceAccountResult>> Get(Guid serviceAccountId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Returns all server-scoped service accounts with their credential metadata.
@@ -76,6 +69,11 @@ public interface IServiceAccountManager
   /// Returns all tenant-scoped service accounts for a given tenant.
   /// </summary>
   Task<IReadOnlyList<ServiceAccountResult>> GetAllForTenant(Guid tenantId, CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Returns a single server-scoped service account with its credential metadata.
+  /// </summary>
+  Task<HttpResult<ServiceAccountResult>> GetForServer(Guid serviceAccountId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Returns a single tenant-scoped service account with its credential metadata.
@@ -134,7 +132,7 @@ public class ServiceAccountManager(
 
   private static readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(30);
 
-  public async Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredential(
+  public async Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForServer(
     Guid serviceAccountId,
     string name,
     DateTimeOffset? expiresAt,
@@ -434,7 +432,7 @@ public class ServiceAccountManager(
     return HttpResult.Ok(MapToResult(account));
   }
 
-  public async Task<HttpResult> Delete(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken)
+  public async Task<HttpResult> DeleteForServer(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken)
   {
     if (serviceAccountId.Equals(requestingPrincipalId))
     {
@@ -518,22 +516,6 @@ public class ServiceAccountManager(
     return HttpResult.Ok();
   }
 
-  public async Task<HttpResult<ServiceAccountResult>> Get(
-    Guid serviceAccountId,
-    CancellationToken cancellationToken)
-  {
-    var account = await appDb.ServiceAccounts
-      .Include(x => x.Credentials)
-      .FirstOrDefaultAsync(x => x.Id == serviceAccountId && x.Kind == ServiceAccountKind.Server, cancellationToken);
-
-    if (account is null)
-    {
-      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.NotFound, "Server service account not found.");
-    }
-
-    return HttpResult.Ok(MapToResult(account));
-  }
-
   public async Task<IReadOnlyList<ServiceAccountResult>> GetAllForServer(CancellationToken cancellationToken)
   {
     var accounts = await appDb.ServiceAccounts
@@ -556,6 +538,22 @@ public class ServiceAccountManager(
       .ToListAsync(cancellationToken);
 
     return [.. accounts.Select(MapToResult)];
+  }
+
+  public async Task<HttpResult<ServiceAccountResult>> GetForServer(
+    Guid serviceAccountId,
+    CancellationToken cancellationToken)
+  {
+    var account = await appDb.ServiceAccounts
+      .Include(x => x.Credentials)
+      .FirstOrDefaultAsync(x => x.Id == serviceAccountId && x.Kind == ServiceAccountKind.Server, cancellationToken);
+
+    if (account is null)
+    {
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.NotFound, "Server service account not found.");
+    }
+
+    return HttpResult.Ok(MapToResult(account));
   }
 
   public async Task<HttpResult<ServiceAccountResult>> GetForTenant(

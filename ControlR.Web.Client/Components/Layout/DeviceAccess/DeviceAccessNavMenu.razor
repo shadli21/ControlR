@@ -1,33 +1,54 @@
 ﻿@inject ILazyInjector<IDeviceState> DeviceAccessState
 
 <MudNavMenu>
+  @if (CanAccess(ClientRoutes.DeviceAccess))
+  {
   <MudNavLink Disabled="IsDisabled" Href='@($"/device-access?deviceId={GetDeviceId()}")' Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">
     Overview
   </MudNavLink>
+  }
 
+  @if (CanAccess(ClientRoutes.DeviceAccessRemoteControl))
+  {
   <MudNavLink Disabled="IsDisabled" Href='@($"/device-access/remote-control?deviceId={GetDeviceId()}")' Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ScreenShare">
     Remote Control
   </MudNavLink>
+  }
 
+  @if (CanAccess(ClientRoutes.DeviceAccessTerminal))
+  {
   <MudNavLink Disabled="IsDisabled" Href='@($"/device-access/terminal?deviceId={GetDeviceId()}")' Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Terminal">
     Terminal
   </MudNavLink>
+  }
 
+  @if (CanAccess(ClientRoutes.DeviceAccessChat))
+  {
   <MudNavLink Disabled="IsDisabled" Href='@($"/device-access/chat?deviceId={GetDeviceId()}")' Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Chat">
     Chat
   </MudNavLink>
+  }
 
-  <MudNavLink Disabled="IsDisabled"  Href='@($"/device-access/file-system?deviceId={GetDeviceId()}")' Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Folder">
+  @if (CanAccess(ClientRoutes.DeviceAccessFileSystem))
+  {
+  <MudNavLink Disabled="IsDisabled" Href='@($"/device-access/file-system?deviceId={GetDeviceId()}")' Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Folder">
     File System
   </MudNavLink>
+  }
 
-  <MudNavLink Disabled="IsDisabled"  Href='@($"/device-access/remote-logs?deviceId={GetDeviceId()}")' Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TextSnippet">
+  @if (CanAccess(ClientRoutes.DeviceAccessRemoteLogs))
+  {
+  <MudNavLink Disabled="IsDisabled" Href='@($"/device-access/remote-logs?deviceId={GetDeviceId()}")' Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TextSnippet">
     Remote Logs
   </MudNavLink>
+  }
 
+  @if (CanAccess(ClientRoutes.DeviceAccessVncRelay))
+  {
   <MudNavLink Disabled="IsDisabled" Href='@($"/device-access/vnc-relay?deviceId={GetDeviceId()}")' Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Cast">
     VNC Relay
   </MudNavLink>
+  }
 
   @*
   <MudNavLink Disabled="IsDisabled" Href="/device-access/processes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MonitorHeart">
@@ -54,6 +75,11 @@
 @code {
   [Parameter]
   public bool IsDisabled { get; set; }
+
+  [Parameter]
+  public DeviceAccessPermissionsDto? Permissions { get; set; }
+
+  private bool CanAccess(string route) => DeviceAccessPagePermissions.CanAccess(Permissions, route);
 
   private string GetDeviceId()
   {

@@ -58,7 +58,7 @@
             </MudText>
           </MudLink>
         </MudDrawerHeader>
-        <DeviceAccessNavMenu IsDisabled="@(IsNavMenuDisabled)" />
+        <DeviceAccessNavMenu IsDisabled="@(IsNavMenuDisabled)" Permissions="@_deviceAccessPermissions" />
       </MudDrawer>
       <MudMainContent Class="h-100">
         @if (RendererInfo.IsInteractive)

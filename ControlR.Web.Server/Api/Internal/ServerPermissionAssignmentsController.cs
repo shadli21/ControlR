@@ -4,16 +4,16 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
 
-[Route(HttpConstants.Internal.PermissionAssignmentsEndpoint)]
+[Route(HttpConstants.Internal.ServerPermissionAssignmentsEndpoint)]
 [ApiController]
 [Authorize]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
-public class PermissionAssignmentsController(IPermissionAssignmentManager permissionAssignmentManager) : ControllerBase
+public class ServerPermissionAssignmentsController(IPermissionAssignmentManager permissionAssignmentManager) : ControllerBase
 {
   private readonly IPermissionAssignmentManager _permissionAssignmentManager = permissionAssignmentManager;
 
   [HttpPost]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  [Authorize(Policy = PolicyNames.RequireServerPermissionsWrite)]
   public async Task<ActionResult<InternalDtos.PermissionAssignmentDto>> Create(
     [FromBody] InternalDtos.CreatePermissionAssignmentRequestDto request,
     CancellationToken cancellationToken)
@@ -29,7 +29,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     }
 
     var result = await _permissionAssignmentManager.Create(
-      request, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      request, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Server);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -39,7 +39,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpPost("create-many")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  [Authorize(Policy = PolicyNames.RequireServerPermissionsWrite)]
   public async Task<IActionResult> CreateMany(
     [FromBody] InternalDtos.CreateManyPermissionAssignmentsRequestDto request,
     CancellationToken cancellationToken)
@@ -55,7 +55,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     }
 
     var result = await _permissionAssignmentManager.CreateMany(
-      request.Assignments, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      request.Assignments, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Server);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -65,7 +65,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpDelete("{assignmentId:guid}")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  [Authorize(Policy = PolicyNames.RequireServerPermissionsWrite)]
   public async Task<IActionResult> Delete(
     [FromRoute] Guid assignmentId,
     CancellationToken cancellationToken)
@@ -81,7 +81,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     }
 
     var result = await _permissionAssignmentManager.Delete(
-      assignmentId, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      assignmentId, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Server);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -91,7 +91,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpPost("delete-many")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  [Authorize(Policy = PolicyNames.RequireServerPermissionsWrite)]
   public async Task<ActionResult<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>> DeleteMany(
     [FromBody] InternalDtos.DeleteManyPermissionAssignmentsRequestDto request,
     CancellationToken cancellationToken)
@@ -107,7 +107,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     }
 
     var result = await _permissionAssignmentManager.DeleteMany(
-      request.AssignmentIds, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      request.AssignmentIds, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Server);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -117,7 +117,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpGet]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
+  [Authorize(Policy = PolicyNames.RequireServerPermissionsRead)]
   public async Task<ActionResult<IReadOnlyList<InternalDtos.PermissionAssignmentDto>>> GetByPrincipal(
     [FromQuery] PermissionPrincipalKind principalKind,
     [FromQuery] Guid principalId,
@@ -134,48 +134,13 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     }
 
     var assignments = await _permissionAssignmentManager.GetByPrincipal(
-      principalKind, principalId, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      principalKind, principalId, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Server);
 
     return Ok(assignments);
   }
 
-  [HttpGet("catalog")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
-  public ActionResult<IReadOnlyList<InternalDtos.PermissionCatalogEntryDto>> GetCatalog()
-  {
-    if (!User.TryGetTenantId(out _))
-    {
-      return BadRequest("User tenant not found.");
-    }
-
-    var entries = PermissionCatalog.All.Values
-      .Select(x => new InternalDtos.PermissionCatalogEntryDto(
-        x.Name, x.DisplayName, x.Description, x.AllowedScopeKinds, x.SelfRemovable))
-      .OrderBy(x => x.DisplayName)
-      .ToList();
-
-    return Ok(entries);
-  }
-
-  [HttpGet("presets")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
-  public ActionResult<IReadOnlyList<InternalDtos.PermissionPresetDto>> GetPresets()
-  {
-    if (!User.TryGetTenantId(out _))
-    {
-      return BadRequest("User tenant not found.");
-    }
-
-    var presets = PermissionPresets.All
-      .Select(p => new InternalDtos.PermissionPresetDto(p.Key, [.. p.Value]))
-      .OrderBy(p => p.Name)
-      .ToList();
-
-    return Ok(presets);
-  }
-
   [HttpPost("replace")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  [Authorize(Policy = PolicyNames.RequireServerPermissionsWrite)]
   public async Task<IActionResult> Replace(
     [FromBody] InternalDtos.ReplacePermissionAssignmentsRequestDto request,
     CancellationToken cancellationToken)
@@ -197,7 +162,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
       userId,
       request.Assignments,
       cancellationToken,
-      PermissionAssignmentAuthority.Tenant);
+      PermissionAssignmentAuthority.Server);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -207,7 +172,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
   }
 
   [HttpPut("{assignmentId:guid}")]
-  [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsWrite)]
+  [Authorize(Policy = PolicyNames.RequireServerPermissionsWrite)]
   public async Task<ActionResult<InternalDtos.PermissionAssignmentDto>> Update(
     [FromRoute] Guid assignmentId,
     [FromBody] InternalDtos.UpdatePermissionAssignmentRequestDto request,
@@ -224,7 +189,7 @@ public class PermissionAssignmentsController(IPermissionAssignmentManager permis
     }
 
     var result = await _permissionAssignmentManager.Update(
-      assignmentId, request, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Tenant);
+      assignmentId, request, tenantId, userId, cancellationToken, PermissionAssignmentAuthority.Server);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();

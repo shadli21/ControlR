@@ -113,7 +113,7 @@ internal static class ServiceExtensions
 
     Assert.True(accountResult.IsSuccess);
 
-    var credResult = await manager.AddCredential(
+    var credResult = await manager.AddCredentialForServer(
       accountResult.Value.Id, "Credential", expiresAt: null, accountResult.Value.Id, TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -247,6 +247,6 @@ internal static class ServiceExtensions
     IEnumerable<string> presetNames)
   {
     await using var db = provider.GetRequiredService<AppDb>();
-    await PermissionPresets.SeedAssignmentsAsync(db, user.Id, user.TenantId, presetNames);
+    await PermissionPresets.SeedAssignments(db, user.Id, user.TenantId, presetNames);
   }
 }

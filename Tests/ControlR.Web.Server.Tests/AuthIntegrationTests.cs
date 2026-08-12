@@ -119,7 +119,7 @@ public class AuthIntegrationTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
-    var credResult = await serviceAccountManager.AddCredential(
+    var credResult = await serviceAccountManager.AddCredentialForServer(
       createResult.Value.Id,
       "Test Credential",
       expiresAt: null,
