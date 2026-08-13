@@ -1,6 +1,5 @@
 ﻿using System.Security.Claims;
 using ControlR.Libraries.Shared.Helpers;
-using ControlR.Web.Server.Authz.Permissions;
 
 namespace ControlR.Web.Server.Startup;
 
@@ -94,8 +93,7 @@ public static class HostExtensions
 
     logger.LogInformation("Bootstrap admin user created: {Email}.", options.AdminEmail);
 
-    await PermissionPresets.SeedAssignments(
-      sp.GetRequiredService<AppDb>(),
+    await sp.GetRequiredService<IPermissionAssignmentSeeder>().SeedAssignments(
       user.Id,
       user.TenantId,
       [

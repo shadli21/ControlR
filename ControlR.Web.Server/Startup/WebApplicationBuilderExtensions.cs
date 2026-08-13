@@ -263,6 +263,7 @@ public static class WebApplicationBuilderExtensions
     builder.Services.AddScoped<ICustomerManager, CustomerManager>();
     builder.Services.AddScoped<IUserGroupManager, UserGroupManager>();
     builder.Services.AddScoped<IPermissionAssignmentManager, PermissionAssignmentManager>();
+    builder.Services.AddScoped<IPermissionAssignmentSeeder, PermissionAssignmentSeeder>();
 
     return builder;
   }

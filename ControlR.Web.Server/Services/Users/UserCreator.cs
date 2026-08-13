@@ -2,7 +2,6 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using ControlR.Web.Client.Services;
-using ControlR.Web.Server.Authz.Permissions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -48,7 +47,7 @@ public interface IUserCreator
 }
 
   public class UserCreator(
-    AppDb appDb,
+    IPermissionAssignmentSeeder assignmentSeeder,
     UserManager<AppUser> userManager,
     NavigationManager navigationManager,
     IUserStore<AppUser> userStore,
@@ -60,8 +59,8 @@ public interface IUserCreator
   {
     public const string PresetsNotFoundErrorCode = "PresetsNotFound";
     public const string RegistrationDisabledErrorCode = "RegistrationDisabled";
-    private readonly AppDb _appDb = appDb;
     private readonly IOptionsMonitor<AppOptions> _appOptions = appOptions;
+    private readonly IPermissionAssignmentSeeder _assignmentSeeder = assignmentSeeder;
     private readonly IPublicRegistrationBootstrapGate _bootstrapGate = bootstrapGate;
     private readonly IEmailSender<AppUser> _emailSender = emailSender;
     private readonly ILogger<UserCreator> _logger = logger;
@@ -152,7 +151,7 @@ public interface IUserCreator
         return new CreateUserResult(false, IdentityResult.Failed(err));
       }
 
-      await PermissionPresets.SeedAssignments(_appDb, user.Id, user.TenantId, presetNames, cancellationToken);
+      await _assignmentSeeder.SeedAssignments(user.Id, user.TenantId, presetNames, cancellationToken);
     }
 
     return new CreateUserResult(true, result.IdentityResult, user);
@@ -273,8 +272,8 @@ public interface IUserCreator
         _logger.LogInformation(
           "First user created. User: {UserName}. Assigning server administrator preset.",
           user.UserName);
-        await PermissionPresets.SeedAssignments(
-          _appDb, user.Id, user.TenantId, [PermissionPresets.ServerAdministrator], cancellationToken);
+        await _assignmentSeeder.SeedAssignments(
+          user.Id, user.TenantId, [PermissionPresets.ServerAdministrator], cancellationToken);
       }
 
       await _userManager.AddClaimAsync(user, new Claim(UserClaimTypes.UserId, $"{user.Id}"));
@@ -286,8 +285,7 @@ public interface IUserCreator
       if (isNewTenant)
       {
         _logger.LogInformation("Assigning default presets for newly-created tenant admin user.");
-        await PermissionPresets.SeedAssignments(
-          _appDb,
+        await _assignmentSeeder.SeedAssignments(
           user.Id,
           user.TenantId,
           [

@@ -1,6 +1,6 @@
 using ControlR.Web.Client.Authz;
-using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
+using ControlR.Web.Server.Services.PermissionAssignments;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.ServiceAccounts;
@@ -246,7 +246,7 @@ internal static class ServiceExtensions
     AppUser user,
     IEnumerable<string> presetNames)
   {
-    await using var db = provider.GetRequiredService<AppDb>();
-    await PermissionPresets.SeedAssignments(db, user.Id, user.TenantId, presetNames);
+    var seeder = provider.GetRequiredService<IPermissionAssignmentSeeder>();
+    await seeder.SeedAssignments(user.Id, user.TenantId, presetNames);
   }
 }

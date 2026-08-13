@@ -1,6 +1,4 @@
-using ControlR.Web.Server.Services.Authorization;
-
-namespace ControlR.Web.Server.Authz.Permissions;
+namespace ControlR.Libraries.Api.Contracts.Authz;
 
 /// <summary>
 /// Named permission presets: curated permission sets used to seed principals (the first/bootstrap
@@ -21,54 +19,6 @@ public static class PermissionPresets
 
   public static IReadOnlyList<string> GetPermissions(string presetName) =>
     All.TryGetValue(presetName, out var permissions) ? permissions : [];
-
-  /// <summary>
-  /// Seeds permission assignments for every permission in the given presets. Each permission is
-  /// scoped to its <b>broadest legal scope</b> from the catalog (Server &gt; Tenant &gt;
-  /// CustomerTenant/DeviceGroup &gt; Device). Server-wide permissions get ScopeKind.Server with
-  /// no ScopeId or OwningTenantId; everything else lands at Tenant scope targeting the given
-  /// tenant, matching the PermissionEvaluator's ScopeMatches requirements.
-  /// </summary>
-  public static async Task SeedAssignments(
-    AppDb appDb,
-    Guid userId,
-    Guid tenantId,
-    IEnumerable<string> presetNames,
-    CancellationToken cancellationToken = default)
-  {
-    var seeded = new HashSet<string>();
-    foreach (var presetName in presetNames)
-    {
-      var permissions = GetPermissions(presetName);
-      if (permissions.Count == 0)
-      {
-        continue;
-      }
-
-      foreach (var permission in permissions)
-      {
-        if (!seeded.Add(permission))
-        {
-          continue;
-        }
-
-        var scopeKind = PermissionCatalog.GetBroadestLegalScope(permission) ?? PermissionScopeKind.Tenant;
-        var scopeId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
-
-        appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
-          PermissionPrincipalKind.User,
-          userId,
-          permission,
-          scopeKind,
-          scopeId,
-          tenantId,
-          AuthorizationChangeLogActorTypes.System,
-          userId.ToString()));
-      }
-    }
-
-    await appDb.SaveChangesAsync(cancellationToken);
-  }
 
   private static Dictionary<string, IReadOnlyList<string>> BuildPresets()
   {
