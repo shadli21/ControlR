@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ControlR.Web.Server.Data.Migrations
 {
   [DbContext(typeof(AppDb))]
-  [Migration("20260813000707_PreventDuplicatePermissionAssignments")]
-  partial class PreventDuplicatePermissionAssignments
+  [Migration("20260813192551_Permissions_Phase2")]
+  partial class Permissions_Phase2
   {
     /// <inheritdoc />
     protected override void BuildTargetModel(ModelBuilder modelBuilder)
