@@ -36,6 +36,7 @@
     <MudItem xs="12" md="6">
       <MudSelect T="string" MultiSelection="true" SelectedValues="_selectedPresetNames"
                  SelectedValuesChanged="OnPresetSelectionChanged" Label="Permission Presets" Dense="true"
+                 SelectAll SelectAllText="Select All"
                  Disabled="@(_selectedPrincipalId is null)">
         @foreach (var preset in _presets)
         {
