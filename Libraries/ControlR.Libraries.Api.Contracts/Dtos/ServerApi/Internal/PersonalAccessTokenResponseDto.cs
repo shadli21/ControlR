@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
@@ -8,4 +6,4 @@ public record PersonalAccessTokenResponseDto(
   string Name,
   DateTimeOffset CreatedAt,
   DateTimeOffset? LastUsed,
-  IReadOnlyList<string> Permissions);
+  int PermissionCount);

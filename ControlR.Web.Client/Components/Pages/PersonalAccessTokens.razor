@@ -56,9 +56,9 @@
           }
         </CellTemplate>
       </PropertyColumn>
-      <TemplateColumn Title="Permissions" Sortable="true" SortBy="@(x => x.Permissions.Count)">
+      <TemplateColumn Title="Permissions" Sortable="true" SortBy="@(x => x.PermissionCount)">
         <CellTemplate>
-          @context.Item.Permissions.Count
+          @context.Item.PermissionCount
         </CellTemplate>
       </TemplateColumn>
       <TemplateColumn Title="Actions" Sortable="false" Filterable="false">

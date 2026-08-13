@@ -158,8 +158,8 @@ public class PersonalAccessTokenManager(
 
       var hexId = Convert.ToHexString(personalAccessToken.Id.ToByteArray());
       var combinedKey = $"{hexId}:{plainTextKey}";
-      var permissions = request.Scopes?.Select(x => x.PermissionName).Distinct().ToList() ?? [];
-      var response = new InternalDtos.CreatePersonalAccessTokenResponseDto(MapToDto(personalAccessToken, permissions), combinedKey);
+      var permissionCount = request.Scopes?.Select(x => x.PermissionName).Distinct().Count() ?? 0;
+      var response = new InternalDtos.CreatePersonalAccessTokenResponseDto(MapToDto(personalAccessToken, permissionCount), combinedKey);
       return Result.Ok(response);
     }
     catch (Exception ex)
@@ -199,7 +199,7 @@ public class PersonalAccessTokenManager(
       _appDb.PersonalAccessTokens.Add(personalAccessToken);
       await _appDb.SaveChangesAsync();
 
-      return Result.Ok(MapToDto(personalAccessToken, []));
+      return Result.Ok(MapToDto(personalAccessToken, 0));
     }
     catch (Exception ex)
     {
@@ -240,10 +240,10 @@ public class PersonalAccessTokenManager(
       .ToListAsync();
 
     var tokenIds = personalAccessTokens.Select(x => x.Id).ToList();
-    var permissionsByToken = await GetPermissionsLookup(tokenIds);
+    var permissionCountsByToken = await GetPermissionCountLookup(tokenIds);
 
     return personalAccessTokens
-      .Select(x => MapToDto(x, permissionsByToken.GetValueOrDefault(x.Id) ?? []))
+      .Select(x => MapToDto(x, permissionCountsByToken.GetValueOrDefault(x.Id)))
       .ToList();
   }
 
@@ -263,8 +263,8 @@ public class PersonalAccessTokenManager(
       personalAccessToken.Name = request.Name;
       await _appDb.SaveChangesAsync();
 
-      var permissionsLookup = await GetPermissionsLookup([id]);
-      return Result.Ok(MapToDto(personalAccessToken, permissionsLookup.GetValueOrDefault(id) ?? []));
+      var permissionsLookup = await GetPermissionCountLookup([id]);
+      return Result.Ok(MapToDto(personalAccessToken, permissionsLookup.GetValueOrDefault(id)));
     }
     catch (Exception ex)
     {
@@ -321,35 +321,36 @@ public class PersonalAccessTokenManager(
 
   private static InternalDtos.PersonalAccessTokenResponseDto MapToDto(
     PersonalAccessToken personalAccessToken,
-    IReadOnlyList<string> permissions)
+    int permissionCount)
   {
     return new InternalDtos.PersonalAccessTokenResponseDto(
       personalAccessToken.Id,
       personalAccessToken.Name,
       personalAccessToken.CreatedAt,
       personalAccessToken.LastUsed,
-      permissions);
+      permissionCount);
   }
 
-  private async Task<Dictionary<Guid, List<string>>> GetPermissionsLookup(IReadOnlyCollection<Guid> tokenIds)
+  private async Task<Dictionary<Guid, int>> GetPermissionCountLookup(IReadOnlyCollection<Guid> tokenIds)
   {
     if (tokenIds.Count == 0)
     {
       return [];
     }
 
-    var assignments = await _appDb.PermissionAssignments
+    var counts = await _appDb.PermissionAssignments
       .Where(x => tokenIds.Contains(x.PrincipalId) &&
                   x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
                   x.Effect == PermissionEffect.Allow &&
                   x.IsEnabled)
-      .Select(x => new { x.PrincipalId, x.PermissionName })
-      .ToListAsync();
-
-    return assignments
       .GroupBy(x => x.PrincipalId)
-      .ToDictionary(
-        group => group.Key, 
-        group => group.Select(x => x.PermissionName).Distinct().ToList());
+      .Select(g => new
+      {
+        g.Key,
+        Count = g.Select(x => x.PermissionName).Distinct().Count()
+      })
+      .ToDictionaryAsync(x => x.Key, x => x.Count);
+
+    return counts;
   }
 }
