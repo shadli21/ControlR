@@ -218,6 +218,8 @@ public class UsersController : ControllerBase
 
     var users = await appDb.Users
       .Where(x => x.TenantId == tenantId)
+      .OrderBy(x => x.UserName)
+      .ThenBy(x => x.Id)
       .Select(x => new { x.Id, x.UserName, x.Email, x.CreatedAt })
       .ToListAsync();
 

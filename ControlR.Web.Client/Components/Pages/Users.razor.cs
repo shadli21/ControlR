@@ -5,6 +5,15 @@ namespace ControlR.Web.Client.Components.Pages;
 
 public partial class Users : ComponentBase
 {
+  private readonly Dictionary<string, SortDefinition<InternalDtos.UserResponseDto>> _sortDefinitions = new()
+  {
+    ["UserName"] = new SortDefinition<InternalDtos.UserResponseDto>(
+      SortBy: nameof(InternalDtos.UserResponseDto.UserName),
+      Descending: false,
+      Index: 0,
+      SortFunc: x => x.UserName)
+  };
+
   private Guid? _currentUserId;
   private bool _loading;
   private string _searchString = string.Empty;
