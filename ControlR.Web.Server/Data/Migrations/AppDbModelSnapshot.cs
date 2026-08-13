@@ -590,6 +590,11 @@ namespace ControlR.Web.Server.Data.Migrations
 
                     b.HasIndex("ScopeKind", "ScopeId");
 
+                    b.HasIndex("PrincipalKind", "PrincipalId", "PermissionName", "ScopeKind", "ScopeId", "Effect")
+                        .IsUnique();
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("PrincipalKind", "PrincipalId", "PermissionName", "ScopeKind", "ScopeId", "Effect"), false);
+
                     b.ToTable("PermissionAssignments");
                 });
 

@@ -129,6 +129,20 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
     builder
       .Entity<PermissionAssignment>()
       .HasIndex(x => new { x.PrincipalKind, x.PrincipalId });
+
+    builder
+      .Entity<PermissionAssignment>()
+      .HasIndex(x => new
+      {
+        x.PrincipalKind,
+        x.PrincipalId,
+        x.PermissionName,
+        x.ScopeKind,
+        x.ScopeId,
+        x.Effect
+      })
+      .IsUnique()
+      .AreNullsDistinct(false);
   }
 
   private static void ConfigureServerAlert(ModelBuilder builder)

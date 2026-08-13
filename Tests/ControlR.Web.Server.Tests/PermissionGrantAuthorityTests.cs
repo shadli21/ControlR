@@ -70,6 +70,59 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
     }
 
   [Fact]
+  public async Task Create_IdenticalAssignment_ReturnsConflict_WhileOppositeEffectSucceeds()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var actor = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"actor-{Guid.NewGuid():N}@t.local");
+    var target = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"target-{Guid.NewGuid():N}@t.local");
+
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.TenantPermissionsWrite,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.TenantPermissionsDeny,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
+    var request = new InternalDtos.CreatePermissionAssignmentRequestDto(
+      PermissionPrincipalKind.User,
+      target.Id,
+      PermissionNames.DeviceRead,
+      PermissionEffect.Allow,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      null);
+
+    var first = await manager.Create(request, tenant.Id, Actor(actor.Id, tenant.Id), TestContext.Current.CancellationToken);
+    var duplicate = await manager.Create(request, tenant.Id, Actor(actor.Id, tenant.Id), TestContext.Current.CancellationToken);
+    var deny = await manager.Create(
+      request with { Effect = PermissionEffect.Deny },
+      tenant.Id,
+      Actor(actor.Id, tenant.Id),
+      TestContext.Current.CancellationToken);
+
+    Assert.True(first.IsSuccess);
+    Assert.False(duplicate.IsSuccess);
+    Assert.Equal(HttpResultErrorCode.Conflict, duplicate.ErrorCode);
+    Assert.True(deny.IsSuccess);
+  }
+
+  [Fact]
   public async Task Create_ServerScoped_ByNonServerAdmin_Forbidden()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);

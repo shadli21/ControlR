@@ -192,12 +192,26 @@ public class PermissionAssignmentManager(
       return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, credentialScopeError);
     }
 
+    var normalizedScopeId = NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId);
+    if (await AssignmentExists(
+      request.PrincipalKind,
+      request.PrincipalId,
+      request.PermissionName,
+      request.Effect,
+      request.ScopeKind,
+      normalizedScopeId,
+      cancellationToken))
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
+        HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
+    }
+
     var assignment = PermissionAssignment.CreateGrant(
       request.PrincipalKind,
       request.PrincipalId,
       request.PermissionName,
       request.ScopeKind,
-      NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+      normalizedScopeId,
       tenantId,
       AuthorizationChangeLogActorTypes.User,
       actor.PrincipalId.ToString(),
@@ -239,6 +253,18 @@ public class PermissionAssignmentManager(
       return HttpResult.Fail(HttpResultErrorCode.BadRequest, "All assignments must target the same principal.");
     }
 
+    var requestKeys = requests
+      .Select(request => new AssignmentKey(
+        request.PermissionName,
+        request.Effect,
+        request.ScopeKind,
+        NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId)))
+      .ToList();
+    if (requestKeys.Count != requestKeys.Distinct().Count())
+    {
+      return HttpResult.Fail(HttpResultErrorCode.Conflict, "The request contains duplicate permission assignments.");
+    }
+
     var principalExists = await ValidatePrincipalExists(
       requests[0].PrincipalKind, requests[0].PrincipalId, tenantId, cancellationToken);
     if (!principalExists)
@@ -253,6 +279,19 @@ public class PermissionAssignmentManager(
       if (ValidateWriteAuthority(request.Effect, request.ScopeKind, effectivePermissions) is { } authorityError)
       {
         return HttpResult.Fail(authorityError.Code, authorityError.Reason);
+      }
+    }
+
+    foreach (var request in requests)
+    {
+      var requestKey = new AssignmentKey(
+        request.PermissionName,
+        request.Effect,
+        request.ScopeKind,
+        NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId));
+      if (await AssignmentExists(request.PrincipalKind, request.PrincipalId, requestKey, cancellationToken))
+      {
+        return HttpResult.Fail(HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
       }
     }
 
@@ -803,6 +842,35 @@ public class PermissionAssignmentManager(
     return null;
   }
 
+  private Task<bool> AssignmentExists(
+    PermissionPrincipalKind principalKind,
+    Guid principalId,
+    string permissionName,
+    PermissionEffect effect,
+    PermissionScopeKind scopeKind,
+    Guid? scopeId,
+    CancellationToken cancellationToken) =>
+    AssignmentExists(
+      principalKind,
+      principalId,
+      new AssignmentKey(permissionName, effect, scopeKind, scopeId),
+      cancellationToken);
+
+  private Task<bool> AssignmentExists(
+    PermissionPrincipalKind principalKind,
+    Guid principalId,
+    AssignmentKey key,
+    CancellationToken cancellationToken) =>
+    _appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .AnyAsync(x => x.PrincipalKind == principalKind &&
+                     x.PrincipalId == principalId &&
+                     x.PermissionName == key.PermissionName &&
+                     x.Effect == key.Effect &&
+                     x.ScopeKind == key.ScopeKind &&
+                     x.ScopeId == key.ScopeId,
+        cancellationToken);
+
   private Task<IReadOnlySet<string>> GetEffectivePermissions(
     PrincipalDescriptor actor,
     CancellationToken cancellationToken) =>
@@ -940,4 +1008,10 @@ public class PermissionAssignmentManager(
       _ => false
     };
   }
+
+  private sealed record AssignmentKey(
+    string PermissionName,
+    PermissionEffect Effect,
+    PermissionScopeKind ScopeKind,
+    Guid? ScopeId);
 }
