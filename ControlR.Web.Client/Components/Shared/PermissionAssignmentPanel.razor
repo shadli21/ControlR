@@ -101,7 +101,15 @@
       <SelectColumn ShowInFooter="false" />
     }
     <PropertyColumn Property="x => x.PermissionName" Title="Permission" />
-    <PropertyColumn Property="x => x.Effect" Title="Effect" />
+    <TemplateColumn Title="Effect" Sortable="true" SortBy="@(x => x.Effect)">
+      <CellTemplate>
+        <MudChip T="string" Size="Size.Small"
+                 Color="@(context.Item.Effect == PermissionEffect.Allow ? Color.Success : Color.Error)"
+                 Icon="@(context.Item.Effect == PermissionEffect.Allow ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)">
+          @context.Item.Effect
+        </MudChip>
+      </CellTemplate>
+    </TemplateColumn>
     <TemplateColumn Title="Scope" Sortable="true" SortBy="@(x => x.ScopeKind)">
       <CellTemplate>
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
