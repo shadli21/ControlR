@@ -2,6 +2,17 @@ namespace ControlR.Web.Client.Components.Layout.DeviceAccess;
 
 internal static class DeviceAccessPagePermissions
 {
+  internal static IReadOnlyList<string> AllRoutes { get; } =
+  [
+    ClientRoutes.DeviceAccess,
+    ClientRoutes.DeviceAccessRemoteControl,
+    ClientRoutes.DeviceAccessTerminal,
+    ClientRoutes.DeviceAccessChat,
+    ClientRoutes.DeviceAccessFileSystem,
+    ClientRoutes.DeviceAccessRemoteLogs,
+    ClientRoutes.DeviceAccessVncRelay,
+  ];
+
   public static bool CanAccess(DeviceAccessPermissionsDto? permissions, string path)
   {
     if (permissions is null)
