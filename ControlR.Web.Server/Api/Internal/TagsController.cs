@@ -103,6 +103,7 @@ public class TagsController : ControllerBase
     }
 
     var tag = await appDb.Tags
+      .Include(x => x.Devices)
       .FirstOrDefaultAsync(x => x.Id == dto.TagId && x.TenantId == tenantId);
     if (tag is null)
     {
