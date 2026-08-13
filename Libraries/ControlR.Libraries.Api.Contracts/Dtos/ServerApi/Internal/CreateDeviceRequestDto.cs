@@ -8,4 +8,5 @@ public record CreateDeviceRequestDto(
   Guid InstallerKeyId,
   string InstallerKeySecret,
   IReadOnlyList<Guid>? TagIds = null,
-  string? PublicKey = null);
+  string? PublicKey = null,
+  Guid? CustomerId = null);

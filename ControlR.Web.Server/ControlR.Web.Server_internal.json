@@ -10186,6 +10186,13 @@
               "null",
               "string"
             ]
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },

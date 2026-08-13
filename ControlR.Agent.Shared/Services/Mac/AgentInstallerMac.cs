@@ -122,7 +122,7 @@ internal class AgentInstallerMac(
       await WriteFileIfChanged(installerPlistPath, installerPlistFile);
       await UpdateAppSettings(request.ServerUri, request.TenantId, request.DeviceId);
 
-      var createResult = await CreateDeviceOnServer(request.InstallerKeyId, request.InstallerKeySecret, request.TagIds);
+      var createResult = await CreateDeviceOnServer(request.InstallerKeyId, request.InstallerKeySecret, request.TagIds, request.CustomerId);
       if (!createResult.IsSuccess)
       {
         return;

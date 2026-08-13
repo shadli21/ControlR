@@ -8,6 +8,7 @@ public partial class Deploy
 {
   private bool _addTags;
   private bool _appendInstanceId = true;
+  private IReadOnlyList<CustomerDto> _customers = [];
   private string? _deviceId;
   private IEnumerable<AgentInstallerKeyDto> _existingKeys = [];
   private string? _existingKeySecretInput;
@@ -19,6 +20,7 @@ public partial class Deploy
   private InstallerKeyType _installerKeyType;
   private string? _instanceId;
   private string? _keyExpiration;
+  private CustomerDto? _selectedCustomer;
   private AgentInstallerKeyDto? _selectedExistingKey;
   private IReadOnlyCollection<TagResponseDto>? _selectedTags;
   private IReadOnlyList<TagResponseDto> _tags = [];
@@ -28,16 +30,22 @@ public partial class Deploy
 
   [Inject]
   public required AuthenticationStateProvider AuthState { get; init; }
+
   [Inject]
   public required IClipboardManager Clipboard { get; init; }
+
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
+
   [Inject]
   public required NavigationManager NavMan { get; init; }
+
   [Inject]
   public required ISnackbar Snackbar { get; init; }
+
   [Inject]
   public required ITenantSettingsProvider TenantSettingsProvider { get; init; }
+
   [Inject]
   public required TimeProvider TimeProvider { get; init; }
 
@@ -89,12 +97,10 @@ public partial class Deploy
         $"sudo /tmp/{BrandingConstants.InstallerBaseName} install {GetCommonArgs()}";
     }
   }
-  
   private string SelectedTagsText =>
     _selectedTags is null
       ? ""
       : string.Join(", ", _selectedTags.Select(x => x.Name));
-
   private string WindowsX64DeployScript
   {
     get
@@ -128,6 +134,16 @@ public partial class Deploy
 
     _appendInstanceId = await TenantSettingsProvider.GetAppendInstanceId();
     _instanceId = await TenantSettingsProvider.GetInstanceId();
+
+    var customersResult = await ControlrApi.Internal.Customers.GetAll();
+    if (customersResult.IsSuccess)
+    {
+      _customers = customersResult.Value;
+    }
+    else
+    {
+      Snackbar.Add("Failed to get customers", Severity.Error);
+    }
 
     var result = await ControlrApi.Internal.Tags.GetAllTags();
     if (result.IsSuccess)
@@ -316,6 +332,11 @@ public partial class Deploy
     if (!string.IsNullOrWhiteSpace(_deviceId) && Guid.TryParse(_deviceId, out _))
     {
       args += $" -d {_deviceId}";
+    }
+
+    if (_selectedCustomer is not null)
+    {
+      args += $" -c {_selectedCustomer.Id}";
     }
 
     if (!_addTags || _selectedTags?.Any() != true)

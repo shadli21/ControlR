@@ -106,7 +106,7 @@ public class DevicesController : ControllerBase
       LastSeen: DateTimeOffset.UtcNow,
       IsOnline: false);
 
-    var entity = await deviceManager.AddOrUpdate(deviceDto, connectionContext, requestDto.TagIds, requestDto.PublicKey);
+    var entity = await deviceManager.AddOrUpdate(deviceDto, connectionContext, requestDto.TagIds, requestDto.PublicKey, requestDto.CustomerId);
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(entity.AgentVersion);
     return entity.ToInternalResponseDto(isOutdated);

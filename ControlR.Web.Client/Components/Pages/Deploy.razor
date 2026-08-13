@@ -176,6 +176,24 @@ else
 
     <div class="mt-4">
       <MudText Typo="Typo.subtitle2" Color="Color.Info">
+        Customer
+      </MudText>
+      <MudText Typo="Typo.body1" GutterBottom>
+        Optionally assign the device to a customer upon installation.
+      </MudText>
+      <MudSelect T="CustomerDto" @bind-Value="_selectedCustomer" Label="Customer" Clearable
+        ToStringFunc="@(c => c?.Name ?? "")">
+        @foreach (var customer in _customers)
+        {
+          <MudSelectItem Value="@customer">
+            @(customer.Name)
+          </MudSelectItem>
+        }
+      </MudSelect>
+    </div>
+
+    <div class="mt-4">
+      <MudText Typo="Typo.subtitle2" Color="Color.Info">
         Device Tags
       </MudText>
       <MudText Typo="Typo.body1" GutterBottom>

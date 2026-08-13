@@ -47,7 +47,7 @@ internal abstract class AgentInstallerBase(
     return Path.Combine(rootDirectory, installDirectoryName);
   }
 
-  protected async Task<Result> CreateDeviceOnServer(Guid? installerKeyId, string? installerKeySecret, Guid[]? tagIds)
+  protected async Task<Result> CreateDeviceOnServer(Guid? installerKeyId, string? installerKeySecret, Guid[]? tagIds, Guid? customerId)
   {
     if (installerKeyId is null)
     {
@@ -68,7 +68,7 @@ internal abstract class AgentInstallerBase(
 
     var deviceDto = await _deviceDataGenerator.GetDeviceInfo();
     var createRequest = new CreateDeviceRequestDto(
-      deviceDto, installerKeyId.Value, installerKeySecret, tagIds, publicKeyBase64);
+      deviceDto, installerKeyId.Value, installerKeySecret, tagIds, publicKeyBase64, customerId);
 
     if (tagIds is null)
     {
