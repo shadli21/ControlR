@@ -56,6 +56,11 @@
           }
         </CellTemplate>
       </PropertyColumn>
+      <TemplateColumn Title="Permissions" Sortable="true" SortBy="@(x => x.Permissions.Count)">
+        <CellTemplate>
+          @context.Item.Permissions.Count
+        </CellTemplate>
+      </TemplateColumn>
       <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
         <CellTemplate>
           <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">

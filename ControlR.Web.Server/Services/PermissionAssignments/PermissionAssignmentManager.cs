@@ -107,9 +107,11 @@ public class PermissionAssignmentManager(
         .Where(x => x.PrincipalKind == request.PrincipalKind && x.PrincipalId == request.PrincipalId)
         .Select(x => new { x.PermissionName, x.ScopeKind })
         .ToListAsync(cancellationToken);
+
       var existingKeySet = existingKeys
         .Select(x => (x.PermissionName, x.ScopeKind))
         .ToHashSet();
+
       assignments = assignments
         .Where(x => !existingKeySet.Contains((x.PermissionName, x.ScopeKind)))
         .ToList();
@@ -260,6 +262,7 @@ public class PermissionAssignmentManager(
         request.ScopeKind,
         NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId)))
       .ToList();
+      
     if (requestKeys.Count != requestKeys.Distinct().Count())
     {
       return HttpResult.Fail(HttpResultErrorCode.Conflict, "The request contains duplicate permission assignments.");

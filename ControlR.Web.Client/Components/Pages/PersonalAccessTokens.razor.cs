@@ -141,6 +141,8 @@ public partial class PersonalAccessTokens
       $"Permissions: {personalAccessToken.Name}", 
       parameters, 
       PermissionAssignmentPanelDialog.DefaultOptions);
+
+    await LoadPersonalAccessTokens();
   }
 
   private async Task OnKeyDown(KeyboardEventArgs e)

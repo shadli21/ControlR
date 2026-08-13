@@ -11975,7 +11975,8 @@
           "id",
           "name",
           "createdAt",
-          "lastUsed"
+          "lastUsed",
+          "permissions"
         ],
         "type": "object",
         "properties": {
@@ -11996,6 +11997,12 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

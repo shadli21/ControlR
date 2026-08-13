@@ -158,7 +158,8 @@ public class PersonalAccessTokenManager(
 
       var hexId = Convert.ToHexString(personalAccessToken.Id.ToByteArray());
       var combinedKey = $"{hexId}:{plainTextKey}";
-      var response = new InternalDtos.CreatePersonalAccessTokenResponseDto(MapToDto(personalAccessToken), combinedKey);
+      var permissions = request.Scopes?.Select(x => x.PermissionName).Distinct().ToList() ?? [];
+      var response = new InternalDtos.CreatePersonalAccessTokenResponseDto(MapToDto(personalAccessToken, permissions), combinedKey);
       return Result.Ok(response);
     }
     catch (Exception ex)
@@ -198,7 +199,7 @@ public class PersonalAccessTokenManager(
       _appDb.PersonalAccessTokens.Add(personalAccessToken);
       await _appDb.SaveChangesAsync();
 
-      return Result.Ok(MapToDto(personalAccessToken));
+      return Result.Ok(MapToDto(personalAccessToken, []));
     }
     catch (Exception ex)
     {
@@ -238,7 +239,12 @@ public class PersonalAccessTokenManager(
       .OrderByDescending(x => x.CreatedAt)
       .ToListAsync();
 
-    return personalAccessTokens.Select(MapToDto);
+    var tokenIds = personalAccessTokens.Select(x => x.Id).ToList();
+    var permissionsByToken = await GetPermissionsLookup(tokenIds);
+
+    return personalAccessTokens
+      .Select(x => MapToDto(x, permissionsByToken.GetValueOrDefault(x.Id) ?? []))
+      .ToList();
   }
 
   public async Task<Result<InternalDtos.PersonalAccessTokenResponseDto>> Update(Guid id, InternalDtos.UpdatePersonalAccessTokenRequestDto request, Guid userId)
@@ -257,7 +263,8 @@ public class PersonalAccessTokenManager(
       personalAccessToken.Name = request.Name;
       await _appDb.SaveChangesAsync();
 
-      return Result.Ok(MapToDto(personalAccessToken));
+      var permissionsLookup = await GetPermissionsLookup([id]);
+      return Result.Ok(MapToDto(personalAccessToken, permissionsLookup.GetValueOrDefault(id) ?? []));
     }
     catch (Exception ex)
     {
@@ -312,12 +319,37 @@ public class PersonalAccessTokenManager(
     }
   }
 
-  private static InternalDtos.PersonalAccessTokenResponseDto MapToDto(PersonalAccessToken personalAccessToken)
+  private static InternalDtos.PersonalAccessTokenResponseDto MapToDto(
+    PersonalAccessToken personalAccessToken,
+    IReadOnlyList<string> permissions)
   {
     return new InternalDtos.PersonalAccessTokenResponseDto(
       personalAccessToken.Id,
       personalAccessToken.Name,
       personalAccessToken.CreatedAt,
-      personalAccessToken.LastUsed);
+      personalAccessToken.LastUsed,
+      permissions);
+  }
+
+  private async Task<Dictionary<Guid, List<string>>> GetPermissionsLookup(IReadOnlyCollection<Guid> tokenIds)
+  {
+    if (tokenIds.Count == 0)
+    {
+      return [];
+    }
+
+    var assignments = await _appDb.PermissionAssignments
+      .Where(x => tokenIds.Contains(x.PrincipalId) &&
+                  x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
+                  x.Effect == PermissionEffect.Allow &&
+                  x.IsEnabled)
+      .Select(x => new { x.PrincipalId, x.PermissionName })
+      .ToListAsync();
+
+    return assignments
+      .GroupBy(x => x.PrincipalId)
+      .ToDictionary(
+        group => group.Key, 
+        group => group.Select(x => x.PermissionName).Distinct().ToList());
   }
 }
