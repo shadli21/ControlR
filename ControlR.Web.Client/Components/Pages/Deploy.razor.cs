@@ -382,6 +382,27 @@ public partial class Deploy
     return new Uri($"{currentUri.Scheme}://{currentUri.Authority}");
   }
 
+  private void OnInstallerKeyTypeChanged(InstallerKeyType keyType)
+  {
+    _installerKeyType = keyType;
+    if (keyType == InstallerKeyType.TimeBased)
+    {
+      var expiration = TimeProvider.GetLocalNow().AddHours(1);
+      _inputExpirationTime = expiration.TimeOfDay;
+      _inputExpirationDate = expiration.Date;
+    }
+  }
+
+  private void ResetToKeySelection()
+  {
+    _installerKeySecret = null;
+    _installerKeyId = null;
+    _keyExpiration = null;
+    _useExistingKey = false;
+    _selectedExistingKey = null;
+    _existingKeySecretInput = null;
+  }
+
   private async Task ToggleKeyMode(bool useExisting)
   {
     _useExistingKey = useExisting;

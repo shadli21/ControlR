@@ -9,12 +9,7 @@ namespace ControlR.Web.Client.Components.Pages.DeviceAccess;
 // ReSharper disable once ClassNeverInstantiated.Global
 public partial class Terminal : IAsyncDisposable
 {
-  private readonly Dictionary<string, object> _commandInputAttributes = new()
-  {
-    ["autocapitalize"] = "off",
-    ["spellcheck"] = "false",
-    ["autocomplete"] = "off"
-  };
+
   private readonly string _commandInputElementId = $"terminal-input-{Guid.NewGuid()}";
 
   private MudTextField<string>? _commandInputElement;
