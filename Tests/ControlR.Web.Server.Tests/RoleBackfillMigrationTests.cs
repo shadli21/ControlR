@@ -1,7 +1,5 @@
-using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
-using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +16,7 @@ namespace ControlR.Web.Server.Tests;
 /// </summary>
 public class RoleBackfillMigrationTests(ITestOutputHelper output)
 {
-  private const string PreRemoveRolesMigration = "20260729011817_Remove_UserTags";
+  private const string PreRemoveRolesMigration = "20260729192550_Update_EntityBase";
 
   [Fact]
   public async Task RemoveRoles_BackfillsRoleMembershipsIntoPermissionAssignments()
