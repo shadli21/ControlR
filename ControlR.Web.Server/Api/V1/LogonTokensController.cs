@@ -1,6 +1,5 @@
 using Asp.Versioning;
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.LogonTokens;
 using Microsoft.AspNetCore.Mvc;
 

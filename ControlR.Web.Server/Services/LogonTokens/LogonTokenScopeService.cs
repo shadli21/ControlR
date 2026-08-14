@@ -30,7 +30,12 @@ public class LogonTokenScopeService(
     CancellationToken cancellationToken)
   {
     var preparation = await PrepareScopes(
-      request.Scopes, request.DeviceId, request.TenantId, creator, cancellationToken);
+      request.Scopes,
+      request.AllowedDesktopSessionIds,
+      request.DeviceId,
+      request.TenantId,
+      creator,
+      cancellationToken);
     if (!preparation.IsSuccess)
     {
       return HttpResult.Fail<LogonTokenResult>(preparation.ErrorCode, preparation.Reason);
@@ -96,7 +101,8 @@ public class LogonTokenScopeService(
         userDisplayName: request.UserDisplayName,
         sessionCorrelationId: request.SessionCorrelationId,
         writeBaselineGrants: writeBaselineGrants,
-        cancellationToken: cancellationToken);
+        cancellationToken: cancellationToken,
+        allowedDesktopSessionIds: request.AllowedDesktopSessionIds);
     }
 
     var userId = request.UserId
@@ -109,7 +115,8 @@ public class LogonTokenScopeService(
       request.ExpirationMinutes,
       sessionCorrelationId: request.SessionCorrelationId,
       writeBaselineGrants: writeBaselineGrants,
-      cancellationToken: cancellationToken);
+      cancellationToken: cancellationToken,
+      allowedDesktopSessionIds: request.AllowedDesktopSessionIds);
   }
 
   /// <summary>
@@ -176,11 +183,33 @@ public class LogonTokenScopeService(
   /// </summary>
   private async Task<HttpResult<ScopePreparation>> PrepareScopes(
     IReadOnlyList<InternalDtos.CredentialScopeDto>? requestedScopes,
+    IReadOnlyList<int>? allowedDesktopSessionIds,
     Guid deviceId,
     Guid tenantId,
     PrincipalDescriptor creator,
     CancellationToken cancellationToken)
   {
+    if (allowedDesktopSessionIds is { Count: 0 })
+    {
+      return HttpResult.Fail<ScopePreparation>(
+        HttpResultErrorCode.BadRequest,
+        "AllowedDesktopSessionIds must contain at least one session ID when supplied.");
+    }
+
+    if (allowedDesktopSessionIds is { Count: > LogonTokenCreationRequest.MaxAllowedDesktopSessionIds })
+    {
+      return HttpResult.Fail<ScopePreparation>(
+        HttpResultErrorCode.BadRequest,
+        "AllowedDesktopSessionIds cannot contain more than 32 session IDs.");
+    }
+
+    if (allowedDesktopSessionIds?.Any(x => x < 0) == true)
+    {
+      return HttpResult.Fail<ScopePreparation>(
+        HttpResultErrorCode.BadRequest,
+        "AllowedDesktopSessionIds cannot contain negative session IDs.");
+    }
+
     var actorType = MapActorType(creator.PrincipalType);
     if (requestedScopes is not { Count: > 0 })
     {

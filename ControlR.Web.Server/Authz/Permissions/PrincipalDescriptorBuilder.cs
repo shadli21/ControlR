@@ -41,6 +41,15 @@ public static class PrincipalDescriptorBuilder
       deviceScopeId = parsedDeviceScopeId;
     }
 
+    var allowedDesktopSessionIds = user
+      .FindAll(UserClaimTypes.AllowedDesktopSessionId)
+      .Select(x => int.TryParse(x.Value, out var sessionId) ? (int?)sessionId : null)
+      .OfType<int>()
+      .ToHashSet();
+    var hasDesktopSessionRestriction = user.HasClaim(
+      UserClaimTypes.DesktopSessionRestriction,
+      bool.TrueString);
+
     var authMethod = user.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? "unknown";
     var credentialType = user.FindFirst(PrincipalClaimTypes.CredentialType)?.Value;
 
@@ -51,6 +60,8 @@ public static class PrincipalDescriptorBuilder
       authMethod,
       credentialId,
       credentialType,
-      deviceScopeId);
+      deviceScopeId,
+      allowedDesktopSessionIds.Count == 0 ? null : allowedDesktopSessionIds,
+      hasDesktopSessionRestriction);
   }
 }

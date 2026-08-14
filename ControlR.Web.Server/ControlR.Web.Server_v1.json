@@ -2318,6 +2318,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "allowedDesktopSessionIds": {
+            "maxItems": 32,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
           }
         }
       },
@@ -2365,6 +2377,18 @@
             ],
             "items": {
               "type": "string"
+            }
+          },
+          "allowedDesktopSessionIds": {
+            "maxItems": 32,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
             }
           }
         }

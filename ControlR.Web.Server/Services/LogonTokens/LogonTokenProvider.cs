@@ -1,9 +1,6 @@
-using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Shared.Helpers;
 using ControlR.Web.Server.Data.Enums;
-using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Primitives;
-using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Settings;
 
 namespace ControlR.Web.Server.Services.LogonTokens;
@@ -18,6 +15,7 @@ public interface ILogonTokenProvider
     string? userCorrelationId = null,
     string? sessionCorrelationId = null,
     bool writeBaselineGrants = true,
+    IReadOnlyList<int>? allowedDesktopSessionIds = null,
     CancellationToken cancellationToken = default);
 
   Task<HttpResult<LogonTokenResult>> CreateTokenForExternal(
@@ -28,6 +26,7 @@ public interface ILogonTokenProvider
     string? userDisplayName = null,
     string? sessionCorrelationId = null,
     bool writeBaselineGrants = true,
+    IReadOnlyList<int>? allowedDesktopSessionIds = null,
     CancellationToken cancellationToken = default);
 
   Task<LogonTokenValidationResult> ValidateAndConsumeToken(string token, Guid deviceId, CancellationToken cancellationToken = default);
@@ -63,6 +62,7 @@ public class LogonTokenProvider(
     string? userCorrelationId = null,
     string? sessionCorrelationId = null,
     bool writeBaselineGrants = true,
+    IReadOnlyList<int>? allowedDesktopSessionIds = null,
     CancellationToken cancellationToken = default)
   {
     await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -89,7 +89,8 @@ public class LogonTokenProvider(
       UserId = userId,
       ExpiresAt = expiresAt,
       UserCorrelationId = userCorrelationId,
-      SessionCorrelationId = sessionCorrelationId
+      SessionCorrelationId = sessionCorrelationId,
+      AllowedDesktopSessionIds = allowedDesktopSessionIds
     };
 
     dbContext.LogonTokens.Add(logonToken);
@@ -136,6 +137,7 @@ public class LogonTokenProvider(
     string? userDisplayName = null,
     string? sessionCorrelationId = null,
     bool writeBaselineGrants = true,
+    IReadOnlyList<int>? allowedDesktopSessionIds = null,
     CancellationToken cancellationToken = default)
   {
     using var scope = _scopeFactory.CreateScope();
@@ -197,6 +199,7 @@ public class LogonTokenProvider(
       userCorrelationId,
       sessionCorrelationId,
       writeBaselineGrants,
+      allowedDesktopSessionIds,
       cancellationToken);
   }
 
@@ -328,7 +331,8 @@ public class LogonTokenProvider(
         userId.Value,
         logonToken.TenantId,
         logonToken.ExpiresAt,
-        logonToken.SessionCorrelationId);
+        logonToken.SessionCorrelationId,
+        logonToken.AllowedDesktopSessionIds);
     }
     catch (Exception ex)
     {

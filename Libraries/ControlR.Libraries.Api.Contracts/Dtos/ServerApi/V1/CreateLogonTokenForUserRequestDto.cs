@@ -13,4 +13,6 @@ public record CreateLogonTokenForUserRequestDto(
   [property: Range(DtoLimits.ExpirationMinutesMin, DtoLimits.ExpirationMinutesMax)]
   int ExpirationMinutes = DtoLimits.ExpirationMinutesDefault,
   [property: MaxLength(DtoLimits.PermissionsMaxLength)]
-  IReadOnlyList<string>? Permissions = null);
+  IReadOnlyList<string>? Permissions = null,
+  [property: MaxLength(DtoLimits.AllowedDesktopSessionIdsMaxCount)]
+  IReadOnlyList<int>? AllowedDesktopSessionIds = null);

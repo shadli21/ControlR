@@ -3,7 +3,9 @@ using System.Runtime.CompilerServices;
 using Asp.Versioning;
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Hubs.Clients;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Extensions.Dtos.V1;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -114,6 +116,7 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     [FromRoute] Guid deviceId,
     [FromServices] AppDb appDb,
     [FromServices] IHubContext<AgentHub, IAgentHubClient> agentHub,
+    [FromServices] IDesktopSessionAccessAuthorizer desktopSessionAccessAuthorizer,
     [FromServices] IAuthorizationService authorizationService,
     [FromServices] ILogger<DevicesController> logger,
     CancellationToken cancellationToken)
@@ -143,6 +146,16 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
       var sessions = await agentHub.Clients
         .Client(device.ConnectionId)
         .GetActiveDesktopSessions();
+
+      var principal = PrincipalDescriptorBuilder.FromClaims(User);
+      if (principal is null)
+      {
+        return Unauthorized();
+      }
+
+      sessions = sessions
+        .Where(x => desktopSessionAccessAuthorizer.CanUse(principal, deviceId, x.SystemSessionId))
+        .ToArray();
 
       var dtos = sessions.Select(V1Dtos.DesktopSessionResponseDto.From).ToList();
       return Ok(dtos);

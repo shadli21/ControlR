@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -74,6 +75,18 @@ public class LogonTokenAuthenticationHandler(
     if (!string.IsNullOrWhiteSpace(tokenValidation.SessionCorrelationId))
     {
       claims.Add(new(UserClaimTypes.SessionCorrelationId, tokenValidation.SessionCorrelationId));
+    }
+
+    foreach (var sessionId in tokenValidation.AllowedDesktopSessionIds ?? [])
+    {
+      claims.Add(new(
+        UserClaimTypes.AllowedDesktopSessionId,
+        sessionId.ToString(CultureInfo.InvariantCulture)));
+    }
+
+    if (tokenValidation.AllowedDesktopSessionIds is not null)
+    {
+      claims.Add(new(UserClaimTypes.DesktopSessionRestriction, bool.TrueString));
     }
 
     try

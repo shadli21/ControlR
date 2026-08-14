@@ -8,8 +8,11 @@ public sealed record LogonTokenCreationRequest(
   string? UserDisplayName,
   string? SessionCorrelationId,
   int ExpirationMinutes,
-  IReadOnlyList<InternalDtos.CredentialScopeDto>? Scopes)
+  IReadOnlyList<InternalDtos.CredentialScopeDto>? Scopes,
+  IReadOnlyList<int>? AllowedDesktopSessionIds)
 {
+  public const int MaxAllowedDesktopSessionIds = DtoLimits.AllowedDesktopSessionIdsMaxCount;
+
   public static LogonTokenCreationRequest From(V1Dtos.CreateLogonTokenForExternalRequestDto request)
   {
     return new LogonTokenCreationRequest(
@@ -20,7 +23,8 @@ public sealed record LogonTokenCreationRequest(
       UserDisplayName: request.UserDisplayName,
       SessionCorrelationId: request.SessionCorrelationId,
       ExpirationMinutes: request.ExpirationMinutes,
-      Scopes: ToDeviceScopes(request.Permissions, request.DeviceId));
+      Scopes: ToDeviceScopes(request.Permissions, request.DeviceId),
+      AllowedDesktopSessionIds: NormalizeDesktopSessionIds(request.AllowedDesktopSessionIds));
   }
 
   public static LogonTokenCreationRequest From(V1Dtos.CreateLogonTokenForUserRequestDto request)
@@ -33,7 +37,8 @@ public sealed record LogonTokenCreationRequest(
       UserDisplayName: null,
       SessionCorrelationId: request.SessionCorrelationId,
       ExpirationMinutes: request.ExpirationMinutes,
-      Scopes: ToDeviceScopes(request.Permissions, request.DeviceId));
+      Scopes: ToDeviceScopes(request.Permissions, request.DeviceId),
+      AllowedDesktopSessionIds: NormalizeDesktopSessionIds(request.AllowedDesktopSessionIds));
   }
 
   public static LogonTokenCreationRequest From(
@@ -49,7 +54,8 @@ public sealed record LogonTokenCreationRequest(
       UserDisplayName: null,
       SessionCorrelationId: null,
       ExpirationMinutes: request.ExpirationMinutes,
-      Scopes: request.Scopes is { Count: > 0 } ? [.. request.Scopes] : null);
+      Scopes: request.Scopes is { Count: > 0 } ? [.. request.Scopes] : null,
+      AllowedDesktopSessionIds: null);
   }
 
   private static IReadOnlyList<InternalDtos.CredentialScopeDto>? ToDeviceScopes(
@@ -63,5 +69,15 @@ public sealed record LogonTokenCreationRequest(
 
     return [.. permissionNames.Select(p =>
       new InternalDtos.CredentialScopeDto(p, PermissionScopeKind.Device, deviceId))];
+  }
+
+  private static IReadOnlyList<int>? NormalizeDesktopSessionIds(IReadOnlyList<int>? sessionIds)
+  {
+    if (sessionIds is null)
+    {
+      return null;
+    }
+
+    return [.. sessionIds.Distinct()];
   }
 }

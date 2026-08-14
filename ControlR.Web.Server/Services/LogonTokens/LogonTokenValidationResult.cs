@@ -4,14 +4,15 @@ namespace ControlR.Web.Server.Services.LogonTokens;
 
 public class LogonTokenValidationResult
 {
+  public IReadOnlyList<int>? AllowedDesktopSessionIds { get; set; }
   public string? ErrorMessage { get; set; }
   public DateTimeOffset? ExpiresAt { get; set; }
+
   [MemberNotNullWhen(true, nameof(UserId), nameof(TenantId), nameof(TokenId), nameof(ExpiresAt))]
   public bool IsValid { get; set; }
   public string? SessionCorrelationId { get; set; }
   public Guid? TenantId { get; set; }
   public Guid? TokenId { get; set; }
-
   public Guid? UserId { get; set; }
 
   public static LogonTokenValidationResult Failure(string errorMessage)
@@ -28,7 +29,8 @@ public class LogonTokenValidationResult
     Guid userId,
     Guid tenantId,
     DateTimeOffset expiresAt,
-    string? sessionCorrelationId = null)
+    string? sessionCorrelationId = null,
+    IReadOnlyList<int>? allowedDesktopSessionIds = null)
   {
     return new LogonTokenValidationResult
     {
@@ -37,7 +39,8 @@ public class LogonTokenValidationResult
       UserId = userId,
       TenantId = tenantId,
       ExpiresAt = expiresAt,
-      SessionCorrelationId = sessionCorrelationId
+      SessionCorrelationId = sessionCorrelationId,
+      AllowedDesktopSessionIds = allowedDesktopSessionIds
     };
   }
 }

@@ -1,7 +1,10 @@
 using ControlR.Web.Server.Data.Configuration;
 using ControlR.Web.Server.Data.Enums;
+using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace ControlR.Web.Server.Data;
 
@@ -152,6 +155,11 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
       .HasKey(x => x.Id);
   }
 
+  private static List<int>? DeserializeDesktopSessionIds(string? value) =>
+    string.IsNullOrWhiteSpace(value)
+      ? null
+      : JsonSerializer.Deserialize<List<int>>(value) ?? [];
+
   private static void SeedDatabase(ModelBuilder builder)
   {
     builder
@@ -166,6 +174,9 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
           IsEnabled = false
         });
   }
+
+  private static string? SerializeDesktopSessionIds(IReadOnlyList<int>? values) =>
+    values is null ? null : JsonSerializer.Serialize(values);
 
   private void ConfigureAgentInstallerKeys(ModelBuilder builder)
   {
@@ -275,6 +286,20 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
 
   private void ConfigureLogonTokens(ModelBuilder builder)
   {
+    builder
+      .Entity<LogonToken>()
+      .Property(x => x.AllowedDesktopSessionIds)
+      .HasColumnType("jsonb")
+      .HasConversion(new ValueConverter<IReadOnlyList<int>?, string?>(
+        values => SerializeDesktopSessionIds(values),
+        value => DeserializeDesktopSessionIds(value)))
+      .Metadata.SetValueComparer(new ValueComparer<IReadOnlyList<int>?>(
+        (left, right) => left == null
+          ? right == null
+          : right != null && left.SequenceEqual(right),
+        values => values == null ? 0 : values.Aggregate(0, HashCode.Combine),
+        values => values == null ? null : values.ToArray()));
+
     builder
       .Entity<LogonToken>()
       .HasIndex(x => x.Token)

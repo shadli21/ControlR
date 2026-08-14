@@ -25,6 +25,7 @@ public class ViewerHub(
   IHubContext<AgentHub, IAgentHubClient> agentHub,
   IEffectiveUserPreferencesResolver effectiveUserPreferencesResolver,
   IHubStreamStore hubStreamStore,
+  IDesktopSessionAccessAuthorizer desktopSessionAccessAuthorizer,
   IOptionsMonitor<AppOptions> appOptions,
   ILogger<ViewerHub> logger)
   : HubWithItems<IViewerHubClient>, IViewerHub
@@ -35,6 +36,7 @@ public class ViewerHub(
   private readonly AppDb _appDb = appDb;
   private readonly IOptionsMonitor<AppOptions> _appOptions = appOptions;
   private readonly IAuthorizationService _authorizationService = authorizationService;
+  private readonly IDesktopSessionAccessAuthorizer _desktopSessionAccessAuthorizer = desktopSessionAccessAuthorizer;
   private readonly IEffectiveUserPreferencesResolver _effectiveUserPreferencesResolver = effectiveUserPreferencesResolver;
   private readonly IHubStreamStore _hubStreamStore = hubStreamStore;
   private readonly ILogger<ViewerHub> _logger = logger;
@@ -145,7 +147,18 @@ public class ViewerHub(
       }
 
       var device = authResult.Value;
-      return await _agentHub.Clients.Client(device.ConnectionId).GetActiveDesktopSessions();
+      var principal = Context.User is null
+        ? null
+        : PrincipalDescriptorBuilder.FromClaims(Context.User);
+      if (principal is null)
+      {
+        return [];
+      }
+
+      var sessions = await _agentHub.Clients.Client(device.ConnectionId).GetActiveDesktopSessions();
+      return sessions
+        .Where(x => _desktopSessionAccessAuthorizer.CanUse(principal, deviceId, x.SystemSessionId))
+        .ToArray();
     }
     catch (Exception ex)
     {
@@ -391,6 +404,11 @@ public class ViewerHub(
         return HubResult.Fail("Unauthorized.");
       }
 
+      if (!CanUseDesktopSession(deviceId, sessionRequestDto.TargetSystemSession))
+      {
+        return HubResult.Fail("The requested desktop session is not authorized.");
+      }
+
       var device = authResult.Value;
       var notifyUser = await _effectiveUserPreferencesResolver.GetNotifyUserOnSessionStart(
         device.TenantId,
@@ -521,6 +539,11 @@ public class ViewerHub(
       if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.ChatSend) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
+      }
+
+      if (!CanUseDesktopSession(deviceId, dto.TargetSystemSession))
+      {
+        return HubResult.Fail("The requested desktop session is not authorized.");
       }
 
       var user = await GetRequiredUser(q => q.Include(u => u.UserPreferences));
@@ -917,6 +940,15 @@ public class ViewerHub(
     return result.Succeeded;
   }
 
+  private bool CanUseDesktopSession(Guid deviceId, int systemSessionId)
+  {
+    var principal = Context.User is null
+      ? null
+      : PrincipalDescriptorBuilder.FromClaims(Context.User);
+    return principal is not null &&
+      _desktopSessionAccessAuthorizer.CanUse(principal, deviceId, systemSessionId);
+  }
+
   private async Task<HubResult<string>> GetDisplayName(Guid userId)
   {
     var user = await _userManager.Users
@@ -968,7 +1000,9 @@ public class ViewerHub(
       return;
     }
 
-    var principal = PrincipalDescriptorBuilder.FromClaims(Context.User);
+    var principal = Context.User is null
+      ? null
+      : PrincipalDescriptorBuilder.FromClaims(Context.User);
     if (principal is null)
     {
       return;

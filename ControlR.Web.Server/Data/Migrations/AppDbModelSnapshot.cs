@@ -477,6 +477,9 @@ namespace ControlR.Web.Server.Data.Migrations
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<string>("AllowedDesktopSessionIds")
+                        .HasColumnType("jsonb");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
