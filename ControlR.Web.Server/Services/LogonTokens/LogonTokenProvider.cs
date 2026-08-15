@@ -79,9 +79,11 @@ public class LogonTokenProvider(
     var expiresAt = now.AddMinutes(expirationMinutes);
     var plainTextKey = RandomGenerator.CreateAccessToken();
     var hashedKey = _passwordHasher.HashPassword(string.Empty, plainTextKey);
+    var tokenId = Guid.NewGuid();
 
     var logonToken = new LogonToken
     {
+      Id = tokenId,
       Token = hashedKey,
       Prefix = plainTextKey[..8],
       DeviceId = deviceId,
@@ -106,7 +108,7 @@ public class LogonTokenProvider(
       {
         dbContext.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
           PermissionPrincipalKind.LogonToken,
-          logonToken.Id,
+          tokenId,
           permissionName,
           PermissionScopeKind.Device,
           deviceId,

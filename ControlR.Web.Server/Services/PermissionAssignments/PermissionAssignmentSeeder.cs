@@ -33,6 +33,15 @@ public class PermissionAssignmentSeeder(AppDb appDb) : IPermissionAssignmentSeed
     IEnumerable<string> presetNames,
     CancellationToken cancellationToken = default)
   {
+    // Load the principal's existing assignments once so the seed check is in-memory instead of
+    // one query per permission. Records give value equality, so a null ScopeId compares correctly
+    // (the same comparison in SQL would need an explicit IS NULL, which == doesn't produce).
+    var existing = await _appDb.PermissionAssignments
+      .AsNoTracking()
+      .Where(x => x.PrincipalId == userId && x.PrincipalKind == PermissionPrincipalKind.User)
+      .Select(x => new AssignmentKey(x.PermissionName, x.ScopeKind, x.ScopeId, x.Effect))
+      .ToHashSetAsync(cancellationToken);
+
     var seeded = new HashSet<string>();
     foreach (var presetName in presetNames)
     {
@@ -52,6 +61,11 @@ public class PermissionAssignmentSeeder(AppDb appDb) : IPermissionAssignmentSeed
         var scopeKind = PermissionCatalog.GetBroadestLegalScope(permission) ?? PermissionScopeKind.Tenant;
         var scopeId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
 
+        if (existing.Contains(new AssignmentKey(permission, scopeKind, scopeId, PermissionEffect.Allow)))
+        {
+          continue;
+        }
+
         _appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
           PermissionPrincipalKind.User,
           userId,
@@ -66,4 +80,10 @@ public class PermissionAssignmentSeeder(AppDb appDb) : IPermissionAssignmentSeed
 
     await _appDb.SaveChangesAsync(cancellationToken);
   }
+
+  private readonly record struct AssignmentKey(
+    string PermissionName,
+    PermissionScopeKind ScopeKind,
+    Guid? ScopeId,
+    PermissionEffect Effect);
 }
