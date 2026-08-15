@@ -5,6 +5,7 @@ using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Services.Authorization;
+using ControlR.Web.Server.Services.Authorization.PermissionRules;
 using ControlR.Web.Server.Services.DeviceManagement;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
