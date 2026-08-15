@@ -445,6 +445,12 @@ public partial class Permissions_Phase2 : Migration
         principalTable: "Customers",
         principalColumn: "Id",
         onDelete: ReferentialAction.SetNull);
+
+    migrationBuilder.AddColumn<string>(
+        name: "AllowedDesktopSessionIds",
+        table: "LogonTokens",
+        type: "jsonb",
+        nullable: true);
   }
 
   /// <inheritdoc />
