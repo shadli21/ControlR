@@ -1,9 +1,0 @@
-{
-  "include": ["**/*.razor"],
-  "rules": [
-    {
-      "path": "**/*.razor",
-      "rule": "Review Razor/Blazor files for correct component markup, proper @code block syntax, correct @on* event handlers and @bind/@bind-Value directives, lifecycle correctness, proper use of @key, potential markup injection (e.g., @Html.Raw or MarkupString), correct @implements and @inject usage, proper @using directives for component namespaces, and security vulnerabilities."
-    }
-  ]
-}
