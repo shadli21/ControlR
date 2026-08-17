@@ -234,12 +234,17 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
       requestDto.ShowOnlyUngroupedDevices);
     var totalCount = await scopedQuery.CountAsync(cancellationToken);
 
+    // Clamp the page so the skip multiplication cannot overflow int (which would
+    // produce a negative SQL OFFSET and fail the query).
+    var clampedPageSize = Math.Max(1, requestDto.PageSize);
+    var clampedPage = Math.Clamp(requestDto.Page, 0, int.MaxValue / clampedPageSize);
+
     var devices = await scopedQuery
       .ApplySorting(requestDto.SortDefinitions)
       .Include(x => x.Tags)
       .AsSplitQuery()
-      .Skip(requestDto.Page * requestDto.PageSize)
-      .Take(requestDto.PageSize)
+      .Skip(clampedPage * clampedPageSize)
+      .Take(clampedPageSize)
       .ToListAsync(cancellationToken);
 
     var pagedDtos = new List<DeviceResponseDto>(devices.Count);

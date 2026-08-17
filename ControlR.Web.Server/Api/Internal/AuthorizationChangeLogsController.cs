@@ -118,9 +118,12 @@ public class AuthorizationChangeLogsController : ControllerBase
     var totalItems = await query.CountAsync(cancellationToken);
 
     var clampedPageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+    // Clamp the page so the skip multiplication cannot overflow int (which would
+    // produce a negative SQL OFFSET and fail the query).
+    var clampedPage = Math.Clamp(page, 0, int.MaxValue / clampedPageSize);
     var items = await query
       .OrderByDescending(x => x.CreatedAt)
-      .Skip(Math.Max(0, page) * clampedPageSize)
+      .Skip(clampedPage * clampedPageSize)
       .Take(clampedPageSize)
       .Select(x => new InternalDtos.AuthorizationChangeLogDto(
         x.Id,
