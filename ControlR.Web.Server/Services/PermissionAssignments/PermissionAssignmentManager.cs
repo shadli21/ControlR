@@ -222,7 +222,20 @@ public class PermissionAssignmentManager(
 
     _appDb.PermissionAssignments.Add(assignment);
 
-    await _appDb.SaveChangesAsync(cancellationToken);
+    var saveResult = await _appDb.SaveChangesOrConfirmConflictAsync<PermissionAssignment>(
+      x => x.PrincipalKind == request.PrincipalKind &&
+           x.PrincipalId == request.PrincipalId &&
+           x.PermissionName == request.PermissionName &&
+           x.Effect == request.Effect &&
+           x.ScopeKind == request.ScopeKind &&
+           x.ScopeId == normalizedScopeId,
+      cancellationToken);
+
+    if (saveResult == SaveChangesResult.ConflictDetected)
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
+        HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
+    }
 
     _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentCreated,
@@ -330,7 +343,32 @@ public class PermissionAssignmentManager(
       created.Add(assignment);
     }
 
-    await _appDb.SaveChangesAsync(cancellationToken);
+    try
+    {
+      await _appDb.SaveChangesAsync(cancellationToken);
+    }
+    catch (DbUpdateException)
+    {
+      // A concurrent request may have inserted one of these rows between the
+      // AssignmentExists pre-checks and the save. Re-check each key and report a
+      // Conflict when any now exists; otherwise rethrow the original failure.
+      foreach (var request in requests)
+      {
+        if (await AssignmentExists(
+          request.PrincipalKind,
+          request.PrincipalId,
+          request.PermissionName,
+          request.Effect,
+          request.ScopeKind,
+          NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+          cancellationToken))
+        {
+          return HttpResult.Fail(HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
+        }
+      }
+
+      throw;
+    }
 
     // Log after save so the assignment IDs are real (not Guid.Empty).
     for (var i = 0; i < requests.Count; i++)
@@ -628,7 +666,32 @@ public class PermissionAssignmentManager(
       created.Add(assignment);
     }
 
-    await _appDb.SaveChangesAsync(cancellationToken);
+    try
+    {
+      await _appDb.SaveChangesAsync(cancellationToken);
+    }
+    catch (DbUpdateException)
+    {
+      // A concurrent request may have inserted one of these rows between the
+      // visibility scan and the save. Re-check each key and report a Conflict
+      // when any now exists; otherwise rethrow the original failure.
+      foreach (var request in assignments)
+      {
+        if (await AssignmentExists(
+          principalKind,
+          principalId,
+          request.PermissionName,
+          request.Effect,
+          request.ScopeKind,
+          NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+          cancellationToken))
+        {
+          return HttpResult.Fail(HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
+        }
+      }
+
+      throw;
+    }
 
     // Log the created assignments after save so their IDs are real (not Guid.Empty).
     for (var i = 0; i < created.Count; i++)
