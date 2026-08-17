@@ -294,6 +294,16 @@ public class PersonalAccessTokenManager(
         return Result.Fail<PersonalAccessTokenValidationResult>("Invalid personal access token.");
       }
 
+      if (storedToken.RevokedAt is not null)
+      {
+        return Result.Fail<PersonalAccessTokenValidationResult>("Personal access token has been revoked.");
+      }
+
+      if (storedToken.ExpiresAt is not null && storedToken.ExpiresAt <= _timeProvider.GetUtcNow())
+      {
+        return Result.Fail<PersonalAccessTokenValidationResult>("Personal access token has expired.");
+      }
+
       var verification = _passwordHasher.VerifyHashedPassword(string.Empty, storedToken.HashedKey, parts[1]);
 
       if (verification == PasswordVerificationResult.Failed)
