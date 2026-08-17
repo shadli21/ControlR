@@ -39,10 +39,14 @@ public class PermissionDeviceScopeResolver(
 
     var resolved = await _ruleResolver.Resolve(principal, cancellationToken);
 
-    // Server service account bypass: zero assignments means unrestricted access.
+    // The server service account bypass cannot be represented here: DeviceAccessScope is
+    // single-tenant (ApplyAccessScope always filters by tenant), while bypass means all
+    // devices across all tenants. Callers (e.g., the V1 DevicesController) handle server
+    // principals before reaching this resolver and return an unfiltered query. Fail closed
+    // if a server service account ever reaches this path directly.
     if (resolved.ServerBypass)
     {
-      return DeviceAccessScope.TenantWide();
+      return DeviceAccessScope.None();
     }
 
     var deviceReadAssignments = resolved.Rules
