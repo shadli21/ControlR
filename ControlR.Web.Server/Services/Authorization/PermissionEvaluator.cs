@@ -211,15 +211,17 @@ public class PermissionEvaluator(
   /// <summary>
   /// Determines whether a user rule's scope covers a credential scope row. Server grants cover
   /// every row scope; only server grants cover server-scoped rows. Tenant grants cover rows
-  /// scoped to the same tenant and rows scoped to narrower categories within it (device,
-  /// group, and customer membership within the tenant is not knowable at bounding time).
+  /// scoped to the same tenant and rows owned by that tenant in narrower categories (a row's
+  /// owning tenant is recorded on the row at write time, so membership within the tenant is
+  /// not re-resolved here; rows without an owning tenant are not covered — fail-closed).
   /// Group, customer, and device grants cover only rows scoped to the same group, customer,
   /// or device, so rows a user reaches only through membership are not covered (fail-closed).
   /// </summary>
   private static bool RuleCoversScope(
     PermissionAssignment userRule,
     PermissionScopeKind rowScopeKind,
-    Guid? rowScopeId)
+    Guid? rowScopeId,
+    Guid? rowOwningTenantId)
   {
     if (userRule.ScopeKind == PermissionScopeKind.Server)
     {
@@ -234,7 +236,7 @@ public class PermissionEvaluator(
     return (userRule.ScopeKind, rowScopeKind) switch
     {
       (PermissionScopeKind.Tenant, PermissionScopeKind.Tenant) => userRule.ScopeId == rowScopeId,
-      (PermissionScopeKind.Tenant, _) => true,
+      (PermissionScopeKind.Tenant, _) => rowOwningTenantId.HasValue && userRule.ScopeId == rowOwningTenantId.Value,
       (PermissionScopeKind.DeviceGroup, PermissionScopeKind.DeviceGroup) => userRule.ScopeId == rowScopeId,
       (PermissionScopeKind.CustomerTenant, PermissionScopeKind.CustomerTenant) => userRule.ScopeId == rowScopeId,
       (PermissionScopeKind.Device, PermissionScopeKind.Device) => userRule.ScopeId == rowScopeId,
@@ -310,7 +312,7 @@ public class PermissionEvaluator(
   {
     var coveringRules = userRules
       .Where(r => r.Assignment.PermissionName == row.PermissionName &&
-                  RuleCoversScope(r.Assignment, row.ScopeKind, row.ScopeId))
+                  RuleCoversScope(r.Assignment, row.ScopeKind, row.ScopeId, row.OwningTenantId))
       .ToList();
 
     return coveringRules.Any(r => r.Assignment.Effect == PermissionEffect.Allow) &&
