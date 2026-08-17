@@ -15,11 +15,13 @@ public interface ILogonTokenScopeService
 
 public class LogonTokenScopeService(
   AppDb appDb,
+  IAuthorizationChangeLogFactory changeLogFactory,
   ICredentialScopeService credentialScopeService,
   ILogonTokenProvider logonTokenProvider,
   ILogger<LogonTokenScopeService> logger) : ILogonTokenScopeService
 {
   private readonly AppDb _appDb = appDb;
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly ICredentialScopeService _credentialScopeService = credentialScopeService;
   private readonly ILogger<LogonTokenScopeService> _logger = logger;
   private readonly ILogonTokenProvider _logonTokenProvider = logonTokenProvider;
@@ -63,7 +65,7 @@ public class LogonTokenScopeService(
         return;
       }
 
-      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.CredentialScopeSetFailed,
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,

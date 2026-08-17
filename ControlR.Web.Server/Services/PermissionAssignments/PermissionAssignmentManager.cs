@@ -67,9 +67,11 @@ public interface IPermissionAssignmentManager
 public class PermissionAssignmentManager(
   AppDb appDb,
   IPermissionEvaluator permissionEvaluator,
-  ICredentialScopeService credentialScopeService) : IPermissionAssignmentManager
+  ICredentialScopeService credentialScopeService,
+  IAuthorizationChangeLogFactory changeLogFactory) : IPermissionAssignmentManager
 {
   private readonly AppDb _appDb = appDb;
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly ICredentialScopeService _credentialScopeService = credentialScopeService;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
 
@@ -237,7 +239,7 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentCreated,
       AuthorizationChangeLogActorTypes.User,
       actor.PrincipalId,
@@ -375,7 +377,7 @@ public class PermissionAssignmentManager(
     {
       var request = requests[i];
       var assignment = created[i];
-      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentCreated,
         AuthorizationChangeLogActorTypes.User,
         actor.PrincipalId,
@@ -441,7 +443,7 @@ public class PermissionAssignmentManager(
       }
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentDeleted,
       AuthorizationChangeLogActorTypes.User,
       actor.PrincipalId,
@@ -519,7 +521,7 @@ public class PermissionAssignmentManager(
 
     foreach (var assignment in assignments)
     {
-      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
         AuthorizationChangeLogActorTypes.User,
         actor.PrincipalId,
@@ -621,7 +623,7 @@ public class PermissionAssignmentManager(
       IsVisibleToTenant(x, tenantId, effectivePermissions) &&
       replacedScopeKinds.Contains(x.ScopeKind)))
     {
-      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
         AuthorizationChangeLogActorTypes.User,
         actor.PrincipalId,
@@ -698,7 +700,7 @@ public class PermissionAssignmentManager(
     {
       var assignment = created[i];
       var request = assignments[i];
-      _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentCreated,
         AuthorizationChangeLogActorTypes.User,
         actor.PrincipalId,
@@ -802,7 +804,7 @@ public class PermissionAssignmentManager(
     assignment.IsEnabled = request.IsEnabled;
     assignment.OwningTenantId = request.ScopeKind == PermissionScopeKind.Server ? null : tenantId;
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentUpdated,
       AuthorizationChangeLogActorTypes.User,
       actor.PrincipalId,

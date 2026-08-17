@@ -76,5 +76,6 @@ public static class AuthorizationRegistrationExtensions
     hostBuilder.Services.AddScoped<IPermissionRuleResolver, PermissionRuleResolver>();
     hostBuilder.Services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
     hostBuilder.Services.AddScoped<ICredentialScopeService, CredentialScopeService>();
+    hostBuilder.Services.AddSingleton<IAuthorizationChangeLogFactory, AuthorizationChangeLogFactory>();
   }
 }

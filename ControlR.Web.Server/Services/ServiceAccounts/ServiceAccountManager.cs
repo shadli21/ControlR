@@ -124,6 +124,7 @@ public class ServiceAccountManager(
   IPasswordHasher<string> passwordHasher,
   IMemoryCache memoryCache,
   IOptionsMonitor<BootstrapOptions> bootstrapOptions,
+  IAuthorizationChangeLogFactory changeLogFactory,
   ILogger<ServiceAccountManager> logger) : IServiceAccountManager
 {
   private const string InvalidApiKeyFormatMessage = "Invalid service account API key format.";
@@ -131,6 +132,8 @@ public class ServiceAccountManager(
   private const int MinimumSecretLength = 32;
 
   private static readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(30);
+
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
 
   public async Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForServer(
     Guid serviceAccountId,
@@ -176,7 +179,7 @@ public class ServiceAccountManager(
 
     await appDb.SaveChangesAsync(cancellationToken);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -236,7 +239,7 @@ public class ServiceAccountManager(
 
     await appDb.SaveChangesAsync(cancellationToken);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -418,7 +421,7 @@ public class ServiceAccountManager(
       return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.Conflict, "A service account with that name already exists in this tenant.");
     }
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -457,7 +460,7 @@ public class ServiceAccountManager(
 
     appDb.PermissionAssignments.RemoveRange(principalAssignments);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountDeleted,
       AuthorizationChangeLogActorTypes.User,
       requestingPrincipalId,
@@ -501,7 +504,7 @@ public class ServiceAccountManager(
 
     appDb.PermissionAssignments.RemoveRange(principalAssignments);
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountDeleted,
       AuthorizationChangeLogActorTypes.User,
       requestingPrincipalId,
@@ -596,7 +599,7 @@ public class ServiceAccountManager(
 
     credential.RevokedAt = timeProvider.GetUtcNow();
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -639,7 +642,7 @@ public class ServiceAccountManager(
 
     credential.RevokedAt = timeProvider.GetUtcNow();
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -684,7 +687,7 @@ public class ServiceAccountManager(
     account.Description = description;
     account.IsEnabled = isEnabled;
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -735,7 +738,7 @@ public class ServiceAccountManager(
     account.Description = description;
     account.IsEnabled = isEnabled;
 
-    appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,

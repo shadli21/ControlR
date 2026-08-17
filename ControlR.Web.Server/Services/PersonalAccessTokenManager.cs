@@ -69,9 +69,11 @@ public class PersonalAccessTokenManager(
   AppDb appDb,
   TimeProvider timeProvider,
   IPasswordHasher<string> passwordHasher,
-  ICredentialScopeService credentialScopeService) : IPersonalAccessTokenManager
+  ICredentialScopeService credentialScopeService,
+  IAuthorizationChangeLogFactory changeLogFactory) : IPersonalAccessTokenManager
 {
   private readonly AppDb _appDb = appDb;
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly ICredentialScopeService _credentialScopeService = credentialScopeService;
   private readonly IPasswordHasher<string> _passwordHasher = passwordHasher;
   private readonly TimeProvider _timeProvider = timeProvider;
@@ -144,7 +146,7 @@ public class PersonalAccessTokenManager(
 
       if (hasScopes && tenantId is { } logTenantId)
       {
-        _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+        _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
           AuthorizationChangeLogActions.CredentialScopeSet,
           AuthorizationChangeLogActorTypes.User,
           userId,

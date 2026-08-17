@@ -31,8 +31,10 @@ public class TenantInvitesProvider(
   IDbContextFactory<AppDb> dbContextFactory,
   UserManager<AppUser> userManager,
   IUserCreator userCreator,
+  IAuthorizationChangeLogFactory changeLogFactory,
   ILogger<TenantInvitesProvider> logger) : ITenantInvitesProvider
 {
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogger<TenantInvitesProvider> _logger = logger;
   private readonly IUserCreator _userCreator = userCreator;
@@ -97,7 +99,7 @@ public class TenantInvitesProvider(
 
     foreach (var assignment in staleAssignments)
     {
-      appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+      appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,

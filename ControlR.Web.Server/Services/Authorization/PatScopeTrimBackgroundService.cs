@@ -18,11 +18,13 @@ namespace ControlR.Web.Server.Services.Authorization;
 /// </summary>
 public class PatScopeTrimBackgroundService(
   IDbContextFactory<AppDb> dbContextFactory,
+  IAuthorizationChangeLogFactory changeLogFactory,
   IServiceScopeFactory scopeFactory,
   TimeProvider timeProvider,
   ILogger<PeriodicBackgroundService> logger)
   : PeriodicBackgroundService(TimeSpan.FromMinutes(15), true, timeProvider, logger)
 {
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
 
@@ -88,7 +90,7 @@ public class PatScopeTrimBackgroundService(
 
     foreach (var row in excessRows)
     {
-      db.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+      db.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.CredentialScopeTrim,
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,

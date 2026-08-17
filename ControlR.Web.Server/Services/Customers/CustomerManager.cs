@@ -23,9 +23,10 @@ public interface ICustomerManager
     Guid customerId, string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
 }
 
-public class CustomerManager(AppDb appDb) : ICustomerManager
+public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeLogFactory) : ICustomerManager
 {
   private readonly AppDb _appDb = appDb;
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
 
   public async Task<HttpResult> AssignDevices(
     Guid customerId, IReadOnlyList<Guid> deviceIds, IReadOnlyList<Guid>? removeDeviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
@@ -78,7 +79,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
       return HttpResult.Ok();
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerDevicesAssigned,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -120,7 +121,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
 
     await _appDb.SaveChangesAsync(cancellationToken);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -154,7 +155,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
       device.CustomerId = null;
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerDeleted,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -236,7 +237,7 @@ public class CustomerManager(AppDb appDb) : ICustomerManager
     customer.Description = description;
     customer.Notes = notes;
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,

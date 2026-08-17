@@ -24,9 +24,10 @@ public interface IDeviceGroupManager
     Guid deviceGroupId, string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
 }
 
-public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
+public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory changeLogFactory) : IDeviceGroupManager
 {
   private readonly AppDb _appDb = appDb;
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
 
   public async Task<HttpResult> AddMembers(
     Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
@@ -66,7 +67,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
       });
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupMembersAdded,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -108,7 +109,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
 
     await _appDb.SaveChangesAsync(cancellationToken);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -144,7 +145,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
 
     _appDb.DeviceGroupMembers.RemoveRange(group.Members ?? []);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupDeleted,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -212,7 +213,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
 
     _appDb.DeviceGroupMembers.RemoveRange(membersToRemove);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupMembersRemoved,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -250,7 +251,7 @@ public class DeviceGroupManager(AppDb appDb) : IDeviceGroupManager
     group.Name = name;
     group.Description = description;
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,

@@ -31,9 +31,10 @@ public interface IUserGroupManager
     Guid userGroupId, string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
 }
 
-public class UserGroupManager(AppDb appDb) : IUserGroupManager
+public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory changeLogFactory) : IUserGroupManager
 {
   private readonly AppDb _appDb = appDb;
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
 
   public async Task<HttpResult> AddMembers(
     Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
@@ -72,7 +73,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
       });
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupMembersAdded,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -114,7 +115,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
 
     await _appDb.SaveChangesAsync(cancellationToken);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupCreated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -150,7 +151,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
 
     _appDb.UserGroupMembers.RemoveRange(group.Members ?? []);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupDeleted,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -217,7 +218,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
 
     _appDb.UserGroupMembers.RemoveRange(membersToRemove);
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupMembersRemoved,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,
@@ -262,7 +263,7 @@ public class UserGroupManager(AppDb appDb) : IUserGroupManager
     group.Name = name;
     group.Description = description;
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupUpdated,
       AuthorizationChangeLogActorTypes.User,
       actorPrincipalId,

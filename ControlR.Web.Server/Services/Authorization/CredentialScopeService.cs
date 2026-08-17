@@ -44,9 +44,11 @@ public interface ICredentialScopeService
 
 public class CredentialScopeService(
   AppDb appDb,
+  IAuthorizationChangeLogFactory changeLogFactory,
   IPermissionEvaluator permissionEvaluator) : ICredentialScopeService
 {
   private readonly AppDb _appDb = appDb;
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
 
   public async Task<HttpResult> ValidateGrantableScopes(
@@ -120,7 +122,7 @@ public class CredentialScopeService(
         actorPrincipalId.ToString()));
     }
 
-    _appDb.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CredentialScopeSet,
       actorType,
       actorPrincipalId,

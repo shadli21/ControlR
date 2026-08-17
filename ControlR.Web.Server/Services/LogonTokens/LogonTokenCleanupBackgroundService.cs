@@ -5,6 +5,7 @@ namespace ControlR.Web.Server.Services.LogonTokens;
 
 public class LogonTokenCleanupBackgroundService(
   IDbContextFactory<AppDb> dbContextFactory,
+  IAuthorizationChangeLogFactory changeLogFactory,
   IOptions<AppOptions> appOptions,
   TimeProvider timeProvider,
   ILogger<PeriodicBackgroundService> logger)
@@ -17,6 +18,7 @@ public class LogonTokenCleanupBackgroundService(
   private const int GrantCleanupBatchSize = 500;
 
   private readonly IOptions<AppOptions> _appOptions = appOptions;
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly SemaphoreSlim _cleanupLock = new(1, 1);
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogger _logger = logger;
@@ -122,7 +124,7 @@ public class LogonTokenCleanupBackgroundService(
 
     foreach (var tokenGroup in batch.GroupBy(x => x.PrincipalId))
     {
-      db.AuthorizationChangeLogs.Add(AuthorizationChangeLogFactory.Create(
+      db.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.CredentialScopeRemoved,
         AuthorizationChangeLogActorTypes.System,
         actorPrincipalId: null,
