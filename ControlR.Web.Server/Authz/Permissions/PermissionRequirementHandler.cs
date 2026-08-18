@@ -1,4 +1,3 @@
-using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.Authorization;
 
 namespace ControlR.Web.Server.Authz.Permissions;

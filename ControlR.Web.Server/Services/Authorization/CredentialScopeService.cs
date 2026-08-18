@@ -149,7 +149,9 @@ public class CredentialScopeService(
     switch (scope.ScopeKind)
     {
       case PermissionScopeKind.Server:
-        return new ResourceDescriptor(PermissionScopeKind.Server, null, tenantId);
+        // Server scope has no owning tenant; the creator's server-scoped allow is what is
+        // evaluated, so no tenant id is placed on the descriptor.
+        return new ResourceDescriptor(PermissionScopeKind.Server);
 
       case PermissionScopeKind.Tenant:
         return new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId);

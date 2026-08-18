@@ -136,7 +136,7 @@ public class PermissionDeviceScopeResolver(
   private static List<Guid> ScopeIds(List<PermissionAssignment> assignments, PermissionScopeKind scopeKind) =>
     assignments
       .Where(x => x.ScopeKind == scopeKind && x.ScopeId.HasValue)
-      .Select(x => x.ScopeId!.Value)
+      .Select(x => x.ScopeId.GetValueOrDefault())
       .Distinct()
       .ToList();
 

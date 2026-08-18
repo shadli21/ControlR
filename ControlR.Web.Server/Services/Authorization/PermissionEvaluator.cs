@@ -152,12 +152,15 @@ public class PermissionEvaluator(
   /// <summary>
   /// Returns the set of permission names the principal effectively holds (allow rules not
   /// overridden by deny), evaluated at the name level without regard to resource scope.
-  /// Consumers: claim emission for client-side policy evaluation
-  /// (<c>IdentityRevalidatingAuthenticationStateProvider</c>), logon-token scope validation
-  /// (<c>LogonTokensController</c>), and the server-admin guard in
-  /// <c>PermissionAssignmentManager</c>. Assignment rows are interpreted by
-  /// <see cref="IPermissionRuleResolver"/> (direct and user-group). Credential-scoping and
-  /// the server-service-account bypass do not apply to these consumers.
+  /// This is the *user's* set: credential-scoping (PAT scope rows, logon-token device
+  /// grants) and the server-service-account bypass do not apply. Consumers are interactive
+  /// or system paths that act as the user proper — claim emission for client-side policy
+  /// evaluation (<c>IdentityRevalidatingAuthenticationStateProvider</c>), hub topic
+  /// subscription (<c>ViewerHub.JoinServerTopics</c>), the server-admin guard in
+  /// <c>PermissionAssignmentManager</c>, and the caller-permission check in
+  /// <c>UsersController</c>. Do not use this to decide what a credential (PAT/logon token)
+  /// may do; use <see cref="Evaluate"/> for those paths. Assignment rows are interpreted
+  /// by <see cref="IPermissionRuleResolver"/> (direct and user-group).
   /// </summary>
   public async Task<IReadOnlySet<string>> GetEffectivePermissionNames(
     PrincipalDescriptor principal,

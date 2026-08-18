@@ -17,8 +17,6 @@ namespace ControlR.Web.Server.Api.Internal;
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class AuthorizationChangeLogsController : ControllerBase
 {
-  private const int MaxPageSize = 200;
-
   [HttpGet]
   public async Task<ActionResult<InternalDtos.AuthorizationChangeLogSearchResponseDto>> Get(
     [FromServices] AppDb appDb,
@@ -110,7 +108,7 @@ public class AuthorizationChangeLogsController : ControllerBase
 
     var totalItems = await query.CountAsync(cancellationToken);
 
-    var clampedPageSize = Math.Clamp(searchQuery.PageSize, 1, MaxPageSize);
+    var clampedPageSize = Math.Clamp(searchQuery.PageSize, 1, DtoLimits.AuthorizationChangeLogMaxPageSize);
     // Clamp the page so the skip multiplication cannot overflow int (which would
     // produce a negative SQL OFFSET and fail the query).
     var clampedPage = Math.Clamp(searchQuery.Page, 0, int.MaxValue / clampedPageSize);

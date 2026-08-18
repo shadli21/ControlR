@@ -311,6 +311,8 @@ public class PermissionAssignmentManager(
 
     var created = new List<PermissionAssignment>(requests.Count);
 
+    // Validate every request before staging any entities, so a mid-batch failure does not
+    // leave tracked-but-unsaved rows in the change tracker.
     foreach (var request in requests)
     {
       if (await ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId, tenantId, cancellationToken) is { } scopeError)
@@ -324,7 +326,10 @@ public class PermissionAssignmentManager(
       {
         return HttpResult.Fail(HttpResultErrorCode.BadRequest, credentialScopeError);
       }
+    }
 
+    foreach (var request in requests)
+    {
       var assignment = PermissionAssignment.CreateGrant(
         request.PrincipalKind,
         request.PrincipalId,
