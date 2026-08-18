@@ -21,15 +21,8 @@ public interface IDeviceManager
   /// </summary>
   /// <param name="deviceDto">The data transfer object containing device details.</param>
   /// <param name="context">The context information regarding the device's connection.</param>
-  /// <param name="tagIds">
-  ///   Optional list of tag IDs to associate with the device.
-  ///   If null, tags will not be modified.
-  ///   If an empty array is provided, all tags will be removed, if any exist.
-  /// </param>
-  /// <param name="customerId">
-  ///   Optional customer ID to assign to the device.
-  ///   If null, the existing customer assignment will not be modified.
-  /// </param>
+  /// <param name="tagIds">Tag ids to set; null = leave unchanged, empty = clear.</param>
+  /// <param name="customerId">Customer to assign; null = leave unchanged.</param>
   /// <returns>The added or updated <see cref="Device"/> entity.</returns>
   Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null, Guid? customerId = null);
 
@@ -59,15 +52,8 @@ public interface IDeviceManager
   /// </summary>
   /// <param name="deviceDto">The data transfer object containing updated device details.</param>
   /// <param name="context">The context information regarding the device's connection.</param>
-  /// <param name="tagIds">
-  ///   Optional list of tag IDs to associate with the device.
-  ///   If null, tags will not be modified.
-  ///   If an empty array is provided, all tags will be removed.
-  /// </param>
-  /// <param name="customerId">
-  ///   Optional customer ID to assign to the device.
-  ///   If null, the existing customer assignment will not be modified.
-  /// </param>
+  /// <param name="tagIds">Tag ids to set; null = leave unchanged, empty = clear.</param>
+  /// <param name="customerId">Customer to assign; null = leave unchanged.</param>
   /// <returns>
   ///   A <see cref="Result{Device}"/> containing the updated device if successful,
   ///   or a failure result if the device does not exist.
@@ -196,26 +182,20 @@ public class DeviceManager(
       }
       else
       {
-        // If the value from DTO is null, we need to be careful.
         if (dtoValue == null)
         {
-          // If the target property in the Entity is a VALUE type, and it's NOT a Nullable<T> (e.g., int, bool),
-          // then we CANNOT assign null. Skip this property.
+          // Can't assign null to a non-nullable value type; skip.
           if (prop.Metadata.ClrType.IsValueType && Nullable.GetUnderlyingType(prop.Metadata.ClrType) == null)
           {
             continue;
           }
 
-          // If the target property in the Entity is a REFERENCE type, and it's NOT marked as nullable in the model
-          // (meaning it corresponds to a non-nullable column in the DB, or a non-nullable C# reference type),
-          // then we CANNOT assign null. Skip this property.
+          // Can't assign null to a non-nullable reference type; skip.
           if (!prop.Metadata.ClrType.IsValueType && !prop.Metadata.IsNullable)
           {
             continue;
           }
         }
-        // If dtoValue is not null, or if the target property can accept null (either nullable value type or nullable reference type),
-        // then it's safe to assign.
         prop.CurrentValue = dtoValue;
       }
     }
@@ -254,7 +234,6 @@ public class DeviceManager(
       entity.CustomerId = customerId;
     }
 
-    // Apply server-side determined properties from context
     entity.ConnectionId = context.ConnectionId;
     entity.IsOnline = context.IsOnline;
     entity.LastSeen = context.LastSeen;

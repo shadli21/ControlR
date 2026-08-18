@@ -193,8 +193,7 @@ public class DevicesController(
     var filterCounts = await GetFilterCounts(scopedQuery);
     var totalCount = await scopedQuery.CountAsync();
 
-    // Clamp the page so the skip multiplication cannot overflow int (which would
-    // produce a negative SQL OFFSET and fail the query).
+    // Prevent int overflow in Skip, which would produce a negative SQL OFFSET.
     var clampedPageSize = Math.Max(1, requestDto.PageSize);
     var clampedPage = Math.Clamp(requestDto.Page, 0, int.MaxValue / clampedPageSize);
 

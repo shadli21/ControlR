@@ -25,16 +25,8 @@ public class PermissionAssignmentSeeder(
   private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
 
   /// <summary>
-  /// Seeds permission assignments for every permission in the given presets. Each permission is
-  /// scoped to its <b>broadest legal scope</b> from the catalog (Server &gt; Tenant &gt;
-  /// CustomerTenant/DeviceGroup &gt; Device). Server-wide permissions get ScopeKind.Server with
-  /// no ScopeId or OwningTenantId; everything else lands at Tenant scope targeting the given
-  /// tenant, matching the PermissionEvaluator's ScopeMatches requirements.
-  ///
-  /// The existing-keys scan is not tenant-filtered because <c>userId</c> is a primary key and
-  /// identifies exactly one principal; the unique index is the final dedup guard (a concurrent
-  /// seed for the same principal is not a realistic scenario). One summary change-log entry is
-  /// written per seed operation rather than one per seeded row.
+  /// Seeds a principal's preset permissions at their broadest legal scope (Server or Tenant).
+  /// Writes one summary change-log entry per seed operation.
   /// </summary>
   public async Task SeedAssignments(
     Guid userId,
@@ -42,9 +34,8 @@ public class PermissionAssignmentSeeder(
     IEnumerable<string> presetNames,
     CancellationToken cancellationToken = default)
   {
-    // Load the principal's existing assignments once so the seed check is in-memory instead of
-    // one query per permission. Records give value equality, so a null ScopeId compares correctly
-    // (the same comparison in SQL would need an explicit IS NULL, which == doesn't produce).
+    // Load existing assignments once for in-memory dedup; userId is a primary key, so the
+    // scan isn't tenant-filtered and a concurrent seed for the same principal isn't expected.
     var existing = await _appDb.PermissionAssignments
       .AsNoTracking()
       .Where(x => x.PrincipalId == userId && x.PrincipalKind == PermissionPrincipalKind.User)

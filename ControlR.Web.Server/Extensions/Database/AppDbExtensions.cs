@@ -19,10 +19,7 @@ public static class AppDbExtensions
     var compiled = match.Compile();
     var set = db.Set<TEntity>();
 
-    // IgnoreQueryFilters: this is a low-level upsert that must see the actual row
-    // regardless of any tenant/user global query filters applied to the context.
-    // Otherwise the existence check (and the conflict re-check after a failed insert)
-    // would be blinded to rows owned by other principals, causing duplicate inserts.
+    // IgnoreQueryFilters: this upsert must see rows owned by any principal.
     var existing = set.Local.FirstOrDefault(compiled)
       ?? await set.IgnoreQueryFilters().FirstOrDefaultAsync(match, cancellationToken);
 
@@ -35,8 +32,7 @@ public static class AppDbExtensions
       if (saveResult == SaveChangesResult.Saved)
         return entity;
 
-      // Lost the race. Another thread inserted. Detach the failed Add
-      // and reload to fall through to the update path below.
+      // Lost the race; another thread inserted. Reload and update.
       db.Entry(entity).State = EntityState.Detached;
       existing = await set.IgnoreQueryFilters().FirstOrDefaultAsync(match, cancellationToken)
         ?? throw new InvalidOperationException("Expected conflicting entity after SaveChangesOrConfirmConflictAsync.");
@@ -84,12 +80,9 @@ public static class AppDbExtensions
   }
 
   /// <summary>
-  /// Calls <see cref="DbContext.SaveChangesAsync(CancellationToken)"/>. If a
-  /// <see cref="DbUpdateException"/> is thrown, re-checks the database using
-  /// <paramref name="conflictPredicate"/> to confirm the failure was caused by a
-  /// unique-constraint violation matching that predicate. Returns
-  /// <see cref="SaveChangesResult.ConflictDetected"/> when confirmed; rethrows the
-  /// original exception otherwise.
+  /// Saves, or returns <see cref="SaveChangesResult.ConflictDetected"/> when a
+  /// <see cref="DbUpdateException"/> is confirmed by <paramref name="conflictPredicate"/>.
+  /// Other update exceptions are rethrown.
   /// </summary>
   public static async Task<SaveChangesResult> SaveChangesOrConfirmConflictAsync<TEntity>(
     this DbContext db,

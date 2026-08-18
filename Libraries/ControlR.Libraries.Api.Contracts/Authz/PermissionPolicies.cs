@@ -1,11 +1,9 @@
 namespace ControlR.Libraries.Api.Contracts.Authz;
 
 /// <summary>
-/// Single source of truth mapping each permission-based policy to the permission name it
-/// requires. The server registers these policies against the permission evaluator; the
-/// Blazor client registers them as permission-claim checks (the client cannot run the
-/// server-side evaluator). The server emits the user's effective permissions as claims of
-/// type <see cref="PermissionClaimType"/> so the client-side checks succeed.
+/// Maps each permission-based policy to the permission name it requires. The server
+/// registers these against the permission evaluator; the Blazor client registers them as
+/// permission-claim checks (it cannot run the server-side evaluator).
 /// </summary>
 public static class PermissionPolicies
 {

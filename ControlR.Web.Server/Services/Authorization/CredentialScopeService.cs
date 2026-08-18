@@ -18,8 +18,7 @@ public interface ICredentialScopeService
     CancellationToken cancellationToken = default);
 
   /// <summary>
-  /// Validates scopes for a logon token. Logon tokens are device-bound and only honor
-  /// Device-scoped grants, so any other scope kind is rejected rather than written inert.
+  /// Validates a logon token's scopes; non-Device scopes are rejected.
   /// </summary>
   Task<HttpResult> ValidateLogonTokenScopes(
     PrincipalDescriptor creator,
@@ -28,9 +27,9 @@ public interface ICredentialScopeService
     CancellationToken cancellationToken = default);
 
   /// <summary>
-  /// Writes the explicit scope grants for a logon token and records a change-log entry with the
-  /// scope count. The token is created without baseline grants when explicit scopes are supplied,
-  /// so these grants are the token's full permission set.
+  /// Writes a logon token's device-scoped grants and a change-log entry. The token is
+  /// created without baseline grants when explicit scopes are supplied, so these are its
+  /// full permission set.
   /// </summary>
   Task WriteLogonTokenScopes(
     Guid tokenId,
@@ -111,8 +110,7 @@ public class CredentialScopeService(
   {
     foreach (var scope in scopes)
     {
-      // Validation (ValidateLogonTokenScopes) guarantees a non-null ScopeId equal to the
-      // token's device; fail loudly rather than silently re-pointing a malformed scope.
+      // ValidateLogonTokenScopes guarantees ScopeId == deviceId; fail loudly on deviation.
       var scopeDeviceId = scope.ScopeId ??
         throw new InvalidOperationException("Logon token scope is missing its device id. Scopes must be validated before writing.");
       if (scopeDeviceId != deviceId)
@@ -144,11 +142,8 @@ public class CredentialScopeService(
   }
 
   /// <summary>
-  /// Builds the resource descriptor for a requested credential scope so the creator's
-  /// effective permissions can be evaluated at that exact scope. Device scopes carry the
-  /// target device's group/customer membership so group- and customer-scoped allows are
-  /// honored precisely. Returns <see langword="null"/> when the scope target does not
-  /// exist in the tenant.
+  /// Builds a resource descriptor for the requested scope, or <see langword="null"/> if the
+  /// target isn't in the tenant.
   /// </summary>
   private async Task<ResourceDescriptor?> ResolveScopeResource(
     InternalDtos.CredentialScopeDto scope,
@@ -158,8 +153,7 @@ public class CredentialScopeService(
     switch (scope.ScopeKind)
     {
       case PermissionScopeKind.Server:
-        // Server scope has no owning tenant; the creator's server-scoped allow is what is
-        // evaluated, so no tenant id is placed on the descriptor.
+        // Server scope carries no tenant.
         return new ResourceDescriptor(PermissionScopeKind.Server);
 
       case PermissionScopeKind.Tenant:

@@ -1,9 +1,7 @@
 namespace ControlR.Libraries.Api.Contracts.Authz;
 
 /// <summary>
-/// Well-known policy names for permission-based authorization policies. Shared by the
-/// server (which registers and enforces them) and the Blazor client (which resolves them
-/// to permission-claim checks). Used in <c>[Authorize(Policy = "...")]</c> attributes.
+/// Names of the permission-based authorization policies.
 /// </summary>
 public static class PolicyNames
 {

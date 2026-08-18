@@ -33,9 +33,7 @@ public class PermissionAssignment : EntityBase
   public PermissionScopeKind ScopeKind { get; set; }
 
   /// <summary>
-  /// Creates a new grant row enforcing the assignment invariants: server-scoped rows carry
-  /// no ScopeId or OwningTenantId; all other rows keep the given scope target and are owned
-  /// by the granting tenant.
+  /// Creates a grant row; server-scoped rows carry no ScopeId or OwningTenantId.
   /// </summary>
   public static PermissionAssignment CreateGrant(
     PermissionPrincipalKind principalKind,

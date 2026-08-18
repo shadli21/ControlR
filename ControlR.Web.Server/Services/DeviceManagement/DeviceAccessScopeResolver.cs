@@ -11,13 +11,8 @@ public interface IDeviceAccessScopeResolver
 }
 
 /// <summary>
-/// Resolves the <see cref="DeviceAccessScope"/> query filter describing which devices a
-/// principal may enumerate. It performs no authorization decisions of its own:
-/// <see cref="PermissionAssignment"/> rows are interpreted by <see cref="IPermissionRuleResolver"/>
-/// (the same component the point-authorization evaluator uses), and this class projects the
-/// resolved <c>device.read</c> rules into a scope, honoring deny-overrides-allow: denies become
-/// exclusion sets (or <see cref="DeviceAccessScope.None"/> at Server/Tenant scope) so enumeration
-/// stays at parity with point evaluation.
+/// Projects a principal's resolved <c>device.read</c> rules (allow/deny) into a
+/// <see cref="DeviceAccessScope"/> query filter.
 /// </summary>
 public class DeviceAccessScopeResolver(
   IPermissionRuleResolver ruleResolver) : IDeviceAccessScopeResolver
@@ -43,11 +38,8 @@ public class DeviceAccessScopeResolver(
 
     var resolved = await _ruleResolver.Resolve(principal, cancellationToken);
 
-    // The server service account bypass cannot be represented here: DeviceAccessScope is
-    // single-tenant (ApplyAccessScope always filters by tenant), while bypass means all
-    // devices across all tenants. Callers (e.g., the V1 DevicesController) handle server
-    // principals before reaching this resolver and return an unfiltered query. Fail closed
-    // if a server service account ever reaches this path directly.
+    // Server bypass spans all tenants, which DeviceAccessScope cannot represent; callers
+    // handle server principals first. Fail closed if one reaches this path directly.
     if (resolved.ServerBypass)
     {
       return DeviceAccessScope.None();

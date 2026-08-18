@@ -247,7 +247,6 @@ public partial class DeviceAccessLayout
       return;
     }
 
-    // Add the response to our chat messages
     var chatMessage = new ChatMessage
     {
       Message = response.Message,

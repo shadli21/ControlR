@@ -44,9 +44,7 @@ public interface IPermissionAssignmentManager
     CancellationToken cancellationToken = default);
 
   /// <summary>
-  /// Replaces a principal's assignments for the scope kinds represented by the given set.
-  /// Deletes visible assignments with those scope kinds, then creates the new ones. All
-  /// removals and creations are change-logged.
+  /// Replaces a principal's assignments for the given scope kinds (change-logged).
   /// </summary>
   Task<HttpResult> ReplaceForPrincipal(
     PermissionPrincipalKind principalKind,
@@ -327,8 +325,7 @@ public class PermissionAssignmentManager(
 
     var created = new List<PermissionAssignment>(requests.Count);
 
-    // Validate every request before staging any entities, so a mid-batch failure does not
-    // leave tracked-but-unsaved rows in the change tracker.
+    // Validate all requests before staging any entities.
     foreach (var request in requests)
     {
       if (await ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId, tenantId, cancellationToken) is { } scopeError)
@@ -844,10 +841,8 @@ public class PermissionAssignmentManager(
   }
 
   /// <summary>
-  /// Anti-lockout guard: returns an error if the operation drops any non-self-removable
-  /// permission that the actor actually held before the operation (i.e. the last grant of a
-  /// protected permission would be lost). Only the actor's own principal is guarded; another
-  /// authorized holder may still revoke these.
+  /// Anti-lockout guard: rejects removing the actor's last non-self-removable permission.
+  /// Only the actor's own principal is guarded; another authorized holder may still revoke.
   /// </summary>
   private static string? FindViolatedSelfProtected(
     IReadOnlyCollection<string> preOpGranted,
@@ -897,8 +892,7 @@ public class PermissionAssignmentManager(
   }
 
   /// <summary>
-  /// Server scope needs no target; tenant scope implicitly targets the acting user's tenant
-  /// (the UI does not collect a ScopeId for these, so the API fills it in).
+  /// Server scope needs no target; tenant scope targets the acting user's tenant.
   /// </summary>
   private static Guid? NormalizeScopeId(PermissionScopeKind scopeKind, Guid? scopeId, Guid tenantId) => scopeKind switch
   {
@@ -968,10 +962,8 @@ public class PermissionAssignmentManager(
     _permissionEvaluator.GetEffectivePermissionNames(actor, cancellationToken);
 
   /// <summary>
-  /// Credential principals (PATs, logon tokens) can never exceed their owning user's
-  /// effective rights, so rows written for them are validated against the owner at write
-  /// time rather than left to be silently discarded by evaluation-time bounding. Returns a
-  /// user-facing error message, or <see langword="null"/> when valid or not applicable.
+  /// Credential principals can't exceed their owning user's rights; validates the row against
+  /// the owner at write time. Returns an error message, or <see langword="null"/> if valid.
   /// </summary>
   private async Task<string?> ValidateCredentialPrincipalScope(
     PermissionPrincipalKind principalKind,

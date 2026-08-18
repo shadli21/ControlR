@@ -13,12 +13,8 @@ public enum DeviceAccessScopeKind
 }
 
 /// <summary>
-/// Represents the resolved set of devices a principal is authorized to access.
-/// Produced by <see cref="IDeviceAccessScopeResolver"/> and consumed by query-filter
-/// extensions to restrict device queries to the authorized subset. The <see cref="DeviceAccessScopeKind.Combined"/>
-/// kind unions multiple inclusion categories (tenant-wide, device groups, customers, specific
-/// devices) and subtracts exclusion sets derived from explicit deny rules, mirroring the
-/// point-authorization evaluator's deny-overrides-allow semantics.
+/// Resolved device set for a principal; Combined unions inclusion categories (tenant-wide,
+/// groups, customers, devices) and subtracts explicit-deny exclusions (deny overrides allow).
 /// </summary>
 public sealed record DeviceAccessScope
 {
@@ -54,8 +50,7 @@ public sealed record DeviceAccessScope
   public IReadOnlyCollection<Guid> ExcludedDeviceGroupIds { get; }
   public IReadOnlyCollection<Guid> ExcludedDeviceIds { get; }
   /// <summary>
-  /// True when a <see cref="DeviceAccessScopeKind.Combined"/> scope includes all tenant devices
-  /// (from a Server/Tenant-scope allow) before exclusions are applied.
+  /// Whether a Combined scope includes all tenant devices (via a Server/Tenant-scope allow).
   /// </summary>
   public bool IncludesTenantWide { get; }
   public DeviceAccessScopeKind Kind { get; }

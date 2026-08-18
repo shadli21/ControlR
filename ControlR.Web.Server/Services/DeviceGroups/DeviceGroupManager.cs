@@ -4,8 +4,8 @@ using ControlR.Web.Server.Services.Authorization;
 namespace ControlR.Web.Server.Services.DeviceGroups;
 
 /// <summary>
-/// Manages device groups: CRUD, membership add/remove, and cascade cleanup of
-/// PermissionAssignment rows on group delete. All writes emit AuthorizationChangeLog entries.
+/// Manages device groups and membership. Deleting a group cascades to its
+/// PermissionAssignment rows.
 /// </summary>
 public interface IDeviceGroupManager
 {

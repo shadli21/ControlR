@@ -60,7 +60,7 @@ public class PersonalAccessTokenAuthenticationHandler(
 
     var result = validationResult.Value;
 
-    // Load the user by id and build a ClaimsPrincipal similar to other authentication handlers
+    // By ID, like the other authentication handlers.
     var user = await _userManager.FindByIdAsync(result.UserId.Value.ToString());
     if (user is null)
     {
@@ -73,7 +73,6 @@ public class PersonalAccessTokenAuthenticationHandler(
       return AuthenticateResult.Fail("User account is locked");
     }
 
-    // Successful auth resets failure counter
     _failureCache.Remove(failureKey);
 
     var claims = new List<Claim>

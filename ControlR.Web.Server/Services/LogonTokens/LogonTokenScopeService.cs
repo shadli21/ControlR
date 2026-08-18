@@ -50,10 +50,8 @@ public class LogonTokenScopeService(
   }
 
   /// <summary>
-  /// Best-effort removal of a token whose explicit-scope write failed. The token was created
-  /// without grants (baseline grants are suppressed when explicit scopes are supplied), so only the
-  /// token row needs removal. If this cleanup itself fails, the token is left for the expired-token
-  /// cleanup service.
+  /// Best-effort removal of a token whose explicit-scope write failed; otherwise the
+  /// expired-token cleanup will reclaim it.
   /// </summary>
   private async Task CleanupOrphanedToken(Guid tokenId, int attemptedScopeCount, CancellationToken cancellationToken)
   {
@@ -122,10 +120,8 @@ public class LogonTokenScopeService(
   }
 
   /// <summary>
-  /// Creates the token, then writes the explicit scopes when supplied. When explicit scopes are
-  /// present the token is created without the baseline grants and the explicit scopes are written
-  /// as a follow-up step; if that step fails the token is removed. The token secret is only ever
-  /// returned after both steps succeed, so no usable token exists until the grants are in place.
+  /// Creates the token, writes explicit scopes, and removes the token if the scope write
+  /// fails, so the secret is never returned unless grants are in place.
   /// </summary>
   private async Task<HttpResult<LogonTokenResult>> CreateTokenAndWriteScopes(
     ScopePreparation preparation,
@@ -176,12 +172,8 @@ public class LogonTokenScopeService(
   }
 
   /// <summary>
-  /// Builds and validates the explicit scope list. Explicit scopes replace the baseline defaults
-  /// (with <c>device.read</c> unioned in, since device resource resolution requires it), and the
-  /// creator must hold every requested permission at the target device. Unlike the baseline path —
-  /// where <c>DeviceLogonTokenCreate</c> alone conveys authority to grant the fixed standard
-  /// device-access set — the explicit path can request arbitrary permissions, so each one is
-  /// validated against the creator to prevent escalation.
+  /// Normalizes and validates the explicit scope list (unions in device.read) and verifies
+  /// the creator holds each requested permission, preventing escalation beyond the baseline.
   /// </summary>
   private async Task<HttpResult<ScopePreparation>> PrepareScopes(
     IReadOnlyList<InternalDtos.CredentialScopeDto>? requestedScopes,

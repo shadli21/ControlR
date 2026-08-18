@@ -82,16 +82,12 @@ public class TenantInvitesProvider(
       return HttpResult.Fail<InternalDtos.AcceptInvitationResponseDto>(HttpResultErrorCode.BadRequest, "Failed to set new password");
     }
 
-    // Track the user entity so its tenant can be updated below.
     var trackedUser = await GetTrackedUser(appDb, invitee.Id);
 
-    // Update tenant ID on the tracked entity
     trackedUser.TenantId = invite.TenantId;
 
-    // The move invalidates the user's former-tenant authorization state: remove their
-    // permission assignments and user-group memberships so no stale grants survive.
-    // (The rule resolver's tenant-ownership boundary already keeps stale rows inert; this
-    // cleanup removes the residue and records the removals in the change log.)
+    // Tenant move invalidates former-tenant grants; the rule resolver keeps stale rows inert,
+    // so remove them only to clear residue and record the removals in the change log.
     var staleAssignments = await appDb.PermissionAssignments
       .IgnoreQueryFilters()
       .Where(x => x.PrincipalKind == PermissionPrincipalKind.User && x.PrincipalId == invitee.Id)
@@ -118,10 +114,7 @@ public class TenantInvitesProvider(
       .ToListAsync();
     appDb.UserGroupMembers.RemoveRange(staleMemberships);
 
-    // The user's personal access tokens also carry scope rows keyed to the token principal,
-    // tied to the former tenant. Remove them so no credential scope rows survive the move;
-    // evaluation-time bounding would keep them inert, but this clears the residue (and the
-    // pat-scope-trim scan) rather than leaving orphaned grants for a moved user's tokens.
+    // Remove PAT scope rows keyed to the token principal so none survive the move.
     var stalePatTokenIds = appDb.PersonalAccessTokens
       .IgnoreQueryFilters()
       .Where(x => x.UserId == invitee.Id)

@@ -52,7 +52,6 @@ public partial class PersonalAccessTokens
         var dialogRef = await DialogService.ShowAsync<SecretDisplayDialog>("Personal Access Token Created", parameters, dialogOptions);
         await dialogRef.Result;
 
-        // Refresh the list and clear the input
         await LoadPersonalAccessTokens();
         _newTokenName = string.Empty;
         Snackbar.Add("Personal access token created successfully", Severity.Success);

@@ -3,9 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace ControlR.Web.Server.Authz.Permissions;
 
 /// <summary>
-/// The result of a permission evaluation. Instances can only be created through the
-/// <see cref="Allow"/> and <see cref="Deny"/> factories, which guarantee the invariant that
-/// allowed results carry a rule source/scope and denied results carry a denial reason.
+/// Result of a permission evaluation. Create via <see cref="Allow"/> or <see cref="Deny"/>.
 /// </summary>
 public sealed class PermissionEvaluationResult
 {

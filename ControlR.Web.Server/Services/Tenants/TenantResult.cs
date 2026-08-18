@@ -1,8 +1,7 @@
 namespace ControlR.Web.Server.Services.Tenants;
 
 /// <summary>
-/// Business-layer representation of a tenant, decoupled from API DTOs.
-/// Controllers map this to the appropriate DTO at the boundary.
+/// Business-layer tenant record, mapped to an API DTO by the controller.
 /// </summary>
 public sealed record TenantResult(
   Guid Id,

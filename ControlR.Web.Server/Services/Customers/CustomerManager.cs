@@ -4,9 +4,8 @@ using ControlR.Web.Server.Services.Authorization;
 namespace ControlR.Web.Server.Services.Customers;
 
 /// <summary>
-/// Manages customers: CRUD with tenant-scoped name uniqueness. Devices reference a
-/// customer through a nullable foreign key; deleting a customer unassigns its devices.
-/// All writes emit AuthorizationChangeLog entries.
+/// Manages customers with tenant-scoped name uniqueness. Devices reference a customer
+/// through a nullable foreign key; deleting a customer unassigns its devices.
 /// </summary>
 public interface ICustomerManager
 {

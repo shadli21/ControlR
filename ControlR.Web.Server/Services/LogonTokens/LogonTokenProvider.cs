@@ -97,11 +97,8 @@ public class LogonTokenProvider(
 
     dbContext.LogonTokens.Add(logonToken);
 
-    // The baseline device-access grants are written with the token unless the caller is supplying
-    // explicit scopes instead. Granting this fixed, standard set is exactly what the
-    // DeviceLogonTokenCreate permission conveys, so the creator is not validated per-permission
-    // here, unlike the explicit-scope path, which validates the creator holds each requested
-    // permission to prevent escalation.
+    // Baseline grants need no per-permission validation; DeviceLogonTokenCreate conveys them.
+    // The explicit-scope path (in LogonTokenScopeService) validates each requested permission.
     if (writeBaselineGrants)
     {
       foreach (var permissionName in _defaultDeviceAccessPermissions)

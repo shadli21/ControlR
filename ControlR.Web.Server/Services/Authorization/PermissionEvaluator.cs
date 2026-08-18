@@ -46,9 +46,7 @@ public class PermissionEvaluator(
 
     var rules = resolved.Rules.ToList();
 
-    // Logon token device-scope enforcement. A logon token session is always restricted
-    // to the device it was created for. This is a hard security boundary that applies
-    // regardless of scope rows.
+    // Logon tokens are always restricted to their scoped device.
     if (principal.CredentialType == CredentialType.LogonToken)
     {
       if (!principal.DeviceScopeId.HasValue)
@@ -56,9 +54,7 @@ public class PermissionEvaluator(
         return PermissionEvaluationResult.Deny("Logon token principal is missing required device scope.");
       }
 
-      // A logon token without a credential id cannot resolve its grant rows; fail closed
-      // rather than falling through to the recipient user's rules. This keeps the grant
-      // model keyed on the same condition as this boundary.
+      // A logon token without a credential id cannot resolve its grant rows; fail closed.
       if (!principal.CredentialId.HasValue)
       {
         return PermissionEvaluationResult.Deny("Logon token principal is missing required credential id.");
@@ -72,14 +68,9 @@ public class PermissionEvaluator(
       }
     }
 
-    // Credential-scoped principals. PATs and logon tokens have fundamentally
-    // different authorization models:
-    //   - A PAT authenticates as its owning user. With no explicit scope rows it inherits
-    //     the user's full effective permissions (user-equivalent). Explicit scope rows are
-    //     an optional least-privilege restriction, bounded by the user's permissions.
-    //   - A logon token is a self-contained device grant issued to a recipient who may have
-    //     no permissions of their own (e.g., an external user). Its grants are authoritative
-    //     and device-bound, never inherited from or bounded by the recipient.
+    // Credential-scoped principals. PATs act as their owning user (scope rows are optional
+    // least-privilege). Logon tokens are self-contained device grants to a recipient who may
+    // have no permissions of their own, never inherited from or bounded by the recipient.
     if (principal.IsCredentialScoped && principal.CredentialId.HasValue)
     {
       var isLogonToken = principal.CredentialType == CredentialType.LogonToken;
@@ -150,17 +141,10 @@ public class PermissionEvaluator(
   }
 
   /// <summary>
-  /// Returns the set of permission names the principal effectively holds (allow rules not
-  /// overridden by deny), evaluated at the name level without regard to resource scope.
-  /// This is the *user's* set: credential-scoping (PAT scope rows, logon-token device
-  /// grants) and the server-service-account bypass do not apply. Consumers are interactive
-  /// or system paths that act as the user proper — claim emission for client-side policy
-  /// evaluation (<c>IdentityRevalidatingAuthenticationStateProvider</c>), hub topic
-  /// subscription (<c>ViewerHub.JoinServerTopics</c>), the server-admin guard in
-  /// <c>PermissionAssignmentManager</c>, and the caller-permission check in
-  /// <c>UsersController</c>. Do not use this to decide what a credential (PAT/logon token)
-  /// may do; use <see cref="Evaluate"/> for those paths. Assignment rows are interpreted
-  /// by <see cref="IPermissionRuleResolver"/> (direct and user-group).
+  /// Returns the user's effective permission names (deny overrides allow), ignoring
+  /// credential-scoping and the server-service-account bypass. This is the *user's* set, for
+  /// paths that act as the user proper (e.g. claim emission and hub topic subscription).
+  /// Use <see cref="Evaluate"/> when deciding what a credential (PAT/logon token) may do.
   /// </summary>
   public async Task<IReadOnlySet<string>> GetEffectivePermissionNames(
     PrincipalDescriptor principal,
@@ -172,8 +156,7 @@ public class PermissionEvaluator(
 
   /// <summary>
   /// Resolves the allow/deny outcome for the rules matching a permission at a resource:
-  /// explicit deny overrides allow; otherwise any matching allow permits; otherwise default
-  /// deny. Used both by the main evaluation path and by PAT scope bounding.
+  /// explicit deny overrides allow; otherwise any matching allow permits; otherwise default deny.
   /// </summary>
   private static PermissionEvaluationResult ResolveMatchingRules(
     List<PermissionRule> rules,
@@ -220,13 +203,9 @@ public class PermissionEvaluator(
   }
 
   /// <summary>
-  /// Determines whether a user rule's scope covers a credential scope row. Server grants cover
-  /// every row scope; only server grants cover server-scoped rows. Tenant grants cover rows
-  /// scoped to the same tenant and rows owned by that tenant in narrower categories (a row's
-  /// owning tenant is recorded on the row at write time, so membership within the tenant is
-  /// not re-resolved here; rows without an owning tenant are not covered — fail-closed).
-  /// Group, customer, and device grants cover only rows scoped to the same group, customer,
-  /// or device, so rows a user reaches only through membership are not covered (fail-closed).
+  /// Whether a user rule's scope covers a credential scope row. Only server grants cover
+  /// server-scoped rows or rows without an owning tenant (fail-closed); group, customer, and
+  /// device grants cover only same-scope rows.
   /// </summary>
   private static bool RuleCoversScope(
     PermissionAssignment userRule,
@@ -256,9 +235,8 @@ public class PermissionEvaluator(
   }
 
   /// <summary>
-  /// Determines whether an assignment's scope covers the requested resource.
-  /// Scope is hierarchical: Server covers everything, Tenant covers resources within
-  /// that tenant, DeviceGroup covers devices within the group, Device covers only itself.
+  /// Whether the assignment's scope covers the requested resource (Server covers all,
+  /// Tenant covers within tenant, DeviceGroup/CustomerTenant cover their devices, Device itself).
   /// </summary>
   private static bool ScopeMatches(PermissionAssignment assignment, ResourceDescriptor resource)
   {
@@ -277,9 +255,7 @@ public class PermissionEvaluator(
       return assignment.ScopeId == resource.Id;
     }
 
-    // A DeviceGroup-scoped assignment covers individual devices that belong to that group.
-    // Membership is checked precisely here via the device's group IDs (carried on the resource
-    // descriptor), mirroring the CustomerTenant check, so no deferred validation is needed.
+    // DeviceGroup/CustomerTenant-scoped assignments also cover devices in that group/customer.
     if (assignment.ScopeKind == PermissionScopeKind.DeviceGroup &&
         resource.Kind == PermissionScopeKind.Device)
     {
@@ -288,9 +264,6 @@ public class PermissionEvaluator(
              resource.DeviceGroupIds.Contains(assignment.ScopeId.Value);
     }
 
-    // A CustomerTenant-scoped assignment covers individual devices that belong to that
-    // customer. Membership is checked precisely here via the device's CustomerId (carried
-    // on the resource descriptor), so no deferred validation is needed.
     if (assignment.ScopeKind == PermissionScopeKind.CustomerTenant &&
         resource.Kind == PermissionScopeKind.Device)
     {

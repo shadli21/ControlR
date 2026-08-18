@@ -5,8 +5,8 @@ using ControlR.Web.Server.Services.Authorization;
 namespace ControlR.Web.Server.Services.UserGroups;
 
 /// <summary>
-/// Manages user groups: CRUD, membership add/remove, and cascade cleanup of
-/// PermissionAssignment rows on group delete. All writes emit AuthorizationChangeLog entries.
+/// Manages user groups and membership. Deleting a group cascades to its
+/// PermissionAssignment rows.
 /// </summary>
 public interface IUserGroupManager
 {

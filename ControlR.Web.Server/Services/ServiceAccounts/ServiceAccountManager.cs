@@ -6,57 +6,51 @@ using Microsoft.Extensions.Caching.Memory;
 namespace ControlR.Web.Server.Services.ServiceAccounts;
 
 /// <summary>
-/// Manages service accounts and their credentials: bootstrap from configuration,
-/// CRUD for both server-scoped and tenant-scoped accounts, credential creation/revocation,
-/// and credential validation for the service-account authentication handler.
-/// Returns business-layer records; controllers map to API DTOs at the boundary.
+/// Manages service accounts and their credentials: bootstrap from configuration, CRUD for
+/// server- and tenant-scoped accounts, credential creation/revocation and validation.
 /// </summary>
 public interface IServiceAccountManager
 {
   /// <summary>
-  /// Adds a new credential to an existing server service account. Returns the credential
-  /// metadata and the plaintext secret, which is only exposed this once. Emits AuthorizationChangeLog.
-  /// A null <paramref name="expiresAt"/> creates a credential that never expires.
+  /// Adds a credential to a server service account; the plaintext secret is only exposed
+  /// this once. A null <paramref name="expiresAt"/> creates a credential that never expires.
   /// </summary>
   Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForServer(
     Guid serviceAccountId, string name, DateTimeOffset? expiresAt, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Adds a new credential to a tenant-scoped service account. Emits AuthorizationChangeLog.
-  /// A null <paramref name="expiresAt"/> creates a credential that never expires.
+  /// Adds a credential to a tenant-scoped service account. A null <paramref name="expiresAt"/>
+  /// creates a credential that never expires.
   /// </summary>
   Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForTenant(
     Guid serviceAccountId, Guid tenantId, string name, DateTimeOffset? expiresAt, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
   /// Creates the bootstrapped server service account and its initial credential when the
-  /// bootstrap options are fully supplied. Skips creation when the named account already exists.
-  /// Throws when the bootstrap input is only partially configured.
+  /// bootstrap options are fully supplied. Skips creation when the account already exists;
+  /// throws when the bootstrap input is only partially configured.
   /// </summary>
   Task<HttpResult> BootstrapServerServiceAccount(CancellationToken cancellationToken);
 
   /// <summary>
-  /// Creates a new server-scoped service account. The account is created without any credential;
-  /// issue one via <see cref="AddCredentialForServer"/>.
+  /// Creates a server service account with no credential; issue one via <see cref="AddCredentialForServer"/>.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> CreateForServer(string name, string? description, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Creates a new tenant-scoped service account. The account is created without any credential;
-  /// issue one via <see cref="AddCredentialForTenant"/>. Emits AuthorizationChangeLog.
+  /// Creates a tenant-scoped service account with no credential; issue one via <see cref="AddCredentialForTenant"/>.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> CreateForTenant(
     string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Deletes a server service account. Credentials cascade-delete. Emits AuthorizationChangeLog
-  /// and removes orphaned PermissionAssignment rows where this account is the principal.
+  /// Deletes a server service account; credentials cascade and orphaned PermissionAssignment
+  /// rows for this account are removed.
   /// </summary>
   Task<HttpResult> DeleteForServer(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Deletes a tenant-scoped service account. Emits AuthorizationChangeLog and removes
-  /// orphaned PermissionAssignment rows where this account is the principal.
+  /// Deletes a tenant-scoped service account and its orphaned PermissionAssignment rows.
   /// </summary>
   Task<HttpResult> DeleteForTenant(Guid serviceAccountId, Guid tenantId, Guid requestingPrincipalId, CancellationToken cancellationToken);
 
@@ -71,7 +65,7 @@ public interface IServiceAccountManager
   Task<IReadOnlyList<ServiceAccountResult>> GetAllForTenant(Guid tenantId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Returns a single server-scoped service account with its credential metadata.
+  /// Returns a single server service account with its credential metadata.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> GetForServer(Guid serviceAccountId, CancellationToken cancellationToken);
 
@@ -82,34 +76,32 @@ public interface IServiceAccountManager
 
   /// <summary>
   /// Revokes a credential by setting <see cref="ServiceAccountCredential.RevokedAt"/>.
-  /// Emits AuthorizationChangeLog.
   /// </summary>
   Task<HttpResult> RevokeCredential(
     Guid serviceAccountId, Guid credentialId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Revokes a credential on a tenant-scoped service account. Emits AuthorizationChangeLog.
+  /// Revokes a credential on a tenant-scoped service account.
   /// </summary>
   Task<HttpResult> RevokeCredentialForTenant(
     Guid serviceAccountId, Guid credentialId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Updates a server-scoped service account's name, description, and enabled state. Emits AuthorizationChangeLog.
+  /// Updates a server service account's name, description, and enabled state.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> UpdateForServer(
     Guid serviceAccountId, string name, string? description, bool isEnabled, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Updates a tenant-scoped service account's name, description, and enabled state. Emits AuthorizationChangeLog.
+  /// Updates a tenant-scoped service account's name, description, and enabled state.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> UpdateForTenant(
     Guid serviceAccountId, Guid tenantId, string name, string? description, bool isEnabled, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Validates a <c>{hex_id}:{plaintext_secret}</c> API key against a service account credential.
-  /// On success updates <see cref="ServiceAccountCredential.LastUsedAt"/> and returns the
-  /// owning service account and the credential. Revoked, expired, disabled-account, and
-  /// nonexistent-or-invalid credentials all fail.
+  /// Validates a <c>{hex_id}:{plaintext_secret}</c> API key against a service account credential,
+  /// updating <see cref="ServiceAccountCredential.LastUsedAt"/> on success. Revoked, expired,
+  /// disabled-account, and invalid credentials all fail.
   /// </summary>
   Task<HttpResult<ServiceAccountCredentialValidationResult>> ValidateCredential(string apiKey, CancellationToken cancellationToken);
 }

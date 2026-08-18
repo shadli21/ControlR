@@ -5,10 +5,9 @@ using System.Text.Json.Serialization;
 namespace ControlR.Web.Server.Services.Authorization;
 
 /// <summary>
-/// Creates <see cref="AuthorizationChangeLog"/> entries with typed, properly-serialized
-/// before/after snapshots. Eliminates hand-interpolated JSON strings. The returned entity is
-/// NOT saved by the factory: callers add it to their own <c>DbContext</c> so the audit row is
-/// committed in the same transaction as the mutation it records.
+/// Creates <see cref="AuthorizationChangeLog"/> entries with typed before/after snapshots.
+/// The returned entity is NOT saved by the factory: callers add it to their own DbContext so
+/// it commits in the same transaction as the mutation it records.
 /// </summary>
 public interface IAuthorizationChangeLogFactory
 {
@@ -68,10 +67,8 @@ public class AuthorizationChangeLogFactory(IHttpContextAccessor httpContextAcces
     value is { } nonNull && nonNull != Guid.Empty ? nonNull : null;
 
   /// <summary>
-  /// Resolves the W3C trace id of the current activity, when one is active. The trace id is
-  /// stable across the whole request chain (including upstream callers propagating trace
-  /// context), unlike SpanId, which changes per child activity. Background services have no
-  /// ambient activity and get <see langword="null"/>.
+  /// Returns the current W3C trace id (stable across the request chain), or null for
+  /// background services without ambient activity.
   /// </summary>
   private static string? ResolveCorrelationId()
   {

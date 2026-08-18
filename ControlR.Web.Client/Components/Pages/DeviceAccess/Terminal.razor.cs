@@ -168,12 +168,10 @@ public partial class Terminal : IAsyncDisposable
         }
       }
 
-      // Start with an empty list to collect all completions
       var allMatches = new List<PwshCompletionMatch>();
       var currentPage = 0;
       PwshCompletionsResponseDto? lastResponse;
 
-      // Keep requesting pages until we have all completions
       do
       {
         var requestDto = new PwshCompletionsRequestDto(
@@ -213,7 +211,6 @@ public partial class Terminal : IAsyncDisposable
       Logger.LogInformation("Received {Count} completions for input: {Input}",
         allMatches.Count, TerminalState.LastCompletionInput);
 
-      // Create a combined response with all matches
       _currentCompletions = new PwshCompletionsResponseDto(
         lastResponse.ReplacementIndex,
         lastResponse.ReplacementLength,
@@ -499,7 +496,6 @@ public partial class Terminal : IAsyncDisposable
 
     if (_currentMatches is not { Length: > 0 })
     {
-      // If no completions are available, return an empty list
       return await Array.Empty<PwshCompletionMatch>().AsTaskResult();
     }
 

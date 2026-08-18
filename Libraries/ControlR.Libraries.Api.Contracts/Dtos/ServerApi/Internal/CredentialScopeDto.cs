@@ -4,8 +4,7 @@ using ControlR.Libraries.Api.Contracts.Enums;
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 /// <summary>
-/// A single permission scope for a credential (PAT or logon token).
-/// Defines what permission the credential is allowed, at what scope.
+/// A single permission scope granted to a credential (PAT or logon token).
 /// </summary>
 public record CredentialScopeDto(
   [property: Required]

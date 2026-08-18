@@ -12,10 +12,7 @@ public static class DeviceAccessQueryExtensions
     Guid tenantId,
     DeviceAccessScope accessScope)
   {
-    // Establish a deterministic default ordering at the start of the query so that
-    // any downstream operators (Take/Skip, paging) always operate on an ordered
-    // query. Callers may still override the ordering via ApplySorting; explicit
-    // sorts issued by the caller replace this default.
+    // Deterministic default ordering for stable paging; callers may override via ApplySorting.
     query = query.Where(x => x.TenantId == tenantId).OrderBy(x => x.CreatedAt);
 
     return accessScope.Kind switch
@@ -45,10 +42,7 @@ public static class DeviceAccessQueryExtensions
   }
 
   /// <summary>
-  /// Applies the caller's device access scope to the query. Server-scoped service accounts
-  /// bypass scoping entirely (cross-tenant enumeration); all other principals require a tenant
-  /// claim and are scoped per their device.read rules. Returns an empty query when the tenant
-  /// claim is missing for a non-server principal.
+  /// Applies the caller's device access scope; server principals bypass scoping.
   /// </summary>
   public static async Task<IQueryable<Device>> ApplyDeviceAccessScope(
     this IQueryable<Device> query,

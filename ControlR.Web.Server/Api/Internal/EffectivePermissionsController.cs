@@ -26,13 +26,8 @@ public class EffectivePermissionsController(IPermissionEvaluator permissionEvalu
       return BadRequest("User tenant not found.");
     }
 
-    // Defense-in-depth: the resolver already confines tenant principals to their own
-    // tenant's rows, but confirm the queried principal belongs to the caller's tenant so a
-    // foreign principal id cannot be probed at all. The Users/UserGroups predicates are
-    // redundant with the claims-driven query filters but kept as an explicit boundary;
-    // ServiceAccounts has no query filter, so its predicate is the only tenant guard here.
-    // Server service accounts are excluded: their holdings are server-level configuration,
-    // not tenant business.
+    // ServiceAccounts has no claims-driven query filter, so its predicate is the only tenant
+    // guard here. Server service accounts are excluded (server-level configuration, not tenant business).
     if (!await PrincipalExistsInTenant(appDb, request.PrincipalKind, request.PrincipalId, tenantId, cancellationToken))
     {
       return NotFound("Principal not found in this tenant.");

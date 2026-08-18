@@ -4,13 +4,8 @@ using ControlR.Web.Server.Authz.Permissions;
 namespace ControlR.Web.Server.Services.Authorization.PermissionRules;
 
 /// <summary>
-/// Single source of truth for interpreting <see cref="PermissionAssignment"/> rows into a
-/// principal's effective permission rules. Both the point-authorization evaluator
-/// (<see cref="IPermissionEvaluator"/>) and the set-enumeration device-scope resolver
-/// (<see cref="DeviceManagement.IDeviceAccessScopeResolver"/>) consume this so assignment
-/// rows are interpreted in exactly one place. Credential-grant bounding and per-resource
-/// scope/deny resolution remain the evaluator's responsibility; query projection remains
-/// the resolver's.
+/// Interprets <see cref="PermissionAssignment"/> rows into a principal's effective permission
+/// rules, used by both the evaluator and the device-scope resolver.
 /// </summary>
 public interface IPermissionRuleResolver
 {
@@ -43,12 +38,8 @@ public class PermissionRuleResolver(
   {
     await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-    // Server-scoped service accounts bypass evaluation when they have no explicit
-    // permission assignments (the zero-config RMM use case). Once an admin attaches
-    // assignments to a server service account, it opts into fine-grained evaluation
-    // while retaining cross-tenant reach (no tenant filter on its assignments). The opt-in
-    // is based on assignment existence regardless of enabled state: disabling the last
-    // assignment must fail closed (zero effective rules), never revert to bypass.
+    // Server service accounts with no assignments bypass evaluation; once an admin attaches
+    // any, they're evaluated (disabling all fails closed, never reverting to bypass).
     if (principal.PrincipalType == PrincipalType.ServerServiceAccount)
     {
       var hasAssignments = await db.PermissionAssignments
@@ -65,12 +56,8 @@ public class PermissionRuleResolver(
     var principalKind = ResolvePrincipalKind(principal.PrincipalType);
     var rules = new List<PermissionRule>();
 
-    // Tenant-ownership boundary for tenant-confined principals: a user's (or tenant service
-    // account's) effective rows are those owned by their current tenant, plus server-scoped
-    // rows (no owning tenant). Rows owned by a former tenant (e.g., after a cross-tenant
-    // invite move) are inert until cleaned up. Only server service accounts are exempt by
-    // design (they retain cross-tenant reach); tenant service accounts are confined to a
-    // single tenant per the ServiceAccount entity contract.
+    // Tenant-confined principals see own-tenant rows plus server-scoped rows (no owning
+    // tenant); rows from a former tenant are inert. Server service accounts are exempt.
     var userTenantFilter = principal.PrincipalType is PrincipalType.User or PrincipalType.TenantServiceAccount
       ? principal.TenantId
       : null;

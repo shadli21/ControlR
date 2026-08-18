@@ -315,7 +315,6 @@ public class AgentHub(
     {
       var agentDto = signedDto.Dto;
 
-      // 1. Determine the public key to verify against.
       // Only trust the agent-supplied key when self-bootstrap is enabled.
       var device = await _appDb.Devices.FindAsync(agentDto.Id);
       var storedPublicKey = device?.PublicKey;
@@ -332,7 +331,6 @@ public class AgentHub(
         ? storedPublicKey
         : signedDto.PublicKey;
 
-      // 2. Validate and decode public key
       var keyValidationResult = _keyProvider.ValidatePublicKeyBase64(publicKeyBase64);
       if (!keyValidationResult.IsSuccess)
       {
@@ -345,7 +343,6 @@ public class AgentHub(
 
       var publicKeyBytes = keyValidationResult.Value;
 
-      // 3. Verify signature
       if (!_keyProvider.Verify(signedDto, publicKeyBytes))
       {
         _logger.LogWarning(
@@ -356,7 +353,7 @@ public class AgentHub(
         return HubResult.Fail<InternalDtos.DeviceResponseDto>("Signature verification failed.");
       }
 
-      // 4. Verify timestamp freshness (disabled if AgentClockSkewTolerance is null)
+      // Disabled when AgentClockSkewTolerance is null.
       var clockSkew = _appOptions.Value.AgentClockSkewTolerance;
       if (clockSkew.HasValue && !_keyProvider.VerifyTimestamp(signedDto, clockSkew.Value))
       {
@@ -367,13 +364,13 @@ public class AgentHub(
         return HubResult.Fail<InternalDtos.DeviceResponseDto>("Timestamp expired.");
       }
 
-      // 5. Handle decommissioning if enabled
+      // Handle decommissioning if enabled.
       if (_serverOptions.Value.DecommissionServer)
       {
         return await HandleAgentUpdateForDecommission(agentDto, device);
       }
 
-      // 6. Allow agents to self-bootstrap when enabled.
+      // Allow agents to self-bootstrap when enabled.
       if (_appOptions.Value.AllowAgentsToSelfBootstrap && agentDto.TenantId == Guid.Empty)
       {
         var lastTenant = await _appDb.Tenants
@@ -388,7 +385,6 @@ public class AgentHub(
         agentDto = agentDto with { TenantId = lastTenant.Id };
       }
 
-      // 7. Validate tenant ID
       if (agentDto.TenantId == Guid.Empty)
       {
         return HubResult.Fail<InternalDtos.DeviceResponseDto>("Invalid tenant ID.");

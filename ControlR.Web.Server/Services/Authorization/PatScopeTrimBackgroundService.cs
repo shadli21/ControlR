@@ -7,14 +7,9 @@ using ControlR.Web.Server.Services.Authorization.PermissionRules;
 namespace ControlR.Web.Server.Services.Authorization;
 
 /// <summary>
-/// Periodically sweeps personal access tokens that carry explicit scope rows and trims any
-/// row that exceeds the owning user's current effective permissions (e.g., after an admin
-/// revokes a user's permission). Excess rows are already inert at evaluation time (the
-/// PermissionEvaluator intersects PAT scopes with the user's live permissions), so this is
-/// storage hygiene rather than a security boundary; staleness is bounded by the sweep period.
-/// Each trimmed row is recorded in the <see cref="AuthorizationChangeLog"/>. Effective
-/// permissions are resolved through <see cref="IPermissionRuleResolver"/> so row
-/// interpretation stays in its single source of truth.
+/// Periodically trims PAT scope rows that exceed the owner's current effective permissions.
+/// Excess rows are already inert at evaluation time, so this is storage hygiene, not a
+/// security boundary; each trim is recorded in the <see cref="AuthorizationChangeLog"/>.
 /// </summary>
 public class PatScopeTrimBackgroundService(
   IDbContextFactory<AppDb> dbContextFactory,

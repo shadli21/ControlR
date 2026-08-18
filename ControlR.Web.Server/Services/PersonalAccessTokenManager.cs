@@ -7,61 +7,27 @@ using ControlR.Web.Server.Services.Authorization;
 namespace ControlR.Web.Server.Services;
 
 /// <summary>
-/// Manages personal access tokens: creation, deletion, retrieval, update, validation,
-/// and credential scope management.
+/// Manages personal access tokens and their credential scopes.
 /// </summary>
 public interface IPersonalAccessTokenManager
 {
-  /// <summary>
-  /// Creates a new personal access token with a randomly generated secret.
-  /// Returns the created token and its plaintext secret value.
-  /// </summary>
-  /// <param name="request">The request containing the token name.</param>
-  /// <param name="userId">The ID of the user who owns the token.</param>
-  /// <returns>The created token and its plaintext secret, or a failure result.</returns>
   Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId);
 
   /// <summary>
-  /// Creates a personal access token with a pre-specified secret and entity ID.
-  /// Used for bootstrap scenarios where the token must be known ahead of time.
-  /// The caller is responsible for logging the full token string.
+  /// Creates a token with a pre-specified secret and ID for bootstrap scenarios where the
+  /// token must be known ahead of time. The caller is responsible for logging the secret.
   /// </summary>
-  /// <param name="tokenId">The GUID to use as the token's ID.</param>
-  /// <param name="secret">The plaintext secret to hash and store.</param>
-  /// <param name="name">The display name for the token.</param>
-  /// <param name="userId">The ID of the user who owns the token.</param>
-  /// <returns>The created token, or a failure result.</returns>
   Task<Result<InternalDtos.PersonalAccessTokenResponseDto>> CreateTokenWithKey(Guid tokenId, string secret, string name, Guid userId);
 
-  /// <summary>
-  /// Deletes a personal access token.
-  /// </summary>
-  /// <param name="id">The ID of the token to delete.</param>
-  /// <param name="userId">The ID of the user who owns the token.</param>
-  /// <returns>A success or failure result.</returns>
   Task<Result> Delete(Guid id, Guid userId);
 
-  /// <summary>
-  /// Retrieves all personal access tokens for a user.
-  /// </summary>
-  /// <param name="userId">The ID of the user whose tokens to retrieve.</param>
-  /// <returns>A collection of token DTOs.</returns>
   Task<IEnumerable<InternalDtos.PersonalAccessTokenResponseDto>> GetForUser(Guid userId);
 
-  /// <summary>
-  /// Updates a personal access token's name.
-  /// </summary>
-  /// <param name="id">The ID of the token to update.</param>
-  /// <param name="request">The request containing the new name.</param>
-  /// <param name="userId">The ID of the user who owns the token.</param>
-  /// <returns>The updated token, or a failure result.</returns>
   Task<Result<InternalDtos.PersonalAccessTokenResponseDto>> Update(Guid id, InternalDtos.UpdatePersonalAccessTokenRequestDto request, Guid userId);
 
   /// <summary>
-  /// Validates the provided personal access token and returns the associated user and tenant ID if valid.
+  /// Validates a token of the form <c>{hex-guid}:{secret}</c> and returns its user/tenant.
   /// </summary>
-  /// <param name="token">The personal access token to validate (format: {hex-guid}:{secret}).</param>
-  /// <returns>The associated user and tenant ID if valid, otherwise an error.</returns>
   Task<Result<PersonalAccessTokenValidationResult>> ValidateToken(string token);
 }
 
@@ -327,7 +293,6 @@ public class PersonalAccessTokenManager(
         storedToken.HashedKey = _passwordHasher.HashPassword(string.Empty, parts[1]);
       }
 
-      // Update last used timestamp
       storedToken.LastUsed = _timeProvider.GetUtcNow();
       await _appDb.SaveChangesAsync();
 
