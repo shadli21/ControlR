@@ -1,4 +1,3 @@
-using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Shared.Services.Encryption;
 using ControlR.Web.Server.Extensions.Dtos.Internal;
 using ControlR.Web.Server.Services.AgentInstaller;
@@ -85,6 +84,21 @@ public class DevicesController : ControllerBase
           logger.LogCritical("User is not authorized to install an agent on this device.");
           return Forbid();
         }
+      }
+    }
+
+    if (requestDto.CustomerId is { } customerId)
+    {
+      var customerBelongsToTenant = await appDb.Customers
+        .AnyAsync(x => x.Id == customerId && x.TenantId == tenantId);
+      if (!customerBelongsToTenant)
+      {
+        logger.LogWarning(
+          "Device {DeviceId} attempted to bind customer {CustomerId} outside tenant {TenantId}.",
+          deviceDto.Id,
+          customerId,
+          tenantId);
+        return BadRequest();
       }
     }
 
