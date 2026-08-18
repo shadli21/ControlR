@@ -106,23 +106,15 @@ public class DevicesController(
     [FromServices] AppDb appDb,
     [FromServices] IAgentVersionProvider agentVersionProvider)
   {
-    IQueryable<Device> query = appDb.Devices.Include(x => x.Tags).Include(x => x.Customer);
-
-    if (!User.TryGetTenantId(out var tenantId))
-    {
-      yield break;
-    }
-
-    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId);
-    query = query
-      .ApplyAccessScope(tenantId, accessScope)
-      .AsSplitQuery();
+    IQueryable<Device> query = await appDb.Devices
+      .Include(x => x.Tags)
+      .Include(x => x.Customer)
+      .AsSplitQuery()
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver);
 
     var (isSuccess, agentVersion) = await GetAgentVersion(agentVersionProvider);
 
-    var deviceStream = query.AsAsyncEnumerable();
-
-    await foreach (var device in deviceStream)
+    await foreach (var device in query.AsAsyncEnumerable())
     {
       var isOutdated = isSuccess && device.AgentVersion != agentVersion;
       yield return device.ToInternalResponseDto(isOutdated);
@@ -162,19 +154,10 @@ public class DevicesController(
   public async IAsyncEnumerable<InternalDtos.DeviceSummaryDto> GetDeviceSummaries(
     [FromServices] AppDb appDb)
   {
-    IQueryable<Device> query = appDb.Devices;
+    IQueryable<Device> query = await appDb.Devices
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver);
 
-    if (!User.TryGetTenantId(out var tenantId))
-    {
-      yield break;
-    }
-
-    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId);
-    query = query.ApplyAccessScope(tenantId, accessScope);
-
-    var deviceStream = query.AsAsyncEnumerable();
-
-    await foreach (var device in deviceStream)
+    await foreach (var device in query.AsAsyncEnumerable())
     {
       yield return device.ToInternalSummaryDto();
     }
@@ -187,16 +170,10 @@ public class DevicesController(
     [FromServices] IAgentVersionProvider agentVersionProvider,
     [FromServices] ILogger<DevicesController> logger)
   {
-    if (!User.TryGetTenantId(out var tenantId))
-    {
-      return BadRequest("Tenant ID not found.");
-    }
-
-    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId);
+    var authorizedQuery = await appDb.Devices
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver);
 
     var isRelationalDatabase = appDb.Database.IsRelational();
-    var authorizedQuery = appDb.Devices.ApplyAccessScope(tenantId, accessScope!).AsQueryable();
-
     var anyDevices = await authorizedQuery.AnyAsync();
 
     var filteredQuery = authorizedQuery

@@ -4,6 +4,7 @@ using Asp.Versioning;
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Hubs.Clients;
 using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Extensions.Dtos.V1;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
@@ -98,8 +99,8 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     [FromServices] IAgentVersionProvider agentVersionProvider,
     [EnumeratorCancellation] CancellationToken cancellationToken)
   {
-    var query = await ApplyDeviceScopeAsync(
-      appDb.Devices.Include(x => x.Tags).AsSplitQuery(), cancellationToken);
+    var query = await appDb.Devices.Include(x => x.Tags).AsSplitQuery()
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver, cancellationToken);
 
     await foreach (var device in query.OrderBy(x => x.CreatedAt).AsAsyncEnumerable().WithCancellation(cancellationToken))
     {
@@ -201,7 +202,8 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     [FromServices] AppDb appDb,
     [EnumeratorCancellation] CancellationToken cancellationToken)
   {
-    var query = await ApplyDeviceScopeAsync(appDb.Devices, cancellationToken);
+    var query = await appDb.Devices
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver, cancellationToken);
 
     await foreach (var device in query.OrderBy(x => x.CreatedAt).AsAsyncEnumerable().WithCancellation(cancellationToken))
     {
@@ -218,7 +220,8 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     CancellationToken cancellationToken)
   {
     var isRelationalDatabase = appDb.Database.IsRelational();
-    var authorizedQuery = await ApplyDeviceScopeAsync(appDb.Devices.AsQueryable(), cancellationToken);
+    var authorizedQuery = await appDb.Devices.AsQueryable()
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver, cancellationToken);
 
     var filteredQuery = authorizedQuery
       .FilterBySearchText(requestDto.SearchText, isRelationalDatabase)
@@ -304,23 +307,5 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion, cancellationToken);
     return device.ToV1ResponseDto(isOutdated);
-  }
-
-  private async Task<IQueryable<Device>> ApplyDeviceScopeAsync(
-    IQueryable<Device> query,
-    CancellationToken cancellationToken)
-  {
-    if (User.IsServerPrincipal())
-    {
-      return query;
-    }
-
-    if (!User.TryGetTenantId(out var tenantId))
-    {
-      return query.Take(0);
-    }
-
-    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId, cancellationToken);
-    return query.ApplyAccessScope(tenantId, accessScope);
   }
 }

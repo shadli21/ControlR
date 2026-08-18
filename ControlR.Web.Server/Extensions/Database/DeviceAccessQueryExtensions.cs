@@ -1,4 +1,7 @@
+using System.Security.Claims;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
+using ControlR.Web.Server.Extensions;
 
 namespace ControlR.Web.Server.Extensions.Database;
 
@@ -39,5 +42,31 @@ public static class DeviceAccessQueryExtensions
           x.CustomerId.HasValue && accessScope.ExcludedCustomerIds.Contains(x.CustomerId.Value))),
       _ => query.Where(_ => false)
     };
+  }
+
+  /// <summary>
+  /// Applies the caller's device access scope to the query. Server-scoped service accounts
+  /// bypass scoping entirely (cross-tenant enumeration); all other principals require a tenant
+  /// claim and are scoped per their device.read rules. Returns an empty query when the tenant
+  /// claim is missing for a non-server principal.
+  /// </summary>
+  public static async Task<IQueryable<Device>> ApplyDeviceAccessScope(
+    this IQueryable<Device> query,
+    ClaimsPrincipal user,
+    IDeviceAccessScopeResolver scopeResolver,
+    CancellationToken cancellationToken = default)
+  {
+    if (user.IsServerPrincipal())
+    {
+      return query;
+    }
+
+    if (!user.TryGetTenantId(out var tenantId))
+    {
+      return query.Take(0);
+    }
+
+    var accessScope = await scopeResolver.Resolve(user, tenantId, cancellationToken);
+    return query.ApplyAccessScope(tenantId, accessScope);
   }
 }
