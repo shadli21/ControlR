@@ -239,6 +239,8 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
     }
 
+    // Log after save: the assignment Id is database-generated, so the
+    // real Id is only available once the row is persisted.
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentCreated,
       AuthorizationChangeLogActorTypes.User,
@@ -372,7 +374,8 @@ public class PermissionAssignmentManager(
       throw;
     }
 
-    // Log after save so the assignment IDs are real (not Guid.Empty).
+    // Log after save: assignment Ids are database-generated, so the
+    // real Ids are only available once the rows are persisted.
     for (var i = 0; i < requests.Count; i++)
     {
       var request = requests[i];
@@ -695,7 +698,8 @@ public class PermissionAssignmentManager(
       throw;
     }
 
-    // Log the created assignments after save so their IDs are real (not Guid.Empty).
+    // Log after save: assignment Ids are database-generated, so the
+    // real Ids are only available once the rows are persisted.
     for (var i = 0; i < created.Count; i++)
     {
       var assignment = created[i];

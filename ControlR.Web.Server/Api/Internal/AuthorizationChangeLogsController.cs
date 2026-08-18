@@ -23,14 +23,7 @@ public class AuthorizationChangeLogsController : ControllerBase
   public async Task<ActionResult<InternalDtos.AuthorizationChangeLogSearchResponseDto>> Get(
     [FromServices] AppDb appDb,
     [FromServices] IPermissionEvaluator permissionEvaluator,
-    [FromQuery] int page = 0,
-    [FromQuery] int pageSize = 50,
-    [FromQuery] string? actionType = null,
-    [FromQuery] string? targetType = null,
-    [FromQuery] string? searchText = null,
-    [FromQuery] Guid? tenantId = null,
-    [FromQuery] DateTimeOffset? from = null,
-    [FromQuery] DateTimeOffset? to = null,
+    [FromQuery] InternalDtos.AuthorizationChangeLogSearchQueryDto searchQuery,
     CancellationToken cancellationToken = default)
   {
     var principal = PrincipalDescriptorBuilder.FromClaims(User);
@@ -51,7 +44,7 @@ public class AuthorizationChangeLogsController : ControllerBase
     Guid? scopedTenantId;
     if (canReadServer)
     {
-      scopedTenantId = tenantId;
+      scopedTenantId = searchQuery.TenantId;
     }
     else
     {
@@ -60,7 +53,7 @@ public class AuthorizationChangeLogsController : ControllerBase
         return BadRequest("User tenant not found.");
       }
 
-      if (tenantId.HasValue && tenantId.Value != callerTenantId)
+      if (searchQuery.TenantId.HasValue && searchQuery.TenantId.Value != callerTenantId)
       {
         return Forbid();
       }
@@ -75,19 +68,19 @@ public class AuthorizationChangeLogsController : ControllerBase
       query = query.Where(x => x.OwningTenantId == scopeTenant);
     }
 
-    if (!string.IsNullOrWhiteSpace(actionType))
+    if (!string.IsNullOrWhiteSpace(searchQuery.ActionType))
     {
-      query = query.Where(x => x.ActionType == actionType);
+      query = query.Where(x => x.ActionType == searchQuery.ActionType);
     }
 
-    if (!string.IsNullOrWhiteSpace(targetType))
+    if (!string.IsNullOrWhiteSpace(searchQuery.TargetType))
     {
-      query = query.Where(x => x.TargetType == targetType);
+      query = query.Where(x => x.TargetType == searchQuery.TargetType);
     }
 
-    if (!string.IsNullOrWhiteSpace(searchText))
+    if (!string.IsNullOrWhiteSpace(searchQuery.SearchText))
     {
-      var trimmed = searchText.Trim();
+      var trimmed = searchQuery.SearchText.Trim();
 
       // Exact GUID lookup when the query parses as a full UUID.
       if (Guid.TryParse(trimmed, out var parsedGuid))
@@ -105,22 +98,22 @@ public class AuthorizationChangeLogsController : ControllerBase
       }
     }
 
-    if (from.HasValue)
+    if (searchQuery.From.HasValue)
     {
-      query = query.Where(x => x.CreatedAt >= from.Value);
+      query = query.Where(x => x.CreatedAt >= searchQuery.From.Value);
     }
 
-    if (to.HasValue)
+    if (searchQuery.To.HasValue)
     {
-      query = query.Where(x => x.CreatedAt <= to.Value);
+      query = query.Where(x => x.CreatedAt <= searchQuery.To.Value);
     }
 
     var totalItems = await query.CountAsync(cancellationToken);
 
-    var clampedPageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+    var clampedPageSize = Math.Clamp(searchQuery.PageSize, 1, MaxPageSize);
     // Clamp the page so the skip multiplication cannot overflow int (which would
     // produce a negative SQL OFFSET and fail the query).
-    var clampedPage = Math.Clamp(page, 0, int.MaxValue / clampedPageSize);
+    var clampedPage = Math.Clamp(searchQuery.Page, 0, int.MaxValue / clampedPageSize);
     var items = await query
       .OrderByDescending(x => x.CreatedAt)
       .Skip(clampedPage * clampedPageSize)

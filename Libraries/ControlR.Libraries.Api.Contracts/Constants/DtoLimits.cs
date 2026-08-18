@@ -3,6 +3,7 @@ namespace ControlR.Libraries.Api.Contracts.Constants;
 public static class DtoLimits
 {
   public const int AllowedDesktopSessionIdsMaxCount = 32;
+  public const int AuthorizationChangeLogSearchTextMaxLength = 128;
   public const int DeviceIdsMaxCount = 1_000;
   public const int ExpirationMinutesDefault = 15;
   public const int ExpirationMinutesMax = 1440;
