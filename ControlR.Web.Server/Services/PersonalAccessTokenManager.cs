@@ -123,6 +123,15 @@ public class PersonalAccessTokenManager(
 
       _appDb.PersonalAccessTokens.Add(personalAccessToken);
 
+      // Wrap the token, scope rows, and change log in a transaction (relational providers
+      // only) so they commit atomically. The token Id is database-generated, so the scope
+      // rows and change log can only reference it after the first save.
+      await using var transaction = _appDb.Database.IsRelational()
+        ? await _appDb.Database.BeginTransactionAsync()
+        : null;
+
+      await _appDb.SaveChangesAsync();
+
       var hasScopes = request.Scopes is { Count: > 0 };
       var tenantId = hasScopes ? ownerTenantId : null;
 
@@ -140,22 +149,22 @@ public class PersonalAccessTokenManager(
             AuthorizationChangeLogActorTypes.User,
             userId.ToString()));
         }
-      }
 
-      await _appDb.SaveChangesAsync();
-
-      if (hasScopes && tenantId is { } logTenantId)
-      {
         _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
           AuthorizationChangeLogActions.CredentialScopeSet,
           AuthorizationChangeLogActorTypes.User,
           userId,
           AuthorizationChangeLogTargetTypes.PersonalAccessToken,
           personalAccessToken.Id,
-          logTenantId,
+          scopeTenantId,
           after: new CredentialScopeSetSummary(request.Scopes!.Count)));
 
         await _appDb.SaveChangesAsync();
+      }
+
+      if (transaction is not null)
+      {
+        await transaction.CommitAsync();
       }
 
       var hexId = Convert.ToHexString(personalAccessToken.Id.ToByteArray());

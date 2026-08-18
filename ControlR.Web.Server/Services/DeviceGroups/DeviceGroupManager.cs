@@ -246,6 +246,14 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
       return HttpResult.Fail<InternalDtos.DeviceGroupDetailDto>(HttpResultErrorCode.BadRequest, "Device group not found.");
     }
 
+    var nameConflict = await _appDb.DeviceGroups
+      .AnyAsync(x => x.TenantId == tenantId && x.Name == name && x.Id != deviceGroupId, cancellationToken);
+
+    if (nameConflict)
+    {
+      return HttpResult.Fail<InternalDtos.DeviceGroupDetailDto>(HttpResultErrorCode.Conflict, "A device group with that name already exists.");
+    }
+
     var before = new DeviceGroupSnapshot(group.Name, group.Description);
 
     group.Name = name;
