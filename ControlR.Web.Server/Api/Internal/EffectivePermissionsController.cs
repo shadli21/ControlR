@@ -37,6 +37,7 @@ public class EffectivePermissionsController(IPermissionEvaluator permissionEvalu
       PrincipalType: request.PrincipalKind switch
       {
         PermissionPrincipalKind.User => PrincipalType.User,
+        PermissionPrincipalKind.UserGroup => PrincipalType.UserGroup,
         PermissionPrincipalKind.ServiceAccount => PrincipalType.TenantServiceAccount,
         _ => throw new InvalidOperationException($"Unsupported principal kind: {request.PrincipalKind}")
       },

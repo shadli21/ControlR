@@ -11,11 +11,13 @@ namespace ControlR.Web.Server.Authz.Permissions;
 public class PermissionRequirementHandler(
   IPermissionEvaluator evaluator,
   IDbContextFactory<AppDb> dbContextFactory,
+  IHttpContextAccessor httpContextAccessor,
   ILogger<PermissionRequirementHandler> logger)
   : AuthorizationHandler<PermissionRequirement, object>
 {
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly IPermissionEvaluator _evaluator = evaluator;
+  private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
   private readonly ILogger<PermissionRequirementHandler> _logger = logger;
 
   protected override async Task HandleRequirementAsync(
@@ -31,10 +33,12 @@ public class PermissionRequirementHandler(
       return;
     }
 
-    var resourceDescriptor = await ResolveResource(requirement.Resource, resource, principal, CancellationToken.None);
+    var cancellationToken = _httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+
+    var resourceDescriptor = await ResolveResource(requirement.Resource, resource, principal, cancellationToken);
 
     var result = await _evaluator.Evaluate(
-      principal, requirement.PermissionName, resourceDescriptor, CancellationToken.None);
+      principal, requirement.PermissionName, resourceDescriptor, cancellationToken);
 
     if (result.Allowed)
     {

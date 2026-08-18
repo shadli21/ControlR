@@ -60,7 +60,7 @@ public static class DeviceAccessQueryExtensions
       return query.Take(0);
     }
 
-    var accessScope = await scopeResolver.Resolve(user, tenantId, cancellationToken);
+    var accessScope = await scopeResolver.Resolve(user, cancellationToken);
     return query.ApplyAccessScope(tenantId, accessScope);
   }
 }

@@ -147,6 +147,12 @@ public class LogonTokenProvider(
     var guestUser = await userManager.Users
       .FirstOrDefaultAsync(u => u.UserName == username && u.TenantId == tenantId, cancellationToken: cancellationToken);
 
+    if (guestUser is not null && guestUser.AccountType != AccountType.ExternalUser)
+    {
+      return HttpResult.Fail<LogonTokenResult>(HttpResultErrorCode.BadRequest,
+        $"Username '{username}' is already in use by a non-external account.");
+    }
+
     if (guestUser is null)
     {
       guestUser = new AppUser

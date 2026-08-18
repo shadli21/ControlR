@@ -37,6 +37,7 @@ public class PermissionAssignmentSeeder(
     // Load existing assignments once for in-memory dedup; userId is a primary key, so the
     // scan isn't tenant-filtered and a concurrent seed for the same principal isn't expected.
     var existing = await _appDb.PermissionAssignments
+      .IgnoreQueryFilters()
       .AsNoTracking()
       .Where(x => x.PrincipalId == userId && x.PrincipalKind == PermissionPrincipalKind.User)
       .Select(x => new AssignmentKey(x.PermissionName, x.ScopeKind, x.ScopeId, x.Effect))

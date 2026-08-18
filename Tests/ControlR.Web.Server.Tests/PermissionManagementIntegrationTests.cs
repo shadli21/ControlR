@@ -216,6 +216,52 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task EffectivePermission_Query_ReturnsAllowedForUserGroup()
+  {
+    var (testServer, client, tenantId, _) = await CreateAuthenticatedServer();
+    using var _ = testServer;
+
+    // Create a user group and grant it device.read at tenant scope.
+    var createGroupResponse = await client.PostAsJsonAsync(
+      HttpConstants.Internal.UserGroupsEndpoint,
+      new InternalDtos.CreateUserGroupRequestDto("Effective Query Group", null),
+      TestContext.Current.CancellationToken);
+    var group = await createGroupResponse.Content.ReadFromJsonAsync<InternalDtos.UserGroupDetailDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(group);
+
+    var createAssignmentResponse = await client.PostAsJsonAsync(
+      HttpConstants.Internal.PermissionAssignmentsEndpoint,
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.UserGroup,
+        group.Id,
+        PermissionNames.DeviceRead,
+        PermissionEffect.Allow,
+        PermissionScopeKind.Tenant,
+        tenantId,
+        null),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, createAssignmentResponse.StatusCode);
+
+    // Query the group's effective permission — should be allowed.
+    var queryResponse = await client.PostAsJsonAsync(
+      $"{HttpConstants.Internal.EffectivePermissionsEndpoint}/query",
+      new InternalDtos.EffectivePermissionQueryRequestDto(
+        PermissionPrincipalKind.UserGroup,
+        group.Id,
+        PermissionNames.DeviceRead,
+        PermissionScopeKind.Tenant,
+        tenantId),
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, queryResponse.StatusCode);
+    var result = await queryResponse.Content.ReadFromJsonAsync<InternalDtos.EffectivePermissionQueryResponseDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(result);
+    Assert.True(result.IsAllowed);
+  }
+
+  [Fact]
   public async Task EffectivePermission_Query_ReturnsDeniedForNonAdmin()
   {
     var (testServer, client, tenantId, _) = await CreateAuthenticatedServer();

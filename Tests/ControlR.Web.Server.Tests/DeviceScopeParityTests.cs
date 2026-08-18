@@ -279,7 +279,7 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
     var resolver = scope.ServiceProvider.GetRequiredService<IDeviceAccessScopeResolver>();
     var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
 
-    var accessScope = await resolver.Resolve(claimsPrincipal, tenantId, cancellationToken);
+    var accessScope = await resolver.Resolve(claimsPrincipal, cancellationToken);
 
     var listedDeviceIds = await db.Devices
       .ApplyAccessScope(tenantId, accessScope)

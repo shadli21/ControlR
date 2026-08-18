@@ -7,7 +7,7 @@ namespace ControlR.Web.Server.Services.DeviceManagement;
 
 public interface IDeviceAccessScopeResolver
 {
-  Task<DeviceAccessScope> Resolve(ClaimsPrincipal user, Guid tenantId, CancellationToken cancellationToken = default);
+  Task<DeviceAccessScope> Resolve(ClaimsPrincipal user, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -21,7 +21,6 @@ public class DeviceAccessScopeResolver(
 
   public async Task<DeviceAccessScope> Resolve(
     ClaimsPrincipal user,
-    Guid tenantId,
     CancellationToken cancellationToken = default)
   {
     // Hard boundary: logon token sessions are always restricted to their scoped device.

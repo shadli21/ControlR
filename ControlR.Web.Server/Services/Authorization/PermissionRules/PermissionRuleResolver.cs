@@ -58,7 +58,7 @@ public class PermissionRuleResolver(
 
     // Tenant-confined principals see own-tenant rows plus server-scoped rows (no owning
     // tenant); rows from a former tenant are inert. Server service accounts are exempt.
-    var userTenantFilter = principal.PrincipalType is PrincipalType.User or PrincipalType.TenantServiceAccount
+    var userTenantFilter = principal.PrincipalType is PrincipalType.User or PrincipalType.UserGroup or PrincipalType.TenantServiceAccount
       ? principal.TenantId
       : null;
 
@@ -82,11 +82,12 @@ public class PermissionRuleResolver(
     return ResolvedPrincipalPermissions.Scoped(rules);
   }
 
-  internal static PermissionPrincipalKind ResolvePrincipalKind(PrincipalType principalType) =>
-    principalType is PrincipalType.TenantServiceAccount
-        or PrincipalType.ServerServiceAccount
-      ? PermissionPrincipalKind.ServiceAccount
-      : PermissionPrincipalKind.User;
+  internal static PermissionPrincipalKind ResolvePrincipalKind(PrincipalType principalType) => principalType switch
+  {
+    PrincipalType.TenantServiceAccount or PrincipalType.ServerServiceAccount => PermissionPrincipalKind.ServiceAccount,
+    PrincipalType.UserGroup => PermissionPrincipalKind.UserGroup,
+    _ => PermissionPrincipalKind.User
+  };
 
   private static bool IsOwnedByPrincipalTenant(PermissionAssignment assignment, Guid? principalTenantId) =>
     principalTenantId is null ||

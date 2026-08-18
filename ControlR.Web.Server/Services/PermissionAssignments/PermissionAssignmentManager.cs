@@ -103,7 +103,9 @@ public class PermissionAssignmentManager(
     {
       var existingKeys = await _appDb.PermissionAssignments
         .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == request.PrincipalKind && x.PrincipalId == request.PrincipalId)
+        .Where(x => x.PrincipalKind == request.PrincipalKind &&
+                    x.PrincipalId == request.PrincipalId &&
+                    x.OwningTenantId == tenantId)
         .Select(x => new { x.PermissionName, x.ScopeKind })
         .ToListAsync(cancellationToken);
 

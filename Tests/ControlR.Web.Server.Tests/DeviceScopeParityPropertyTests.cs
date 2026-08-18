@@ -111,7 +111,7 @@ public class DeviceScopeParityPropertyTests(ITestOutputHelper testOutput)
       }
       await db.SaveChangesAsync(cancellationToken);
 
-      var accessScope = await resolver.Resolve(claims, tenant.Id, cancellationToken);
+      var accessScope = await resolver.Resolve(claims, cancellationToken);
       var listedDeviceIds = await db.Devices
         .ApplyAccessScope(tenant.Id, accessScope)
         .Select(x => x.Id)

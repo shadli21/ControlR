@@ -67,12 +67,6 @@
         Permissions
       </MudNavLink>
     </AuthorizeView>
-    <AuthorizeView Policy="@(PolicyNames.RequirePermissionAssignmentsRead)">
-      <MudNavLink Href="@(ClientRoutes.EffectivePermissions)" Match="NavLinkMatch.Prefix"
-                  Icon="@Icons.Material.Filled.FactCheck">
-        Effective Permissions
-      </MudNavLink>
-    </AuthorizeView>
     @*
       This tenant link is suppressed for users who already hold the server-scoped
       Authorization Logs permission, so they don't see the same link in both the
@@ -81,7 +75,8 @@
     @if (!_canSeeServerAuthorizationLogs)
     {
       <AuthorizeView Policy="@(PolicyNames.RequireAuthorizationLogsRead)">
-        <MudNavLink Href="@(ClientRoutes.AuthorizationLogs)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.History">
+        <MudNavLink Href="@(ClientRoutes.AuthorizationLogs)" Match="NavLinkMatch.Prefix"
+                    Icon="@Icons.Material.Filled.History">
           Authorization Logs
         </MudNavLink>
       </AuthorizeView>
@@ -100,6 +95,12 @@
     <AuthorizeView Policy="@(PolicyNames.RequireTenantUsersWrite)">
       <MudNavLink Href="@(ClientRoutes.Invite)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Email">
         Invite
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequirePermissionAssignmentsRead)">
+      <MudNavLink Href="@(ClientRoutes.EffectivePermissions)" Match="NavLinkMatch.Prefix"
+                  Icon="@Icons.Material.Filled.FactCheck">
+        Effective Permissions
       </MudNavLink>
     </AuthorizeView>
     <AuthorizeView Policy="@(PolicyNames.RequireTenantSettingsRead)">
@@ -135,8 +136,7 @@
       </MudNavLink>
     </AuthorizeView>
     <AuthorizeView Policy="@(PolicyNames.RequireServerTelemetryRead)">
-      <MudNavLink Href="@(ClientRoutes.ServerStats)" Match="NavLinkMatch.Prefix"
-                  Icon="@Icons.Material.Filled.QueryStats">
+      <MudNavLink Href="@(ClientRoutes.ServerStats)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.QueryStats">
         Server Stats
       </MudNavLink>
     </AuthorizeView>
@@ -278,7 +278,8 @@
   {
     _canSeeTenantAdmin = HasAnyPermission(user, TenantAdminSectionPermissions);
     _canSeeServerAdmin = HasAnyPermission(user, ServerAdminSectionPermissions);
-    _canSeeServerAuthorizationLogs = user.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.ServerAuthorizationLogsRead);
+    _canSeeServerAuthorizationLogs = user.HasClaim(PermissionPolicies.PermissionClaimType,
+PermissionNames.ServerAuthorizationLogsRead);
   }
 
   private static bool HasAnyPermission(ClaimsPrincipal user, string[] permissions)
