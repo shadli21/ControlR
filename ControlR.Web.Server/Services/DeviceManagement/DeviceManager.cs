@@ -112,7 +112,7 @@ public class DeviceManager(
       return false;
     }
 
-    var principal = new PrincipalDescriptor(PrincipalClaimTypes.User, user.Id, user.TenantId, AuthMethod: "cookie");
+    var principal = new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, AuthMethod: "cookie");
     var result = await _permissionEvaluator.Evaluate(
       principal,
       PermissionNames.AgentInstall,

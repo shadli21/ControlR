@@ -145,7 +145,7 @@ public class PermissionDeviceScopeResolver(
     deviceId = Guid.Empty;
 
     var authMethod = user.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value;
-    if (authMethod != PrincipalClaimTypes.LogonTokenMethod)
+    if (authMethod != PrincipalClaimValues.LogonTokenMethod)
     {
       return false;
     }

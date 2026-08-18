@@ -570,7 +570,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: tokenId,
-      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      credentialType: CredentialType.LogonToken,
       deviceScopeId: device.Id);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
@@ -617,7 +617,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: tokenId,
-      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      credentialType: CredentialType.LogonToken,
       deviceScopeId: deviceB.Id);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenant.Id);
 
@@ -663,7 +663,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: tokenId,
-      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      credentialType: CredentialType.LogonToken,
       deviceScopeId: device.Id);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
@@ -712,7 +712,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: tokenId,
-      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      credentialType: CredentialType.LogonToken,
       deviceScopeId: device.Id);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
@@ -772,7 +772,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: tokenId,
-      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      credentialType: CredentialType.LogonToken,
       deviceScopeId: device.Id);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
@@ -806,7 +806,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: tokenId,
-      credentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      credentialType: CredentialType.LogonToken,
       deviceScopeId: device.Id);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
@@ -854,7 +854,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: patId,
-      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+      credentialType: CredentialType.PersonalAccessToken);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
@@ -899,7 +899,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: patId,
-      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+      credentialType: CredentialType.PersonalAccessToken);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
@@ -932,7 +932,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: patId,
-      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+      credentialType: CredentialType.PersonalAccessToken);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
@@ -978,7 +978,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: patId,
-      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+      credentialType: CredentialType.PersonalAccessToken);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
@@ -1034,7 +1034,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: patId,
-      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+      credentialType: CredentialType.PersonalAccessToken);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
@@ -1090,7 +1090,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: patId,
-      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+      credentialType: CredentialType.PersonalAccessToken);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
@@ -1143,7 +1143,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: patId,
-      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+      credentialType: CredentialType.PersonalAccessToken);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
@@ -1178,7 +1178,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: patId,
-      credentialType: PrincipalClaimTypes.PersonalAccessTokenCredentialType);
+      credentialType: CredentialType.PersonalAccessToken);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
@@ -1277,10 +1277,10 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     var evaluator = GetEvaluator(testApp);
     var principal = new PrincipalDescriptor(
-      PrincipalClaimTypes.ServerServiceAccount,
+      PrincipalType.ServerServiceAccount,
       serviceAccountId,
       TenantId: null,
-      AuthMethod: PrincipalClaimTypes.ServiceAccountCredentialMethod);
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
@@ -1309,10 +1309,10 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     var evaluator = GetEvaluator(testApp);
     var principal = new PrincipalDescriptor(
-      PrincipalClaimTypes.ServerServiceAccount,
+      PrincipalType.ServerServiceAccount,
       serviceAccountId,
       TenantId: null,
-      AuthMethod: PrincipalClaimTypes.ServiceAccountCredentialMethod);
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
 
     var allowedResource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
     var allowedResult = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, allowedResource, TestContext.Current.CancellationToken);
@@ -1332,10 +1332,10 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     var evaluator = GetEvaluator(testApp);
     var principal = new PrincipalDescriptor(
-      PrincipalClaimTypes.ServerServiceAccount,
+      PrincipalType.ServerServiceAccount,
       serviceAccountId,
       TenantId: null,
-      AuthMethod: PrincipalClaimTypes.ServiceAccountCredentialMethod);
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, Guid.NewGuid());
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
@@ -1461,10 +1461,10 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     var evaluator = GetEvaluator(testApp);
     var principal = new PrincipalDescriptor(
-      PrincipalClaimTypes.TenantServiceAccount,
+      PrincipalType.TenantServiceAccount,
       serviceAccountId,
       TenantId: tenant.Id,
-      AuthMethod: PrincipalClaimTypes.ServiceAccountCredentialMethod);
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
@@ -1510,18 +1510,19 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     Guid userId,
     Guid tenantId,
     Guid? credentialId = null,
-    string? credentialType = null,
+    CredentialType? credentialType = null,
     Guid? deviceScopeId = null)
   {
     return new PrincipalDescriptor(
-      PrincipalClaimTypes.User,
+      PrincipalType.User,
       userId,
       tenantId,
-      AuthMethod: credentialType is not null
-        ? (credentialType == PrincipalClaimTypes.PersonalAccessTokenCredentialType
-          ? PrincipalClaimTypes.PersonalAccessTokenMethod
-          : PrincipalClaimTypes.LogonTokenMethod)
-        : "cookie",
+      AuthMethod: credentialType switch
+      {
+        CredentialType.PersonalAccessToken => PrincipalClaimValues.PersonalAccessTokenMethod,
+        CredentialType.LogonToken => PrincipalClaimValues.LogonTokenMethod,
+        _ => "cookie"
+      },
       CredentialId: credentialId,
       CredentialType: credentialType,
       DeviceScopeId: deviceScopeId);

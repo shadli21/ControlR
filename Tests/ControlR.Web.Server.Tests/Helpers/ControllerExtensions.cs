@@ -34,7 +34,7 @@ internal static class ControllerExtensions
       new(ClaimTypes.Email, $"{user.Email}"),
       new(UserClaimTypes.TenantId, user.TenantId.ToString()),
       new(UserClaimTypes.UserId, user.Id.ToString()),
-      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.User),
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
       new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
       new(UserClaimTypes.AuthenticationMethod, "cookie"),
       ..userClaims

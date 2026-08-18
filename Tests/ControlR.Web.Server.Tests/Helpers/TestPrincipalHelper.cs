@@ -66,9 +66,9 @@ internal static class TestPrincipalHelper
     ServiceAccountCredentialResult credential)
   {
     return new ClaimsPrincipal(new ClaimsIdentity([
-      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.ServerServiceAccount),
+      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.ServerServiceAccount),
       new Claim(PrincipalClaimTypes.PrincipalId, account.Id.ToString()),
-      new Claim(UserClaimTypes.AuthenticationMethod, PrincipalClaimTypes.ServiceAccountCredentialMethod),
+      new Claim(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.ServiceAccountCredentialMethod),
       new Claim(PrincipalClaimTypes.CredentialId, credential.Id.ToString()),
     ], "TestAuth"));
   }

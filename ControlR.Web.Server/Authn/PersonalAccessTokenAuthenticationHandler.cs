@@ -82,11 +82,11 @@ public class PersonalAccessTokenAuthenticationHandler(
       new(UserClaimTypes.TenantId, user.TenantId.ToString()),
       new(ClaimTypes.NameIdentifier, user.Id.ToString()),
       new(ClaimTypes.Name, user.UserName ?? "User"),
-      new(UserClaimTypes.AuthenticationMethod, PrincipalClaimTypes.PersonalAccessTokenMethod),
-      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.User),
+      new(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.PersonalAccessTokenMethod),
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
       new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
       new(PrincipalClaimTypes.CredentialId, result.TokenId.Value.ToString()),
-      new(PrincipalClaimTypes.CredentialType, PrincipalClaimTypes.PersonalAccessTokenCredentialType),
+      new(PrincipalClaimTypes.CredentialType, PrincipalClaimValues.PersonalAccessTokenCredentialType),
     };
 
     if (!string.IsNullOrWhiteSpace(user.Email))

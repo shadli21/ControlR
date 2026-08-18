@@ -622,7 +622,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
   }
 
     private static PrincipalDescriptor Actor(Guid principalId, Guid tenantId) =>
-      new(PrincipalClaimTypes.User, principalId, tenantId, "test");
+      new(PrincipalType.User, principalId, tenantId, "test");
 
   private static async Task SeedAssignment(TestApp testApp, PermissionAssignment assignment)
   {

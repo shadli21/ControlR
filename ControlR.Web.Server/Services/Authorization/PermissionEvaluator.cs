@@ -49,7 +49,7 @@ public class PermissionEvaluator(
     // Logon token device-scope enforcement. A logon token session is always restricted
     // to the device it was created for. This is a hard security boundary that applies
     // regardless of scope rows.
-    if (principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType)
+    if (principal.CredentialType == CredentialType.LogonToken)
     {
       if (!principal.DeviceScopeId.HasValue)
       {
@@ -82,7 +82,7 @@ public class PermissionEvaluator(
     //     and device-bound, never inherited from or bounded by the recipient.
     if (principal.IsCredentialScoped && principal.CredentialId.HasValue)
     {
-      var isLogonToken = principal.CredentialType == PrincipalClaimTypes.LogonTokenCredentialType;
+      var isLogonToken = principal.CredentialType == CredentialType.LogonToken;
       var credentialKind = isLogonToken
         ? PermissionPrincipalKind.LogonToken
         : PermissionPrincipalKind.PersonalAccessToken;

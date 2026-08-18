@@ -59,12 +59,12 @@ public class LogonTokenAuthenticationHandler(
       new(UserClaimTypes.TenantId, user.TenantId.ToString()),
       new(ClaimTypes.NameIdentifier, user.Id.ToString()),
       new(ClaimTypes.Name, user.UserName ?? "User"),
-      new(UserClaimTypes.AuthenticationMethod, PrincipalClaimTypes.LogonTokenMethod),
+      new(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.LogonTokenMethod),
       new(UserClaimTypes.DeviceSessionScope, deviceId.ToString()),
-      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.User),
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
       new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
       new(PrincipalClaimTypes.CredentialId, tokenValidation.TokenId.Value.ToString()),
-      new(PrincipalClaimTypes.CredentialType, PrincipalClaimTypes.LogonTokenCredentialType),
+      new(PrincipalClaimTypes.CredentialType, PrincipalClaimValues.LogonTokenCredentialType),
     };
 
     if (!string.IsNullOrWhiteSpace(user.Email))

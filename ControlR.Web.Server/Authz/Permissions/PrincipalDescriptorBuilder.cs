@@ -12,10 +12,11 @@ public static class PrincipalDescriptorBuilder
 {
   public static PrincipalDescriptor? FromClaims(ClaimsPrincipal user)
   {
-    var principalType = user.FindFirst(PrincipalClaimTypes.PrincipalType)?.Value;
+    var principalTypeClaim = user.FindFirst(PrincipalClaimTypes.PrincipalType)?.Value;
     var principalIdClaim = user.FindFirst(PrincipalClaimTypes.PrincipalId)?.Value;
 
-    if (principalType is null || !Guid.TryParse(principalIdClaim, out var principalId))
+    if (PrincipalTypeParser.Parse(principalTypeClaim) is not { } principalType ||
+      !Guid.TryParse(principalIdClaim, out var principalId))
     {
       return null;
     }
@@ -51,7 +52,8 @@ public static class PrincipalDescriptorBuilder
       bool.TrueString);
 
     var authMethod = user.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? "unknown";
-    var credentialType = user.FindFirst(PrincipalClaimTypes.CredentialType)?.Value;
+    var credentialTypeClaim = user.FindFirst(PrincipalClaimTypes.CredentialType)?.Value;
+    var credentialType = CredentialTypeParser.Parse(credentialTypeClaim);
 
     return new PrincipalDescriptor(
       principalType,

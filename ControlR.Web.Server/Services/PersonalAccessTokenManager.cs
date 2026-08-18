@@ -98,7 +98,7 @@ public class PersonalAccessTokenManager(
         ownerTenantId = owner.TenantId;
 
         var ownerPrincipal = new PrincipalDescriptor(
-          PrincipalType: PrincipalClaimTypes.User,
+          PrincipalType: PrincipalType.User,
           PrincipalId: userId,
           TenantId: owner.TenantId,
           AuthMethod: "pat-scope-validation");

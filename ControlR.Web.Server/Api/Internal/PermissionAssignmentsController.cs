@@ -1,8 +1,5 @@
-using ControlR.Libraries.Api.Contracts.Authz;
-using ControlR.Libraries.Api.Contracts.Constants;
-using ControlR.Web.Server.Authn;
+using System.Diagnostics.CodeAnalysis;
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -223,12 +220,14 @@ public class PermissionAssignmentsController(
     return Ok(result.Value);
   }
 
-  private bool TryGetContext(out Guid tenantId, out PrincipalDescriptor actor)
+  private bool TryGetContext(
+    out Guid tenantId,
+    [NotNullWhen(true)] out PrincipalDescriptor? actor)
   {
     var principal = PrincipalDescriptorBuilder.FromClaims(User);
     if (principal is null)
     {
-      actor = new PrincipalDescriptor(string.Empty, Guid.Empty, null, "unknown");
+      actor = null;
       tenantId = Guid.Empty;
       return false;
     }
@@ -239,7 +238,7 @@ public class PermissionAssignmentsController(
       return true;
     }
 
-    if (principal.PrincipalType == PrincipalClaimTypes.ServerServiceAccount)
+    if (principal.PrincipalType == PrincipalType.ServerServiceAccount)
     {
       tenantId = Guid.Empty;
       return true;

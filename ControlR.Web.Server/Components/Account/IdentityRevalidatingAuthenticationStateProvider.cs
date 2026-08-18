@@ -114,7 +114,7 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider : Revalida
 
       var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
       var principalDescriptor = new PrincipalDescriptor(
-        PrincipalClaimTypes.User,
+        PrincipalType.User,
         user.Id,
         user.TenantId,
         principal.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? string.Empty);

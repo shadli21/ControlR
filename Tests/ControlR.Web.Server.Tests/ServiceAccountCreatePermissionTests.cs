@@ -192,7 +192,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
   private static PrincipalDescriptor CreateUserPrincipal(Guid userId, Guid tenantId)
   {
     return new PrincipalDescriptor(
-      PrincipalType: PrincipalClaimTypes.User,
+      PrincipalType: PrincipalType.User,
       PrincipalId: userId,
       TenantId: tenantId,
       AuthMethod: "cookie");

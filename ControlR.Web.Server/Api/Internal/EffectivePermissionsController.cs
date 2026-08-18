@@ -39,7 +39,12 @@ public class EffectivePermissionsController(IPermissionEvaluator permissionEvalu
     }
 
     var principal = new PrincipalDescriptor(
-      PrincipalType: request.PrincipalKind.ToString(),
+      PrincipalType: request.PrincipalKind switch
+      {
+        PermissionPrincipalKind.User => PrincipalType.User,
+        PermissionPrincipalKind.ServiceAccount => PrincipalType.TenantServiceAccount,
+        _ => throw new InvalidOperationException($"Unsupported principal kind: {request.PrincipalKind}")
+      },
       PrincipalId: request.PrincipalId,
       TenantId: tenantId,
       AuthMethod: "effective-permission-query");

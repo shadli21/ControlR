@@ -16,7 +16,7 @@ public class AppUserClaimsPrincipalFactory(
   protected override async Task<ClaimsIdentity> GenerateClaimsAsync(AppUser user)
   {
     var identity = await base.GenerateClaimsAsync(user);
-    identity.AddClaim(new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.User));
+    identity.AddClaim(new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User));
     identity.AddClaim(new Claim(PrincipalClaimTypes.PrincipalId, user.Id.ToString()));
     return identity;
   }

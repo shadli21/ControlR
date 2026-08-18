@@ -50,7 +50,7 @@ public class CustomerScopeAuthorizationTests(ITestOutputHelper testOutput)
         null,
         null),
       tenant.Id,
-      new PrincipalDescriptor(PrincipalClaimTypes.User, user.Id, tenant.Id, "test"),
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
@@ -82,7 +82,7 @@ public class CustomerScopeAuthorizationTests(ITestOutputHelper testOutput)
 
     var resolver = scope.ServiceProvider.GetRequiredService<IDeviceAccessScopeResolver>();
     var principal = new ClaimsPrincipal(new ClaimsIdentity([
-      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.User),
+      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
       new Claim(PrincipalClaimTypes.PrincipalId, user.Id.ToString())
     ], "TestAuth"));
 

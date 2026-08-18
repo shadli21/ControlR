@@ -175,7 +175,7 @@ public class DeviceScopeParityPropertyTests(ITestOutputHelper testOutput)
   {
     var claims = new ClaimsPrincipal(new ClaimsIdentity(
     [
-      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.User),
+      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
       new Claim(PrincipalClaimTypes.PrincipalId, userId.ToString()),
       new Claim(UserClaimTypes.TenantId, tenantId.ToString())
     ], "TestAuth"));

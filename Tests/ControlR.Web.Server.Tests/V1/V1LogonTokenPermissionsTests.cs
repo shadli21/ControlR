@@ -348,14 +348,14 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
 
     var principalA = new PrincipalDescriptor(
-      PrincipalClaimTypes.User, extUser.Id, tenant.Id,
-      PrincipalClaimTypes.LogonTokenMethod, tokenIdA,
-      PrincipalClaimTypes.LogonTokenCredentialType, device.Id);
+      PrincipalType.User, extUser.Id, tenant.Id,
+      PrincipalClaimValues.LogonTokenMethod, tokenIdA,
+      CredentialType.LogonToken, device.Id);
 
     var principalB = new PrincipalDescriptor(
-      PrincipalClaimTypes.User, extUser.Id, tenant.Id,
-      PrincipalClaimTypes.LogonTokenMethod, tokenIdB,
-      PrincipalClaimTypes.LogonTokenCredentialType, device.Id);
+      PrincipalType.User, extUser.Id, tenant.Id,
+      PrincipalClaimValues.LogonTokenMethod, tokenIdB,
+      CredentialType.LogonToken, device.Id);
 
     Assert.True((await evaluator.Evaluate(
       principalA, PermissionNames.DeviceTerminalUse, resource, TestContext.Current.CancellationToken)).Allowed);
@@ -465,12 +465,12 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     var principal = new PrincipalDescriptor(
-      PrincipalType: PrincipalClaimTypes.User,
+      PrincipalType: PrincipalType.User,
       PrincipalId: extUser.Id,
       TenantId: tenant.Id,
-      AuthMethod: PrincipalClaimTypes.LogonTokenMethod,
+      AuthMethod: PrincipalClaimValues.LogonTokenMethod,
       CredentialId: tokenId,
-      CredentialType: PrincipalClaimTypes.LogonTokenCredentialType,
+      CredentialType: CredentialType.LogonToken,
       DeviceScopeId: device.Id);
 
     var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);

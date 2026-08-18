@@ -49,7 +49,7 @@ public class PermissionRuleResolver(
     // while retaining cross-tenant reach (no tenant filter on its assignments). The opt-in
     // is based on assignment existence regardless of enabled state: disabling the last
     // assignment must fail closed (zero effective rules), never revert to bypass.
-    if (principal.PrincipalType == PrincipalClaimTypes.ServerServiceAccount)
+    if (principal.PrincipalType == PrincipalType.ServerServiceAccount)
     {
       var hasAssignments = await db.PermissionAssignments
         .IgnoreQueryFilters()
@@ -71,7 +71,7 @@ public class PermissionRuleResolver(
     // invite move) are inert until cleaned up. Only server service accounts are exempt by
     // design (they retain cross-tenant reach); tenant service accounts are confined to a
     // single tenant per the ServiceAccount entity contract.
-    var userTenantFilter = principal.PrincipalType is PrincipalClaimTypes.User or PrincipalClaimTypes.TenantServiceAccount
+    var userTenantFilter = principal.PrincipalType is PrincipalType.User or PrincipalType.TenantServiceAccount
       ? principal.TenantId
       : null;
 
@@ -83,7 +83,7 @@ public class PermissionRuleResolver(
       rules.Add(new PermissionRule(assignment, RuleSource.Direct, SourcePriority.Direct));
     }
 
-    if (principal.PrincipalType == PrincipalClaimTypes.User)
+    if (principal.PrincipalType == PrincipalType.User)
     {
       var groupAssignments = await LoadUserGroupAssignmentsAsync(db, principal.PrincipalId, cancellationToken);
       foreach (var assignment in groupAssignments.Where(x => IsOwnedByPrincipalTenant(x, userTenantFilter)))
@@ -95,9 +95,9 @@ public class PermissionRuleResolver(
     return ResolvedPrincipalPermissions.Scoped(rules);
   }
 
-  internal static PermissionPrincipalKind ResolvePrincipalKind(string principalType) =>
-    principalType is PrincipalClaimTypes.TenantServiceAccount
-        or PrincipalClaimTypes.ServerServiceAccount
+  internal static PermissionPrincipalKind ResolvePrincipalKind(PrincipalType principalType) =>
+    principalType is PrincipalType.TenantServiceAccount
+        or PrincipalType.ServerServiceAccount
       ? PermissionPrincipalKind.ServiceAccount
       : PermissionPrincipalKind.User;
 

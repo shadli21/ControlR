@@ -80,27 +80,6 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task Evaluate_AfterTenantMove_GroupScopedStaleAssignment_Denies()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var (tenantA, tenantB, user, deviceA, groupId) = await SetupMovedUserScenario(testApp);
-
-    using var scope = testApp.CreateScope();
-    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
-    var resource = await BuildDeviceResource(scope, deviceA, tenantA.Id, groupId);
-
-    // Baseline: while the user belongs to tenant A, the group grant allows access.
-    var beforeMove = await evaluator.Evaluate(
-      UserPrincipal(user.Id, tenantA.Id), PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-    Assert.True(beforeMove.Allowed);
-
-    // After the move, the stale group-scoped row owned by tenant A must be inert.
-    var afterMove = await evaluator.Evaluate(
-      UserPrincipal(user.Id, tenantB.Id), PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-    Assert.False(afterMove.Allowed);
-  }
-
-  [Fact]
   public async Task AcceptInvite_ClearsPatScopeRowsFromFormerTenant()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -161,6 +140,27 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
     Assert.Equal(0, remainingPatScopeRows);
   }
 
+  [Fact]
+  public async Task Evaluate_AfterTenantMove_GroupScopedStaleAssignment_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var (tenantA, tenantB, user, deviceA, groupId) = await SetupMovedUserScenario(testApp);
+
+    using var scope = testApp.CreateScope();
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+    var resource = await BuildDeviceResource(scope, deviceA, tenantA.Id, groupId);
+
+    // Baseline: while the user belongs to tenant A, the group grant allows access.
+    var beforeMove = await evaluator.Evaluate(
+      UserPrincipal(user.Id, tenantA.Id), PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+    Assert.True(beforeMove.Allowed);
+
+    // After the move, the stale group-scoped row owned by tenant A must be inert.
+    var afterMove = await evaluator.Evaluate(
+      UserPrincipal(user.Id, tenantB.Id), PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+    Assert.False(afterMove.Allowed);
+  }
+
   private static async Task<ResourceDescriptor> BuildDeviceResource(
     IServiceScope scope, Guid deviceId, Guid tenantId, Guid groupId)
   {
@@ -182,7 +182,7 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
 
   private static PrincipalDescriptor UserPrincipal(Guid userId, Guid tenantId) =>
     new(
-      PrincipalType: PrincipalClaimTypes.User,
+      PrincipalType: PrincipalType.User,
       PrincipalId: userId,
       TenantId: tenantId,
       AuthMethod: "tenant-move-isolation-test");

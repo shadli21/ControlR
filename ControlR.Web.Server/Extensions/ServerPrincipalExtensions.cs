@@ -21,8 +21,8 @@ public static class ServerPrincipalExtensions
   {
     return user.GetPrincipalType() switch
     {
-      PrincipalClaimTypes.ServerServiceAccount => InstallerKeyCreatorKind.ServerServiceAccount,
-      PrincipalClaimTypes.TenantServiceAccount => InstallerKeyCreatorKind.TenantServiceAccount,
+      PrincipalClaimValues.ServerServiceAccount => InstallerKeyCreatorKind.ServerServiceAccount,
+      PrincipalClaimValues.TenantServiceAccount => InstallerKeyCreatorKind.TenantServiceAccount,
       _ => InstallerKeyCreatorKind.User,
     };
   }
@@ -58,7 +58,7 @@ public static class ServerPrincipalExtensions
   public static bool IsServerPrincipal(this ClaimsPrincipal user)
   {
     return user.FindFirst(PrincipalClaimTypes.PrincipalType)?.Value
-      == PrincipalClaimTypes.ServerServiceAccount;
+      == PrincipalClaimValues.ServerServiceAccount;
   }
 
   /// <summary>

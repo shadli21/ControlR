@@ -12,7 +12,7 @@ public class DesktopSessionAccessAuthorizer : IDesktopSessionAccessAuthorizer
 {
   public bool CanUse(PrincipalDescriptor principal, Guid deviceId, int systemSessionId)
   {
-    if (principal.CredentialType != PrincipalClaimTypes.LogonTokenCredentialType)
+    if (principal.CredentialType != CredentialType.LogonToken)
     {
       return true;
     }

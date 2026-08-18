@@ -11,7 +11,7 @@ public class DesktopSessionAccessAuthorizerTests
   [Fact]
   public void NonLogonToken_IsUnrestricted()
   {
-    var principal = new PrincipalDescriptor(PrincipalClaimTypes.User, Guid.NewGuid(), Guid.NewGuid(), "cookie");
+    var principal = new PrincipalDescriptor(PrincipalType.User, Guid.NewGuid(), Guid.NewGuid(), "cookie");
 
     Assert.True(_authorizer.CanUse(principal, Guid.NewGuid(), 23));
   }
@@ -51,12 +51,12 @@ public class DesktopSessionAccessAuthorizerTests
     IReadOnlySet<int>? allowedSessionIds = null,
     bool hasRestriction = false) =>
     new(
-      PrincipalClaimTypes.User,
+      PrincipalType.User,
       Guid.NewGuid(),
       Guid.NewGuid(),
-      PrincipalClaimTypes.LogonTokenMethod,
+      PrincipalClaimValues.LogonTokenMethod,
       Guid.NewGuid(),
-      PrincipalClaimTypes.LogonTokenCredentialType,
+      CredentialType.LogonToken,
       deviceId,
       allowedSessionIds,
       hasRestriction);

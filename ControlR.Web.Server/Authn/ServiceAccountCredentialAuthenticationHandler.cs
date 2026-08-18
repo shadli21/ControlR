@@ -73,16 +73,16 @@ public class ServiceAccountCredentialAuthenticationHandler(
       var (account, credential) = validationResult.Value;
 
       var principalType = account.Kind == ServiceAccountKind.Server
-        ? PrincipalClaimTypes.ServerServiceAccount
-        : PrincipalClaimTypes.TenantServiceAccount;
+        ? PrincipalClaimValues.ServerServiceAccount
+        : PrincipalClaimValues.TenantServiceAccount;
 
       var claims = new List<Claim>
       {
         new(PrincipalClaimTypes.PrincipalType, principalType),
         new(PrincipalClaimTypes.PrincipalId, account.Id.ToString()),
-        new(UserClaimTypes.AuthenticationMethod, PrincipalClaimTypes.ServiceAccountCredentialMethod),
+        new(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.ServiceAccountCredentialMethod),
         new(PrincipalClaimTypes.CredentialId, credential.Id.ToString()),
-        new(PrincipalClaimTypes.CredentialType, PrincipalClaimTypes.ServiceAccountCredentialType),
+        new(PrincipalClaimTypes.CredentialType, PrincipalClaimValues.ServiceAccountCredentialType),
       };
 
       if (account.TenantId.HasValue)

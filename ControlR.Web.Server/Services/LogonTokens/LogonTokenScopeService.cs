@@ -161,15 +161,15 @@ public class LogonTokenScopeService(
     }
   }
 
-  private string MapActorType(string principalType) => principalType switch
+  private string MapActorType(PrincipalType principalType) => principalType switch
   {
-    PrincipalClaimTypes.User => AuthorizationChangeLogActorTypes.User,
-    PrincipalClaimTypes.ServerServiceAccount or PrincipalClaimTypes.TenantServiceAccount =>
+    PrincipalType.User => AuthorizationChangeLogActorTypes.User,
+    PrincipalType.ServerServiceAccount or PrincipalType.TenantServiceAccount =>
       AuthorizationChangeLogActorTypes.ServiceAccount,
     _ => MapUnmappedActorType(principalType)
   };
 
-  private string MapUnmappedActorType(string principalType)
+  private string MapUnmappedActorType(PrincipalType principalType)
   {
     _logger.LogWarning("Unmapped principal type for authorization change log actor: {PrincipalType}", principalType);
     return AuthorizationChangeLogActorTypes.System;

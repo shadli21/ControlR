@@ -52,7 +52,7 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
         device.Id,
         null),
       tenant.Id,
-      new PrincipalDescriptor(PrincipalClaimTypes.User, user.Id, tenant.Id, "test"),
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
@@ -92,7 +92,7 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
         device.Id,
         null),
       tenant.Id,
-      new PrincipalDescriptor(PrincipalClaimTypes.User, user.Id, tenant.Id, "test"),
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.True(result.IsSuccess, $"Expected panel assignment to succeed: {result.Reason}");

@@ -1011,7 +1011,7 @@ public class PermissionAssignmentManager(
     }
 
     var ownerPrincipal = new PrincipalDescriptor(
-      PrincipalType: PrincipalClaimTypes.User,
+      PrincipalType: PrincipalType.User,
       PrincipalId: owner.Id,
       TenantId: owner.TenantId,
       AuthMethod: "credential-scope-validation");

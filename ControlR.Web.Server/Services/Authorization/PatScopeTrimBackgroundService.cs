@@ -71,7 +71,7 @@ public class PatScopeTrimBackgroundService(
     }
 
     var principal = new PrincipalDescriptor(
-      PrincipalType: PrincipalClaimTypes.User,
+      PrincipalType: PrincipalType.User,
       PrincipalId: owner.UserId,
       TenantId: owner.UserTenantId,
       AuthMethod: "pat-scope-trim");

@@ -319,12 +319,12 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
     Assert.True(result.Principal.Identity?.IsAuthenticated);
 
     Assert.Equal(
-      PrincipalClaimTypes.ServerServiceAccount,
+      PrincipalClaimValues.ServerServiceAccount,
       result.Principal.FindFirst(PrincipalClaimTypes.PrincipalType)?.Value);
     Assert.NotNull(result.Principal.FindFirst(PrincipalClaimTypes.PrincipalId)?.Value);
     Assert.NotNull(result.Principal.FindFirst(PrincipalClaimTypes.CredentialId)?.Value);
     Assert.Equal(
-      PrincipalClaimTypes.ServiceAccountCredentialMethod,
+      PrincipalClaimValues.ServiceAccountCredentialMethod,
       result.Principal.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value);
 
     Assert.Null(result.Principal.FindFirst(UserClaimTypes.TenantId));
