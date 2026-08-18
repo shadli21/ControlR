@@ -611,8 +611,15 @@ public partial class Dashboard : IAsyncDisposable
         return;
       }
 
-      await MainHub.Server.SendWakeDevice(device.Id, device.Dto.MacAddresses.ToArray());
-      Snackbar.Add("Wake command sent", Severity.Success);
+      var result = await MainHub.Server.SendWakeDevice(device.Id, device.Dto.MacAddresses.ToArray());
+      if (result.IsSuccess)
+      {
+        Snackbar.Add(result.Value, Severity.Success);
+      }
+      else
+      {
+        Snackbar.Add(result.Reason, Severity.Error);
+      }
     }
     catch (Exception ex)
     {

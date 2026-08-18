@@ -646,59 +646,51 @@ public class ViewerHub(
     }
   }
 
-  public async Task SendWakeDevice(Guid deviceId, string[] macAddresses)
+  public async Task<HubResult<string>> SendWakeDevice(Guid deviceId, string[] macAddresses)
   {
     try
     {
       if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.WakeSend) is not { IsSuccess: true } authResult)
       {
-        return;
+        return HubResult.Fail<string>("Unauthorized.");
       }
 
       var target = authResult.Value;
 
-      var groupIds = await _appDb.DeviceGroupMembers
-        .Where(member => member.DeviceId == deviceId)
-        .Select(member => member.DeviceGroupId)
-        .ToListAsync();
-
-      var tagIds = await _appDb.Devices
-        .Where(device => device.Id == deviceId)
-        .SelectMany(device => device.Tags!)
-        .Select(tag => tag.Id)
-        .ToListAsync();
-
-      if (groupIds.Count == 0 && tagIds.Count == 0)
+      // A magic packet only reaches the target's LAN if an online neighbor emits it there,
+      // so fan out only to online devices that share the target's network (same public IP).
+      // Device group/tag membership is organizational, not spatial, and is not a proximity signal.
+      if (string.IsNullOrWhiteSpace(target.PublicIpV4))
       {
-        return;
+        return HubResult.Ok($"The target device has no known public IP, so no network neighbors could be found to broadcast the magic packet.");
       }
 
-      // Fan the wake command out to online devices that share the target's customer and a
-      // device group or tag (a network-proximity heuristic), sending directly to their connections.
       var connectionIds = await _appDb.Devices
         .Where(device => device.Id != deviceId &&
                          device.TenantId == target.TenantId &&
                          device.CustomerId == target.CustomerId &&
+                         device.PublicIpV4 == target.PublicIpV4 &&
                          device.IsOnline &&
-                         device.ConnectionId != string.Empty &&
-                         (device.DeviceGroupMembers!.Any(member => groupIds.Contains(member.DeviceGroupId)) ||
-                          device.Tags!.Any(tag => tagIds.Contains(tag.Id))))
+                         device.ConnectionId != string.Empty)
         .Select(device => device.ConnectionId)
         .ToListAsync();
 
       if (connectionIds.Count == 0)
       {
-        return;
+        return HubResult.Ok($"No online devices sharing public IP {target.PublicIpV4} were found. The target may need an online agent on the same network to be woken.");
       }
 
       var dto = new WakeDeviceDto(macAddresses);
       await _agentHub.Clients
         .Clients(connectionIds)
         .InvokeWakeDevice(dto);
+
+      return HubResult.Ok($"Magic packet broadcast by {connectionIds.Count} devic{(connectionIds.Count == 1 ? "e" : "es")} with public IP {target.PublicIpV4}.");
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error while sending wake device command.");
+      return HubResult.Fail<string>("An error occurred while sending the wake command.");
     }
   }
 

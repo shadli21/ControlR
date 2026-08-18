@@ -29,7 +29,7 @@ public interface IViewerHub
   Task SendDtoToAgent(Guid deviceId, DtoWrapper wrapper);
   Task SendPowerStateChange(Guid deviceId, PowerStateChangeType changeType);
   Task<HubResult> SendTerminalInput(Guid deviceId, TerminalInputDto dto);
-  Task SendWakeDevice(Guid deviceId, string[] macAddresses);
+  Task<HubResult<string>> SendWakeDevice(Guid deviceId, string[] macAddresses);
   Task<HubResult> StartDeviceAccessActivity(Guid deviceId);
   Task<HubResult> SubscribeToDeviceHeartbeats(Guid[] deviceIds);
   Task<HubResult> TestVncConnection(Guid guid, int port);
