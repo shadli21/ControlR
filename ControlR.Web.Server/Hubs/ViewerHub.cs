@@ -577,6 +577,8 @@ public class ViewerHub(
     }
   }
 
+  // Intentionally general-purpose and currently unused by any client. Will be
+  // exercised by an upcoming refactor that routes generic DTOs to the agent.
   public async Task SendDtoToAgent(Guid deviceId, DtoWrapper wrapper)
   {
     try
