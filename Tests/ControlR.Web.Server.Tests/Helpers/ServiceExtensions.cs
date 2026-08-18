@@ -216,8 +216,18 @@ internal static class ServiceExtensions
   }
 
   /// <summary>
-  /// Creates a test user with the specified permission presets and saves it to the database.
+  /// Creates a test user in a brand-new, isolated tenant (no tenantId supplied), and saves it
+  /// to the database.
   /// </summary>
+  /// <remarks>
+  /// Because no tenant is supplied, <see cref="IUserCreator"/> creates a new isolated tenant for
+  /// this user. The user also becomes the self-registered first-user server administrator when
+  /// the app instance is empty (as it is for a fresh <c>TestAppBuilder.CreateTestApp</c>), and
+  /// NOT when other users already exist. This mirrors production's first-user-self-registration
+  /// behavior. Prefer passing an explicit <c>tenantId</c> (and an explicit
+  /// <c>PermissionPresets.ServerAdministrator</c> when a server admin is intended) to avoid
+  /// depending on this value.
+  /// </remarks>
   /// <param name="services">The service provider.</param>
   /// <param name="email">Optional email, defaults to "test@example.com".</param>
   /// <param name="presets">Optional permission presets to assign to the user.</param>
