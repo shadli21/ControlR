@@ -64,6 +64,25 @@ public static class AppDbExtensions
     return existing;
   }
 
+  public static async Task ExecuteInTransaction(
+    this DbContext db,
+    Func<Task> operation,
+    CancellationToken cancellationToken = default)
+  {
+    ArgumentNullException.ThrowIfNull(db);
+    ArgumentNullException.ThrowIfNull(operation);
+
+    if (!db.Database.IsRelational() || db.Database.CurrentTransaction is not null)
+    {
+      await operation();
+      return;
+    }
+
+    await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+    await operation();
+    await transaction.CommitAsync(cancellationToken);
+  }
+
   /// <summary>
   /// Calls <see cref="DbContext.SaveChangesAsync(CancellationToken)"/>. If a
   /// <see cref="DbUpdateException"/> is thrown, re-checks the database using

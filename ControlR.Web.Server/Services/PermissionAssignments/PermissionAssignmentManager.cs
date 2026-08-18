@@ -147,20 +147,7 @@ public class PermissionAssignmentManager(
         : HttpResult.Fail<int>(result.ErrorCode, result.Reason);
     }
 
-    if (!_appDb.Database.IsRelational())
-    {
-      return await Apply();
-    }
-
-    await using var transaction = await _appDb.Database.BeginTransactionAsync(cancellationToken);
-    var applyResult = await Apply();
-    if (!applyResult.IsSuccess)
-    {
-      return applyResult;
-    }
-
-    await transaction.CommitAsync(cancellationToken);
-    return applyResult;
+    return await Apply();
   }
 
   public async Task<HttpResult<InternalDtos.PermissionAssignmentDto>> Create(
@@ -222,36 +209,43 @@ public class PermissionAssignmentManager(
       request.Effect,
       request.Notes);
 
-    _appDb.PermissionAssignments.Add(assignment);
-
-    var saveResult = await _appDb.SaveChangesOrConfirmConflictAsync<PermissionAssignment>(
-      x => x.PrincipalKind == request.PrincipalKind &&
-           x.PrincipalId == request.PrincipalId &&
-           x.PermissionName == request.PermissionName &&
-           x.Effect == request.Effect &&
-           x.ScopeKind == request.ScopeKind &&
-           x.ScopeId == normalizedScopeId,
-      cancellationToken);
-
-    if (saveResult == SaveChangesResult.ConflictDetected)
+    try
     {
-      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
-        HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
+      await _appDb.ExecuteInTransaction(async () =>
+      {
+        _appDb.PermissionAssignments.Add(assignment);
+        await _appDb.SaveChangesAsync(cancellationToken);
+
+        _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+          AuthorizationChangeLogActions.PermissionAssignmentCreated,
+          AuthorizationChangeLogActorTypes.User,
+          actor.PrincipalId,
+          AuthorizationChangeLogTargetTypes.PermissionAssignment,
+          assignment.Id,
+          assignment.OwningTenantId,
+          after: new PermissionAssignmentSnapshot(
+            request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
+
+        await _appDb.SaveChangesAsync(cancellationToken);
+      }, cancellationToken);
     }
+    catch (DbUpdateException)
+    {
+      if (await AssignmentExists(
+        request.PrincipalKind,
+        request.PrincipalId,
+        request.PermissionName,
+        request.Effect,
+        request.ScopeKind,
+        normalizedScopeId,
+        cancellationToken))
+      {
+        return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
+          HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
+      }
 
-    // Log after save: the assignment Id is database-generated, so the
-    // real Id is only available once the row is persisted.
-    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
-      AuthorizationChangeLogActions.PermissionAssignmentCreated,
-      AuthorizationChangeLogActorTypes.User,
-      actor.PrincipalId,
-      AuthorizationChangeLogTargetTypes.PermissionAssignment,
-      assignment.Id,
-      assignment.OwningTenantId,
-      after: new PermissionAssignmentSnapshot(
-        request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
-
-    await _appDb.SaveChangesAsync(cancellationToken);
+      throw;
+    }
 
     return HttpResult.Ok(MapToDto(assignment));
   }
@@ -349,13 +343,30 @@ public class PermissionAssignmentManager(
 
     try
     {
-      await _appDb.SaveChangesAsync(cancellationToken);
+      await _appDb.ExecuteInTransaction(async () =>
+      {
+        await _appDb.SaveChangesAsync(cancellationToken);
+
+        for (var i = 0; i < requests.Count; i++)
+        {
+          var request = requests[i];
+          var assignment = created[i];
+          _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+            AuthorizationChangeLogActions.PermissionAssignmentCreated,
+            AuthorizationChangeLogActorTypes.User,
+            actor.PrincipalId,
+            AuthorizationChangeLogTargetTypes.PermissionAssignment,
+            assignment.Id,
+            assignment.OwningTenantId,
+            after: new PermissionAssignmentSnapshot(
+              request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
+        }
+
+        await _appDb.SaveChangesAsync(cancellationToken);
+      }, cancellationToken);
     }
     catch (DbUpdateException)
     {
-      // A concurrent request may have inserted one of these rows between the
-      // AssignmentExists pre-checks and the save. Re-check each key and report a
-      // Conflict when any now exists; otherwise rethrow the original failure.
       foreach (var request in requests)
       {
         if (await AssignmentExists(
@@ -373,25 +384,6 @@ public class PermissionAssignmentManager(
 
       throw;
     }
-
-    // Log after save: assignment Ids are database-generated, so the
-    // real Ids are only available once the rows are persisted.
-    for (var i = 0; i < requests.Count; i++)
-    {
-      var request = requests[i];
-      var assignment = created[i];
-      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
-        AuthorizationChangeLogActions.PermissionAssignmentCreated,
-        AuthorizationChangeLogActorTypes.User,
-        actor.PrincipalId,
-        AuthorizationChangeLogTargetTypes.PermissionAssignment,
-        assignment.Id,
-        assignment.OwningTenantId,
-        after: new PermissionAssignmentSnapshot(
-          request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
-    }
-
-    await _appDb.SaveChangesAsync(cancellationToken);
 
     return HttpResult.Ok();
   }
@@ -673,13 +665,30 @@ public class PermissionAssignmentManager(
 
     try
     {
-      await _appDb.SaveChangesAsync(cancellationToken);
+      await _appDb.ExecuteInTransaction(async () =>
+      {
+        await _appDb.SaveChangesAsync(cancellationToken);
+
+        for (var i = 0; i < created.Count; i++)
+        {
+          var assignment = created[i];
+          var request = assignments[i];
+          _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+            AuthorizationChangeLogActions.PermissionAssignmentCreated,
+            AuthorizationChangeLogActorTypes.User,
+            actor.PrincipalId,
+            AuthorizationChangeLogTargetTypes.PermissionAssignment,
+            assignment.Id,
+            assignment.OwningTenantId,
+            after: new PermissionAssignmentSnapshot(
+              request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
+        }
+
+        await _appDb.SaveChangesAsync(cancellationToken);
+      }, cancellationToken);
     }
     catch (DbUpdateException)
     {
-      // A concurrent request may have inserted one of these rows between the
-      // visibility scan and the save. Re-check each key and report a Conflict
-      // when any now exists; otherwise rethrow the original failure.
       foreach (var request in assignments)
       {
         if (await AssignmentExists(
@@ -697,25 +706,6 @@ public class PermissionAssignmentManager(
 
       throw;
     }
-
-    // Log after save: assignment Ids are database-generated, so the
-    // real Ids are only available once the rows are persisted.
-    for (var i = 0; i < created.Count; i++)
-    {
-      var assignment = created[i];
-      var request = assignments[i];
-      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
-        AuthorizationChangeLogActions.PermissionAssignmentCreated,
-        AuthorizationChangeLogActorTypes.User,
-        actor.PrincipalId,
-        AuthorizationChangeLogTargetTypes.PermissionAssignment,
-        assignment.Id,
-        assignment.OwningTenantId,
-        after: new PermissionAssignmentSnapshot(
-          request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
-    }
-
-    await _appDb.SaveChangesAsync(cancellationToken);
 
     return HttpResult.Ok();
   }
