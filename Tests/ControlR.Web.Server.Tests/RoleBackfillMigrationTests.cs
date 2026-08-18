@@ -63,16 +63,13 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
     using var verifyScope = testApp.CreateScope();
     await using var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
 
-    // Server Administrator and Installer Key Manager preset permissions — server-scoped,
-    // no ScopeId, no OwningTenantId. (Installer Key Manager permissions also appear
-    // tenant-scoped via Tenant Administrator, so filter to server-scoped rows here.)
+    // Server Administrator preset permissions — server-scoped, no ScopeId, no OwningTenantId.
     var serverAdminPermissions = await verifyDb.PermissionAssignments
       .Where(x => x.PrincipalId == user.Id &&
                   x.ScopeKind == PermissionScopeKind.Server &&
                  (x.PermissionName == PermissionNames.ServerAdmin ||
                   x.PermissionName == PermissionNames.ServerTelemetryRead ||
-                  x.PermissionName == PermissionNames.ServerServiceAccountsWrite ||
-                  x.PermissionName == PermissionNames.InstallerKeyRead))
+                  x.PermissionName == PermissionNames.ServerServiceAccountsWrite))
       .ToListAsync(TestContext.Current.CancellationToken);
 
     Assert.NotEmpty(serverAdminPermissions);
@@ -99,20 +96,21 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
       Assert.Equal(tenant.Id, perm.OwningTenantId);
     }
 
-    // Overlapping permission (agent.install) exists twice: once server-scoped (from Installer
-    // Key Manager) and once tenant-scoped (from Tenant Administrator).
-    var agentInstallAssignments = await verifyDb.PermissionAssignments
-      .Where(x => x.PrincipalId == user.Id && x.PermissionName == PermissionNames.AgentInstall)
+    // Installer Key Manager permissions are tenant-scoped, even when the user also has
+    // Tenant Administrator, and duplicate permissions collapse to one assignment.
+    var installerKeyPermissions = await verifyDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id &&
+                 (x.PermissionName == PermissionNames.InstallerKeyRead ||
+                  x.PermissionName == PermissionNames.InstallerKeyWrite ||
+                  x.PermissionName == PermissionNames.AgentInstall))
       .ToListAsync(TestContext.Current.CancellationToken);
 
-    var serverAgentInstall = agentInstallAssignments.FirstOrDefault(x => x.ScopeKind == PermissionScopeKind.Server);
-    var tenantAgentInstall = agentInstallAssignments.FirstOrDefault(x => x.ScopeKind == PermissionScopeKind.Tenant);
-
-    Assert.NotNull(serverAgentInstall);
-    Assert.Null(serverAgentInstall.ScopeId);
-    Assert.Null(serverAgentInstall.OwningTenantId);
-    Assert.NotNull(tenantAgentInstall);
-    Assert.Equal(tenant.Id, tenantAgentInstall.ScopeId);
-    Assert.Equal(tenant.Id, tenantAgentInstall.OwningTenantId);
+    Assert.Equal(3, installerKeyPermissions.Count);
+    foreach (var permission in installerKeyPermissions)
+    {
+      Assert.Equal(tenant.Id, permission.ScopeId);
+      Assert.Equal(PermissionScopeKind.Tenant, permission.ScopeKind);
+      Assert.Equal(tenant.Id, permission.OwningTenantId);
+    }
   }
 }

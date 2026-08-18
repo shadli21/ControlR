@@ -77,6 +77,7 @@ public class PermissionRuleResolver(
 
     var directAssignments = await LoadAssignments(
       db, principalKind, principal.PrincipalId, cancellationToken);
+      
     foreach (var assignment in directAssignments.Where(x => IsOwnedByPrincipalTenant(x, userTenantFilter)))
     {
       rules.Add(new PermissionRule(assignment, RuleSource.Direct, SourcePriority.Direct));

@@ -347,6 +347,7 @@ public class PermissionEvaluator(
       .IgnoreQueryFilters()
       .AsNoTracking()
       .FirstOrDefaultAsync(x => x.Id == row.ScopeId, cancellationToken);
+      
     if (device is null)
     {
       return false;

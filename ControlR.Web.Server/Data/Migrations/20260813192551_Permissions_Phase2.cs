@@ -173,16 +173,16 @@ public partial class Permissions_Phase2 : Migration
                 ("{nameof(PermissionAssignment.PrincipalKind)}", "{nameof(PermissionAssignment.PrincipalId)}", "{nameof(PermissionAssignment.PermissionName)}", "{nameof(PermissionAssignment.Effect)}", "{nameof(PermissionAssignment.ScopeKind)}", "{nameof(PermissionAssignment.ScopeId)}", "{nameof(PermissionAssignment.IsEnabled)}", "{nameof(PermissionAssignment.OwningTenantId)}", "{nameof(PermissionAssignment.CreatedByPrincipalType)}", "{nameof(PermissionAssignment.CreatedByPrincipalId)}")
               SELECT DISTINCT '{PermissionPrincipalKind.User}', ur."UserId", rp."PermissionName", '{PermissionEffect.Allow}',
                 CASE
-                  WHEN r."Name" IN ('Server Administrator', 'Installer Key Manager') THEN '{PermissionScopeKind.Server}'
+                  WHEN r."Name" = 'Server Administrator' THEN '{PermissionScopeKind.Server}'
                   ELSE '{PermissionScopeKind.Tenant}'
                 END,
                 CASE
-                  WHEN r."Name" IN ('Server Administrator', 'Installer Key Manager') THEN NULL
+                  WHEN r."Name" = 'Server Administrator' THEN NULL
                   ELSE u."TenantId"
                 END,
                 true,
                 CASE
-                  WHEN r."Name" IN ('Server Administrator', 'Installer Key Manager') THEN NULL
+                  WHEN r."Name" = 'Server Administrator' THEN NULL
                   ELSE u."TenantId"
                 END,
                 'system', CAST(ur."UserId" AS text)

@@ -1010,15 +1010,20 @@ public class ViewerHub(
       return;
     }
 
-    var permissions = await _permissionEvaluator.GetEffectivePermissionNames(
-      principal, Context.ConnectionAborted);
+    // Evaluate against a server resource so credential scoping is honored. GetEffectivePermissionNames
+    // returns the underlying user's full name-level set and could let a scoped credential subscribe.
+    var serverResource = new ResourceDescriptor(PermissionScopeKind.Server);
 
-    if (permissions.Contains(PermissionNames.ServerAlertsRead))
+    var canReadAlerts = await _permissionEvaluator.Evaluate(
+      principal, PermissionNames.ServerAlertsRead, serverResource, Context.ConnectionAborted);
+    if (canReadAlerts.Allowed)
     {
       await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerAlerts());
     }
 
-    if (permissions.Contains(PermissionNames.ServerTelemetryRead))
+    var canReadTelemetry = await _permissionEvaluator.Evaluate(
+      principal, PermissionNames.ServerTelemetryRead, serverResource, Context.ConnectionAborted);
+    if (canReadTelemetry.Allowed)
     {
       await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerTelemetry());
     }
