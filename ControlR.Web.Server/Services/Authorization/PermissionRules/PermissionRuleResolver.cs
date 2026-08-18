@@ -65,11 +65,13 @@ public class PermissionRuleResolver(
     var principalKind = ResolvePrincipalKind(principal.PrincipalType);
     var rules = new List<PermissionRule>();
 
-    // Tenant-ownership boundary for user principals: a user's effective rows are those owned
-    // by their current tenant, plus server-scoped rows (no owning tenant). Rows owned by a
-    // former tenant (e.g., after a cross-tenant invite move) are inert until cleaned up.
-    // Service accounts are exempt by design (server accounts retain cross-tenant reach).
-    var userTenantFilter = principal.PrincipalType == PrincipalClaimTypes.User
+    // Tenant-ownership boundary for tenant-confined principals: a user's (or tenant service
+    // account's) effective rows are those owned by their current tenant, plus server-scoped
+    // rows (no owning tenant). Rows owned by a former tenant (e.g., after a cross-tenant
+    // invite move) are inert until cleaned up. Only server service accounts are exempt by
+    // design (they retain cross-tenant reach); tenant service accounts are confined to a
+    // single tenant per the ServiceAccount entity contract.
+    var userTenantFilter = principal.PrincipalType is PrincipalClaimTypes.User or PrincipalClaimTypes.TenantServiceAccount
       ? principal.TenantId
       : null;
 

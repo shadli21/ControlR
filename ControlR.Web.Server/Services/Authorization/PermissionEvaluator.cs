@@ -56,6 +56,14 @@ public class PermissionEvaluator(
         return PermissionEvaluationResult.Deny("Logon token principal is missing required device scope.");
       }
 
+      // A logon token without a credential id cannot resolve its grant rows; fail closed
+      // rather than falling through to the recipient user's rules. This keeps the grant
+      // model keyed on the same condition as this boundary.
+      if (!principal.CredentialId.HasValue)
+      {
+        return PermissionEvaluationResult.Deny("Logon token principal is missing required credential id.");
+      }
+
       if (resource.Kind == PermissionScopeKind.Device &&
           resource.Id.HasValue &&
           resource.Id.Value != principal.DeviceScopeId.Value)
