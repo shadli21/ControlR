@@ -32,7 +32,7 @@ public class InstallerKeysController(
     var dto = await _installerKeyManager.CreateKey(
         tenantId,
         creatorId,
-        CreatorKind.User,
+        InstallerKeyCreatorKind.User,
         request.KeyType,
         request.AllowedUses,
         request.Expiration,

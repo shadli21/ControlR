@@ -31,7 +31,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.UsageBased,
         allowedUses: 5,
         expiration: null,
@@ -49,7 +49,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: otherUser.Id,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -68,7 +68,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -87,7 +87,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -111,7 +111,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: otherTenant.Id,
         creatorId: otherUser.Id,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -143,7 +143,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -152,7 +152,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: otherUser.Id,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -168,7 +168,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.TimeBased,
         allowedUses: null,
         expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -198,7 +198,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await keyManager.CreateKey(
         tenantId: tenant.Id,
         creatorId: user.Id,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -225,7 +225,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -234,7 +234,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: otherUser.Id,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -251,7 +251,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -260,7 +260,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.TimeBased,
         allowedUses: null,
         expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -282,7 +282,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.UsageBased,
         allowedUses: 3,
         expiration: null,
@@ -313,7 +313,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await keyManager.CreateKey(
         tenantId: tenant.Id,
         creatorId: user.Id,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -343,7 +343,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.UsageBased,
         allowedUses: 3,
         expiration: null,
@@ -377,7 +377,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -397,7 +397,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -421,7 +421,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: otherTenant.Id,
         creatorId: otherUser.Id,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -450,7 +450,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await keyManager.CreateKey(
         tenantId: tenant.Id,
         creatorId: user.Id,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -474,7 +474,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.UsageBased,
         allowedUses: 1,
         expiration: null,
@@ -492,7 +492,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.UsageBased,
         allowedUses: 10,
         expiration: null,
@@ -509,7 +509,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.TimeBased,
         allowedUses: null,
         expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -535,7 +535,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
       tenantId: _tenantId,
       creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.UsageBased,
       allowedUses: allowedUses,
       expiration: null,
@@ -557,7 +557,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
       tenantId: _tenantId,
       creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.UsageBased,
       allowedUses: 1,
       expiration: null,
@@ -573,7 +573,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.UsageBased,
         allowedUses: 1,
         expiration: null,
@@ -597,7 +597,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.UsageBased,
         allowedUses: 10,
         expiration: null,
@@ -624,7 +624,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -640,7 +640,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
       tenantId: _tenantId,
       creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.TimeBased,
       allowedUses: null,
       expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -670,7 +670,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
       tenantId: _tenantId,
       creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.TimeBased,
       allowedUses: null,
       expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -687,7 +687,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.TimeBased,
         allowedUses: null,
         expiration: _timeProvider.GetLocalNow().AddHours(1),
@@ -710,7 +710,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,
@@ -726,7 +726,7 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
     var dto = await _keyManager.CreateKey(
         tenantId: _tenantId,
         creatorId: _creatorId,
-        creatorKind: CreatorKind.User,
+        creatorKind: InstallerKeyCreatorKind.User,
         keyType: InstallerKeyType.Persistent,
         allowedUses: null,
         expiration: null,

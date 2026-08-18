@@ -118,12 +118,42 @@ public class TenantInvitesProvider(
       .ToListAsync();
     appDb.UserGroupMembers.RemoveRange(staleMemberships);
 
+    // The user's personal access tokens also carry scope rows keyed to the token principal,
+    // tied to the former tenant. Remove them so no credential scope rows survive the move;
+    // evaluation-time bounding would keep them inert, but this clears the residue (and the
+    // pat-scope-trim scan) rather than leaving orphaned grants for a moved user's tokens.
+    var stalePatTokenIds = appDb.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .Where(x => x.UserId == invitee.Id)
+      .Select(x => x.Id);
+
+    var stalePatScopeRows = await appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
+                  stalePatTokenIds.Contains(x.PrincipalId))
+      .ToListAsync();
+
+    foreach (var assignment in stalePatScopeRows)
+    {
+      appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+        AuthorizationChangeLogActions.PermissionAssignmentDeleted,
+        AuthorizationChangeLogActorTypes.System,
+        actorPrincipalId: null,
+        AuthorizationChangeLogTargetTypes.PermissionAssignment,
+        assignment.Id,
+        assignment.OwningTenantId,
+        before: new PermissionAssignmentSnapshot(
+          assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));
+    }
+
+    appDb.PermissionAssignments.RemoveRange(stalePatScopeRows);
+
     appDb.TenantInvites.Remove(invite);
     await appDb.SaveChangesAsync();
 
     _logger.LogInformation(
-      "User {UserId} moved to tenant {TenantId}: removed {AssignmentCount} assignment(s) and {MembershipCount} group membership(s).",
-      invitee.Id, invite.TenantId, staleAssignments.Count, staleMemberships.Count);
+      "User {UserId} moved to tenant {TenantId}: removed {AssignmentCount} assignment(s), {PatScopeCount} PAT scope row(s), and {MembershipCount} group membership(s).",
+      invitee.Id, invite.TenantId, staleAssignments.Count, stalePatScopeRows.Count, staleMemberships.Count);
 
     var response = new InternalDtos.AcceptInvitationResponseDto(true);
     return HttpResult.Ok(response);

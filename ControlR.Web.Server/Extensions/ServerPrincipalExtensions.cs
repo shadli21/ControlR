@@ -14,16 +14,16 @@ public static class ServerPrincipalExtensions
 {
   /// <summary>
   /// Maps the authenticated principal's <c>controlr:principal:type</c> claim to the
-  /// corresponding <see cref="CreatorKind"/>. Defaults to <see cref="CreatorKind.User"/>
+  /// corresponding <see cref="InstallerKeyCreatorKind"/>. Defaults to <see cref="InstallerKeyCreatorKind.User"/>
   /// when the claim is absent or unrecognized.
   /// </summary>
-  public static CreatorKind GetCreatorKind(this ClaimsPrincipal user)
+  public static InstallerKeyCreatorKind GetCreatorKind(this ClaimsPrincipal user)
   {
     return user.GetPrincipalType() switch
     {
-      PrincipalClaimTypes.ServerServiceAccount => CreatorKind.ServerServiceAccount,
-      PrincipalClaimTypes.TenantServiceAccount => CreatorKind.TenantServiceAccount,
-      _ => CreatorKind.User,
+      PrincipalClaimTypes.ServerServiceAccount => InstallerKeyCreatorKind.ServerServiceAccount,
+      PrincipalClaimTypes.TenantServiceAccount => InstallerKeyCreatorKind.TenantServiceAccount,
+      _ => InstallerKeyCreatorKind.User,
     };
   }
 

@@ -36,7 +36,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.UsageBased,
       allowedUses: 1,
       expiration: null,
@@ -77,7 +77,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,
@@ -119,7 +119,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,
@@ -151,7 +151,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,
@@ -192,7 +192,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: unauthorizedUser.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,
@@ -219,7 +219,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.UsageBased,
       allowedUses: 5,
       expiration: null,
@@ -257,7 +257,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,
@@ -294,7 +294,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,
@@ -321,7 +321,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.UsageBased,
       allowedUses: 1,
       expiration: null,
@@ -352,7 +352,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.TimeBased,
       allowedUses: null,
       expiration: testServer.TimeProvider.GetUtcNow().AddHours(1),
@@ -381,7 +381,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,
@@ -427,7 +427,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,
@@ -464,7 +464,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.UsageBased,
       allowedUses: 1,
       expiration: null,
@@ -507,7 +507,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,
@@ -548,7 +548,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.TimeBased,
       allowedUses: null,
       expiration: testServer.TimeProvider.GetUtcNow().AddHours(1),
@@ -578,7 +578,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.UsageBased,
       allowedUses: 3,
       expiration: null,
@@ -615,7 +615,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var installerKey = await keyManager.CreateKey(
       tenantId: tenant.Id,
       creatorId: user.Id,
-      creatorKind: CreatorKind.User,
+      creatorKind: InstallerKeyCreatorKind.User,
       keyType: InstallerKeyType.Persistent,
       allowedUses: null,
       expiration: null,

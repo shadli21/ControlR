@@ -100,6 +100,67 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
     Assert.False(afterMove.Allowed);
   }
 
+  [Fact]
+  public async Task AcceptInvite_ClearsPatScopeRowsFromFormerTenant()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var (tenantA, tenantB, user, deviceA, _) = await SetupMovedUserScenario(testApp);
+
+    // Create a PAT owned by the user, with a tenant-A scope row.
+    var tokenId = Guid.NewGuid();
+    using (var scope = testApp.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.PersonalAccessTokens.Add(new PersonalAccessToken
+      {
+        Id = tokenId,
+        Name = "mover-pat",
+        HashedKey = "hash",
+        UserId = user.Id
+      });
+      db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.PersonalAccessToken,
+        tokenId,
+        PermissionNames.DeviceRead,
+        PermissionScopeKind.Tenant,
+        tenantA.Id,
+        tenantA.Id,
+        "test",
+        user.Id.ToString()));
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var activationCode = Guid.NewGuid().ToString("N");
+    using (var scope = testApp.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.TenantInvites.Add(new TenantInvite
+      {
+        TenantId = tenantB.Id,
+        ActivationCode = activationCode,
+        InviteeEmail = user.Email!.ToLower()
+      });
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    using (var scope = testApp.CreateScope())
+    {
+      var invitesProvider = scope.ServiceProvider.GetRequiredService<ITenantInvitesProvider>();
+      var acceptResult = await invitesProvider.AcceptInvite(
+        new InternalDtos.AcceptInvitationRequestDto(activationCode, user.Email!, "N3wTenantPass!"));
+      Assert.True(acceptResult.IsSuccess, $"AcceptInvite failed: {acceptResult.Reason}");
+    }
+
+    using var verifyScope = testApp.CreateScope();
+    await using var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+    var remainingPatScopeRows = await verifyDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
+                  x.PrincipalId == tokenId)
+      .CountAsync(TestContext.Current.CancellationToken);
+    Assert.Equal(0, remainingPatScopeRows);
+  }
+
   private static async Task<ResourceDescriptor> BuildDeviceResource(
     IServiceScope scope, Guid deviceId, Guid tenantId, Guid groupId)
   {

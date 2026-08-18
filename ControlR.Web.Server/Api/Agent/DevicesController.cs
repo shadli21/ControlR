@@ -68,7 +68,7 @@ public class DevicesController : ControllerBase
     {
       logger.LogInformation("Device already exists.  Verifying user authorization.");
 
-      if (installerKey.CreatorKind == CreatorKind.User)
+      if (installerKey.CreatorKind == InstallerKeyCreatorKind.User)
       {
         var keyCreator = await userManager.FindByIdAsync($"{installerKey.CreatorId}");
         if (keyCreator is null)
