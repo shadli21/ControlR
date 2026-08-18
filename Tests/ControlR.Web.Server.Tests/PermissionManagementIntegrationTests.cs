@@ -1,9 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using ControlR.Libraries.Api.Contracts.Enums;
-using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Authn;
-using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.Tenants;
@@ -193,6 +190,31 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task EffectivePermission_Query_MovedUserFromOtherTenant_Returns404()
+  {
+    var (testServer, client, tenantId, _) = await CreateAuthenticatedServer();
+    using var _ = testServer;
+
+    // Create a user in another tenant.
+    var otherTenant = await testServer.Services.CreateTestTenant();
+    var otherUser = await testServer.Services.CreateTestUser(
+      otherTenant.Id, $"other-{Guid.NewGuid():N}@t.local");
+
+    // Querying that user from this tenant's context should return 404.
+    var queryResponse = await client.PostAsJsonAsync(
+      $"{HttpConstants.Internal.EffectivePermissionsEndpoint}/query",
+      new InternalDtos.EffectivePermissionQueryRequestDto(
+        PermissionPrincipalKind.User,
+        otherUser.Id,
+        PermissionNames.DeviceRead,
+        PermissionScopeKind.Tenant,
+        tenantId),
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.NotFound, queryResponse.StatusCode);
+  }
+
+  [Fact]
   public async Task EffectivePermission_Query_ReturnsAllowedForTenantAdmin()
   {
     var (testServer, client, tenantId, userId) = await CreateAuthenticatedServer();
@@ -204,6 +226,51 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
         PermissionPrincipalKind.User,
         userId,
         "tenant.permissions.read",
+        PermissionScopeKind.Tenant,
+        tenantId),
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, queryResponse.StatusCode);
+    var result = await queryResponse.Content.ReadFromJsonAsync<InternalDtos.EffectivePermissionQueryResponseDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(result);
+    Assert.True(result.IsAllowed);
+  }
+
+  [Fact]
+  public async Task EffectivePermission_Query_ReturnsAllowedForTenantServiceAccount()
+  {
+    var (testServer, client, tenantId, _) = await CreateAuthenticatedServer();
+    using var _ = testServer;
+
+    // Create a tenant service account and grant it device.read at tenant scope.
+    var createAccountResponse = await client.PostAsJsonAsync(
+      HttpConstants.Internal.ServiceAccountsEndpoint,
+      new InternalDtos.CreateTenantServiceAccountRequestDto("Effective Query SA", null),
+      TestContext.Current.CancellationToken);
+    var account = await createAccountResponse.Content.ReadFromJsonAsync<InternalDtos.TenantServiceAccountDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(account);
+
+    var createAssignmentResponse = await client.PostAsJsonAsync(
+      HttpConstants.Internal.PermissionAssignmentsEndpoint,
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.ServiceAccount,
+        account.Id,
+        PermissionNames.DeviceRead,
+        PermissionEffect.Allow,
+        PermissionScopeKind.Tenant,
+        tenantId,
+        null),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, createAssignmentResponse.StatusCode);
+
+    var queryResponse = await client.PostAsJsonAsync(
+      $"{HttpConstants.Internal.EffectivePermissionsEndpoint}/query",
+      new InternalDtos.EffectivePermissionQueryRequestDto(
+        PermissionPrincipalKind.ServiceAccount,
+        account.Id,
+        PermissionNames.DeviceRead,
         PermissionScopeKind.Tenant,
         tenantId),
       TestContext.Current.CancellationToken);
