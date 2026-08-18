@@ -111,12 +111,21 @@ public class CredentialScopeService(
   {
     foreach (var scope in scopes)
     {
+      // Validation (ValidateLogonTokenScopes) guarantees a non-null ScopeId equal to the
+      // token's device; fail loudly rather than silently re-pointing a malformed scope.
+      var scopeDeviceId = scope.ScopeId ??
+        throw new InvalidOperationException("Logon token scope is missing its device id. Scopes must be validated before writing.");
+      if (scopeDeviceId != deviceId)
+      {
+        throw new InvalidOperationException("Logon token scope targets a device other than the token's device. Scopes must be validated before writing.");
+      }
+
       _appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.LogonToken,
         tokenId,
         scope.PermissionName,
         scope.ScopeKind,
-        scope.ScopeId ?? deviceId,
+        scopeDeviceId,
         tenantId,
         actorType,
         actorPrincipalId.ToString()));

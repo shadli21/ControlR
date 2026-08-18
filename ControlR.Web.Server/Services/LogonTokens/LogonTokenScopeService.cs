@@ -229,6 +229,15 @@ public class LogonTokenScopeService(
           $"Unknown permission name: {scope.PermissionName}");
       }
 
+      // Logon tokens are hard-bound to their device; a grant for any other device would be
+      // inert at evaluation time, so reject it up front instead of writing a dead row.
+      if (scope.ScopeKind == PermissionScopeKind.Device && scope.ScopeId != deviceId)
+      {
+        return HttpResult.Fail<ScopePreparation>(
+          HttpResultErrorCode.BadRequest,
+          "Logon token scopes must target the token's device.");
+      }
+
       if (seen.Add((scope.PermissionName, scope.ScopeKind, scope.ScopeId)))
       {
         scopes.Add(scope);
@@ -238,7 +247,7 @@ public class LogonTokenScopeService(
     var hasDeviceRead = scopes.Any(x =>
       x.PermissionName == PermissionNames.DeviceRead &&
       x.ScopeKind == PermissionScopeKind.Device &&
-      (x.ScopeId is null || x.ScopeId == deviceId));
+      x.ScopeId == deviceId);
     if (!hasDeviceRead)
     {
       scopes.Add(new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, deviceId));

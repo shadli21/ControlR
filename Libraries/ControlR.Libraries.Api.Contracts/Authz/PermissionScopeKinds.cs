@@ -26,6 +26,7 @@ public static class PermissionScopeKinds
     PermissionScopeKind.CustomerTenant => 2,
     PermissionScopeKind.Tenant => 3,
     PermissionScopeKind.Server => 4,
-    _ => 0
+    _ => throw new ArgumentOutOfRangeException(
+      nameof(scopeKind), scopeKind, "Not a legal resource scope kind.")
   };
 }

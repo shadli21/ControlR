@@ -16,8 +16,5 @@ public enum PermissionScopeKind
   CustomerTenant = 3,
   DeviceGroup = 4,
   Device = 5,
-  UserGroup = 6,
-  User = 7,
-  PersonalAccessToken = 8,
-  ServiceAccount = 9
+  UserGroup = 6
 }

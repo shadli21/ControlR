@@ -11,30 +11,6 @@ namespace ControlR.Web.Server.Tests;
 
 public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
 {
-  [Fact]
-  public void Catalog_AllowedScopeKinds_ExcludePrincipalKinds()
-  {
-    var resourceKinds = new HashSet<PermissionScopeKind>
-    {
-      PermissionScopeKind.Server,
-      PermissionScopeKind.Tenant,
-      PermissionScopeKind.CustomerTenant,
-      PermissionScopeKind.DeviceGroup,
-      PermissionScopeKind.Device,
-      PermissionScopeKind.UserGroup
-    };
-
-    foreach (var (name, metadata) in PermissionCatalog.All)
-    {
-      foreach (var scopeKind in metadata.AllowedScopeKinds)
-      {
-        Assert.True(
-          resourceKinds.Contains(scopeKind),
-          $"Permission '{name}' lists '{scopeKind}' which is a principal kind, not a resource scope kind.");
-      }
-    }
-  }
-
   [Theory]
   [InlineData(PermissionNames.ServerAdmin, PermissionScopeKind.Server)]
   [InlineData(PermissionNames.TenantPermissionsWrite, PermissionScopeKind.Tenant)]

@@ -78,12 +78,4 @@ internal partial class InternalApi
         ?? throw new InvalidOperationException("Empty response from authorization change logs endpoint.");
     });
   }
-
-  async Task<ApiResult<InternalDtos.TenantSummaryDto[]>> ITenantsApi.Get(CancellationToken cancellationToken)
-  {
-    return await _client.ExecuteApiCall(async () =>
-      await _client.HttpClient.GetFromJsonAsync<InternalDtos.TenantSummaryDto[]>(
-        HttpConstants.Internal.TenantsEndpoint, cancellationToken)
-      ?? []);
-  }
 }
