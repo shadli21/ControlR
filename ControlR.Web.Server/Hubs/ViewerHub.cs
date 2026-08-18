@@ -517,7 +517,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.Read) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.AgentUpdate) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -797,7 +797,9 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      // Uninstalling removes the agent from the machine, so it requires delete authority
+      // rather than the catch-all read policy.
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.Delete) is not { IsSuccess: true } authResult)
       {
         return;
       }

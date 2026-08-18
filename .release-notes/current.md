@@ -1,6 +1,7 @@
 ## Breaking Changes
 
-None.
+- Some of the DTOs used in the `/api/v1/*` endpoints have been changed.
+  - There will be no more breaking changes to the `/api/v1/*` endpoints after this release.
 
 ## Enhancements
 

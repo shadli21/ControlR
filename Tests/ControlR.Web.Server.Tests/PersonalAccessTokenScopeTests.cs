@@ -152,47 +152,6 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task CreateToken_WithValidScopes_WritesScopeRows()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
-    var user = await testApp.App.Services.CreateTestUser(
-      tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local", PermissionPresets.DeviceSuperUser);
-    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
-
-    using var scope = testApp.CreateScope();
-    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
-
-    var result = await manager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto(
-        "Scoped PAT",
-        Scopes: [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
-      user.Id);
-
-    Assert.True(result.IsSuccess, $"Scoped PAT creation failed: {result.Reason}");
-
-    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    var tokenId = result.Value.PersonalAccessToken.Id;
-
-    var scopeRows = await db.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken && x.PrincipalId == tokenId)
-      .ToListAsync(TestContext.Current.CancellationToken);
-
-    var row = Assert.Single(scopeRows);
-    Assert.Equal(PermissionNames.DeviceRead, row.PermissionName);
-    Assert.Equal(PermissionScopeKind.Device, row.ScopeKind);
-    Assert.Equal(device.Id, row.ScopeId);
-    Assert.Equal(tenant.Id, row.OwningTenantId);
-
-    var changeLogCount = await db.AuthorizationChangeLogs
-      .IgnoreQueryFilters()
-      .CountAsync(x => x.TargetId == tokenId, TestContext.Current.CancellationToken);
-    Assert.Equal(1, changeLogCount);
-  }
-
-  [Fact]
   public async Task CreateToken_WithValidScopes_OnPostgres_WritesScopeRowsKeyedByRealTokenId()
   {
     // Regression test: entity Ids are database-generated (gen_random_uuid()) on Postgres, so
@@ -220,6 +179,47 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
     var tokenId = result.Value.PersonalAccessToken.Id;
 
     Assert.NotEqual(Guid.Empty, tokenId);
+
+    var scopeRows = await db.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken && x.PrincipalId == tokenId)
+      .ToListAsync(TestContext.Current.CancellationToken);
+
+    var row = Assert.Single(scopeRows);
+    Assert.Equal(PermissionNames.DeviceRead, row.PermissionName);
+    Assert.Equal(PermissionScopeKind.Device, row.ScopeKind);
+    Assert.Equal(device.Id, row.ScopeId);
+    Assert.Equal(tenant.Id, row.OwningTenantId);
+
+    var changeLogCount = await db.AuthorizationChangeLogs
+      .IgnoreQueryFilters()
+      .CountAsync(x => x.TargetId == tokenId, TestContext.Current.CancellationToken);
+    Assert.Equal(1, changeLogCount);
+  }
+
+  [Fact]
+  public async Task CreateToken_WithValidScopes_WritesScopeRows()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testApp.App.Services.CreateTestUser(
+      tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local", PermissionPresets.DeviceSuperUser);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var result = await manager.CreateToken(
+      new InternalDtos.CreatePersonalAccessTokenRequestDto(
+        "Scoped PAT",
+        Scopes: [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
+      user.Id);
+
+    Assert.True(result.IsSuccess, $"Scoped PAT creation failed: {result.Reason}");
+
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var tokenId = result.Value.PersonalAccessToken.Id;
 
     var scopeRows = await db.PermissionAssignments
       .IgnoreQueryFilters()

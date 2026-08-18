@@ -7,6 +7,7 @@ namespace ControlR.Web.Server.Authz.Policies;
 /// </summary>
 public static class DeviceResourcePolicies
 {
+  public const string AgentUpdate = "DeviceAgentUpdate";
   public const string AliasWrite = "DeviceAliasWrite";
   public const string ChatSend = "DeviceChatSend";
   public const string CtrlAltDelSend = "DeviceCtrlAltDelSend";
@@ -33,6 +34,7 @@ public static class DeviceResourcePolicies
     new Dictionary<string, string>
     {
       [Read] = PermissionNames.DeviceRead,
+      [AgentUpdate] = PermissionNames.DeviceAgentUpdate,
       [RemoteControlConnect] = PermissionNames.DeviceRemoteControlConnect,
       [Delete] = PermissionNames.DeviceDelete,
       [AliasWrite] = PermissionNames.DeviceAliasWrite,

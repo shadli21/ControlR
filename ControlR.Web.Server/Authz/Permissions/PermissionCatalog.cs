@@ -73,7 +73,7 @@ public static class PermissionCatalog
     Add(PermissionNames.TenantPermissionsRead, "Read Permissions", "View permission assignments within the tenant.", tenant);
     Add(PermissionNames.TenantAuthorizationLogsRead, "Read Authorization Logs", "View the tenant's authorization change log.", tenant);
     Add(PermissionNames.TenantPermissionsWrite, "Manage Permissions", "Create and update allow permission assignments within the tenant.", tenant, selfRemovable: false);
-    Add(PermissionNames.TenantPermissionsDeny, "Manage Deny Permissions", "Create and update deny permission assignments within the tenant.", tenant, selfRemovable: false);
+    Add(PermissionNames.TenantPermissionsDeny, "Manage Deny Permissions", "Create and update deny permission assignments. Required for deny-effect assignments at any scope, including server scope.", tenant, selfRemovable: false);
 
     Add(PermissionNames.DeviceRead, "Read Device", "View device details and status.", deviceResources);
     Add(PermissionNames.DeviceDelete, "Delete Device", "Remove a device from the system.", deviceResources);

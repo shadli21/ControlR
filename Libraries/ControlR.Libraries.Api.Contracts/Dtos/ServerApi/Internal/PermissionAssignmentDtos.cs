@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+using ControlR.Libraries.Api.Contracts.Constants;
+
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 public record CreatePermissionAssignmentRequestDto(
@@ -48,13 +50,8 @@ public record UpdatePermissionAssignmentRequestDto(
 
   bool IsEnabled);
 
-public record DeleteManyPermissionAssignmentsRequestDto(IReadOnlyList<Guid> AssignmentIds)
-{
-  public const int MaxAssignmentIds = 1000;
-
-  [MaxLength(MaxAssignmentIds)]
-  public IReadOnlyList<Guid> AssignmentIds { get; init; } = AssignmentIds;
-}
+public record DeleteManyPermissionAssignmentsRequestDto(
+  [property: MaxLength(DtoLimits.PermissionAssignmentIdsMaxCount)] IReadOnlyList<Guid> AssignmentIds);
 
 public record DeleteManyPermissionAssignmentsResponseDto(
   IReadOnlyList<Guid> SuccessIds,

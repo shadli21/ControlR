@@ -67,6 +67,17 @@
         Permissions
       </MudNavLink>
     </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequirePermissionAssignmentsRead)">
+      <MudNavLink Href="@(ClientRoutes.EffectivePermissions)" Match="NavLinkMatch.Prefix"
+                  Icon="@Icons.Material.Filled.FactCheck">
+        Effective Permissions
+      </MudNavLink>
+    </AuthorizeView>
+    @*
+      This tenant link is suppressed for users who already hold the server-scoped
+      Authorization Logs permission, so they don't see the same link in both the
+      Tenant Admin and Server Admin sections.
+    *@
     @if (!_canSeeServerAuthorizationLogs)
     {
       <AuthorizeView Policy="@(PolicyNames.RequireAuthorizationLogsRead)">
@@ -109,12 +120,6 @@
       <MudNavLink Href="@(ClientRoutes.ServerServiceAccounts)" Match="NavLinkMatch.Prefix"
                   Icon="@Icons.Material.Filled.SupervisorAccount">
         Server Service Accounts
-      </MudNavLink>
-    </AuthorizeView>
-    <AuthorizeView Policy="@(PolicyNames.RequireServerAdmin)">
-      <MudNavLink Href="@(ClientRoutes.EffectivePermissions)" Match="NavLinkMatch.Prefix"
-                  Icon="@Icons.Material.Filled.FactCheck">
-        Effective Permissions
       </MudNavLink>
     </AuthorizeView>
     <AuthorizeView Policy="@(PolicyNames.RequireServerAuthorizationLogsRead)">

@@ -9,6 +9,7 @@ public static class DtoLimits
   public const int ExpirationMinutesDefault = 15;
   public const int ExpirationMinutesMax = 1440;
   public const int ExpirationMinutesMin = 1;
+  public const int PermissionAssignmentIdsMaxCount = 1_000;
   public const int PermissionsMaxLength = 100;
   public const int ServiceAccountDescriptionMaxLength = 500;
   public const int ServiceAccountNameMaxLength = 100;

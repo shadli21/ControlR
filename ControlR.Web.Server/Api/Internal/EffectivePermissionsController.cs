@@ -2,6 +2,7 @@ using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ControlR.Web.Server.Api.Internal;
 
@@ -16,12 +17,25 @@ public class EffectivePermissionsController(IPermissionEvaluator permissionEvalu
   [HttpPost("query")]
   [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
   public async Task<ActionResult<InternalDtos.EffectivePermissionQueryResponseDto>> Query(
+    [FromServices] AppDb appDb,
     [FromBody] InternalDtos.EffectivePermissionQueryRequestDto request,
     CancellationToken cancellationToken)
   {
     if (!User.TryGetTenantId(out var tenantId))
     {
       return BadRequest("User tenant not found.");
+    }
+
+    // Defense-in-depth: the resolver already confines tenant principals to their own
+    // tenant's rows, but confirm the queried principal belongs to the caller's tenant so a
+    // foreign principal id cannot be probed at all. The Users/UserGroups predicates are
+    // redundant with the claims-driven query filters but kept as an explicit boundary;
+    // ServiceAccounts has no query filter, so its predicate is the only tenant guard here.
+    // Server service accounts are excluded: their holdings are server-level configuration,
+    // not tenant business.
+    if (!await PrincipalExistsInTenant(appDb, request.PrincipalKind, request.PrincipalId, tenantId, cancellationToken))
+    {
+      return NotFound("Principal not found in this tenant.");
     }
 
     var principal = new PrincipalDescriptor(
@@ -39,4 +53,22 @@ public class EffectivePermissionsController(IPermissionEvaluator permissionEvalu
       result.Allowed,
       result.Allowed ? null : result.DenialReason ?? "Permission denied by policy evaluation."));
   }
+
+  private static Task<bool> PrincipalExistsInTenant(
+    AppDb appDb,
+    PermissionPrincipalKind principalKind,
+    Guid principalId,
+    Guid tenantId,
+    CancellationToken cancellationToken) => principalKind switch
+    {
+      PermissionPrincipalKind.User => appDb.Users
+        .AnyAsync(x => x.Id == principalId && x.TenantId == tenantId, cancellationToken),
+      PermissionPrincipalKind.UserGroup => appDb.UserGroups
+        .AnyAsync(x => x.Id == principalId && x.TenantId == tenantId, cancellationToken),
+      PermissionPrincipalKind.ServiceAccount => appDb.ServiceAccounts
+        .AnyAsync(x => x.Id == principalId &&
+                       x.Kind == ServiceAccountKind.Tenant &&
+                       x.TenantId == tenantId, cancellationToken),
+      _ => Task.FromResult(false)
+    };
 }
