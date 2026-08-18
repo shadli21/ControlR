@@ -65,7 +65,7 @@ internal class CursorWatcherX11(
     }
   }
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
     try
     {

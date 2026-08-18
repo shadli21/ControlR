@@ -28,9 +28,9 @@ public class PatScopeTrimBackgroundService(
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
-    await Sweep(CancellationToken.None);
+    await Sweep(stoppingToken);
   }
 
   protected override async Task OnStartingAsync(CancellationToken stoppingToken)

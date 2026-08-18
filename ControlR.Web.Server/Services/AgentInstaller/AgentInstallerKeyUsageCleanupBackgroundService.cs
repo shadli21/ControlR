@@ -40,9 +40,9 @@ public class AgentInstallerKeyUsageCleanupBackgroundService(
     return removedCount;
   }
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
-    await CleanExpiredUsages();
+    await CleanExpiredUsages(stoppingToken);
   }
 
   protected override async Task OnStartingAsync(CancellationToken stoppingToken)

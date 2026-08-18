@@ -35,7 +35,7 @@ public abstract class PeriodicBackgroundService(
     {
       try
       {
-        await HandleElapsed();
+        await HandleElapsed(stoppingToken);
       }
       catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
       {
@@ -51,7 +51,7 @@ public abstract class PeriodicBackgroundService(
     Logger.LogInformation("Stopping background service. Application is stopping.");
   }
 
-  protected abstract Task HandleElapsed();
+  protected abstract Task HandleElapsed(CancellationToken stoppingToken);
 
   protected virtual Task OnStartingAsync(CancellationToken stoppingToken) => Task.CompletedTask;
 }

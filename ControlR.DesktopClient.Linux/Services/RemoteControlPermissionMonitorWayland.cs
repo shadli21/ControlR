@@ -30,7 +30,7 @@ public class RemoteControlPermissionMonitorWayland(
   private readonly IToaster _toaster = toaster;
   private readonly IWaylandPermissionProvider _waylandPermissionProvider = waylandPermissionProvider;
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
     if (!_desktopEnvironmentDetector.IsWayland())
     {

@@ -14,7 +14,6 @@ public class AuthorizationChangeLogCleanupBackgroundService(
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogger _logger = logger;
   private readonly TimeProvider _timeProvider = timeProvider;
-  private CancellationToken _stoppingToken;
 
   public async Task<int> CleanExpiredEntries(CancellationToken cancellationToken = default)
   {
@@ -41,14 +40,13 @@ public class AuthorizationChangeLogCleanupBackgroundService(
     return removedCount;
   }
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
-    await CleanExpiredEntries(_stoppingToken);
+    await CleanExpiredEntries(stoppingToken);
   }
 
   protected override async Task OnStartingAsync(CancellationToken stoppingToken)
   {
-    _stoppingToken = stoppingToken;
     await CleanExpiredEntries(stoppingToken);
   }
 

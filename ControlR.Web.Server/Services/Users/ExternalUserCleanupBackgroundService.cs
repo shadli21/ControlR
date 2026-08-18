@@ -59,9 +59,9 @@ public class ExternalUserCleanupBackgroundService(
     return expiredUserIds.Count;
   }
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
-    await CleanExpiredExternalUsers();
+    await CleanExpiredExternalUsers(stoppingToken);
   }
 
   protected override async Task OnStartingAsync(CancellationToken stoppingToken)

@@ -23,7 +23,6 @@ public class LogonTokenCleanupBackgroundService(
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogger _logger = logger;
   private readonly TimeProvider _timeProvider = timeProvider;
-  private CancellationToken _stoppingToken;
 
   public async Task<int> CleanExpiredTokens(CancellationToken cancellationToken = default)
   {
@@ -84,14 +83,13 @@ public class LogonTokenCleanupBackgroundService(
     return totalRemoved;
   }
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
-    await RunCleanup(_stoppingToken);
+    await RunCleanup(stoppingToken);
   }
 
   protected override async Task OnStartingAsync(CancellationToken stoppingToken)
   {
-    _stoppingToken = stoppingToken;
     await RunCleanup(stoppingToken);
   }
 
