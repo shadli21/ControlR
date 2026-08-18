@@ -1,4 +1,5 @@
 using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Services.Authorization;
 
 namespace ControlR.Web.Server.Services.PermissionAssignments;
 
@@ -16,9 +17,12 @@ public interface IPermissionAssignmentSeeder
     CancellationToken cancellationToken = default);
 }
 
-public class PermissionAssignmentSeeder(AppDb appDb) : IPermissionAssignmentSeeder
+public class PermissionAssignmentSeeder(
+  AppDb appDb,
+  IAuthorizationChangeLogFactory changeLogFactory) : IPermissionAssignmentSeeder
 {
   private readonly AppDb _appDb = appDb;
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
 
   /// <summary>
   /// Seeds permission assignments for every permission in the given presets. Each permission is
@@ -26,6 +30,11 @@ public class PermissionAssignmentSeeder(AppDb appDb) : IPermissionAssignmentSeed
   /// CustomerTenant/DeviceGroup &gt; Device). Server-wide permissions get ScopeKind.Server with
   /// no ScopeId or OwningTenantId; everything else lands at Tenant scope targeting the given
   /// tenant, matching the PermissionEvaluator's ScopeMatches requirements.
+  ///
+  /// The existing-keys scan is not tenant-filtered because <c>userId</c> is a primary key and
+  /// identifies exactly one principal; the unique index is the final dedup guard (a concurrent
+  /// seed for the same principal is not a realistic scenario). One summary change-log entry is
+  /// written per seed operation rather than one per seeded row.
   /// </summary>
   public async Task SeedAssignments(
     Guid userId,
@@ -42,7 +51,9 @@ public class PermissionAssignmentSeeder(AppDb appDb) : IPermissionAssignmentSeed
       .Select(x => new AssignmentKey(x.PermissionName, x.ScopeKind, x.ScopeId, x.Effect))
       .ToHashSetAsync(cancellationToken);
 
+    var appliedPresets = new List<string>();
     var seeded = new HashSet<string>();
+    var seededCount = 0;
     foreach (var presetName in presetNames)
     {
       var permissions = PermissionPresets.GetPermissions(presetName);
@@ -51,6 +62,7 @@ public class PermissionAssignmentSeeder(AppDb appDb) : IPermissionAssignmentSeed
         continue;
       }
 
+      appliedPresets.Add(presetName);
       foreach (var permission in permissions)
       {
         if (!seeded.Add(permission))
@@ -75,7 +87,20 @@ public class PermissionAssignmentSeeder(AppDb appDb) : IPermissionAssignmentSeed
           tenantId,
           AuthorizationChangeLogActorTypes.System,
           userId.ToString()));
+        seededCount++;
       }
+    }
+
+    if (seededCount > 0)
+    {
+      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+        AuthorizationChangeLogActions.PermissionAssignmentsSeeded,
+        AuthorizationChangeLogActorTypes.System,
+        actorPrincipalId: null,
+        AuthorizationChangeLogTargetTypes.User,
+        userId,
+        tenantId,
+        after: new PermissionAssignmentSeedSummary(seededCount, appliedPresets)));
     }
 
     await _appDb.SaveChangesAsync(cancellationToken);

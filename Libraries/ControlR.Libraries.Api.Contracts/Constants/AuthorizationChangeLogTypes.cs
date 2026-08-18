@@ -21,6 +21,7 @@ public static class AuthorizationChangeLogActions
   public const string DeviceGroupUpdated = "device-group-updated";
   public const string PermissionAssignmentCreated = "permission-assignment-created";
   public const string PermissionAssignmentDeleted = "permission-assignment-deleted";
+  public const string PermissionAssignmentsSeeded = "permission-assignments-seeded";
   public const string PermissionAssignmentUpdated = "permission-assignment-updated";
   public const string ServiceAccountCreated = "service-account-created";
   public const string ServiceAccountCredentialCreated = "service-account-credential-created";
@@ -57,5 +58,6 @@ public static class AuthorizationChangeLogTargetTypes
   public const string PersonalAccessToken = "PersonalAccessToken";
   public const string ServiceAccount = "ServiceAccount";
   public const string ServiceAccountCredential = "ServiceAccountCredential";
+  public const string User = "User";
   public const string UserGroup = "UserGroup";
 }

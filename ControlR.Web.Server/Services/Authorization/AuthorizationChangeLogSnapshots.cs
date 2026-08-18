@@ -42,6 +42,12 @@ public sealed record CredentialScopeSetSummary(int ScopeCount);
 public sealed record CredentialScopeSetFailureSummary(int ScopeCount, string Reason);
 
 /// <summary>
+/// Summary of a preset-seeding operation. One entry is written per seed call rather than one
+/// per seeded row, so bootstrap grants are auditable without per-row noise.
+/// </summary>
+public sealed record PermissionAssignmentSeedSummary(int Count, IReadOnlyList<string> Presets);
+
+/// <summary>
 /// Snapshot of a customer's state at a point in time.
 /// Used for create/update/delete audit entries.
 /// </summary>
