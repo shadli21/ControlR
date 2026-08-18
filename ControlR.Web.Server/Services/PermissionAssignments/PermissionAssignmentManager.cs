@@ -1,6 +1,5 @@
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
 
@@ -171,6 +170,15 @@ public class PermissionAssignmentManager(
       authorityError.Code, authorityError.Reason);
     }
 
+    var serverTargetResult = await ValidateServerServiceAccountTarget(
+      request.PrincipalKind, request.PrincipalId, effectivePermissions, cancellationToken);
+
+    if (!serverTargetResult.IsSuccess)
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
+        serverTargetResult.ErrorCode, serverTargetResult.Reason);
+    }
+
     if (await ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId, tenantId, cancellationToken) is { } scopeError)
     {
       return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(scopeError.Code, scopeError.Reason);
@@ -294,6 +302,14 @@ public class PermissionAssignmentManager(
       {
         return HttpResult.Fail(authorityError.Code, authorityError.Reason);
       }
+    }
+
+    var serverTargetResult = await ValidateServerServiceAccountTarget(
+      requests[0].PrincipalKind, requests[0].PrincipalId, effectivePermissions, cancellationToken);
+
+    if (!serverTargetResult.IsSuccess)
+    {
+      return HttpResult.Fail(serverTargetResult.ErrorCode, serverTargetResult.Reason);
     }
 
     foreach (var request in requests)
@@ -588,6 +604,14 @@ public class PermissionAssignmentManager(
       {
         return HttpResult.Fail(authorityError.Code, authorityError.Reason);
       }
+    }
+
+    var serverTargetResult = await ValidateServerServiceAccountTarget(
+      principalKind, principalId, effectivePermissions, cancellationToken);
+
+    if (!serverTargetResult.IsSuccess)
+    {
+      return HttpResult.Fail(serverTargetResult.ErrorCode, serverTargetResult.Reason);
     }
 
     if (principalKind == PermissionPrincipalKind.User && principalId == actor.PrincipalId)
@@ -1074,6 +1098,36 @@ public class PermissionAssignmentManager(
         .AnyAsync(x => x.Id == principalId && x.TenantId == tenantId, cancellationToken),
       _ => false
     };
+  }
+
+  /// <summary>
+  /// Server-scoped service accounts operate cross-tenant by design, so assigning permissions
+  /// to one is a server-scope operation: only a caller with ServerPermissionsWrite may target
+  /// a server service account as a principal, regardless of the assignment's own scope kind.
+  /// This prevents a tenant admin from attaching a tenant-scoped grant to a server account
+  /// (which would strip its opt-in bypass or shadow its cross-tenant reach).
+  /// </summary>
+  private async Task<HttpResult> ValidateServerServiceAccountTarget(
+    PermissionPrincipalKind principalKind,
+    Guid principalId,
+    IReadOnlySet<string> effectivePermissions,
+    CancellationToken cancellationToken)
+  {
+    if (principalKind != PermissionPrincipalKind.ServiceAccount)
+    {
+      return HttpResult.Ok();
+    }
+
+    var isServerAccount = await _appDb.ServiceAccounts
+      .AnyAsync(x => x.Id == principalId && x.Kind == ServiceAccountKind.Server, cancellationToken);
+
+    if (isServerAccount && !effectivePermissions.Contains(PermissionNames.ServerPermissionsWrite))
+    {
+      return HttpResult.Fail(HttpResultErrorCode.Forbidden,
+        $"The '{PermissionNames.ServerPermissionsWrite}' permission is required to manage assignments for a server service account.");
+    }
+
+    return HttpResult.Ok();
   }
 
   private sealed record AssignmentKey(
