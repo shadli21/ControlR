@@ -1375,6 +1375,41 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task TenantIsolation_WhenAssignmentOwnedByOtherTenant_Denies()
+  {
+    // The assignment is owned by tenant A and covers a tenant-A resource, but the
+    // principal belongs to tenant B. Only the resolver's owning-tenant filter prevents
+    // the row from becoming a rule; scope matching alone would allow it. This isolates
+    // that boundary from the scope-match path.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenantA = await testApp.App.Services.CreateTestTenant("Tenant A");
+    var tenantB = await testApp.App.Services.CreateTestTenant("Tenant B");
+    var userB = await testApp.App.Services.CreateTestUser(tenantB.Id);
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenantA.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = userB.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenantA.Id,
+      OwningTenantId = tenantA.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(userB.Id, tenantB.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, deviceA.Id, tenantA.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("default deny", result.DenialReason);
+  }
+
+  [Fact]
   public async Task TenantScopeAssignment_CoversDeviceInTenant()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
