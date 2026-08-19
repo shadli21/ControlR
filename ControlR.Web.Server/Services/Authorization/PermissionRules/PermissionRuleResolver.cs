@@ -23,13 +23,25 @@ public class PermissionRuleResolver(
 {
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
 
+  // Memoization cache: within a scoped request, the same principal's assignments
+  // may be loaded multiple times (Resolve → LoadAssignments, Evaluate → LoadAssignments).
+  private readonly Dictionary<(PermissionPrincipalKind Kind, Guid Id), List<PermissionAssignment>> _cache = [];
+
   public async Task<List<PermissionAssignment>> LoadAssignments(
     PermissionPrincipalKind principalKind,
     Guid principalId,
     CancellationToken cancellationToken)
   {
+    var key = (principalKind, principalId);
+    if (_cache.TryGetValue(key, out var cached))
+    {
+      return cached;
+    }
+
     await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-    return await LoadAssignments(db, principalKind, principalId, cancellationToken);
+    var assignments = await LoadAssignments(db, principalKind, principalId, cancellationToken);
+    _cache[key] = assignments;
+    return assignments;
   }
 
   public async Task<ResolvedPrincipalPermissions> Resolve(
@@ -64,7 +76,7 @@ public class PermissionRuleResolver(
 
     var directAssignments = await LoadAssignments(
       db, principalKind, principal.PrincipalId, cancellationToken);
-      
+
     foreach (var assignment in directAssignments.Where(x => IsOwnedByPrincipalTenant(x, userTenantFilter)))
     {
       rules.Add(new PermissionRule(assignment, RuleSource.Direct, SourcePriority.Direct));
