@@ -57,6 +57,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     Assert.Equal(1, successCount);
     Assert.Equal(4, failureCount);
   }
+
   [Fact]
   public async Task CreateDevice_ExistingDevice_UpdatesDeviceProperties()
   {
@@ -97,6 +98,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     Assert.NotEqual(originalName, dbDevice.Name);
     Assert.Equal(updatedDeviceDto.Name, dbDevice.Name);
   }
+
   [Theory]
   [InlineData(SystemPlatform.Windows)]
   [InlineData(SystemPlatform.Linux)]
@@ -132,6 +134,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
   }
+
   [Fact]
   public async Task CreateDevice_ExistingDevice_WithDeletedKeyCreator_Fails()
   {
@@ -172,6 +175,119 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
   }
+
+  [Fact]
+  public async Task CreateDevice_ExistingDevice_WithDisabledServiceAccountKey_Fails()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var existingDevice = await services.CreateTestDevice(tenant.Id);
+    var serviceAccount = await CreateServiceAccountWithAgentInstall(services, tenant.Id);
+
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      var account = await db.ServiceAccounts.FirstAsync(x => x.Id == serviceAccount.Id, TestContext.Current.CancellationToken);
+      account.IsEnabled = false;
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenant.Id,
+      creatorId: serviceAccount.Id,
+      creatorKind: InstallerKeyCreatorKind.TenantServiceAccount,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "Service Account Key");
+
+    var deviceDto = CreateDeviceDto(tenant.Id, deviceId: existingDevice.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: null);
+
+    var response = await httpClient.PostAsJsonAsync(HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+  }
+
+  [Fact]
+  public async Task CreateDevice_ExistingDevice_WithTenantServiceAccountKey_WithAgentInstall_Succeeds()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var existingDevice = await services.CreateTestDevice(tenant.Id);
+    var serviceAccount = await CreateServiceAccountWithAgentInstall(services, tenant.Id);
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenant.Id,
+      creatorId: serviceAccount.Id,
+      creatorKind: InstallerKeyCreatorKind.TenantServiceAccount,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "Service Account Key");
+
+    var deviceDto = CreateDeviceDto(tenant.Id, deviceId: existingDevice.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: null);
+
+    var response = await httpClient.PostAsJsonAsync(HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+  }
+
+  [Fact]
+  public async Task CreateDevice_ExistingDevice_WithTenantServiceAccountKey_WithDeviceDeny_Forbidden()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var existingDevice = await services.CreateTestDevice(tenant.Id);
+    var serviceAccount = await CreateServiceAccountWithAgentInstall(services, tenant.Id);
+
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.PermissionAssignments.Add(new PermissionAssignment
+      {
+        PrincipalKind = PermissionPrincipalKind.ServiceAccount,
+        PrincipalId = serviceAccount.Id,
+        PermissionName = PermissionNames.AgentInstall,
+        Effect = PermissionEffect.Deny,
+        ScopeKind = PermissionScopeKind.Device,
+        ScopeId = existingDevice.Id,
+        IsEnabled = true,
+        OwningTenantId = tenant.Id
+      });
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenant.Id,
+      creatorId: serviceAccount.Id,
+      creatorKind: InstallerKeyCreatorKind.TenantServiceAccount,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "Service Account Key");
+
+    var deviceDto = CreateDeviceDto(tenant.Id, deviceId: existingDevice.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: null);
+
+    var response = await httpClient.PostAsJsonAsync(HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+  }
+
   [Fact]
   public async Task CreateDevice_ExistingDevice_WithUnauthorizedUser_Fails()
   {
@@ -205,6 +321,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
   }
+
   [Fact]
   public async Task CreateDevice_MultipleDevices_WithUsageBasedKey_TracksUsagesCorrectly()
   {
@@ -243,6 +360,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.BadRequest, response6.StatusCode);
   }
+
   [Fact]
   public async Task CreateDevice_NewDevice_SetsIsOnlineToFalse()
   {
@@ -280,6 +398,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     Assert.NotNull(dbDevice);
     Assert.False(dbDevice.IsOnline);
   }
+
   [Fact]
   public async Task CreateDevice_NewDevice_WithEmptyDeviceId_Fails()
   {
@@ -307,6 +426,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
   }
+
   [Fact]
   public async Task CreateDevice_NewDevice_WithExhaustedUsageBasedKey_Fails()
   {
@@ -338,6 +458,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.BadRequest, response2.StatusCode);
   }
+
   [Fact]
   public async Task CreateDevice_NewDevice_WithExpiredTimeBasedKey_Fails()
   {
@@ -367,6 +488,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
   }
+
   [Fact]
   public async Task CreateDevice_NewDevice_WithInvalidKeySecret_Fails()
   {
@@ -394,6 +516,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
   }
+
   [Fact]
   public async Task CreateDevice_NewDevice_WithNonExistentKeyId_Fails()
   {
@@ -410,6 +533,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
   }
+
   [Theory]
   [InlineData(SystemPlatform.Windows)]
   [InlineData(SystemPlatform.Linux)]
@@ -447,6 +571,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     Assert.Equal(platform, resultDevice.Platform);
     Assert.False(resultDevice.IsOnline);
   }
+
   [Theory]
   [InlineData(SystemPlatform.Windows)]
   [InlineData(SystemPlatform.Linux)]
@@ -483,6 +608,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Null(key);
   }
+
   [Theory]
   [InlineData(SystemPlatform.Windows)]
   [InlineData(SystemPlatform.Linux)]
@@ -531,6 +657,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     Assert.Contains(createdDevice.Tags, t => t.Id == tag1.Id);
     Assert.Contains(createdDevice.Tags, t => t.Id == tag2.Id);
   }
+
   [Theory]
   [InlineData(SystemPlatform.Windows)]
   [InlineData(SystemPlatform.Linux)]
@@ -561,6 +688,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
   }
+
   [Theory]
   [InlineData(SystemPlatform.Windows)]
   [InlineData(SystemPlatform.Linux)]
@@ -601,6 +729,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     Assert.Single(key.Usages);
     Assert.Equal(deviceDto.Id, key.Usages.First().DeviceId);
   }
+
   [Fact]
   public async Task CreateDevice_PersistentKey_CanBeUsedMultipleTimes()
   {
@@ -650,6 +779,7 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
      IsOnline: true
     );
   }
+
   private static DeviceUpdateRequestDto CreateDeviceDto(
     Guid tenantId,
     Guid? deviceId = null,
@@ -678,6 +808,37 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
       Drives: [new Drive { Name = "C:", VolumeLabel = "System", TotalSize = 512000, FreeSpace = 256000 }]
     );
   }
+
+  private static async Task<ServiceAccount> CreateServiceAccountWithAgentInstall(IServiceProvider services, Guid tenantId)
+  {
+    using var scope = services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+
+    var serviceAccount = new ServiceAccount
+    {
+      Name = $"installer-account-{Guid.NewGuid()}",
+      Kind = ServiceAccountKind.Tenant,
+      TenantId = tenantId,
+      IsEnabled = true
+    };
+
+    db.ServiceAccounts.Add(serviceAccount);
+    db.PermissionAssignments.Add(new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.ServiceAccount,
+      PrincipalId = serviceAccount.Id,
+      PermissionName = PermissionNames.AgentInstall,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenantId,
+      IsEnabled = true,
+      OwningTenantId = tenantId
+    });
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    return serviceAccount;
+  }
+
   private static string GetOsDescription(SystemPlatform platform)
   {
     return platform switch

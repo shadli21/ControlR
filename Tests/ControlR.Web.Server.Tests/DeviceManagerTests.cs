@@ -233,6 +233,122 @@ public class DeviceManagerTests(ITestOutputHelper testOutput)
     // User from different tenant should not be able to install
     var canDifferentTenantInstall = await deviceManager.CanInstallAgentOnDevice(differentTenantUser, device);
     Assert.False(canDifferentTenantInstall);
+
+    // A device-scoped deny must override a tenant-scoped allow on the specific device
+    db.PermissionAssignments.Add(new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = installerUser.Id,
+      PermissionName = PermissionNames.AgentInstall,
+      Effect = PermissionEffect.Deny,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      IsEnabled = true,
+      OwningTenantId = tenantId
+    });
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var canInstallAfterDeviceDeny = await deviceManager.CanInstallAgentOnDevice(installerUser, device);
+    Assert.False(canInstallAfterDeviceDeny);
+  }
+
+  [Fact]
+  public async Task DeviceManager_CanInstallAgentOnDevice_ServiceAccount()
+  {
+    // Arrange
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
+    using var scope = testApp.App.Services.CreateScope();
+    var deviceManager = scope.ServiceProvider.GetRequiredService<IDeviceManager>();
+    var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+
+    var tenant = await testApp.Services.CreateTestTenant();
+    var otherTenant = await testApp.Services.CreateTestTenant("Other Tenant");
+    var tenantId = tenant.Id;
+    var otherTenantId = otherTenant.Id;
+
+    var serviceAccount = new ServiceAccount
+    {
+      Id = Guid.NewGuid(),
+      Name = "installer-account",
+      Kind = ServiceAccountKind.Tenant,
+      TenantId = tenantId,
+      IsEnabled = true
+    };
+
+    var device = new Device
+    {
+      Id = Guid.NewGuid(),
+      Name = "Test Device",
+      TenantId = tenantId
+    };
+
+    db.ServiceAccounts.Add(serviceAccount);
+    db.Devices.Add(device);
+    db.PermissionAssignments.Add(new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.ServiceAccount,
+      PrincipalId = serviceAccount.Id,
+      PermissionName = PermissionNames.AgentInstall,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenantId,
+      IsEnabled = true,
+      OwningTenantId = tenantId
+    });
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    // Act & Assert
+
+    // Tenant service account with tenant-scoped agent install should be able to install
+    var canInstall = await deviceManager.CanInstallAgentOnDevice(serviceAccount, device);
+    Assert.True(canInstall);
+
+    // A device-scoped deny must block the install on that specific device
+    db.PermissionAssignments.Add(new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.ServiceAccount,
+      PrincipalId = serviceAccount.Id,
+      PermissionName = PermissionNames.AgentInstall,
+      Effect = PermissionEffect.Deny,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      IsEnabled = true,
+      OwningTenantId = tenantId
+    });
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var canInstallAfterDeny = await deviceManager.CanInstallAgentOnDevice(serviceAccount, device);
+    Assert.False(canInstallAfterDeny);
+
+    // Server-scoped accounts have no tenant and can never target a tenant device
+    var serverAccount = new ServiceAccount
+    {
+      Id = Guid.NewGuid(),
+      Name = "server-account",
+      Kind = ServiceAccountKind.Server,
+      TenantId = null,
+      IsEnabled = true
+    };
+    db.ServiceAccounts.Add(serverAccount);
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var canServerInstall = await deviceManager.CanInstallAgentOnDevice(serverAccount, device);
+    Assert.False(canServerInstall);
+
+    // Accounts from another tenant cannot reach this device
+    var otherTenantAccount = new ServiceAccount
+    {
+      Id = Guid.NewGuid(),
+      Name = "other-tenant-account",
+      Kind = ServiceAccountKind.Tenant,
+      TenantId = otherTenantId,
+      IsEnabled = true
+    };
+    db.ServiceAccounts.Add(otherTenantAccount);
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var canOtherInstall = await deviceManager.CanInstallAgentOnDevice(otherTenantAccount, device);
+    Assert.False(canOtherInstall);
   }
 
   [Fact]

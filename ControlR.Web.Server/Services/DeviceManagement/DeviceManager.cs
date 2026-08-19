@@ -37,6 +37,12 @@ public interface IDeviceManager
   Task<bool> CanInstallAgentOnDevice(AppUser user, Device device);
 
   /// <summary>
+  /// Determines whether the specified tenant-scoped service account is authorized to install
+  /// an agent on the given device.
+  /// </summary>
+  Task<bool> CanInstallAgentOnDevice(ServiceAccount serviceAccount, Device device);
+
+  /// <summary>
   /// Marks a specific device as offline and updates its last seen timestamp.
   /// </summary>
   /// <param name="deviceId">The unique identifier of the device to mark offline.</param>
@@ -92,19 +98,24 @@ public class DeviceManager(
   }
 
   public async Task<bool> CanInstallAgentOnDevice(AppUser user, Device device)
+    => await CanInstallAgentOnDevice(
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, AuthMethod: "cookie"),
+      device);
+
+  public async Task<bool> CanInstallAgentOnDevice(ServiceAccount serviceAccount, Device device)
   {
-    if (user.TenantId != device.TenantId)
+    if (serviceAccount.TenantId is not { } tenantId || tenantId != device.TenantId)
     {
       return false;
     }
 
-    var principal = new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, AuthMethod: "cookie");
-    var result = await _permissionEvaluator.Evaluate(
-      principal,
-      PermissionNames.AgentInstall,
-      new ResourceDescriptor(PermissionScopeKind.Tenant, TenantId: user.TenantId),
-      CancellationToken.None);
-    return result.Allowed;
+    var principal = new PrincipalDescriptor(
+      PrincipalType.TenantServiceAccount,
+      serviceAccount.Id,
+      serviceAccount.TenantId,
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
+
+    return await CanInstallAgentOnDevice(principal, device);
   }
 
   public async Task<Result<Device>> MarkDeviceOffline(Guid deviceId, DateTimeOffset lastSeen)
@@ -199,6 +210,34 @@ public class DeviceManager(
         prop.CurrentValue = dtoValue;
       }
     }
+  }
+
+  /// <summary>
+  /// Evaluates <see cref="PermissionNames.AgentInstall"/> at device scope so device-scoped
+  /// denies on <paramref name="device"/> are honored regardless of broader tenant rights.
+  /// </summary>
+  private async Task<bool> CanInstallAgentOnDevice(PrincipalDescriptor principal, Device device)
+  {
+    if (principal.TenantId is not { } tenantId || tenantId != device.TenantId)
+    {
+      return false;
+    }
+
+    var deviceGroupIds = await _appDb.DeviceGroupMembers
+      .IgnoreQueryFilters()
+      .Where(member => member.DeviceId == device.Id)
+      .Select(member => member.DeviceGroupId)
+      .ToListAsync();
+
+    var resource = new ResourceDescriptor(
+      PermissionScopeKind.Device, device.Id, tenantId, device.CustomerId, deviceGroupIds);
+
+    var result = await _permissionEvaluator.Evaluate(
+      principal,
+      PermissionNames.AgentInstall,
+      resource,
+      CancellationToken.None);
+    return result.Allowed;
   }
 
   private async Task UpdateDeviceEntity(

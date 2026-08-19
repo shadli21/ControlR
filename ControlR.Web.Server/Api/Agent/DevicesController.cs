@@ -68,22 +68,50 @@ public class DevicesController : ControllerBase
     {
       logger.LogInformation("Device already exists.  Verifying user authorization.");
 
-      if (installerKey.CreatorKind == InstallerKeyCreatorKind.User)
+      switch (installerKey.CreatorKind)
       {
-        var keyCreator = await userManager.FindByIdAsync($"{installerKey.CreatorId}");
-        if (keyCreator is null)
-        {
-          logger.LogWarning("User not found.");
-          return BadRequest();
-        }
+        case InstallerKeyCreatorKind.User:
+          var keyCreator = await userManager.FindByIdAsync($"{installerKey.CreatorId}");
+          if (keyCreator is null)
+          {
+            logger.LogWarning("User not found.");
+            return BadRequest();
+          }
 
-        var authResult = await deviceManager.CanInstallAgentOnDevice(keyCreator, existingDevice);
+          var authResult = await deviceManager.CanInstallAgentOnDevice(keyCreator, existingDevice);
 
-        if (!authResult)
-        {
-          logger.LogCritical("User is not authorized to install an agent on this device.");
-          return Forbid();
-        }
+          if (!authResult)
+          {
+            logger.LogCritical("User is not authorized to install an agent on this device.");
+            return Forbid();
+          }
+          break;
+
+        case InstallerKeyCreatorKind.TenantServiceAccount:
+          var serviceAccount = await appDb.ServiceAccounts
+            .FirstOrDefaultAsync(x => x.Id == installerKey.CreatorId && x.TenantId == tenantId && x.IsEnabled);
+          if (serviceAccount is null)
+          {
+            logger.LogWarning("Service account not found or disabled.");
+            return BadRequest();
+          }
+
+          var accountAuthResult = await deviceManager.CanInstallAgentOnDevice(serviceAccount, existingDevice);
+
+          if (!accountAuthResult)
+          {
+            logger.LogCritical("Service account is not authorized to install an agent on this device.");
+            return Forbid();
+          }
+          break;
+
+        case InstallerKeyCreatorKind.ServerServiceAccount:
+          // Server service accounts are trusted server-wide principals with no tenant device
+          // boundary to enforce; the key itself authorizes provisioning.
+          break;
+
+        default:
+          throw new InvalidOperationException($"Unhandled installer key creator kind: {installerKey.CreatorKind}");
       }
     }
 
