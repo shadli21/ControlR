@@ -2,6 +2,7 @@ using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
+using ControlR.Web.Server.Services.Locks;
 
 namespace ControlR.Web.Server.Services.PermissionAssignments;
 
@@ -65,9 +66,11 @@ public class PermissionAssignmentManager(
   AppDb appDb,
   IPermissionEvaluator permissionEvaluator,
   ICredentialScopeService credentialScopeService,
-  IAuthorizationChangeLogFactory changeLogFactory) : IPermissionAssignmentManager
+  IAuthorizationChangeLogFactory changeLogFactory,
+  IAsyncLock asyncLock) : IPermissionAssignmentManager
 {
   private readonly AppDb _appDb = appDb;
+  private readonly IAsyncLock _asyncLock = asyncLock;
   private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly ICredentialScopeService _credentialScopeService = credentialScopeService;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
@@ -637,106 +640,117 @@ public class PermissionAssignmentManager(
       }
     }
 
-    // Read existing assignments and perform the full replace atomically inside
-    // a transaction to prevent a concurrent replace from leaving stale permissions.
-    // All validation runs outside the transaction; the transaction only handles
-    // read → delete → insert → change-log to eliminate the race window.
-    try
+    // Validate all requests before staging any entities or taking the lock.
+    foreach (var request in assignments)
     {
-      await _appDb.ExecuteInTransaction(async () =>
+      if (await ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId, tenantId, cancellationToken) is { } scopeError)
       {
-        var existing = await _appDb.PermissionAssignments
-          .IgnoreQueryFilters()
-          .Where(x => x.PrincipalKind == principalKind && x.PrincipalId == principalId)
-          .ToListAsync(cancellationToken);
+        return HttpResult.Fail(scopeError.Code, scopeError.Reason);
+      }
 
-        var toDelete = existing.Where(x =>
-            IsVisibleToTenant(x, tenantId, effectivePermissions) &&
-            replacedScopeKinds.Contains(x.ScopeKind))
-          .ToList();
+      if (await ValidateCredentialPrincipalScope(
+        principalKind, principalId, request.PermissionName,
+        request.ScopeKind, request.ScopeId, cancellationToken) is { } credentialScopeError)
+      {
+        return HttpResult.Fail(HttpResultErrorCode.BadRequest, credentialScopeError);
+      }
+    }
 
-        foreach (var existingAssignment in toDelete)
+    var created = new List<PermissionAssignment>(assignments.Count);
+
+    // Serialize concurrent replaces of the same principal with the keyed lock, then perform
+    // the read → delete → insert → change-log atomically inside a transaction. The lock
+    // prevents two replaces from interleaving (single instance); the transaction keeps the
+    // batch all-or-nothing.
+    var lockKey = $"{principalKind}:{principalId}";
+    await using (await _asyncLock.AcquireAsync(lockKey, cancellationToken))
+    {
+      try
+      {
+        await _appDb.ExecuteInTransaction(async () =>
         {
-          _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
-            AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-            AuthorizationChangeLogActorTypes.User,
-            actor.PrincipalId,
-            AuthorizationChangeLogTargetTypes.PermissionAssignment,
-            existingAssignment.Id,
-            existingAssignment.OwningTenantId,
-            before: new PermissionAssignmentSnapshot(
-              existingAssignment.PermissionName, existingAssignment.Effect,
-              existingAssignment.ScopeKind, existingAssignment.ScopeId)));
-
-          _appDb.PermissionAssignments.Remove(existingAssignment);
-        }
-
-        foreach (var request in assignments)
-        {
-          var assignment = PermissionAssignment.CreateGrant(
-            principalKind,
-            principalId,
-            request.PermissionName,
-            request.ScopeKind,
-            NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
-            tenantId,
-            AuthorizationChangeLogActorTypes.User,
-            actor.PrincipalId.ToString(),
-            request.Effect);
-
-          _appDb.PermissionAssignments.Add(assignment);
-        }
-
-        await _appDb.SaveChangesAsync(cancellationToken);
-
-        foreach (var request in assignments)
-        {
-          var createdAssignment = await _appDb.PermissionAssignments
+          var existing = await _appDb.PermissionAssignments
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(
-              x => x.PrincipalKind == principalKind &&
-                   x.PrincipalId == principalId &&
-                   x.PermissionName == request.PermissionName &&
-                   x.Effect == request.Effect &&
-                   x.ScopeKind == request.ScopeKind &&
-                   x.ScopeId == NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
-              cancellationToken);
+            .Where(x => x.PrincipalKind == principalKind && x.PrincipalId == principalId)
+            .ToListAsync(cancellationToken);
 
-          if (createdAssignment is not null)
+          var toDelete = existing.Where(x =>
+              IsVisibleToTenant(x, tenantId, effectivePermissions) &&
+              replacedScopeKinds.Contains(x.ScopeKind))
+            .ToList();
+
+          foreach (var existingAssignment in toDelete)
           {
+            _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+              AuthorizationChangeLogActions.PermissionAssignmentDeleted,
+              AuthorizationChangeLogActorTypes.User,
+              actor.PrincipalId,
+              AuthorizationChangeLogTargetTypes.PermissionAssignment,
+              existingAssignment.Id,
+              existingAssignment.OwningTenantId,
+              before: new PermissionAssignmentSnapshot(
+                existingAssignment.PermissionName, existingAssignment.Effect,
+                existingAssignment.ScopeKind, existingAssignment.ScopeId)));
+
+            _appDb.PermissionAssignments.Remove(existingAssignment);
+          }
+
+          foreach (var request in assignments)
+          {
+            var assignment = PermissionAssignment.CreateGrant(
+              principalKind,
+              principalId,
+              request.PermissionName,
+              request.ScopeKind,
+              NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+              tenantId,
+              AuthorizationChangeLogActorTypes.User,
+              actor.PrincipalId.ToString(),
+              request.Effect);
+
+            _appDb.PermissionAssignments.Add(assignment);
+            created.Add(assignment);
+          }
+
+          await _appDb.SaveChangesAsync(cancellationToken);
+
+          for (var i = 0; i < created.Count; i++)
+          {
+            var assignment = created[i];
+            var request = assignments[i];
             _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
               AuthorizationChangeLogActions.PermissionAssignmentCreated,
               AuthorizationChangeLogActorTypes.User,
               actor.PrincipalId,
               AuthorizationChangeLogTargetTypes.PermissionAssignment,
-              createdAssignment.Id,
-              createdAssignment.OwningTenantId,
+              assignment.Id,
+              assignment.OwningTenantId,
               after: new PermissionAssignmentSnapshot(
                 request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
           }
-        }
 
-        await _appDb.SaveChangesAsync(cancellationToken);
-      }, cancellationToken);
-    }
-    catch (DbUpdateException)
-    {
-      foreach (var request in assignments)
-      {
-        if (await AssignmentExists(
-          principalKind,
-          principalId,
-          request.PermissionName,
-          request.Effect,
-          request.ScopeKind,
-          NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
-          cancellationToken))
-        {
-          return HttpResult.Fail(HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
-        }
+          await _appDb.SaveChangesAsync(cancellationToken);
+        }, cancellationToken);
       }
+      catch (DbUpdateException)
+      {
+        foreach (var request in assignments)
+        {
+          if (await AssignmentExists(
+            principalKind,
+            principalId,
+            request.PermissionName,
+            request.Effect,
+            request.ScopeKind,
+            NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+            cancellationToken))
+          {
+            return HttpResult.Fail(HttpResultErrorCode.Conflict, "An identical permission assignment already exists.");
+          }
+        }
 
-      throw;
+        throw;
+      }
     }
 
     return HttpResult.Ok();

@@ -21,11 +21,11 @@ public interface IPermissionRuleResolver
 public class PermissionRuleResolver(
   IDbContextFactory<AppDb> dbContextFactory) : IPermissionRuleResolver
 {
-  private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
 
   // Memoization cache: within a scoped request, the same principal's assignments
   // may be loaded multiple times (Resolve → LoadAssignments, Evaluate → LoadAssignments).
   private readonly Dictionary<(PermissionPrincipalKind Kind, Guid Id), List<PermissionAssignment>> _cache = [];
+  private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
 
   public async Task<List<PermissionAssignment>> LoadAssignments(
     PermissionPrincipalKind principalKind,

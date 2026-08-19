@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Http.Features;
 using ControlR.Web.Server.Services.AgentInstaller;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
+using ControlR.Web.Server.Services.Locks;
 using System.Globalization;
 using System.Threading.RateLimiting;
 using ControlR.Libraries.Shared.Services.Encryption;
@@ -264,6 +265,7 @@ public static class WebApplicationBuilderExtensions
     builder.Services.AddScoped<IUserGroupManager, UserGroupManager>();
     builder.Services.AddScoped<IPermissionAssignmentManager, PermissionAssignmentManager>();
     builder.Services.AddScoped<IPermissionAssignmentSeeder, PermissionAssignmentSeeder>();
+    builder.Services.AddSingleton<IAsyncLock, KeyedLock>();
 
     return builder;
   }
