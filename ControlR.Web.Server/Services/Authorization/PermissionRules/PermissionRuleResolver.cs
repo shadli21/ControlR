@@ -21,10 +21,6 @@ public interface IPermissionRuleResolver
 public class PermissionRuleResolver(
   IDbContextFactory<AppDb> dbContextFactory) : IPermissionRuleResolver
 {
-
-  // Memoization cache: within a scoped request, the same principal's assignments
-  // may be loaded multiple times (Resolve → LoadAssignments, Evaluate → LoadAssignments).
-  private readonly Dictionary<(PermissionPrincipalKind Kind, Guid Id), List<PermissionAssignment>> _cache = [];
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
 
   public async Task<List<PermissionAssignment>> LoadAssignments(
@@ -32,16 +28,8 @@ public class PermissionRuleResolver(
     Guid principalId,
     CancellationToken cancellationToken)
   {
-    var key = (principalKind, principalId);
-    if (_cache.TryGetValue(key, out var cached))
-    {
-      return cached;
-    }
-
     await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-    var assignments = await LoadAssignments(db, principalKind, principalId, cancellationToken);
-    _cache[key] = assignments;
-    return assignments;
+    return await LoadAssignments(db, principalKind, principalId, cancellationToken);
   }
 
   public async Task<ResolvedPrincipalPermissions> Resolve(
@@ -74,10 +62,11 @@ public class PermissionRuleResolver(
       ? principal.TenantId
       : null;
 
-    // Route through the memoizing LoadAssignments so the same principal's rows are read from
-    // the DB once per scoped request (Resolve and Evaluate both call this).
+    // Load directly from the DB so assignment changes (e.g. a deny added mid-request) are
+    // always observed. No memoization here: caching permission rows on a mutable, security
+    // critical table risks serving stale rules.
     var directAssignments = await LoadAssignments(
-      principalKind, principal.PrincipalId, cancellationToken);
+      db, principalKind, principal.PrincipalId, cancellationToken);
 
     foreach (var assignment in directAssignments.Where(x => IsOwnedByPrincipalTenant(x, userTenantFilter)))
     {
