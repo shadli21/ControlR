@@ -53,6 +53,12 @@ public class LogonTokenAuthenticationHandler(
       return AuthenticateResult.Fail("User not found for logon token.");
     }
 
+    // Check lockout status — matches the guard in PersonalAccessTokenAuthenticationHandler.
+    if (await _userManager.IsLockedOutAsync(user))
+    {
+      return AuthenticateResult.Fail("User account is locked");
+    }
+
     var claims = new List<Claim>
     {
       new(UserClaimTypes.UserId, user.Id.ToString()),
