@@ -104,17 +104,62 @@ public class PermissionEvaluator(
       }
       else if (credentialAssignments.Count > 0)
       {
-        // Explicit PAT scopes are an optional restriction: a PAT can never exceed its owning
-        // user's effective rights. Each scope row survives only when the user's own rules
-        // cover it: device-scoped rows are checked precisely against the target device
-        // (loading its group/customer membership), other rows via scope coverage rules. In
-        // both cases a matching user deny discards the row.
+        // Batch-load device-scoped rows to avoid N+1 queries.
+        var deviceScopes = credentialAssignments
+          .Where(a => a.ScopeKind == PermissionScopeKind.Device && a.ScopeId.HasValue)
+          .Select(a => a.ScopeId!.Value)
+          .Distinct()
+          .ToList();
+
+        var deviceInfo = new Dictionary<Guid, DeviceInfo>();
+        if (deviceScopes.Count > 0)
+        {
+          await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+          // Load device details in a single query.
+          var devices = await db.Devices
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(d => deviceScopes.Contains(d.Id))
+            .ToListAsync(cancellationToken);
+
+          // Load group memberships in a single query, then GroupBy in memory.
+          var groupRows = await db.DeviceGroupMembers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(m => deviceScopes.Contains(m.DeviceId))
+            .Select(m => new { m.DeviceId, m.DeviceGroupId })
+            .ToListAsync(cancellationToken);
+
+          var groupMappings = groupRows
+            .GroupBy(r => r.DeviceId)
+            .ToDictionary(g => g.Key, g => g.Select(r => r.DeviceGroupId).ToList());
+
+          deviceInfo = devices
+            .ToDictionary(
+              d => d.Id,
+              d => new DeviceInfo(
+                d.Id,
+                d.TenantId,
+                d.CustomerId,
+                groupMappings.TryGetValue(d.Id, out var g) ? g : []));
+        }
+
         var boundedAssignments = new List<PermissionAssignment>();
         foreach (var row in credentialAssignments)
         {
-          var covered = row.ScopeKind == PermissionScopeKind.Device && row.ScopeId.HasValue
-            ? await UserRulesCoverDeviceScope(rules, row, cancellationToken)
-            : UserRulesCoverScope(rules, row);
+          bool covered;
+          if (row.ScopeKind == PermissionScopeKind.Device && row.ScopeId.HasValue)
+          {
+            covered = deviceInfo.TryGetValue(row.ScopeId.Value, out var info)
+              ? ResolveMatchingRules(rules, row.PermissionName,
+                  new ResourceDescriptor(PermissionScopeKind.Device, info.Id, info.TenantId, info.CustomerId, info.GroupIds)).Allowed
+              : false;
+          }
+          else
+          {
+            covered = UserRulesCoverScope(rules, row);
+          }
 
           if (covered)
           {
@@ -304,38 +349,8 @@ public class PermissionEvaluator(
   }
 
   /// <summary>
-  /// Determines precisely whether the owning user's rules cover a device-scoped credential
-  /// row by resolving the target device's tenant, customer, and group memberships and
-  /// running the standard match/deny resolution against the user's rules. A missing device
-  /// fails closed.
+  /// Lightweight snapshot of a device's identity and group memberships,
+  /// loaded in batch to avoid N+1 queries.
   /// </summary>
-  private async Task<bool> UserRulesCoverDeviceScope(
-    List<PermissionRule> userRules,
-    PermissionAssignment row,
-    CancellationToken cancellationToken)
-  {
-    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-    var device = await db.Devices
-      .IgnoreQueryFilters()
-      .AsNoTracking()
-      .FirstOrDefaultAsync(x => x.Id == row.ScopeId, cancellationToken);
-      
-    if (device is null)
-    {
-      return false;
-    }
-
-    var groupIds = await db.DeviceGroupMembers
-      .IgnoreQueryFilters()
-      .AsNoTracking()
-      .Where(member => member.DeviceId == device.Id)
-      .Select(member => member.DeviceGroupId)
-      .ToListAsync(cancellationToken);
-
-    var resource = new ResourceDescriptor(
-      PermissionScopeKind.Device, device.Id, device.TenantId, device.CustomerId, groupIds);
-
-    return ResolveMatchingRules(userRules, row.PermissionName, resource).Allowed;
-  }
+  private record DeviceInfo(Guid Id, Guid? TenantId, Guid? CustomerId, IReadOnlyList<Guid> GroupIds);
 }
