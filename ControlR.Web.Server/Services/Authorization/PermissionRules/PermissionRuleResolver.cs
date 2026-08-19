@@ -74,8 +74,10 @@ public class PermissionRuleResolver(
       ? principal.TenantId
       : null;
 
+    // Route through the memoizing LoadAssignments so the same principal's rows are read from
+    // the DB once per scoped request (Resolve and Evaluate both call this).
     var directAssignments = await LoadAssignments(
-      db, principalKind, principal.PrincipalId, cancellationToken);
+      principalKind, principal.PrincipalId, cancellationToken);
 
     foreach (var assignment in directAssignments.Where(x => IsOwnedByPrincipalTenant(x, userTenantFilter)))
     {
