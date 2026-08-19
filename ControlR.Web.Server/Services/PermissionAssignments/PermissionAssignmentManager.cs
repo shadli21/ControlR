@@ -637,79 +637,83 @@ public class PermissionAssignmentManager(
       }
     }
 
-    var existing = await _appDb.PermissionAssignments
-      .IgnoreQueryFilters()
-      .Where(x => x.PrincipalKind == principalKind && x.PrincipalId == principalId)
-      .ToListAsync(cancellationToken);
-
-    foreach (var existingAssignment in existing.Where(x =>
-      IsVisibleToTenant(x, tenantId, effectivePermissions) &&
-      replacedScopeKinds.Contains(x.ScopeKind)))
-    {
-      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
-        AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-        AuthorizationChangeLogActorTypes.User,
-        actor.PrincipalId,
-        AuthorizationChangeLogTargetTypes.PermissionAssignment,
-        existingAssignment.Id,
-        existingAssignment.OwningTenantId,
-        before: new PermissionAssignmentSnapshot(
-          existingAssignment.PermissionName, existingAssignment.Effect,
-          existingAssignment.ScopeKind, existingAssignment.ScopeId)));
-
-      _appDb.PermissionAssignments.Remove(existingAssignment);
-    }
-
-    var created = new List<PermissionAssignment>(assignments.Count);
-
-    foreach (var request in assignments)
-    {
-      if (await ValidatePermissionScope(request.PermissionName, request.ScopeKind, request.ScopeId, tenantId, cancellationToken) is { } scopeError)
-      {
-        return HttpResult.Fail(scopeError.Code, scopeError.Reason);
-      }
-
-      if (await ValidateCredentialPrincipalScope(
-        principalKind, principalId, request.PermissionName,
-        request.ScopeKind, request.ScopeId, cancellationToken) is { } credentialScopeError)
-      {
-        return HttpResult.Fail(HttpResultErrorCode.BadRequest, credentialScopeError);
-      }
-
-      var assignment = PermissionAssignment.CreateGrant(
-        principalKind,
-        principalId,
-        request.PermissionName,
-        request.ScopeKind,
-        NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
-        tenantId,
-        AuthorizationChangeLogActorTypes.User,
-        actor.PrincipalId.ToString(),
-        request.Effect);
-
-      _appDb.PermissionAssignments.Add(assignment);
-      created.Add(assignment);
-    }
-
+    // Read existing assignments and perform the full replace atomically inside
+    // a transaction to prevent a concurrent replace from leaving stale permissions.
+    // All validation runs outside the transaction; the transaction only handles
+    // read → delete → insert → change-log to eliminate the race window.
     try
     {
       await _appDb.ExecuteInTransaction(async () =>
       {
-        await _appDb.SaveChangesAsync(cancellationToken);
+        var existing = await _appDb.PermissionAssignments
+          .IgnoreQueryFilters()
+          .Where(x => x.PrincipalKind == principalKind && x.PrincipalId == principalId)
+          .ToListAsync(cancellationToken);
 
-        for (var i = 0; i < created.Count; i++)
+        var toDelete = existing.Where(x =>
+            IsVisibleToTenant(x, tenantId, effectivePermissions) &&
+            replacedScopeKinds.Contains(x.ScopeKind))
+          .ToList();
+
+        foreach (var existingAssignment in toDelete)
         {
-          var assignment = created[i];
-          var request = assignments[i];
           _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
-            AuthorizationChangeLogActions.PermissionAssignmentCreated,
+            AuthorizationChangeLogActions.PermissionAssignmentDeleted,
             AuthorizationChangeLogActorTypes.User,
             actor.PrincipalId,
             AuthorizationChangeLogTargetTypes.PermissionAssignment,
-            assignment.Id,
-            assignment.OwningTenantId,
-            after: new PermissionAssignmentSnapshot(
-              request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
+            existingAssignment.Id,
+            existingAssignment.OwningTenantId,
+            before: new PermissionAssignmentSnapshot(
+              existingAssignment.PermissionName, existingAssignment.Effect,
+              existingAssignment.ScopeKind, existingAssignment.ScopeId)));
+
+          _appDb.PermissionAssignments.Remove(existingAssignment);
+        }
+
+        foreach (var request in assignments)
+        {
+          var assignment = PermissionAssignment.CreateGrant(
+            principalKind,
+            principalId,
+            request.PermissionName,
+            request.ScopeKind,
+            NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+            tenantId,
+            AuthorizationChangeLogActorTypes.User,
+            actor.PrincipalId.ToString(),
+            request.Effect);
+
+          _appDb.PermissionAssignments.Add(assignment);
+        }
+
+        await _appDb.SaveChangesAsync(cancellationToken);
+
+        foreach (var request in assignments)
+        {
+          var createdAssignment = await _appDb.PermissionAssignments
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(
+              x => x.PrincipalKind == principalKind &&
+                   x.PrincipalId == principalId &&
+                   x.PermissionName == request.PermissionName &&
+                   x.Effect == request.Effect &&
+                   x.ScopeKind == request.ScopeKind &&
+                   x.ScopeId == NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+              cancellationToken);
+
+          if (createdAssignment is not null)
+          {
+            _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+              AuthorizationChangeLogActions.PermissionAssignmentCreated,
+              AuthorizationChangeLogActorTypes.User,
+              actor.PrincipalId,
+              AuthorizationChangeLogTargetTypes.PermissionAssignment,
+              createdAssignment.Id,
+              createdAssignment.OwningTenantId,
+              after: new PermissionAssignmentSnapshot(
+                request.PermissionName, request.Effect, request.ScopeKind, request.ScopeId)));
+          }
         }
 
         await _appDb.SaveChangesAsync(cancellationToken);
