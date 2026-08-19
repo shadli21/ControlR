@@ -41,20 +41,30 @@ public class PersonalAccessTokenAuthenticationHandler(
       return AuthenticateResult.NoResult();
     }
 
-    // Basic rate limiting keyed by remote IP
+    // Two-axis throttling: independent limits per source IP and per token.
+    // Combined (IP, token) keys would let an attacker rotate token IDs
+    // from one IP to bypass the limit; independent keys per axis let each axis
+    // catch its own attack pattern.
     var remoteIp = Context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    var failureKey = CacheKeys.GetPersonalAccessTokenAuthFailure(remoteIp);
-    if (_failureCache.TryGetValue<int>(failureKey, out var failureCount) && failureCount >= MaxFailures)
+    var tokenIdPrefix = providedPat.Split(':', 2).FirstOrDefault();
+    var ipFailureKey = CacheKeys.GetPersonalAccessTokenAuthFailureByIp(remoteIp);
+    var tokenFailureKey = CacheKeys.GetPersonalAccessTokenAuthFailureByToken(tokenIdPrefix);
+
+    if (_failureCache.TryGetValue<int>(ipFailureKey, out var ipFailures) && ipFailures >= MaxFailures)
     {
-      return AuthenticateResult.Fail("Too many failed token attempts. Try again later.");
+      return AuthenticateResult.Fail("Too many failed token attempts from this source. Try again later.");
+    }
+
+    if (_failureCache.TryGetValue<int>(tokenFailureKey, out var tokenFailures) && tokenFailures >= MaxFailures)
+    {
+      return AuthenticateResult.Fail("Too many failed attempts for this token. Try again later.");
     }
 
     var validationResult = await _personalAccessTokenManager.ValidateToken(providedPat);
     if (!validationResult.IsSuccess || !validationResult.Value.IsValid)
     {
-      // Increment failure counter
-      var newCount = failureCount + 1;
-      _failureCache.Set(failureKey, newCount, _failureWindow);
+      _failureCache.Set(ipFailureKey, ipFailures + 1, _failureWindow);
+      _failureCache.Set(tokenFailureKey, tokenFailures + 1, _failureWindow);
       return AuthenticateResult.Fail("Invalid personal access token");
     }
 
@@ -73,7 +83,8 @@ public class PersonalAccessTokenAuthenticationHandler(
       return AuthenticateResult.Fail("User account is locked");
     }
 
-    _failureCache.Remove(failureKey);
+    _failureCache.Remove(ipFailureKey);
+    _failureCache.Remove(tokenFailureKey);
 
     var claims = new List<Claim>
     {

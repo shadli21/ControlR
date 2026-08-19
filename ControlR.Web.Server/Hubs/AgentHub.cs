@@ -252,20 +252,28 @@ public class AgentHub(
         return await HandleAgentUpdateForDecommission(agentDto, device);
       }
 
-      // Allow agents to self-bootstrap when enabled
+      // Self-bootstrap: only permitted when exactly one tenant exists.
+      // Multi-tenant deployments must use installer keys with an explicit tenant.
       if (_appOptions.Value.AllowAgentsToSelfBootstrap && agentDto.TenantId == Guid.Empty)
       {
-        var lastTenant = await _appDb.Tenants
+        var tenants = await _appDb.Tenants
           .OrderByDescending(x => x.CreatedAt)
-          .FirstOrDefaultAsync();
+          .Take(2)
+          .ToListAsync();
 
-        if (lastTenant is null)
+        if (tenants.Count == 0)
         {
           return HubResult.Fail<InternalDtos.DeviceResponseDto>("No tenants found.");
         }
 
+        if (tenants.Count > 1)
+        {
+          return HubResult.Fail<InternalDtos.DeviceResponseDto>(
+            "Self-bootstrap is only allowed on single-tenant servers. Use an installer key instead.");
+        }
+
         // Update the DTO with the assigned TenantId
-        agentDto = agentDto with { TenantId = lastTenant.Id };
+        agentDto = agentDto with { TenantId = tenants[0].Id };
       }
 
       if (agentDto.TenantId == Guid.Empty)
@@ -370,19 +378,28 @@ public class AgentHub(
         return await HandleAgentUpdateForDecommission(agentDto, device);
       }
 
-      // Allow agents to self-bootstrap when enabled.
+      // Allow agents to self-bootstrap when enabled. Only permitted when exactly one
+      // tenant exists, so there's no ambiguity about where the agent lands. Multi-tenant
+      // deployments must use installer keys, which carry an explicit tenant.
       if (_appOptions.Value.AllowAgentsToSelfBootstrap && agentDto.TenantId == Guid.Empty)
       {
-        var lastTenant = await _appDb.Tenants
+        var tenants = await _appDb.Tenants
           .OrderByDescending(x => x.CreatedAt)
-          .FirstOrDefaultAsync();
+          .Take(2)
+          .ToListAsync();
 
-        if (lastTenant is null)
+        if (tenants.Count == 0)
         {
           return HubResult.Fail<InternalDtos.DeviceResponseDto>("No tenants found.");
         }
 
-        agentDto = agentDto with { TenantId = lastTenant.Id };
+        if (tenants.Count > 1)
+        {
+          return HubResult.Fail<InternalDtos.DeviceResponseDto>(
+            "Self-bootstrap is only allowed on single-tenant servers. Use an installer key instead.");
+        }
+
+        agentDto = agentDto with { TenantId = tenants[0].Id };
       }
 
       if (agentDto.TenantId == Guid.Empty)

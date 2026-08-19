@@ -1153,6 +1153,39 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task PatScopes_WhenZeroRows_AllowsServerAlertsRead_WhenOwnerHasIt()
+  {
+    // A PAT with no explicit scope rows acts as its owning user, so it inherits the user's
+    // server-level permissions (including server topic subscriptions).
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var patId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.ServerAlertsRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Server,
+      ScopeId = null,
+      OwningTenantId = null,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: patId,
+      credentialType: CredentialType.PersonalAccessToken);
+    var serverResource = new ResourceDescriptor(PermissionScopeKind.Server);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.ServerAlertsRead, serverResource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+  }
+
+  [Fact]
   public async Task PatScopes_WhenZeroRows_InheritsUserPermissions()
   {
     // A PAT with no explicit scope rows acts as its owning user, inheriting the user's
@@ -1184,6 +1217,65 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
 
     Assert.True(result.Allowed);
+  }
+
+  [Fact]
+  public async Task PatScopes_WithDeviceRow_DeniesServerAlertsRead_EvenWhenOwnerHasIt()
+  {
+    // The owning user holds ServerAlertsRead at server scope, but the PAT has an explicit
+    // device-scoped row. ViewerHub.JoinServerTopics relies on Evaluate (not the name-level
+    // projection) so the scoped credential cannot subscribe to server topics.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var patId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.ServerAlertsRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Server,
+      ScopeId = null,
+      OwningTenantId = null,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
+      PrincipalId = patId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id,
+      credentialId: patId,
+      credentialType: CredentialType.PersonalAccessToken);
+    var serverResource = new ResourceDescriptor(PermissionScopeKind.Server);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.ServerAlertsRead, serverResource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
   }
 
   [Fact]
