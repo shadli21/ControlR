@@ -136,10 +136,11 @@ public partial class PersonalAccessTokens
       { x => x.PrincipalId, personalAccessToken.Id }
     };
 
-    await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
-      $"Permissions: {personalAccessToken.Name}", 
-      parameters, 
+    var dialogRef = await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
+      $"Permissions: {personalAccessToken.Name}",
+      parameters,
       PermissionAssignmentPanelDialog.DefaultOptions);
+    await dialogRef.Result;
 
     await LoadPersonalAccessTokens();
   }

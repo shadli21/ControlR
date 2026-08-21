@@ -70,6 +70,7 @@ internal static class TestPrincipalHelper
       new Claim(PrincipalClaimTypes.PrincipalId, account.Id.ToString()),
       new Claim(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.ServiceAccountCredentialMethod),
       new Claim(PrincipalClaimTypes.CredentialId, credential.Id.ToString()),
+      new Claim(PrincipalClaimTypes.CredentialType, PrincipalClaimValues.ServiceAccountCredentialType),
     ], "TestAuth"));
   }
 }
