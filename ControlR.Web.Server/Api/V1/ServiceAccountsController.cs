@@ -109,10 +109,14 @@ public class ServiceAccountsController(
 
   [HttpGet]
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsRead)]
-  public async Task<ActionResult<IReadOnlyList<ServiceAccountDto>>> GetAll(CancellationToken cancellationToken)
+  [ProducesResponseType<ServiceAccountsResponseDto>(StatusCodes.Status200OK)]
+  public async Task<ActionResult<ServiceAccountsResponseDto>> GetAll(CancellationToken cancellationToken)
   {
     var accounts = await _serviceAccountManager.GetAllForServer(cancellationToken);
-    return Ok(accounts.Select(x => x.ToDto()).ToList());
+    return Ok(new ServiceAccountsResponseDto
+    {
+      Items = accounts.Select(x => x.ToDto()).ToArray()
+    });
   }
 
   [HttpDelete("{serviceAccountId:guid}/credentials/{credentialId:guid}")]

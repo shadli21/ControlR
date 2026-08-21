@@ -234,8 +234,8 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
 
     var result = await controller.GetAll(TestContext.Current.CancellationToken);
     var okResult = Assert.IsType<OkObjectResult>(result.Result);
-    var list = Assert.IsType<List<ServiceAccountDto>>(okResult.Value);
-    Assert.True(list.Count >= 2, "Should have at least 2 accounts");
+    var response = Assert.IsType<ServiceAccountsResponseDto>(okResult.Value);
+    Assert.True(response.Items.Count >= 2, "Should have at least 2 accounts");
   }
 
   [Fact]
