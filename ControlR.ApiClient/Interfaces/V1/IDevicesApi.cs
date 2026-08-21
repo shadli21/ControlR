@@ -13,7 +13,7 @@ public interface IDevicesApi
   Task<ApiResult<V1Dtos.DeleteManyDevicesResponseDto>> DeleteManyDevices(V1Dtos.DeleteDevicesRequestDto request, CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.V1.DevicesEndpoint}/{{deviceId}}/desktop-sessions", "GET")]
-  Task<ApiResult<List<V1Dtos.DesktopSessionResponseDto>>> GetActiveDesktopSessions(Guid deviceId, CancellationToken cancellationToken = default);
+  Task<ApiResult<V1Dtos.DesktopSessionsResponseDto>> GetActiveDesktopSessions(Guid deviceId, CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.V1.DevicesEndpoint}", "GET")]
   IAsyncEnumerable<V1Dtos.DeviceResponseDto> GetAllDevices(CancellationToken cancellationToken = default);

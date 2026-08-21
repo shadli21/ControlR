@@ -359,26 +359,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/DesktopSessionResponseDto"
-                  }
+                  "$ref": "#/components/schemas/DesktopSessionsResponseDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/DesktopSessionResponseDto"
-                  }
+                  "$ref": "#/components/schemas/DesktopSessionsResponseDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/DesktopSessionResponseDto"
-                  }
+                  "$ref": "#/components/schemas/DesktopSessionsResponseDto"
                 }
               }
             }
@@ -2554,6 +2545,17 @@
           },
           "username": {
             "type": "string"
+          }
+        }
+      },
+      "DesktopSessionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DesktopSessionResponseDto"
+            }
           }
         }
       },

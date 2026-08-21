@@ -133,11 +133,12 @@ public class ServiceAccountEndToEndTests(ITestOutputHelper testOutput)
     Assert.True(sessionsResponse.IsSuccessStatusCode,
       $"Get desktop sessions failed: {sessionsResponse.StatusCode}");
 
-    var sessions = await sessionsResponse.Content
-      .ReadFromJsonAsync<V1Dtos.DesktopSessionResponseDto[]>(TestContext.Current.CancellationToken);
+    var sessionsDto = await sessionsResponse.Content
+      .ReadFromJsonAsync<V1Dtos.DesktopSessionsResponseDto>(TestContext.Current.CancellationToken);
 
-    Assert.NotNull(sessions);
-    Assert.Equal(2, sessions.Length);
+    Assert.NotNull(sessionsDto);
+    var sessions = sessionsDto.Items;
+    Assert.Equal(2, sessions.Count);
 
     AssertConsoleSession(sessions);
     AssertRdpSession(sessions);
@@ -191,7 +192,7 @@ public class ServiceAccountEndToEndTests(ITestOutputHelper testOutput)
     Assert.Equal("E2E Test Device", deviceInfo.Name);
   }
 
-  private static void AssertConsoleSession(V1Dtos.DesktopSessionResponseDto[] sessions)
+  private static void AssertConsoleSession(IReadOnlyList<V1Dtos.DesktopSessionResponseDto> sessions)
   {
     var consoleSession = sessions.First(x => x.Type == DesktopSessionType.Console);
     Assert.Equal("Console", consoleSession.Name);
@@ -202,7 +203,7 @@ public class ServiceAccountEndToEndTests(ITestOutputHelper testOutput)
     Assert.True(consoleSession.AreRemoteControlPermissionsGranted);
   }
 
-  private static void AssertRdpSession(V1Dtos.DesktopSessionResponseDto[] sessions)
+  private static void AssertRdpSession(IReadOnlyList<V1Dtos.DesktopSessionResponseDto> sessions)
   {
     var rdpSession = sessions.First(x => x.Type == DesktopSessionType.Rdp);
     Assert.Equal("RDP-Tcp#0", rdpSession.Name);

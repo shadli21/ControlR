@@ -110,10 +110,10 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
   }
 
   [HttpGet("{deviceId:guid}/desktop-sessions")]
-  [ProducesResponseType<IReadOnlyList<V1Dtos.DesktopSessionResponseDto>>(StatusCodes.Status200OK)]
+  [ProducesResponseType<V1Dtos.DesktopSessionsResponseDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   [ProducesResponseType(StatusCodes.Status409Conflict)]
-  public async Task<ActionResult<IReadOnlyList<V1Dtos.DesktopSessionResponseDto>>> GetDesktopSessions(
+  public async Task<ActionResult<V1Dtos.DesktopSessionsResponseDto>> GetDesktopSessions(
     [FromRoute] Guid deviceId,
     [FromServices] AppDb appDb,
     [FromServices] IHubContext<AgentHub, IAgentHubClient> agentHub,
@@ -158,8 +158,8 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
         .Where(x => desktopSessionAccessAuthorizer.CanUse(principal, deviceId, x.SystemSessionId))
         .ToArray();
 
-      var dtos = sessions.Select(V1Dtos.DesktopSessionResponseDto.From).ToList();
-      return Ok(dtos);
+      var dtos = sessions.Select(V1Dtos.DesktopSessionResponseDto.From).ToArray();
+      return Ok(new V1Dtos.DesktopSessionsResponseDto { Items = dtos });
     }
     catch (Exception ex)
     {

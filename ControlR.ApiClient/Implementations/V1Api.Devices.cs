@@ -31,7 +31,7 @@ internal partial class V1Api
     });
   }
 
-  async Task<ApiResult<List<V1Dtos.DesktopSessionResponseDto>>> IDevicesApi.GetActiveDesktopSessions(
+  async Task<ApiResult<V1Dtos.DesktopSessionsResponseDto>> IDevicesApi.GetActiveDesktopSessions(
     Guid deviceId, 
     CancellationToken cancellationToken)
   {
@@ -43,10 +43,8 @@ internal partial class V1Api
 
       await response.EnsureSuccessStatusCodeWithDetails();
 
-      var list = await response.Content
-        .ReadFromJsonAsync<List<V1Dtos.DesktopSessionResponseDto>>(cancellationToken);
-
-      return list ?? [];
+      return await response.Content
+        .ReadFromJsonAsync<V1Dtos.DesktopSessionsResponseDto>(cancellationToken);
     });
   }
 
