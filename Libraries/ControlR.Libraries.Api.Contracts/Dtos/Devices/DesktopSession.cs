@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace ControlR.Libraries.Api.Contracts.Dtos.Devices;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum DesktopSessionType
 {
   Console = 0,
@@ -14,7 +17,9 @@ public class DesktopSession
   public string Name { get; set; } = string.Empty;
   public int ProcessId { get; set; }
   public int SystemSessionId { get; set; }
+
   public DesktopSessionType Type { get; set; }
+
   public string Username { get; set; } = string.Empty;
 
 }

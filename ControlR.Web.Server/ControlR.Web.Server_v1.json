@@ -2551,7 +2551,10 @@
         }
       },
       "DesktopSessionType": {
-        "type": "integer"
+        "enum": [
+          "Console",
+          "Rdp"
+        ]
       },
       "DeviceColumnFilter": {
         "type": "object",
