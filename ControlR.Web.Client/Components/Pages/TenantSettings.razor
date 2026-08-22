@@ -116,15 +116,19 @@
 
   private async Task SetAppendInstanceId(bool value)
   {
-    _appendInstanceId = value;
-    await TenantSettingsProvider.SetAppendInstanceId(value);
-    Snackbar.Add("Setting updated", Severity.Success);
+    if (await TenantSettingsProvider.SetAppendInstanceId(value))
+    {
+      _appendInstanceId = value;
+      Snackbar.Add("Setting updated", Severity.Success);
+    }
   }
 
   private async Task SetNotifyUser(bool? value)
   {
-    _notifyUser = value;
-    await TenantSettingsProvider.SetNotifyUserOnSessionStart(value);
-    Snackbar.Add("Setting updated", Severity.Success);
+    if (await TenantSettingsProvider.SetNotifyUserOnSessionStart(value))
+    {
+      _notifyUser = value;
+      Snackbar.Add("Setting updated", Severity.Success);
+    }
   }
 }
