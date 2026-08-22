@@ -156,15 +156,31 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
     };
     var createResult = await userManager.CreateAsync(user, "T3stP@ssw0rd!");
     Assert.True(createResult.Succeeded);
+    var agentInstallerOnlyUser = new AppUser
+    {
+      TenantId = tenant.Id,
+      UserName = "agent-installer@test.local",
+      Email = "agent-installer@test.local"
+    };
+    var agentInstallerCreateResult = await userManager.CreateAsync(
+      agentInstallerOnlyUser,
+      "T3stP@ssw0rd!");
+    Assert.True(agentInstallerCreateResult.Succeeded);
 
     // Give the user three legacy roles. Installer Key Manager and Tenant Administrator
-    // overlap on agent.install (server-scoped and tenant-scoped respectively).
+    // overlap on agent.install and installer-key permissions.
     await db.Database.ExecuteSqlRawAsync(
       """
       INSERT INTO "AspNetUserRoles" ("UserId", "RoleId")
       SELECT {0}, "Id" FROM "AspNetRoles" WHERE "Name" IN ('Server Administrator', 'Tenant Administrator', 'Installer Key Manager');
       """,
       user.Id);
+    await db.Database.ExecuteSqlRawAsync(
+      """
+      INSERT INTO "AspNetUserRoles" ("UserId", "RoleId")
+      SELECT {0}, "Id" FROM "AspNetRoles" WHERE "Name" = 'Agent Installer';
+      """,
+      agentInstallerOnlyUser.Id);
 
     // Apply Remove_Roles: backfills permission assignments, then drops the role tables.
     await migrator.MigrateAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -221,5 +237,18 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
       Assert.Equal(PermissionScopeKind.Tenant, permission.ScopeKind);
       Assert.Equal(tenant.Id, permission.OwningTenantId);
     }
+
+    var agentInstallerPermissions = await verifyDb.PermissionAssignments
+      .Where(x => x.PrincipalId == agentInstallerOnlyUser.Id)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+
+    Assert.Equal(
+      [
+        PermissionNames.AgentInstall,
+        PermissionNames.InstallerKeyRead,
+        PermissionNames.InstallerKeyWrite
+      ],
+      agentInstallerPermissions.Order());
   }
 }

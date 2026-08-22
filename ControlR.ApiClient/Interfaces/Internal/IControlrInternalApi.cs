@@ -5,6 +5,7 @@ public interface IControlrInternalApi
   IAuthApi Auth { get; }
   IAuthorizationChangeLogsApi AuthorizationChangeLogs { get; }
   ICustomersApi Customers { get; }
+  IDeploymentOptionsApi DeploymentOptions { get; }
   IDesktopPreviewApi DesktopPreview { get; }
   IDeviceFileSystemApi DeviceFileSystem { get; }
   IDeviceGroupsApi DeviceGroups { get; }

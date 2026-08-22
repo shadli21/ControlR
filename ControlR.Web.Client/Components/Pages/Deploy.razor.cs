@@ -8,6 +8,7 @@ public partial class Deploy
   private bool _addTags;
   private bool _appendInstanceId = true;
   private bool _canAssignDeviceTags;
+  private bool _canReadCustomers;
   private IReadOnlyList<CustomerDto> _customers = [];
   private string? _deviceId;
   private IEnumerable<AgentInstallerKeyDto> _existingKeys = [];
@@ -42,9 +43,6 @@ public partial class Deploy
 
   [Inject]
   public required ISnackbar Snackbar { get; init; }
-
-  [Inject]
-  public required ITenantSettingsProvider TenantSettingsProvider { get; init; }
 
   [Inject]
   public required TimeProvider TimeProvider { get; init; }
@@ -133,18 +131,31 @@ public partial class Deploy
     }
 
     _canAssignDeviceTags = state.User.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.DeviceTagsWrite);
+    _canReadCustomers = state.User.HasClaim(
+      PermissionPolicies.PermissionClaimType,
+      PermissionNames.TenantCustomersRead);
 
-    _appendInstanceId = await TenantSettingsProvider.GetAppendInstanceId();
-    _instanceId = await TenantSettingsProvider.GetInstanceId();
-
-    var customersResult = await ControlrApi.Internal.Customers.GetAll();
-    if (customersResult.IsSuccess)
+    var deploymentOptionsResult = await ControlrApi.Internal.DeploymentOptions.GetDeploymentOptions();
+    if (!deploymentOptionsResult.IsSuccess)
     {
-      _customers = customersResult.Value;
+      Snackbar.Add(deploymentOptionsResult.Reason, Severity.Error);
+      return;
     }
-    else
+
+    _appendInstanceId = deploymentOptionsResult.Value.AppendInstanceId;
+    _instanceId = deploymentOptionsResult.Value.InstanceId;
+
+    if (_canReadCustomers)
     {
-      Snackbar.Add("Failed to get customers", Severity.Error);
+      var customersResult = await ControlrApi.Internal.Customers.GetAll();
+      if (customersResult.IsSuccess)
+      {
+        _customers = customersResult.Value;
+      }
+      else
+      {
+        Snackbar.Add(customersResult.Reason, Severity.Error);
+      }
     }
 
     if (!_canAssignDeviceTags)
@@ -250,7 +261,7 @@ public partial class Deploy
     var createResult = await ControlrApi.Internal.InstallerKeys.CreateInstallerKey(dto);
     if (!createResult.IsSuccess)
     {
-      Snackbar.Add("Failed to create installer key", Severity.Error);
+      Snackbar.Add(createResult.Reason, Severity.Error);
       return;
     }
 
@@ -284,7 +295,7 @@ public partial class Deploy
     var createResult = await ControlrApi.Internal.InstallerKeys.CreateInstallerKey(dto);
     if (!createResult.IsSuccess)
     {
-      Snackbar.Add("Failed to create installer key", Severity.Error);
+      Snackbar.Add(createResult.Reason, Severity.Error);
       return;
     }
 
@@ -309,7 +320,7 @@ public partial class Deploy
     var createResult = await ControlrApi.Internal.InstallerKeys.CreateInstallerKey(dto);
     if (!createResult.IsSuccess)
     {
-      Snackbar.Add("Failed to create installer key", Severity.Error);
+      Snackbar.Add(createResult.Reason, Severity.Error);
       return;
     }
 

@@ -1,6 +1,7 @@
 @attribute [Route(ClientRoutes.TenantSettings)]
 @attribute [Authorize(Policy = PolicyNames.RequireTenantSettingsRead)]
 
+@inject AuthenticationStateProvider AuthState
 @inject ITenantSettingsProvider TenantSettingsProvider
 @inject ISnackbar Snackbar
 
@@ -21,13 +22,13 @@
   </MudText>
   
   <MudRadioGroup T="bool?" Value="_notifyUser" ValueChanged="SetNotifyUser">
-    <MudRadio T="bool?" Value="@((bool?)null)" Color="Color.Primary">
+    <MudRadio T="bool?" Value="@((bool?)null)" Color="Color.Primary" Disabled="!_canWrite">
       Use individual account setting
     </MudRadio>
-    <MudRadio T="bool?" Value="@((bool?)true)" Color="Color.Primary">
+    <MudRadio T="bool?" Value="@((bool?)true)" Color="Color.Primary" Disabled="!_canWrite">
       Always notify users
     </MudRadio>
-    <MudRadio T="bool?" Value="@((bool?)false)" Color="Color.Primary">
+    <MudRadio T="bool?" Value="@((bool?)false)" Color="Color.Primary" Disabled="!_canWrite">
       Never notify users
     </MudRadio>
   </MudRadioGroup>
@@ -43,6 +44,7 @@
     <MudCheckBox T="bool"
                  @bind-Value:get="_appendInstanceId"
                  @bind-Value:set="SetAppendInstanceId"
+                 Disabled="!_canWrite"
                  Label="Append instance ID to agent installations" />
 
     <MudTextField T="string"
@@ -50,6 +52,7 @@
                   Immediate="true"
                   Validation="@(new Func<string?, string?>(InstanceIdValidator))"
                   OnBlur="SaveInstanceIdOnBlur"
+                  Disabled="!_canWrite"
                   Label="Instance ID"
                   Placeholder="If empty, defaults to this server's hostname."
                   Class="mt-3" />
@@ -58,11 +61,16 @@
 
 @code {
   private bool _appendInstanceId = true;
+  private bool _canWrite;
   private string? _instanceId;
   private bool? _notifyUser;
 
   protected override async Task OnInitializedAsync()
   {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    _canWrite = state.User.HasClaim(
+      PermissionPolicies.PermissionClaimType,
+      PermissionNames.TenantSettingsWrite);
     var settings = await TenantSettingsProvider.GetSettings();
     _notifyUser = settings.NotifyUserOnSessionStart;
     _appendInstanceId = settings.AppendInstanceId ?? false;

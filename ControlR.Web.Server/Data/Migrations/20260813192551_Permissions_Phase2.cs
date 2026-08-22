@@ -266,8 +266,8 @@ public partial class Permissions_Phase2 : Migration
                   ('Device Superuser', '{PermissionNames.DevicePowerManage}', '{PermissionScopeKind.Tenant}'),
                   ('Device Superuser', '{PermissionNames.DeviceAgentUpdate}', '{PermissionScopeKind.Tenant}'),
                   ('Agent Installer', '{PermissionNames.AgentInstall}', '{PermissionScopeKind.Tenant}'),
-                  ('Agent Installer', '{PermissionNames.TenantCustomersRead}', '{PermissionScopeKind.Tenant}'),
-                  ('Agent Installer', '{PermissionNames.TenantSettingsRead}', '{PermissionScopeKind.Tenant}')
+                  ('Agent Installer', '{PermissionNames.InstallerKeyRead}', '{PermissionScopeKind.Tenant}'),
+                  ('Agent Installer', '{PermissionNames.InstallerKeyWrite}', '{PermissionScopeKind.Tenant}')
               ) AS rp("RoleName", "PermissionName", "ScopeKind") ON r."Name" = rp."RoleName";
               """;
     migrationBuilder.Sql(backfillSql);

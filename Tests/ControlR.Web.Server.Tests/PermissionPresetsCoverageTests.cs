@@ -5,6 +5,18 @@ namespace ControlR.Web.Server.Tests;
 public class PermissionPresetsCoverageTests
 {
   [Fact]
+  public void AgentInstaller_ContainsOnlyDeploymentWorkflowPermissions()
+  {
+    Assert.Equal(
+      [
+        PermissionNames.AgentInstall,
+        PermissionNames.InstallerKeyRead,
+        PermissionNames.InstallerKeyWrite
+      ],
+      PermissionPresets.GetPermissions(PermissionPresets.AgentInstaller));
+  }
+
+  [Fact]
   public void AllPermissionNames_AreCoveredByAtLeastOnePreset()
   {
     var permissionNameFields = typeof(PermissionNames)

@@ -14,6 +14,7 @@ public static class HttpConstants
     public const string AuthEndpoint = "/api/auth";
     public const string AuthorizationChangeLogsEndpoint = "/api/authorization-change-logs";
     public const string CustomersEndpoint = "/api/customers";
+    public const string DeploymentOptionsEndpoint = "/api/deployment-options";
     public const string DesktopPreviewEndpoint = "/api/desktop-preview";
     public const string DeviceFileSystemEndpoint = "/api/device-file-system";
     public const string DeviceGroupsEndpoint = "/api/device-groups";

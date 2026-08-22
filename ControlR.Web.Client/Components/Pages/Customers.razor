@@ -9,12 +9,15 @@
 
 <GridToolbar @bind-SearchValue="_searchString" OnRefresh="Refresh">
   <Actions>
-    <MudButton Variant="Variant.Outlined"
-               Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
-               OnClick="CreateCustomer">
-      New Customer
-    </MudButton>
+    @if (_canWrite)
+    {
+      <MudButton Variant="Variant.Outlined"
+                 Color="Color.Primary"
+                 StartIcon="@Icons.Material.Filled.Add"
+                 OnClick="CreateCustomer">
+        New Customer
+      </MudButton>
+    }
   </Actions>
 </GridToolbar>
 
@@ -40,15 +43,18 @@
       </CellTemplate>
     </TemplateColumn>
     <PropertyColumn Property="x => x.CreatedAt" Title="Created" />
-    <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
-      <CellTemplate>
-        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
-          <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info" OnClick="@(() => EditCustomer(context.Item))">Edit</MudMenuItem>
-          <MudMenuItem Icon="@Icons.Material.Filled.AddToPhotos" IconColor="Color.Info" OnClick="@(() => AssignDevices(context.Item))">Assign Devices</MudMenuItem>
-          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteCustomer(context.Item))">Delete</MudMenuItem>
-        </MudMenu>
-      </CellTemplate>
-    </TemplateColumn>
+    @if (_canWrite)
+    {
+      <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+        <CellTemplate>
+          <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
+            <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info" OnClick="@(() => EditCustomer(context.Item))">Edit</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.AddToPhotos" IconColor="Color.Info" OnClick="@(() => AssignDevices(context.Item))">Assign Devices</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteCustomer(context.Item))">Delete</MudMenuItem>
+          </MudMenu>
+        </CellTemplate>
+      </TemplateColumn>
+    }
   </Columns>
   <PagerContent>
     <MudDataGridPager T="CustomerDto" />
