@@ -60,7 +60,10 @@ public class UsersController : ControllerBase
         return BadRequest($"Presets not found: {string.Join(',', missingPresets)}");
       }
 
-      if (presetNames.Contains(PermissionPresets.ServerAdministrator))
+      var requiresServerAdmin = presetNames.Contains(PermissionPresets.ServerAdministrator);
+      var requiresTenantAdmin = presetNames.Contains(PermissionPresets.TenantAdministrator);
+
+      if (requiresServerAdmin || requiresTenantAdmin)
       {
         var callerPrincipal = PrincipalDescriptorBuilder.FromClaims(User);
         if (callerPrincipal is null)
@@ -69,7 +72,19 @@ public class UsersController : ControllerBase
         }
 
         var callerPermissions = await permissionEvaluator.GetEffectivePermissionNames(callerPrincipal, HttpContext.RequestAborted);
-        if (!callerPermissions.Contains(PermissionNames.ServerAdmin))
+        var hasServerAdmin = callerPermissions.Contains(PermissionNames.ServerAdmin);
+        var hasTenantWrite = callerPermissions.Contains(PermissionNames.TenantPermissionsWrite);
+        var hasTenantDeny = callerPermissions.Contains(PermissionNames.TenantPermissionsDeny);
+
+        // A caller may only mint a principal whose management powers they hold. TenantAdministrator
+        // grants both permission-management powers, so it cannot be minted from a user-manager
+        // (TenantUsersWrite) alone.
+        if (requiresServerAdmin && !hasServerAdmin)
+        {
+          return Forbid();
+        }
+
+        if (requiresTenantAdmin && !hasServerAdmin && !(hasTenantWrite && hasTenantDeny))
         {
           return Forbid();
         }

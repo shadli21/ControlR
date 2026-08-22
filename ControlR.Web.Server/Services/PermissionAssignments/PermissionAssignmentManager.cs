@@ -218,7 +218,8 @@ public class PermissionAssignmentManager(
       AuthorizationChangeLogActorTypes.User,
       actor.PrincipalId.ToString(),
       request.Effect,
-      request.Notes);
+      request.Notes,
+      request.IsEnabled);
 
     try
     {
@@ -358,7 +359,8 @@ public class PermissionAssignmentManager(
         AuthorizationChangeLogActorTypes.User,
         actor.PrincipalId.ToString(),
         request.Effect,
-        request.Notes);
+        request.Notes,
+        request.IsEnabled);
 
       _appDb.PermissionAssignments.Add(assignment);
       created.Add(assignment);
@@ -706,7 +708,9 @@ public class PermissionAssignmentManager(
               tenantId,
               AuthorizationChangeLogActorTypes.User,
               actor.PrincipalId.ToString(),
-              request.Effect);
+              request.Effect,
+              null,
+              request.IsEnabled);
 
             _appDb.PermissionAssignments.Add(assignment);
             created.Add(assignment);
@@ -921,6 +925,14 @@ public class PermissionAssignmentManager(
     _ => scopeId
   };
 
+  /// <summary>
+  /// Checks the actor's write/deny management permissions for the target scope. This is
+  /// delegated administration by design: a holder of <c>tenant.permissions.write</c> may grant
+  /// permissions they do not themselves hold (making it de facto full tenant admin). The one
+  /// exception is user provisioning: <c>UsersController.Create</c> additionally gates the
+  /// TenantAdministrator preset so a <c>tenant.users.write</c> holder cannot mint a new
+  /// permission-manager.
+  /// </summary>
   private static (HttpResultErrorCode Code, string Reason)? ValidateWriteAuthority(
     PermissionEffect effect,
     PermissionScopeKind scopeKind,

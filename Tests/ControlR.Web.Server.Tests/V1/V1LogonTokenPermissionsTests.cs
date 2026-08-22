@@ -268,6 +268,111 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task CreateForExternal_PermissionsAtLimit_ReturnsOk()
+  {
+    // The boundary case: exactly PermissionsMaxLength items is still valid and reaches the
+    // service (which dedupes and writes the grants), proving model binding accepts the cap and
+    // the service guard (Count > limit) does not reject it.
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+
+    var tenant = await testServer.Services.CreateTestTenant();
+    var device = await testServer.Services.CreateTestDevice(tenant.Id);
+
+    var saManager = testServer.Services.GetRequiredService<IServiceAccountManager>();
+    var saResult = await saManager.CreateForServer("AtLimitSA", null, TestContext.Current.CancellationToken);
+    Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredentialForServer(
+      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
+    httpClient.DefaultRequestHeaders.Add(
+      ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
+      credResult.Value.PlainTextSecretKey);
+
+    // The catalog has fewer than PermissionsMaxLength entries, so duplicates are required to
+    // hit the limit. Duplicates are deduped by PrepareScopes; the unioned DeviceRead scope is
+    // the only one the creator actually holds.
+    var atLimit = Enumerable
+      .Repeat(PermissionNames.DeviceRead, DtoLimits.PermissionsMaxLength)
+      .ToArray();
+
+    var request = new V1Dtos.CreateLogonTokenForExternalRequestDto(
+      DeviceId: device.Id,
+      TenantId: tenant.Id,
+      UserCorrelationId: "at-limit-user",
+      ExpirationMinutes: 15,
+      Permissions: atLimit);
+
+    var response = await httpClient.PostAsJsonAsync(
+      $"{HttpConstants.V1.LogonTokensEndpoint}/external",
+      request,
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    var tokenResult = await response.Content
+      .ReadFromJsonAsync<V1Dtos.LogonTokenResponseDto>(TestContext.Current.CancellationToken);
+    Assert.NotNull(tokenResult);
+
+    var tokenId = LogonTokenTestHelper.ParseTokenId(tokenResult.Token!);
+
+    using var scope = testServer.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var grantNames = await db.PermissionAssignments
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.LogonToken && x.PrincipalId == tokenId)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+
+    Assert.Contains(PermissionNames.DeviceRead, grantNames);
+  }
+
+  [Fact]
+  public async Task CreateForExternal_PermissionsOverLimit_ReturnsBadRequest()
+  {
+    // Pins that [MaxLength(PermissionsMaxLength)] on the V1 DTO is enforced by ASP.NET model
+    // binding (MaxLengthAttribute validates the Count of an IReadOnlyList<T> via reflection),
+    // so an over-limit Permissions list never reaches the service. The service guard in
+    // LogonTokenScopeService.PrepareScopes remains load-bearing for the internal
+    // LogonTokenRequestDto path, whose Scopes property carries no [MaxLength].
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+
+    var tenant = await testServer.Services.CreateTestTenant();
+    var device = await testServer.Services.CreateTestDevice(tenant.Id);
+
+    var saManager = testServer.Services.GetRequiredService<IServiceAccountManager>();
+    var saResult = await saManager.CreateForServer("OverLimitSA", null, TestContext.Current.CancellationToken);
+    Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredentialForServer(
+      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
+    httpClient.DefaultRequestHeaders.Add(
+      ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
+      credResult.Value.PlainTextSecretKey);
+
+    var overLimit = Enumerable
+      .Repeat(PermissionNames.DeviceRead, DtoLimits.PermissionsMaxLength + 1)
+      .ToArray();
+
+    var request = new V1Dtos.CreateLogonTokenForExternalRequestDto(
+      DeviceId: device.Id,
+      TenantId: tenant.Id,
+      UserCorrelationId: "over-limit-user",
+      ExpirationMinutes: 15,
+      Permissions: overLimit);
+
+    var response = await httpClient.PostAsJsonAsync(
+      $"{HttpConstants.V1.LogonTokensEndpoint}/external",
+      request,
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+  }
+
+  [Fact]
   public async Task CreateForExternal_SameCorrelationId_MultipleTokens_IndependentGrants()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);

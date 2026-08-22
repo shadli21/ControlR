@@ -177,7 +177,8 @@ public partial class PermissionAssignmentDialog : ComponentBase
         _effect,
         _scopeKind,
         _scopeId,
-        string.IsNullOrWhiteSpace(_notes) ? null : _notes);
+        string.IsNullOrWhiteSpace(_notes) ? null : _notes,
+        _isEnabled);
 
       var createResult = await ControlrApi.Internal.PermissionAssignments.Create(createRequest);
       if (!createResult.IsSuccess)

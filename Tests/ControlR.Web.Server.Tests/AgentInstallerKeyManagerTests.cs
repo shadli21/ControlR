@@ -433,6 +433,27 @@ public class AgentInstallerKeyManagerTests(ITestOutputHelper testOutput) : IAsyn
   }
 
   [Fact]
+  public async Task ValidateAndConsumeKey_Concurrent_DoesNotExceedAllowedUses()
+  {
+    var dto = await _keyManager.CreateKey(
+      tenantId: _tenantId,
+      creatorId: _creatorId,
+      creatorKind: InstallerKeyCreatorKind.User,
+      keyType: InstallerKeyType.UsageBased,
+      allowedUses: 1,
+      expiration: null,
+      friendlyName: "Concurrent Key");
+
+    const int attempts = 8;
+    var tasks = Enumerable.Range(0, attempts).Select(_ =>
+      _keyManager.ValidateAndConsumeKey(dto.Id, dto.KeySecret, Guid.NewGuid()));
+
+    var results = await Task.WhenAll(tasks);
+
+    Assert.Equal(1, results.Count(r => r.IsSuccess));
+  }
+
+  [Fact]
   public async Task ValidateAndConsumeKey_DoesNotShowExpiredUsageEntries()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput,

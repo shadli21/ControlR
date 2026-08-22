@@ -45,7 +45,8 @@ public class PermissionAssignment : EntityBase
     string createdByPrincipalType,
     string? createdByPrincipalId,
     PermissionEffect effect = PermissionEffect.Allow,
-    string? notes = null) =>
+    string? notes = null,
+    bool isEnabled = true) =>
     new()
     {
       PrincipalKind = principalKind,
@@ -54,7 +55,7 @@ public class PermissionAssignment : EntityBase
       Effect = effect,
       ScopeKind = scopeKind,
       ScopeId = scopeKind == PermissionScopeKind.Server ? null : scopeId,
-      IsEnabled = true,
+      IsEnabled = isEnabled,
       OwningTenantId = scopeKind == PermissionScopeKind.Server ? null : owningTenantId,
       CreatedByPrincipalType = createdByPrincipalType,
       CreatedByPrincipalId = createdByPrincipalId,

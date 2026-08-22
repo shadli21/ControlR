@@ -198,7 +198,7 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
     var customerIds = customers.Select(x => x.Id).ToList();
 
     var deviceCounts = await _appDb.Devices
-      .Where(x => x.CustomerId.HasValue && customerIds.Contains(x.CustomerId.Value))
+      .Where(x => x.TenantId == tenantId && x.CustomerId.HasValue && customerIds.Contains(x.CustomerId.Value))
       .GroupBy(x => x.CustomerId!.Value)
       .Select(g => new { CustomerId = g.Key, Count = g.Count() })
       .ToDictionaryAsync(x => x.CustomerId, x => x.Count, cancellationToken);

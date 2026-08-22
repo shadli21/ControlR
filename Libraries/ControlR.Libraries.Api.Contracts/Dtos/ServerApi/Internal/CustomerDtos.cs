@@ -33,5 +33,8 @@ public record CustomerDto(
   int DeviceCount);
 
 public record AssignCustomerDevicesRequestDto(
+  [property: Required]
   IReadOnlyList<Guid> DeviceIds,
+
+  [property: Required]
   IReadOnlyList<Guid> RemoveDeviceIds);

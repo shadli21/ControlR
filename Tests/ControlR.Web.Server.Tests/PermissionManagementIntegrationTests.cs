@@ -393,6 +393,52 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task PermissionAssignment_Create_RespectsIsEnabledRequest()
+  {
+    var (testServer, client, tenantId, userId) = await CreateAuthenticatedServer();
+    using var _ = testServer;
+
+    // Creating with IsEnabled=false must persist a disabled assignment
+    // previously CreateGrant hardcoded IsEnabled=true, silently ignoring the switch).
+    var createResponse = await client.PostAsJsonAsync(
+      HttpConstants.Internal.PermissionAssignmentsEndpoint,
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.User,
+        userId,
+        "device.read",
+        PermissionEffect.Allow,
+        PermissionScopeKind.Tenant,
+        tenantId,
+        "Disabled on create",
+        IsEnabled: false),
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+    var created = await createResponse.Content.ReadFromJsonAsync<InternalDtos.PermissionAssignmentDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(created);
+    Assert.False(created.IsEnabled);
+
+    // The default (omitted) remains enabled.
+    var defaultResponse = await client.PostAsJsonAsync(
+      HttpConstants.Internal.PermissionAssignmentsEndpoint,
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.User,
+        userId,
+        "device.overview.read",
+        PermissionEffect.Allow,
+        PermissionScopeKind.Tenant,
+        tenantId,
+        null),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, defaultResponse.StatusCode);
+    var defaultAssignment = await defaultResponse.Content.ReadFromJsonAsync<InternalDtos.PermissionAssignmentDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(defaultAssignment);
+    Assert.True(defaultAssignment.IsEnabled);
+  }
+
+  [Fact]
   public async Task PermissionAssignment_Delete_RemovesAssignment()
   {
     var (testServer, client, tenantId, userId) = await CreateAuthenticatedServer();

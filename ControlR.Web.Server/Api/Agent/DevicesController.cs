@@ -115,6 +115,15 @@ public class DevicesController : ControllerBase
       }
     }
 
+    var crossTenantDevice = await appDb.Devices
+      .IgnoreQueryFilters()
+      .FirstOrDefaultAsync(x => x.Id == deviceDto.Id && x.TenantId != tenantId);
+    if (crossTenantDevice is not null)
+    {
+      logger.LogWarning("Device {DeviceId} already exists in a different tenant.", deviceDto.Id);
+      return BadRequest("Device already exists in another tenant.");
+    }
+
     if (requestDto.CustomerId is { } customerId)
     {
       var customerBelongsToTenant = await appDb.Customers
@@ -127,6 +136,32 @@ public class DevicesController : ControllerBase
           customerId,
           tenantId);
         return BadRequest();
+      }
+    }
+
+    if (requestDto.TagIds is { Count: > 0 })
+    {
+      // Tag assignment is device-scoped; the installer-key creator must hold DeviceTagsWrite
+      // on the target device (server service accounts are trusted server-wide principals).
+      var tagTarget = new Device
+      {
+        Id = deviceDto.Id,
+        TenantId = tenantId,
+        CustomerId = requestDto.CustomerId,
+      };
+
+      var canAssignTags = installerKey.CreatorKind switch
+      {
+        InstallerKeyCreatorKind.ServerServiceAccount => true,
+        InstallerKeyCreatorKind.User => await CanAssignTagsForUser(installerKey.CreatorId, tagTarget, userManager, deviceManager),
+        InstallerKeyCreatorKind.TenantServiceAccount => await CanAssignTagsForServiceAccount(installerKey.CreatorId, tenantId, tagTarget, appDb, deviceManager),
+        _ => false,
+      };
+
+      if (!canAssignTags)
+      {
+        logger.LogWarning("Installer key creator is not authorized to assign tags on device {DeviceId}.", deviceDto.Id);
+        return Forbid();
       }
     }
 
@@ -152,5 +187,27 @@ public class DevicesController : ControllerBase
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(entity.AgentVersion);
     return entity.ToInternalResponseDto(isOutdated);
+  }
+
+  private static async Task<bool> CanAssignTagsForServiceAccount(
+    Guid creatorId,
+    Guid tenantId,
+    Device device,
+    AppDb appDb,
+    IDeviceManager deviceManager)
+  {
+    var serviceAccount = await appDb.ServiceAccounts
+      .FirstOrDefaultAsync(x => x.Id == creatorId && x.TenantId == tenantId && x.IsEnabled);
+    return serviceAccount is not null && await deviceManager.CanAssignTagOnDevice(serviceAccount, device);
+  }
+
+  private static async Task<bool> CanAssignTagsForUser(
+    Guid creatorId,
+    Device device,
+    UserManager<AppUser> userManager,
+    IDeviceManager deviceManager)
+  {
+    var user = await userManager.FindByIdAsync($"{creatorId}");
+    return user is not null && await deviceManager.CanAssignTagOnDevice(user, device);
   }
 }

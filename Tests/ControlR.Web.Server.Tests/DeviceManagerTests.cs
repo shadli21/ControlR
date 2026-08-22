@@ -9,6 +9,7 @@ using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services.DeviceManagement;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlR.Web.Server.Tests;
@@ -446,5 +447,65 @@ public class DeviceManagerTests(ITestOutputHelper testOutput)
     var failResult = await deviceManager.UpdateDevice(nonExistentDto, connectionContext);
     Assert.False(failResult.IsSuccess);
     Assert.Equal("Device does not exist in the database.", failResult.Reason);
+  }
+
+  [Fact]
+  public async Task DeviceManager_UpdateDevice_RejectsCrossTenantMove()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
+    using var scope = testApp.App.Services.CreateScope();
+    var deviceManager = scope.ServiceProvider.GetRequiredService<IDeviceManager>();
+    var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+
+    var deviceId = Guid.NewGuid();
+    var tenantA = await testApp.Services.CreateTestTenant();
+    var tenantB = await testApp.Services.CreateTestTenant();
+
+    db.Devices.Add(new Device
+    {
+      Id = deviceId,
+      Name = "Original Device",
+      AgentVersion = "1.0.0",
+      TenantId = tenantA.Id,
+    });
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var deviceDto = new DeviceUpdateRequestDto(
+      Name: "Updated Device",
+      AgentVersion: "2.0.0",
+      CpuUtilization: 75,
+      Id: deviceId,
+      Is64Bit: true,
+      OsArchitecture: Architecture.X64,
+      Platform: SystemPlatform.Windows,
+      ProcessorCount: 8,
+      OsDescription: "Windows 11",
+      TenantId: tenantB.Id,
+      TotalMemory: 32768,
+      TotalStorage: 2048000,
+      UsedMemory: 16384,
+      UsedStorage: 1024000,
+      CurrentUsers: ["User1"],
+      MacAddresses: ["00:00:00:00:00:02"],
+      LocalIpV4: "192.168.0.1",
+      LocalIpV6: "fe80::1",
+      Drives: [new Drive { Name = "C:", VolumeLabel = "System", TotalSize = 2048000, FreeSpace = 1024000 }],
+      DnsHostName: "updated-device.contoso.local");
+
+    var connectionContext = new DeviceConnectionContext(
+      ConnectionId: "test-connection-id",
+      RemoteIpAddress: IPAddress.Parse("192.168.1.1"),
+      LastSeen: DateTimeOffset.Now,
+      IsOnline: true);
+
+    var result = await deviceManager.UpdateDevice(deviceDto, connectionContext);
+
+    Assert.False(result.IsSuccess);
+
+    var dbDevice = await db.Devices
+      .IgnoreQueryFilters()
+      .FirstOrDefaultAsync(d => d.Id == deviceId, cancellationToken: TestContext.Current.CancellationToken);
+    Assert.NotNull(dbDevice);
+    Assert.Equal(tenantA.Id, dbDevice.TenantId);
   }
 }

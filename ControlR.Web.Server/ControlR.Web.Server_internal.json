@@ -10356,6 +10356,10 @@
               "null",
               "string"
             ]
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "default": true
           }
         }
       },

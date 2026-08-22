@@ -20,7 +20,9 @@ public record CreatePermissionAssignmentRequestDto(
   Guid? ScopeId,
 
   [property: StringLength(500)]
-  string? Notes);
+  string? Notes,
+
+  bool IsEnabled = true);
 
 public record PermissionAssignmentDto(
   Guid Id,
@@ -51,13 +53,16 @@ public record UpdatePermissionAssignmentRequestDto(
   bool IsEnabled);
 
 public record DeleteManyPermissionAssignmentsRequestDto(
-  [property: MaxLength(DtoLimits.PermissionAssignmentIdsMaxCount)] IReadOnlyList<Guid> AssignmentIds);
+  [property: Required]
+  [property: MaxLength(DtoLimits.PermissionAssignmentIdsMaxCount)]
+  IReadOnlyList<Guid> AssignmentIds);
 
 public record DeleteManyPermissionAssignmentsResponseDto(
   IReadOnlyList<Guid> SuccessIds,
   IReadOnlyList<Guid> FailureIds);
 
 public record CreateManyPermissionAssignmentsRequestDto(
+  [property: Required]
   [property: MinLength(1)]
   IReadOnlyList<CreatePermissionAssignmentRequestDto> Assignments);
 
@@ -66,6 +71,7 @@ public record ReplacePermissionAssignmentsRequestDto(
 
   Guid PrincipalId,
 
+  [property: Required]
   [property: MinLength(1)]
   IReadOnlyList<CreatePermissionAssignmentRequestDto> Assignments);
 
@@ -93,6 +99,7 @@ public record ApplyPermissionPresetsRequestDto(
 
   Guid PrincipalId,
 
+  [property: Required]
   [property: MinLength(1)]
   IReadOnlyList<string> PresetNames,
 

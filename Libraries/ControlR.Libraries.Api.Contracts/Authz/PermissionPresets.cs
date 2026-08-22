@@ -109,6 +109,8 @@ public static class PermissionPresets
       [AgentInstaller] =
       [
         PermissionNames.AgentInstall,
+        PermissionNames.TenantCustomersRead,
+        PermissionNames.TenantSettingsRead,
       ],
 
       [InstallerKeyManager] =

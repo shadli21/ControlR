@@ -24,7 +24,8 @@ public interface ITenantInvitesProvider
 
   Task<InternalDtos.TenantInviteResponseDto[]> GetAllInvites(
     Guid tenantId,
-    Uri origin);
+    Uri origin,
+    bool includeActivationCode);
 }
 
 public class TenantInvitesProvider(
@@ -234,7 +235,10 @@ public class TenantInvitesProvider(
     return HttpResult.Ok();
   }
 
-  public async Task<InternalDtos.TenantInviteResponseDto[]> GetAllInvites(Guid tenantId, Uri origin)
+  public async Task<InternalDtos.TenantInviteResponseDto[]> GetAllInvites(
+    Guid tenantId,
+    Uri origin,
+    bool includeActivationCode)
   {
     await using var appDb = await _dbContextFactory.CreateDbContextAsync();
 
@@ -244,7 +248,9 @@ public class TenantInvitesProvider(
         x.Id,
         x.CreatedAt,
         x.InviteeEmail,
-        new Uri(origin, $"{ClientRoutes.InviteConfirmationBase}/{x.ActivationCode}")))
+        includeActivationCode
+          ? new Uri(origin, $"{ClientRoutes.InviteConfirmationBase}/{x.ActivationCode}")
+          : new Uri(origin, ClientRoutes.InviteConfirmationBase)))
       .ToArrayAsync();
   }
 

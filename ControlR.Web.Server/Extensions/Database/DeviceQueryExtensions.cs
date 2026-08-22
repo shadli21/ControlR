@@ -353,8 +353,9 @@ public static class DeviceQueryExtensions
           // If the filter is for empty, we can return devices with 0 value
           return query.Where(BuildDoubleExpression(propertySelector, d => d == null || d == 0));
         case FilterOperator.Number.NotEmpty:
-          // If the filter is for not empty, we can return devices with non-zero value
-          return query.Where(BuildDoubleExpression(propertySelector, d => d == null || d != 0));
+          // If the filter is for not empty, return devices with a non-null, non-zero value.
+          // This is the logical complement of the Empty predicate (d == null || d == 0).
+          return query.Where(BuildDoubleExpression(propertySelector, d => d != null && d != 0));
         default:
           logger.LogError("Invalid double filter value: {FilterValue}", filterValue);
           return query;

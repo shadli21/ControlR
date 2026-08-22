@@ -42,7 +42,12 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
     }
 
     var existingDeviceIds = (group.Members ?? []).Select(m => m.DeviceId).ToHashSet();
-    var newDeviceIds = deviceIds.Where(id => !existingDeviceIds.Contains(id)).ToList();
+    // Dedup intra-request duplicate IDs so the validity count below matches what we
+    // actually insert, instead of returning a misleading "not found in tenant" BadRequest.
+    var newDeviceIds = deviceIds
+      .Distinct()
+      .Where(id => !existingDeviceIds.Contains(id))
+      .ToList();
 
     if (newDeviceIds.Count == 0)
     {

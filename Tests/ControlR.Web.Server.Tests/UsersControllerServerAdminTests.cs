@@ -79,4 +79,45 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.True(hasServerAdmin);
   }
+
+  [Fact]
+  public async Task TenantUsersWriteOnly_CannotCreate_TenantAdministratorPreset()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
+    using var scope = testApp.CreateScope();
+    var services = scope.ServiceProvider;
+
+    var (controller, tenant, caller) = await scope.CreateControllerWithTestData<UsersController>(
+      presets: []);
+
+    await using var db = services.GetRequiredService<AppDb>();
+    db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      caller.Id,
+      PermissionNames.TenantUsersWrite,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      caller.Id.ToString()));
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var request = new InternalDtos.CreateUserRequestDto(
+      UserName: "escalation",
+      Email: "escalation@t.local",
+      Password: "P@ssw0rd!",
+      PresetNames: [PermissionPresets.TenantAdministrator]);
+
+    var result = await controller.Create(
+      services.GetRequiredService<AppDb>(),
+      services.GetRequiredService<IPermissionEvaluator>(),
+      services.GetRequiredService<IUserCreator>(),
+      request);
+
+    Assert.IsType<ForbidResult>(result.Result);
+
+    var createdUser = await db.Users.FirstOrDefaultAsync(
+      u => u.Email == "escalation@t.local", TestContext.Current.CancellationToken);
+    Assert.Null(createdUser);
+  }
 }

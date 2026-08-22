@@ -49,7 +49,12 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
     }
 
     var existingUserIds = (group.Members ?? []).Select(m => m.UserId).ToHashSet();
-    var newUserIds = userIds.Where(id => !existingUserIds.Contains(id)).ToList();
+    // Dedup intra-request duplicate IDs so the validity count below matches what we
+    // actually insert, instead of returning a misleading "not found in tenant" BadRequest.
+    var newUserIds = userIds
+      .Distinct()
+      .Where(id => !existingUserIds.Contains(id))
+      .ToList();
 
     if (newUserIds.Count == 0)
     {

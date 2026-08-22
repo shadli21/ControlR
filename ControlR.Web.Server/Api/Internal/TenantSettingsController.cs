@@ -45,6 +45,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   }
 
   [HttpGet]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsRead)]
   public async Task<ActionResult<InternalDtos.TenantSettingsDto>> GetAll(CancellationToken cancellationToken)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -57,6 +58,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   }
 
   [HttpGet("{name}")]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsRead)]
   public async Task<ActionResult<InternalDtos.TenantSettingResponseDto?>> GetSetting(string name)
   {
     if (!User.TryGetTenantId(out var tenantId))

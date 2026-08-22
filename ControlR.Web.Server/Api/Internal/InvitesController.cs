@@ -1,4 +1,6 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -65,14 +67,28 @@ public class InvitesController : ControllerBase
   [HttpGet]
   [Authorize(Policy = PolicyNames.RequireUsersRead)]
   public async Task<ActionResult<InternalDtos.TenantInviteResponseDto[]>> GetAll(
-    [FromServices] ITenantInvitesProvider tenantInvitesProvider)
+    [FromServices] ITenantInvitesProvider tenantInvitesProvider,
+    [FromServices] IPermissionEvaluator permissionEvaluator)
   {
     if (!User.TryGetTenantId(out var tenantId))
     {
       return Unauthorized();
     }
 
+    // Only invite managers (TenantUsersWrite) may see the activation code; read-only users
+    // receive the invite metadata without the bearer secret. Evaluate the current credential
+    // directly so a narrowed PAT cannot inherit the owning user's write permission.
+    var callerPrincipal = PrincipalDescriptorBuilder.FromClaims(User);
+    if (callerPrincipal is null)
+    {
+      return Unauthorized();
+    }
+
+    var resource = new ResourceDescriptor(PermissionScopeKind.Tenant, null, tenantId);
+    var evalResult = await permissionEvaluator.Evaluate(
+      callerPrincipal, PermissionNames.TenantUsersWrite, resource, HttpContext.RequestAborted);
+
     var origin = Request.ToOrigin();
-    return await tenantInvitesProvider.GetAllInvites(tenantId, origin);
+    return await tenantInvitesProvider.GetAllInvites(tenantId, origin, evalResult.Allowed);
   }
 }

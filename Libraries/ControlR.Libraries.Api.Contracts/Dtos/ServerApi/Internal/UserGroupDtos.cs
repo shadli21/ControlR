@@ -39,7 +39,9 @@ public record UserGroupDetailDto(
   IReadOnlyList<UserGroupMemberDto> Members);
 
 public record AddUserGroupMembersRequestDto(
+  [property: Required]
   IReadOnlyList<Guid> UserIds);
 
 public record RemoveUserGroupMembersRequestDto(
+  [property: Required]
   IReadOnlyList<Guid> UserIds);

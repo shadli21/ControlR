@@ -1,5 +1,6 @@
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Web.Server.Extensions.Dtos.Internal;
+using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -63,6 +64,7 @@ public class TagsController : ControllerBase
   [HttpGet]
   public async Task<ActionResult<InternalDtos.TagResponseDto[]>> GetAllTags(
     [FromServices] AppDb appDb,
+    [FromServices] IDeviceAccessScopeResolver scopeResolver,
     [FromQuery] bool includeLinkedIds = false)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -82,6 +84,25 @@ public class TagsController : ControllerBase
 
     // ReSharper disable once EntityFramework.NPlusOne.IncompleteDataQuery
     var tags = await query.ToListAsync();
+
+    if (includeLinkedIds)
+    {
+      // Only expose device IDs the caller is authorized to read, preserving the
+      // device-scoped read boundary that the tag linkage would otherwise bypass.
+      var readableQuery = await appDb.Devices.ApplyDeviceAccessScope(User, scopeResolver);
+      var readableDeviceIds = await readableQuery
+        .Select(x => x.Id)
+        .ToListAsync();
+
+      var readableSet = readableDeviceIds.ToHashSet();
+      foreach (var tag in tags)
+      {
+        if (tag.Devices is { Count: > 0 })
+        {
+          tag.Devices = tag.Devices.Where(d => readableSet.Contains(d.Id)).ToList();
+        }
+      }
+    }
 
     var dtos = tags
       .Select(x => x.ToInternalResponseDto())

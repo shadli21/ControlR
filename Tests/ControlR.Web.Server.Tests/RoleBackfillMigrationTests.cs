@@ -18,6 +18,115 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
 {
   private const string PreRemoveRolesMigration = "20260729192550_Update_EntityBase";
 
+  /// <summary>
+  /// Regression guard: the role→permission backfill must be a complete,
+  /// correctly-scoped superset of every preset. The Phase2 migration originally omitted
+  /// Server Administrator ×4 (ServerPermissionsRead, ServerPermissionsWrite,
+  /// TenantPermissionsRead, TenantAuthorizationLogsRead) and Device Superuser ×2
+  /// (DeviceOverviewRead, DeviceVncRelayConnect), leaving upgraded legacy users
+  /// permanently under-privileged. TenantPermissionsRead / TenantAuthorizationLogsRead
+  /// must also be backfilled to Tenant scope (not Server), matching PermissionCatalog.
+  /// </summary>
+  [Fact]
+  public async Task RemoveRoles_BackfillsFullPresetCoverage_WithCorrectScopes()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(
+      output,
+      useInMemoryDatabase: false,
+      applyMigrations: false);
+
+    using var scope = testApp.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var migrator = db.GetInfrastructure().GetRequiredService<IMigrator>();
+
+    await migrator.MigrateAsync(PreRemoveRolesMigration, TestContext.Current.CancellationToken);
+
+    var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Full Coverage Tenant" };
+    db.Tenants.Add(tenant);
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+    var user = new AppUser
+    {
+      TenantId = tenant.Id,
+      UserName = "coverage@test.local",
+      Email = "coverage@test.local"
+    };
+    var createResult = await userManager.CreateAsync(user, "T3stP@ssw0rd!");
+    Assert.True(createResult.Succeeded);
+
+    // Grant every backfilled role so the full superset is exercised.
+    await db.Database.ExecuteSqlRawAsync(
+      """
+      INSERT INTO "AspNetUserRoles" ("UserId", "RoleId")
+      SELECT {0}, "Id" FROM "AspNetRoles"
+      WHERE "Name" IN ('Server Administrator', 'Tenant Administrator', 'Device Superuser', 'Installer Key Manager', 'Agent Installer');
+      """,
+      user.Id);
+
+    await migrator.MigrateAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+
+    var all = await verifyDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id)
+      .ToListAsync(TestContext.Current.CancellationToken);
+
+    var serverRoleRows = all.Where(x => x.ScopeKind == PermissionScopeKind.Server).Select(x => x.PermissionName).ToHashSet();
+    var tenantRoleRows = all.Where(x => x.ScopeKind == PermissionScopeKind.Tenant).Select(x => x.PermissionName).ToHashSet();
+
+    // Server-scoped subset of the Server Administrator preset (server-only permissions).
+    var expectedServer = new[]
+    {
+      PermissionNames.ServerAdmin,
+      PermissionNames.ServerAlertsRead,
+      PermissionNames.ServerAlertsWrite,
+      PermissionNames.ServerAuthorizationLogsRead,
+      PermissionNames.ServerPermissionsRead,
+      PermissionNames.ServerPermissionsWrite,
+      PermissionNames.ServerTenantsRead,
+      PermissionNames.ServerTelemetryRead,
+      PermissionNames.ServerServiceAccountsRead,
+      PermissionNames.ServerServiceAccountsWrite,
+      PermissionNames.ServerServiceAccountsRotateCredentials,
+    };
+    Assert.Empty(expectedServer.Except(serverRoleRows));
+
+    // Tenant-scoped permissions from Server Administrator + Tenant Administrator presets.
+    var expectedTenant = new[]
+    {
+      PermissionNames.TenantPermissionsRead,
+      PermissionNames.TenantAuthorizationLogsRead,
+      PermissionNames.TenantPermissionsWrite,
+      PermissionNames.TenantPermissionsDeny,
+      PermissionNames.TenantUsersWrite,
+    };
+    Assert.Empty(expectedTenant.Except(tenantRoleRows));
+
+    // Device Superuser preset — all present and tenant-scoped (broadest legal scope is Tenant).
+    var expectedDevice = new[]
+    {
+      PermissionNames.DeviceRead,
+      PermissionNames.DeviceDelete,
+      PermissionNames.DeviceOverviewRead,
+      PermissionNames.DeviceVncRelayConnect,
+      PermissionNames.DeviceRemoteControlConnect,
+      PermissionNames.DeviceFileSystemRead,
+      PermissionNames.DeviceTerminalUse,
+      PermissionNames.DeviceAgentUpdate,
+    };
+    Assert.Empty(expectedDevice.Except(all.Where(x => x.ScopeKind == PermissionScopeKind.Tenant).Select(x => x.PermissionName)));
+
+    foreach (var perm in expectedTenant)
+    {
+      var row = all.First(x => x.PermissionName == perm);
+      Assert.Equal(PermissionScopeKind.Tenant, row.ScopeKind);
+      Assert.Equal(tenant.Id, row.ScopeId);
+      Assert.Equal(tenant.Id, row.OwningTenantId);
+    }
+  }
+
   [Fact]
   public async Task RemoveRoles_BackfillsRoleMembershipsIntoPermissionAssignments()
   {

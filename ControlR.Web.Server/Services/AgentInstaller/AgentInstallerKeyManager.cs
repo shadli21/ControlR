@@ -1,6 +1,7 @@
 using ControlR.Libraries.Shared.Helpers;
 using ControlR.Web.Server.Extensions.Dtos.Internal;
 using ControlR.Web.Server.Primitives;
+using ControlR.Web.Server.Services.Locks;
 
 namespace ControlR.Web.Server.Services.AgentInstaller;
 
@@ -36,9 +37,11 @@ public class AgentInstallerKeyManager(
     IDbContextFactory<AppDb> dbContextFactory,
     IPasswordHasher<string> passwordHasher,
     IOptions<AppOptions> appOptions,
-    ILogger<AgentInstallerKeyManager> logger) : IAgentInstallerKeyManager
+    ILogger<AgentInstallerKeyManager> logger,
+    IAsyncLock asyncLock) : IAgentInstallerKeyManager
 {
   private readonly IOptions<AppOptions> _appOptions = appOptions;
+  private readonly IAsyncLock _asyncLock = asyncLock;
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogger<AgentInstallerKeyManager> _logger = logger;
   private readonly IPasswordHasher<string> _passwordHasher = passwordHasher;
@@ -233,6 +236,10 @@ public class AgentInstallerKeyManager(
     Guid deviceId,
     string? remoteIpAddress = null)
   {
+    // Serialize the read-usage-count-then-consume sequence per key so a usage-based key can
+    // never be consumed more than its AllowedUses under concurrent requests.
+    await using var lockHandle = await _asyncLock.AcquireAsync($"installer-key:{keyId}", CancellationToken.None);
+
     var result = await ValidateKeyImpl(keyId, keySecret, consumeUsage: true, deviceId, remoteIpAddress);
     if (!result.IsSuccess)
     {

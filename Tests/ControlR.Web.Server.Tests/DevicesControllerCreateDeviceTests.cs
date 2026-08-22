@@ -59,6 +59,50 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task CreateDevice_DeviceIdExistsInOtherTenant_Rejected()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenantA = await services.CreateTestTenant();
+    var tenantB = await services.CreateTestTenant();
+
+    var deviceInA = await services.CreateTestDevice(tenantA.Id);
+
+    var userB = await services.CreateTestUser(
+      tenantId: tenantB.Id,
+      email: "cross-tenant@example.com",
+      presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenantB.Id,
+      creatorId: userB.Id,
+      creatorKind: InstallerKeyCreatorKind.User,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "Cross-Tenant Key");
+
+    var deviceDto = CreateDeviceDto(tenantB.Id, deviceId: deviceInA.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: null);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+    using var scope = services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var dbDevice = await db.Devices
+      .IgnoreQueryFilters()
+      .FirstOrDefaultAsync(d => d.Id == deviceInA.Id, cancellationToken: TestContext.Current.CancellationToken);
+    Assert.NotNull(dbDevice);
+    Assert.Equal(tenantA.Id, dbDevice.TenantId);
+  }
+
+  [Fact]
   public async Task CreateDevice_ExistingDevice_UpdatesDeviceProperties()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
@@ -620,7 +664,8 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
     var services = testServer.Services;
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.TenantAdministrator);
+    var user = await services.CreateTestUser(
+      tenant.Id, presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
 
     using var scope = services.CreateScope();
     await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
@@ -767,6 +812,102 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
 
     Assert.NotNull(key);
     Assert.Equal(10, key.Usages.Count);
+  }
+
+  [Fact]
+  public async Task CreateDevice_WithTags_WithoutTagPermission_Rejected()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var user = await services.CreateTestUser(
+      tenantId: tenant.Id,
+      email: "no-tags@example.com",
+      presets: [PermissionPresets.AgentInstaller]);
+
+    var tagId = Guid.NewGuid();
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.Tags.Add(new Tag { Id = tagId, Name = "Test Tag", TenantId = tenant.Id });
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenant.Id,
+      creatorId: user.Id,
+      creatorKind: InstallerKeyCreatorKind.User,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "No-Tags Key");
+
+    var deviceDto = CreateDeviceDto(tenant.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: [tagId]);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+    using var scope2 = services.CreateScope();
+    await using var db2 = scope2.ServiceProvider.GetRequiredService<AppDb>();
+    var dbDevice = await db2.Devices
+      .IgnoreQueryFilters()
+      .FirstOrDefaultAsync(d => d.Id == deviceDto.Id, cancellationToken: TestContext.Current.CancellationToken);
+    Assert.Null(dbDevice);
+  }
+
+  [Fact]
+  public async Task CreateDevice_WithTags_WithTagPermission_Succeeds()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var user = await services.CreateTestUser(
+      tenantId: tenant.Id,
+      email: "with-tags@example.com",
+      presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
+
+    var tagId = Guid.NewGuid();
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.Tags.Add(new Tag { Id = tagId, Name = "Test Tag", TenantId = tenant.Id });
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenant.Id,
+      creatorId: user.Id,
+      creatorKind: InstallerKeyCreatorKind.User,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "With-Tags Key");
+
+    var deviceDto = CreateDeviceDto(tenant.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: [tagId]);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+    using var scope2 = services.CreateScope();
+    await using var db2 = scope2.ServiceProvider.GetRequiredService<AppDb>();
+    var dbDevice = await db2.Devices
+      .IgnoreQueryFilters()
+      .Include(d => d.Tags)
+      .FirstOrDefaultAsync(d => d.Id == deviceDto.Id, cancellationToken: TestContext.Current.CancellationToken);
+    Assert.NotNull(dbDevice);
+    Assert.Contains(dbDevice.Tags!, t => t.Id == tagId);
   }
 
   private static DeviceConnectionContext CreateConnectionContext(Guid? deviceId = null)

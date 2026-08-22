@@ -24,9 +24,18 @@ public class DeviceAccessScopeResolver(
     CancellationToken cancellationToken = default)
   {
     // Hard boundary: logon token sessions are always restricted to their scoped device.
-    if (TryGetLogonTokenDeviceScope(user, out var scopedDeviceId))
+    // If the auth method is logon-token but the scoped-device claim is absent or invalid,
+    // fail rather than falling through to full device.read rule resolution.
+    // The logon-token handler always sets both claims together today, so this is a
+    // latent hardening guard against a malformed principal in the most sensitive boundary.
+    if (user.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ==
+        PrincipalClaimValues.LogonTokenMethod)
     {
-      return DeviceAccessScope.SingleDevice(scopedDeviceId);
+      if (TryGetLogonTokenDeviceScope(user, out var scopedDeviceId))
+      {
+        return DeviceAccessScope.SingleDevice(scopedDeviceId);
+      }
+      return DeviceAccessScope.None();
     }
 
     var principal = PrincipalDescriptorBuilder.FromClaims(user);

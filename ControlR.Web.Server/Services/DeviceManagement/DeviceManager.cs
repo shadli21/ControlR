@@ -27,6 +27,17 @@ public interface IDeviceManager
   Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null, Guid? customerId = null);
 
   /// <summary>
+  /// Determines whether the specified user is authorized to assign tags on the given device.
+  /// </summary>
+  Task<bool> CanAssignTagOnDevice(AppUser user, Device device);
+
+  /// <summary>
+  /// Determines whether the specified tenant-scoped service account is authorized to assign
+  /// tags on the given device.
+  /// </summary>
+  Task<bool> CanAssignTagOnDevice(ServiceAccount serviceAccount, Device device);
+
+  /// <summary>
   /// Determines whether the specified user is authorized to install an agent on the given device.
   /// </summary>
   /// <param name="user">The user attempting to install the agent.</param>
@@ -97,6 +108,27 @@ public class DeviceManager(
     return entity;
   }
 
+  public async Task<bool> CanAssignTagOnDevice(AppUser user, Device device)
+    => await CanAssignTagOnDevice(
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, AuthMethod: "cookie"),
+      device);
+
+  public async Task<bool> CanAssignTagOnDevice(ServiceAccount serviceAccount, Device device)
+  {
+    if (serviceAccount.TenantId is not { } tenantId || tenantId != device.TenantId)
+    {
+      return false;
+    }
+
+    var principal = new PrincipalDescriptor(
+      PrincipalType.TenantServiceAccount,
+      serviceAccount.Id,
+      serviceAccount.TenantId,
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
+
+    return await CanAssignTagOnDevice(principal, device);
+  }
+
   public async Task<bool> CanInstallAgentOnDevice(AppUser user, Device device)
     => await CanInstallAgentOnDevice(
       new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, AuthMethod: "cookie"),
@@ -147,6 +179,11 @@ public class DeviceManager(
     if (entity is null)
     {
       return Result.Fail<Device>("Device does not exist in the database.");
+    }
+
+    if (entity.TenantId != Guid.Empty && entity.TenantId != deviceDto.TenantId)
+    {
+      return Result.Fail<Device>("Device belongs to a different tenant.");
     }
 
     await UpdateDeviceEntity(entity, deviceDto, context, EntityState.Modified, tagIds, publicKeyBase64, customerId);
@@ -212,11 +249,17 @@ public class DeviceManager(
     }
   }
 
+  private async Task<bool> CanAssignTagOnDevice(PrincipalDescriptor principal, Device device)
+    => await HasDevicePermission(principal, device, PermissionNames.DeviceTagsWrite);
+
   /// <summary>
   /// Evaluates <see cref="PermissionNames.AgentInstall"/> at device scope so device-scoped
   /// denies on <paramref name="device"/> are honored regardless of broader tenant rights.
   /// </summary>
   private async Task<bool> CanInstallAgentOnDevice(PrincipalDescriptor principal, Device device)
+    => await HasDevicePermission(principal, device, PermissionNames.AgentInstall);
+
+  private async Task<bool> HasDevicePermission(PrincipalDescriptor principal, Device device, string permissionName)
   {
     if (principal.TenantId is not { } tenantId || tenantId != device.TenantId)
     {
@@ -234,7 +277,7 @@ public class DeviceManager(
 
     var result = await _permissionEvaluator.Evaluate(
       principal,
-      PermissionNames.AgentInstall,
+      permissionName,
       resource,
       CancellationToken.None);
     return result.Allowed;
@@ -252,6 +295,15 @@ public class DeviceManager(
     var entry = _appDb.Entry(entity);
     await entry.Reference(x => x.Tenant).LoadAsync();
     await entry.Collection(x => x.Tags!).LoadAsync();
+
+    // A device's tenant is immutable once assigned. Reject any attempt to re-home an
+    // existing device into a different tenant.
+    if (entity.TenantId != Guid.Empty && entity.TenantId != deviceDto.TenantId)
+    {
+      throw new InvalidOperationException(
+        $"Device {deviceDto.Id} belongs to tenant {entity.TenantId} and cannot be moved to tenant {deviceDto.TenantId}.");
+    }
+
     entry.State = entityState;
 
     SetValuesExcept(
