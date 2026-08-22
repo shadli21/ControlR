@@ -231,7 +231,7 @@ public class UserCreatorTests(ITestOutputHelper output)
             email, 
             "Password123!", 
             tenant.Id, 
-            presetNames: [PermissionPresets.DeviceSuperUser], 
+            presetNames: [PermissionPresets.DeviceSuperUser],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Succeeded);

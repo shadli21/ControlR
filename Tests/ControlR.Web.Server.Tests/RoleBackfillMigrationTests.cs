@@ -206,7 +206,7 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
     }
 
     // Tenant Administrator preset permissions — tenant-scoped with ScopeId = tenantId,
-    // which PermissionEvaluator.ScopeMatches requires for tenant-scoped assignments.
+    // which tenant-scope evaluation requires for tenant-scoped assignments.
     var tenantAdminPermissions = await verifyDb.PermissionAssignments
       .Where(x => x.PrincipalId == user.Id &&
                  (x.PermissionName == PermissionNames.TenantSettingsWrite ||

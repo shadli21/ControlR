@@ -301,7 +301,7 @@ public class PermissionAssignmentManager(
         request.ScopeKind,
         NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId)))
       .ToList();
-      
+
     if (requestKeys.Count != requestKeys.Distinct().Count())
     {
       return HttpResult.Fail(HttpResultErrorCode.Conflict, "The request contains duplicate permission assignments.");
