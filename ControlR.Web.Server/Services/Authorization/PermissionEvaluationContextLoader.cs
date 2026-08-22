@@ -21,6 +21,12 @@ public sealed class PermissionEvaluationContextLoader(
   {
     await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+    if (principal.PrincipalType is not PrincipalType.ServerServiceAccount &&
+        !principal.TenantId.HasValue)
+    {
+      return new PermissionEvaluationContext(principal, false, [], [], false);
+    }
+
     if (principal.PrincipalType == PrincipalType.ServerServiceAccount)
     {
       var hasAssignments = await db.PermissionAssignments

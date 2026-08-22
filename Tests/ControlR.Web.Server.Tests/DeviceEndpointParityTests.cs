@@ -73,6 +73,67 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
       expectedReadable: [deviceInCustomer.Id]);
   }
 
+  [Fact]
+  public async Task PatListEndpoint_And_SingleDeviceEndpoint_AgreeOnExplicitPatScope()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var tenant = await testServer.Services.CreateTestTenant();
+    await testServer.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testServer.Services.CreateTestUser(tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local");
+    var deviceA = await testServer.Services.CreateTestDevice(tenant.Id);
+    var deviceB = await testServer.Services.CreateTestDevice(tenant.Id);
+    await SeedAssignment(testServer, CreateGrant(
+      user.Id,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id));
+
+    var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
+    var patResult = await patManager.CreateToken(
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Explicit PAT parity"),
+      user.Id);
+    Assert.True(patResult.IsSuccess);
+
+    using (var scope = testServer.Services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.PersonalAccessToken,
+        patResult.Value.PersonalAccessToken.Id,
+        PermissionNames.DeviceRead,
+        PermissionScopeKind.Device,
+        deviceA.Id,
+        tenant.Id,
+        "test",
+        user.Id.ToString()));
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    using var httpClient = testServer.Factory.CreateClient();
+    httpClient.DefaultRequestHeaders.Add(
+      PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
+      patResult.Value.PlainTextToken);
+    var listResponse = await httpClient.GetAsync(
+      HttpConstants.Internal.DevicesEndpoint,
+      TestContext.Current.CancellationToken);
+    var listedDevices = await listResponse.Content.ReadFromJsonAsync<InternalDtos.DeviceResponseDto[]>(
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+    Assert.NotNull(listedDevices);
+    Assert.True(
+      new[] { deviceA.Id }.SequenceEqual(listedDevices.Select(device => device.Id)));
+
+    var deviceAResponse = await httpClient.GetAsync(
+      $"{HttpConstants.Internal.DevicesEndpoint}/{deviceA.Id}",
+      TestContext.Current.CancellationToken);
+    var deviceBResponse = await httpClient.GetAsync(
+      $"{HttpConstants.Internal.DevicesEndpoint}/{deviceB.Id}",
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, deviceAResponse.StatusCode);
+    Assert.Equal(HttpStatusCode.Forbidden, deviceBResponse.StatusCode);
+  }
+
   private static PermissionAssignment CreateGrant(
     Guid userId,
     string permissionName,

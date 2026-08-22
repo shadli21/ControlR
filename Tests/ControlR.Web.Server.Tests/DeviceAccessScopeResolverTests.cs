@@ -81,6 +81,7 @@ public class DeviceAccessScopeResolverTests
       new(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.LogonTokenMethod),
       new(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
       new(PrincipalClaimTypes.PrincipalId, Guid.NewGuid().ToString()),
+      new(UserClaimTypes.TenantId, Guid.NewGuid().ToString()),
       new(PrincipalClaimTypes.CredentialId, Guid.NewGuid().ToString()),
       new(PrincipalClaimTypes.CredentialType, CredentialType.LogonToken.ToString())
     };

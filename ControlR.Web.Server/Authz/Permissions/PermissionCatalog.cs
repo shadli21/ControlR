@@ -16,7 +16,7 @@ public static class PermissionCatalog
 
   /// <summary>
   /// Returns the broadest legal scope for a permission, per the scope-breadth ordering
-  /// (Device &lt; DeviceGroup &lt; CustomerTenant &lt; Tenant &lt; Server). Used when applying
+  /// (Device, DeviceGroup, CustomerTenant, Tenant, then Server). Used when applying
   /// presets at the highest sensible scope.
   /// </summary>
   public static PermissionScopeKind? GetBroadestLegalScope(string permissionName)
