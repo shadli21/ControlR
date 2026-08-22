@@ -288,6 +288,42 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task LogonToken_CreateForExternal_PatInTenantA_DeviceInTenantB_ReturnsBadRequest()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(testOutput);
+    using var httpClient = testServer.Factory.CreateClient();
+
+    var tenantA = await testServer.Services.CreateTestTenant("Tenant A");
+    var tenantB = await testServer.Services.CreateTestTenant("Tenant B");
+    var userA = await testServer.Services.CreateTestUser(
+      tenantA.Id,
+      "lt-ext-tenant-a@t.local",
+      PermissionPresets.DeviceSuperUser);
+    var deviceB = await testServer.Services.CreateTestDevice(tenantB.Id);
+
+    // Ensure the caller can create logon tokens in its own tenant.
+    var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
+    var patResult = await patManager.CreateToken(
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT"),
+      userA.Id);
+    Assert.True(patResult.IsSuccess);
+    httpClient.DefaultRequestHeaders.Add(
+      PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
+      patResult.Value.PlainTextToken);
+
+    var response = await httpClient.PostAsJsonAsync(
+      $"{HttpConstants.V1.LogonTokensEndpoint}/external",
+      new V1Dtos.CreateLogonTokenForExternalRequestDto(
+        DeviceId: deviceB.Id,
+        TenantId: tenantB.Id,
+        UserCorrelationId: "ext-cross-tenant"),
+      TestContext.Current.CancellationToken);
+
+    // A tenant-A caller must not be able to mint a logon token bound to a tenant-B device.
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+  }
+
+  [Fact]
   public async Task LogonToken_CreateForUser_PatInTenantA_DeviceInTenantA_ReturnsOk()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(testOutput);

@@ -248,7 +248,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
 
     if (group is null)
     {
-      return HttpResult.Fail<InternalDtos.DeviceGroupDetailDto>(HttpResultErrorCode.BadRequest, "Device group not found.");
+      return HttpResult.Fail<InternalDtos.DeviceGroupDetailDto>(HttpResultErrorCode.NotFound, "Device group not found.");
     }
 
     var nameConflict = await _appDb.DeviceGroups

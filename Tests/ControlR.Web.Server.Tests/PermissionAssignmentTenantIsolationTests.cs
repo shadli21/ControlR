@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
@@ -12,6 +13,62 @@ namespace ControlR.Web.Server.Tests;
 public class PermissionAssignmentTenantIsolationTests(ITestOutputHelper testOutput)
 {
   private readonly ITestOutputHelper _testOutput = testOutput;
+
+  [Fact]
+  public async Task Create_CrossTenantPrincipal_ReturnsBadRequest()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var (clientA, tenantA, _, _) = await CreateTenantAdminEnvironment(testServer, "Tenant A");
+    var (_, tenantB, _, _) = await CreateTenantAdminEnvironment(testServer, "Tenant B");
+
+    // A tenant-B regular user to target.
+    var userB = await testServer.Services.CreateTestUser(tenantB, $"target-{Guid.NewGuid():N}@t.local");
+
+    // A tenant-A admin attempts to create an assignment whose target principal is a tenant-B user.
+    var response = await clientA.PostAsJsonAsync(
+      HttpConstants.Internal.PermissionAssignmentsEndpoint,
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.User,
+        userB.Id,
+        PermissionNames.DeviceRead,
+        PermissionEffect.Allow,
+        PermissionScopeKind.Tenant,
+        tenantA,
+        null),
+      TestContext.Current.CancellationToken);
+
+    // A tenant admin must not be able to write an assignment targeting another tenant's principal
+    // (fail-closed BadRequest, no row written).
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+  }
+
+  [Fact]
+  public async Task Create_CustomerScopeOnOtherTenantCustomer_ReturnsBadRequest()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var (clientA, tenantA, _, userA) = await CreateTenantAdminEnvironment(testServer, "Tenant A");
+    var (clientB, tenantB, _, _) = await CreateTenantAdminEnvironment(testServer, "Tenant B");
+
+    // A customer owned by tenant B, referenced as the ScopeId of an assignment a tenant-A admin creates.
+    var customerB = await CreateCustomer(testServer, tenantB, "Customer B");
+
+    var response = await clientA.PostAsJsonAsync(
+      HttpConstants.Internal.PermissionAssignmentsEndpoint,
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.User,
+        userA.Id,
+        PermissionNames.DeviceRead,
+        PermissionEffect.Allow,
+        PermissionScopeKind.CustomerTenant,
+        customerB.Id,
+        null),
+      TestContext.Current.CancellationToken);
+
+    // The cross-tenant customer must be rejected (BadRequest) — a filter/predicate regression here
+    // would silently grant a permission scoped to another tenant's customer (cross-tenant leak).
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    _ = tenantA;
+  }
 
   [Fact]
   public async Task Create_ServerScopeByTenantAdmin_ReturnsForbidden()
@@ -65,6 +122,20 @@ public class PermissionAssignmentTenantIsolationTests(ITestOutputHelper testOutp
     var assignments = await GetAssignments(clientB, userA.Id);
 
     Assert.Empty(assignments);
+  }
+
+  private static async Task<Customer> CreateCustomer(TestWebServer testServer, Guid tenantId, string name)
+  {
+    using var scope = testServer.Services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var customer = new Customer
+    {
+      Name = name,
+      TenantId = tenantId
+    };
+    db.Customers.Add(customer);
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    return customer;
   }
 
   private static async Task<Guid> CreateDeviceReadAssignment(HttpClient client, Guid tenantId, Guid principalId)
