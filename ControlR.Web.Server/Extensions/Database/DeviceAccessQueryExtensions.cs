@@ -16,6 +16,8 @@ public static class DeviceAccessQueryExtensions
 
     query = query
       .Where(device =>
+        (!accessScope.TenantBoundaryId.HasValue ||
+         device.TenantId == accessScope.TenantBoundaryId.Value) &&
         (accessScope.IncludesServerWide ||
          accessScope.IncludedTenantIds.Contains(device.TenantId) ||
          accessScope.IncludedDeviceIds.Contains(device.Id) ||
@@ -42,6 +44,8 @@ public static class DeviceAccessQueryExtensions
     }
 
     return query.Where(device =>
+      (!ownerScope.TenantBoundaryId.HasValue ||
+       device.TenantId == ownerScope.TenantBoundaryId.Value) &&
       (ownerScope.IncludesServerWide ||
        ownerScope.IncludedTenantIds.Contains(device.TenantId) ||
        ownerScope.IncludedDeviceIds.Contains(device.Id) ||

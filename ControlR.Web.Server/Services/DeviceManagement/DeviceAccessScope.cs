@@ -1,6 +1,7 @@
 namespace ControlR.Web.Server.Services.DeviceManagement;
 
 public sealed record DeviceAccessScope(
+  Guid? TenantBoundaryId,
   bool IncludesServerWide,
   IReadOnlyCollection<Guid> IncludedTenantIds,
   IReadOnlyCollection<Guid> IncludedDeviceGroupIds,
@@ -13,12 +14,13 @@ public sealed record DeviceAccessScope(
   DeviceAccessScope? RequiredOwnerScope)
 {
   public static DeviceAccessScope None() =>
-    new(false, [], [], [], [], [], [], [], [], null);
+    new(null, false, [], [], [], [], [], [], [], [], null);
 
   public static DeviceAccessScope ServerWide() =>
-    new(true, [], [], [], [], [], [], [], [], null);
+    new(null, true, [], [], [], [], [], [], [], [], null);
 
   public static DeviceAccessScope Create(
+    Guid? tenantBoundaryId,
     bool includesServerWide,
     IReadOnlyCollection<Guid> includedTenantIds,
     IReadOnlyCollection<Guid> includedDeviceGroupIds,
@@ -29,6 +31,7 @@ public sealed record DeviceAccessScope(
     IReadOnlyCollection<Guid> excludedCustomerIds,
     IReadOnlyCollection<Guid> excludedDeviceIds) =>
     new(
+      tenantBoundaryId,
       includesServerWide,
       includedTenantIds,
       includedDeviceGroupIds,

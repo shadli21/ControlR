@@ -72,6 +72,7 @@ public sealed class DeviceAccessScopeResolver(
       }
 
       return DeviceAccessScope.Create(
+        principal.TenantId,
         false,
         [],
         [],
@@ -83,19 +84,22 @@ public sealed class DeviceAccessScopeResolver(
         []);
     }
 
-    var scope = BuildScope(deviceReadRules);
+    var scope = BuildScope(deviceReadRules, principal.TenantId);
     if (context.HasExplicitPatScope)
     {
       var ownerScope = BuildScope(context.OwnerRules
         .Where(rule => rule.PermissionName == PermissionNames.DeviceRead)
-        .ToList());
+        .ToList(),
+        principal.TenantId);
       return scope.RequireOwnerScope(ownerScope);
     }
 
     return scope;
   }
 
-  private static DeviceAccessScope BuildScope(IReadOnlyCollection<PermissionRule> rules)
+  private static DeviceAccessScope BuildScope(
+    IReadOnlyCollection<PermissionRule> rules,
+    Guid? tenantBoundaryId)
   {
     var allows = rules
       .Where(rule => rule.Effect == PermissionEffect.Allow)
@@ -110,6 +114,7 @@ public sealed class DeviceAccessScopeResolver(
       .ToList();
 
     return DeviceAccessScope.Create(
+      tenantBoundaryId,
       allows.Any(rule => rule.ScopeKind == PermissionScopeKind.Server),
       ScopeIds(allows, PermissionScopeKind.Tenant),
       ScopeIds(allows, PermissionScopeKind.DeviceGroup),

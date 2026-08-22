@@ -216,6 +216,18 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public void DevicePermissions_NeverAllowServerScope()
+  {
+    var devicePermissions = PermissionCatalog.All.Values
+      .Where(metadata => metadata.AllowedScopeKinds.Contains(PermissionScopeKind.Device))
+      .ToArray();
+
+    Assert.NotEmpty(devicePermissions);
+    Assert.All(devicePermissions, metadata =>
+      Assert.DoesNotContain(PermissionScopeKind.Server, metadata.AllowedScopeKinds));
+  }
+
+  [Fact]
   public void PermissionScopeKind_AllValuesAreHandledByScopeBreadth()
   {
     var expectedKinds = Enum.GetValues<PermissionScopeKind>()
