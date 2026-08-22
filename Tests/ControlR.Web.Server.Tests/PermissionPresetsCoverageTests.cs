@@ -51,4 +51,23 @@ public class PermissionPresetsCoverageTests
       unknown.Length == 0,
       $"Preset permissions missing from PermissionCatalog: {string.Join(", ", unknown.Select(x => $"{x.Key}/{x.permission}"))}");
   }
+
+  [Fact]
+  public void PermissionPresets_AllPermissionListsContainNoDuplicates()
+  {
+    foreach (var (presetName, permissions) in PermissionPresets.All)
+    {
+      Assert.Equal(
+        permissions.Count,
+        permissions.Distinct(StringComparer.Ordinal).Count());
+    }
+  }
+
+  [Fact]
+  public void PermissionPresets_AllPresetNamesAreUnique()
+  {
+    Assert.Equal(
+      PermissionPresets.All.Count,
+      PermissionPresets.All.Keys.Distinct(StringComparer.Ordinal).Count());
+  }
 }

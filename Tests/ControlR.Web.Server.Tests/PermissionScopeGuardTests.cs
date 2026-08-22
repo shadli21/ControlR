@@ -186,6 +186,20 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public void PermissionCatalog_AllPermissionsHaveLegalPresetScope()
+  {
+    foreach (var (permissionName, metadata) in PermissionCatalog.All)
+    {
+      var broadest = PermissionCatalog.GetBroadestLegalScope(permissionName);
+      Assert.NotNull(broadest);
+      Assert.True(
+        broadest is PermissionScopeKind.Server or PermissionScopeKind.Tenant,
+        $"Permission '{permissionName}' has broadest legal scope '{broadest}', which cannot be emitted by a preset.");
+      Assert.Contains(broadest.Value, metadata.AllowedScopeKinds);
+    }
+  }
+
+  [Fact]
   public void PermissionMetadata_AllCatalogEntriesHaveExplicitScopeKinds()
   {
     Assert.All(PermissionCatalog.All, entry =>

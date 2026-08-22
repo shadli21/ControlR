@@ -21,6 +21,34 @@ public class PermissionPolicyMapTests
   }
 
   [Fact]
+  public void DeviceResourcePolicies_AllMappedKeysAreDeclaredConstants()
+  {
+    var policyNames = GetPublicStringConstants(typeof(DeviceResourcePolicies))
+      .ToHashSet(StringComparer.Ordinal);
+    var undeclared = DeviceResourcePolicies.PolicyToPermission.Keys
+      .Where(policyName => !policyNames.Contains(policyName))
+      .ToArray();
+
+    Assert.True(
+      undeclared.Length == 0,
+      $"DeviceResourcePolicies entries missing from declared constants: {string.Join(", ", undeclared)}");
+  }
+
+  [Fact]
+  public void PermissionCatalog_AllEntriesHavePermissionNameConstants()
+  {
+    var permissionNames = GetPublicStringConstants(typeof(PermissionNames))
+      .ToHashSet(StringComparer.Ordinal);
+    var catalogOnly = PermissionCatalog.All.Keys
+      .Where(permissionName => !permissionNames.Contains(permissionName))
+      .ToArray();
+
+    Assert.True(
+      catalogOnly.Length == 0,
+      $"PermissionCatalog entries missing from PermissionNames: {string.Join(", ", catalogOnly)}");
+  }
+
+  [Fact]
   public void PermissionNames_AllConstantsExistInCatalog()
   {
     var permissionNames = GetPublicStringConstants(typeof(PermissionNames));
@@ -31,6 +59,20 @@ public class PermissionPolicyMapTests
     Assert.True(
       missing.Length == 0,
       $"PermissionNames constants missing from PermissionCatalog: {string.Join(", ", missing)}");
+  }
+
+  [Fact]
+  public void PermissionPolicies_AllMappedPolicyKeysHavePolicyNameConstants()
+  {
+    var policyNames = GetPublicStringConstants(typeof(PolicyNames))
+      .ToHashSet(StringComparer.Ordinal);
+    var unmapped = PermissionPolicies.PolicyToPermission.Keys
+      .Where(policyName => !policyNames.Contains(policyName))
+      .ToArray();
+
+    Assert.True(
+      unmapped.Length == 0,
+      $"PermissionPolicies entries missing from PolicyNames: {string.Join(", ", unmapped)}");
   }
 
   [Fact]
