@@ -15,7 +15,7 @@ namespace ControlR.Web.Server.Tests;
 public class InviteAcceptanceTests(ITestOutputHelper testOutput)
 {
   [Fact]
-  public async Task AcceptInvite_ClearsOnlyUserRoles_RetainsTokensAndPreferences()
+  public async Task AcceptInvite_ClearsAssignmentsAndMemberships_RetainsTokensAndPreferences()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(testOutput, useInMemoryDatabase: false);
 

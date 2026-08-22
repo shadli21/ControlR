@@ -1,8 +1,11 @@
+using System.Collections.Frozen;
+using System.Collections.Immutable;
+
 namespace ControlR.Web.Server.Authz.Permissions;
 
 public static class PermissionCatalog
 {
-  private static readonly Dictionary<string, PermissionMetadata> _permissions = BuildCatalog();
+  private static readonly FrozenDictionary<string, PermissionMetadata> _permissions = BuildCatalog();
 
   public static IReadOnlyDictionary<string, PermissionMetadata> All => _permissions;
 
@@ -19,7 +22,7 @@ public static class PermissionCatalog
   public static PermissionScopeKind? GetBroadestLegalScope(string permissionName)
   {
     var kinds = AllowedKinds(permissionName);
-    if (kinds is null || kinds.Length == 0)
+    if (kinds is null || kinds.Value.IsDefaultOrEmpty)
     {
       return null;
     }
@@ -27,23 +30,23 @@ public static class PermissionCatalog
     return PermissionScopeKinds.GetBroadestLegalScope(kinds);
   }
 
-  private static PermissionScopeKind[]? AllowedKinds(string permissionName) =>
+  private static ImmutableArray<PermissionScopeKind>? AllowedKinds(string permissionName) =>
     _permissions.GetValueOrDefault(permissionName)?.AllowedScopeKinds;
 
-  private static Dictionary<string, PermissionMetadata> BuildCatalog()
+  private static FrozenDictionary<string, PermissionMetadata> BuildCatalog()
   {
     var catalog = new Dictionary<string, PermissionMetadata>();
 
-    void Add(string name, string displayName, string description, PermissionScopeKind[] scopeKinds, bool selfRemovable = true)
+    void Add(string name, string displayName, string description, ImmutableArray<PermissionScopeKind> scopeKinds, bool selfRemovable = true)
     {
       catalog[name] = new PermissionMetadata(name, displayName, description, scopeKinds, selfRemovable);
     }
 
-    var server = new[] { PermissionScopeKind.Server };
-    var tenant = new[] { PermissionScopeKind.Tenant };
-    var deviceResources = new[] { PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup, PermissionScopeKind.CustomerTenant, PermissionScopeKind.Tenant };
-    var deviceGroup = new[] { PermissionScopeKind.DeviceGroup, PermissionScopeKind.Tenant };
-    var userGroup = new[] { PermissionScopeKind.UserGroup, PermissionScopeKind.Tenant };
+    var server = ImmutableArray.Create(PermissionScopeKind.Server);
+    var tenant = ImmutableArray.Create(PermissionScopeKind.Tenant);
+    var deviceResources = ImmutableArray.Create(PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup, PermissionScopeKind.CustomerTenant, PermissionScopeKind.Tenant);
+    var deviceGroup = ImmutableArray.Create(PermissionScopeKind.DeviceGroup, PermissionScopeKind.Tenant);
+    var userGroup = ImmutableArray.Create(PermissionScopeKind.UserGroup, PermissionScopeKind.Tenant);
 
     Add(PermissionNames.ServerAdmin, "Server Admin", "Full administrative access to server-wide settings and operations.", server, selfRemovable: false);
     Add(PermissionNames.ServerAlertsRead, "Read Server Alerts", "View server alerts and notifications.", server);
@@ -122,6 +125,6 @@ public static class PermissionCatalog
     Add(PermissionNames.DeviceGroupAssignDevices, "Assign Devices to Group", "Add and remove devices from a device group.", deviceGroup);
     Add(PermissionNames.UserGroupAssignUsers, "Assign Users to Group", "Add and remove users from a user group.", userGroup);
 
-    return catalog;
+    return catalog.ToFrozenDictionary();
   }
 }

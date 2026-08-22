@@ -1067,7 +1067,7 @@ public class PermissionAssignmentManager(
       return (HttpResultErrorCode.BadRequest, $"Unknown permission name: {permissionName}");
     }
 
-    if (metadata.AllowedScopeKinds is not { } allowed || !allowed.Contains(scopeKind))
+    if (!metadata.AllowedScopeKinds.Contains(scopeKind))
     {
       return (HttpResultErrorCode.BadRequest, $"Permission '{metadata.DisplayName}' cannot be assigned at {scopeKind} scope.");
     }
