@@ -186,6 +186,45 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public void PermissionMetadata_AllCatalogEntriesHaveExplicitScopeKinds()
+  {
+    Assert.All(PermissionCatalog.All, entry =>
+    {
+      Assert.False(entry.Key is null or "");
+      Assert.Equal(entry.Key, entry.Value.Name);
+      Assert.NotEmpty(entry.Value.AllowedScopeKinds);
+      Assert.Equal(
+        entry.Value.AllowedScopeKinds.Length,
+        entry.Value.AllowedScopeKinds.Distinct().Count());
+      Assert.All(entry.Value.AllowedScopeKinds, scopeKind =>
+        Assert.True(Enum.IsDefined(scopeKind)));
+    });
+  }
+
+  [Fact]
+  public void PermissionScopeKind_AllValuesAreHandledByScopeBreadth()
+  {
+    var expectedKinds = Enum.GetValues<PermissionScopeKind>()
+      .Except([PermissionScopeKind.Unknown, PermissionScopeKind.Server, PermissionScopeKind.Tenant,
+        PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup,
+        PermissionScopeKind.CustomerTenant, PermissionScopeKind.UserGroup])
+      .ToArray();
+
+    Assert.Empty(expectedKinds);
+
+    foreach (var scopeKind in Enum.GetValues<PermissionScopeKind>())
+    {
+      if (scopeKind == PermissionScopeKind.Unknown)
+      {
+        continue;
+      }
+
+      var result = PermissionScopeKinds.GetBroadestLegalScope([scopeKind]);
+      Assert.Equal(scopeKind, result);
+    }
+  }
+
+  [Fact]
   public void Presets_AllPermissionsResolveToBroadestSeedableScope()
   {
     // Presets must be seedable without a concrete resource target, so every preset permission

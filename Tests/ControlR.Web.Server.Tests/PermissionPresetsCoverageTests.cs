@@ -1,4 +1,5 @@
 using System.Reflection;
+using ControlR.Web.Server.Authz.Permissions;
 
 namespace ControlR.Web.Server.Tests;
 
@@ -36,5 +37,18 @@ public class PermissionPresetsCoverageTests
     Assert.True(
       uncovered.Length == 0,
       $"The following permissions are not in any preset: {string.Join(", ", uncovered)}");
+  }
+
+  [Fact]
+  public void AllPresetPermissions_ExistInCatalog()
+  {
+    var unknown = PermissionPresets.All
+      .SelectMany(preset => preset.Value.Select(permission => (preset.Key, permission)))
+      .Where(item => !PermissionCatalog.Exists(item.permission))
+      .ToArray();
+
+    Assert.True(
+      unknown.Length == 0,
+      $"Preset permissions missing from PermissionCatalog: {string.Join(", ", unknown.Select(x => $"{x.Key}/{x.permission}"))}");
   }
 }
