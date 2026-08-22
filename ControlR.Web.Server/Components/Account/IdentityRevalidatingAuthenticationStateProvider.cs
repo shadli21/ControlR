@@ -118,7 +118,7 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider : Revalida
         user.Id,
         user.TenantId,
         principal.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? string.Empty);
-      var effectivePermissions = await evaluator.GetEffectivePermissionNames(principalDescriptor, CancellationToken.None);
+      var effectivePermissions = await evaluator.GetPermissionHints(principalDescriptor, CancellationToken.None);
       var permissionClaims = effectivePermissions.Select(permission => new UserClaim
       {
         Type = PermissionPolicies.PermissionClaimType,

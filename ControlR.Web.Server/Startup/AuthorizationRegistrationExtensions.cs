@@ -2,7 +2,6 @@ using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Components.Account;
 using ControlR.Web.Server.Services.Authorization;
-using ControlR.Web.Server.Services.Authorization.PermissionRules;
 using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Components.Authorization;
 
@@ -73,7 +72,9 @@ public static class AuthorizationRegistrationExtensions
     hostBuilder.Services.AddScoped<IAuthorizationHandler, PermissionRequirementHandler>();
     hostBuilder.Services.AddScoped<IDeviceAccessScopeResolver, DeviceAccessScopeResolver>();
     hostBuilder.Services.AddSingleton<IDesktopSessionAccessAuthorizer, DesktopSessionAccessAuthorizer>();
-    hostBuilder.Services.AddScoped<IPermissionRuleResolver, PermissionRuleResolver>();
+    hostBuilder.Services.AddSingleton<IPermissionDecisionEvaluator, PermissionDecisionEvaluator>();
+    hostBuilder.Services.AddScoped<IResourceDescriptorFactory, ResourceDescriptorFactory>();
+    hostBuilder.Services.AddScoped<IPermissionEvaluationContextLoader, PermissionEvaluationContextLoader>();
     hostBuilder.Services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
     hostBuilder.Services.AddScoped<ICredentialScopeService, CredentialScopeService>();
     hostBuilder.Services.AddSingleton<IAuthorizationChangeLogFactory, AuthorizationChangeLogFactory>();

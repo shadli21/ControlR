@@ -13,10 +13,12 @@ namespace ControlR.Web.Server.Api.Internal;
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class InstallerKeysController(
   IAgentInstallerKeyManager installerKeyManager,
-  IPermissionEvaluator permissionEvaluator) : ControllerBase
+  IPermissionEvaluator permissionEvaluator,
+  IResourceDescriptorFactory resourceFactory) : ControllerBase
 {
   private readonly IAgentInstallerKeyManager _installerKeyManager = installerKeyManager;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
+  private readonly IResourceDescriptorFactory _resourceFactory = resourceFactory;
 
   [HttpPost]
   [Authorize(Policy = PolicyNames.RequireInstallerKeyWrite)]
@@ -110,10 +112,15 @@ public class InstallerKeysController(
       return false;
     }
 
+    if (!principal.TenantId.HasValue)
+    {
+      return false;
+    }
+
     var result = await _permissionEvaluator.Evaluate(
       principal,
       PermissionNames.InstallerKeyManageAll,
-      new ResourceDescriptor(PermissionScopeKind.Tenant, TenantId: principal.TenantId),
+      _resourceFactory.CreateTenant(principal.TenantId.Value),
       cancellationToken);
     return result.Allowed;
   }

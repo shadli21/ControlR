@@ -2,7 +2,6 @@ using ControlR.Libraries.Hosting;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data.Enums;
-using ControlR.Web.Server.Services.Authorization.PermissionRules;
 
 namespace ControlR.Web.Server.Services.Authorization;
 
@@ -35,7 +34,8 @@ public class PatScopeTrimBackgroundService(
 
   private async Task ResolveAndTrimAsync(
     AppDb db,
-    IPermissionRuleResolver ruleResolver,
+    IPermissionEvaluator permissionEvaluator,
+    IResourceDescriptorFactory resourceFactory,
     Guid tokenId,
     CancellationToken cancellationToken)
   {
@@ -71,11 +71,33 @@ public class PatScopeTrimBackgroundService(
       TenantId: owner.UserTenantId,
       AuthMethod: "pat-scope-trim");
 
-    var resolved = await ruleResolver.Resolve(principal, cancellationToken);
-    var userEffectivePermissions = resolved.GetEffectivePermissionNames();
+    var rowsWithResources = new List<(PermissionAssignment Row, ResourceDescriptor Resource)>();
+    foreach (var row in scopeRows)
+    {
+      var resource = await resourceFactory.CreateScope(
+        row.ScopeKind,
+        row.ScopeId,
+        row.OwningTenantId ?? owner.UserTenantId,
+        cancellationToken);
+      if (resource is not null)
+      {
+        rowsWithResources.Add((row, resource));
+      }
+    }
 
+    var requests = rowsWithResources
+      .Select(item => new PermissionEvaluationRequest(item.Row.PermissionName, item.Resource))
+      .ToList();
+    var decisions = await permissionEvaluator.EvaluateBatch(
+      principal,
+      requests,
+      cancellationToken);
+    var coveredRowIds = rowsWithResources
+      .Where((_, index) => decisions[index].Allowed)
+      .Select(item => item.Row.Id)
+      .ToHashSet();
     var excessRows = scopeRows
-      .Where(row => !userEffectivePermissions.Contains(row.PermissionName))
+      .Where(row => !coveredRowIds.Contains(row.Id))
       .ToList();
 
     if (excessRows.Count == 0)
@@ -123,13 +145,19 @@ public class PatScopeTrimBackgroundService(
     }
 
     using var scope = _scopeFactory.CreateScope();
-    var ruleResolver = scope.ServiceProvider.GetRequiredService<IPermissionRuleResolver>();
+    var permissionEvaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+    var resourceFactory = scope.ServiceProvider.GetRequiredService<IResourceDescriptorFactory>();
 
     foreach (var tokenId in tokenIds)
     {
       try
       {
-        await ResolveAndTrimAsync(db, ruleResolver, tokenId, cancellationToken);
+        await ResolveAndTrimAsync(
+          db,
+          permissionEvaluator,
+          resourceFactory,
+          tokenId,
+          cancellationToken);
       }
       catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
       {

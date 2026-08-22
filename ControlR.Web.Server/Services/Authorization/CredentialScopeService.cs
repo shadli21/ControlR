@@ -44,11 +44,13 @@ public interface ICredentialScopeService
 public class CredentialScopeService(
   AppDb appDb,
   IAuthorizationChangeLogFactory changeLogFactory,
-  IPermissionEvaluator permissionEvaluator) : ICredentialScopeService
+  IPermissionEvaluator permissionEvaluator,
+  IResourceDescriptorFactory resourceFactory) : ICredentialScopeService
 {
   private readonly AppDb _appDb = appDb;
   private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
+  private readonly IResourceDescriptorFactory _resourceFactory = resourceFactory;
 
   public async Task<HttpResult> ValidateGrantableScopes(
     PrincipalDescriptor creator,
@@ -56,9 +58,14 @@ public class CredentialScopeService(
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default)
   {
+    var requests = new List<PermissionEvaluationRequest>(scopes.Count);
     foreach (var scope in scopes)
     {
-      var scopeResource = await ResolveScopeResource(scope, tenantId, cancellationToken);
+      var scopeResource = await _resourceFactory.CreateScope(
+        scope.ScopeKind,
+        scope.ScopeId,
+        tenantId,
+        cancellationToken);
       if (scopeResource is null)
       {
         return HttpResult.Fail(
@@ -66,11 +73,18 @@ public class CredentialScopeService(
           $"Scope target not found in this tenant: {scope.ScopeKind}/{scope.ScopeId}.");
       }
 
-      var evaluation = await _permissionEvaluator.Evaluate(
-        creator, scope.PermissionName, scopeResource, cancellationToken);
+      requests.Add(new PermissionEvaluationRequest(scope.PermissionName, scopeResource));
+    }
 
-      if (!evaluation.Allowed)
+    var decisions = await _permissionEvaluator.EvaluateBatch(
+      creator,
+      requests,
+      cancellationToken);
+    for (var index = 0; index < decisions.Count; index++)
+    {
+      if (!decisions[index].Allowed)
       {
+        var scope = scopes[index];
         return HttpResult.Fail(
           HttpResultErrorCode.BadRequest,
           $"The permission '{scope.PermissionName}' at {scope.ScopeKind} scope is outside the effective permissions of the granting user.");
@@ -141,78 +155,4 @@ public class CredentialScopeService(
     await _appDb.SaveChangesAsync(cancellationToken);
   }
 
-  /// <summary>
-  /// Builds a resource descriptor for the requested scope, or <see langword="null"/> if the
-  /// target isn't in the tenant.
-  /// </summary>
-  private async Task<ResourceDescriptor?> ResolveScopeResource(
-    InternalDtos.CredentialScopeDto scope,
-    Guid tenantId,
-    CancellationToken cancellationToken)
-  {
-    switch (scope.ScopeKind)
-    {
-      case PermissionScopeKind.Server:
-        // Server scope carries no tenant.
-        return new ResourceDescriptor(PermissionScopeKind.Server);
-
-      case PermissionScopeKind.Tenant:
-        return new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId);
-
-      case PermissionScopeKind.DeviceGroup:
-      {
-        if (scope.ScopeId is not { } groupId)
-        {
-          return null;
-        }
-
-        var groupExists = await _appDb.DeviceGroups
-          .AnyAsync(x => x.Id == groupId && x.TenantId == tenantId, cancellationToken);
-        return groupExists
-          ? new ResourceDescriptor(PermissionScopeKind.DeviceGroup, groupId, tenantId)
-          : null;
-      }
-
-      case PermissionScopeKind.CustomerTenant:
-      {
-        if (scope.ScopeId is not { } customerId)
-        {
-          return null;
-        }
-
-        var customerExists = await _appDb.Customers
-          .AnyAsync(x => x.Id == customerId && x.TenantId == tenantId, cancellationToken);
-        return customerExists
-          ? new ResourceDescriptor(PermissionScopeKind.CustomerTenant, customerId, tenantId)
-          : null;
-      }
-
-      case PermissionScopeKind.Device:
-      {
-        if (scope.ScopeId is not { } deviceId)
-        {
-          return null;
-        }
-
-        var device = await _appDb.Devices
-          .AsNoTracking()
-          .FirstOrDefaultAsync(x => x.Id == deviceId && x.TenantId == tenantId, cancellationToken);
-        if (device is null)
-        {
-          return null;
-        }
-
-        var groupIds = await _appDb.DeviceGroupMembers
-          .AsNoTracking()
-          .Where(member => member.DeviceId == deviceId)
-          .Select(member => member.DeviceGroupId)
-          .ToListAsync(cancellationToken);
-
-        return new ResourceDescriptor(PermissionScopeKind.Device, deviceId, tenantId, device.CustomerId, groupIds);
-      }
-
-      default:
-        return null;
-    }
-  }
 }

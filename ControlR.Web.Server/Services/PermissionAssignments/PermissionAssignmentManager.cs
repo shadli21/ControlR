@@ -2,6 +2,7 @@ using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
+using ControlR.Web.Server.Services.Authorization.PermissionRules;
 using ControlR.Web.Server.Services.Locks;
 
 namespace ControlR.Web.Server.Services.PermissionAssignments;
@@ -64,6 +65,7 @@ public interface IPermissionAssignmentManager
 
 public class PermissionAssignmentManager(
   AppDb appDb,
+  IPermissionDecisionEvaluator decisionEvaluator,
   IPermissionEvaluator permissionEvaluator,
   ICredentialScopeService credentialScopeService,
   IAuthorizationChangeLogFactory changeLogFactory,
@@ -73,6 +75,7 @@ public class PermissionAssignmentManager(
   private readonly IAsyncLock _asyncLock = asyncLock;
   private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly ICredentialScopeService _credentialScopeService = credentialScopeService;
+  private readonly IPermissionDecisionEvaluator _decisionEvaluator = decisionEvaluator;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
 
   public async Task<HttpResult<int>> ApplyPresets(
@@ -166,7 +169,7 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.BadRequest, $"Principal not found: {request.PrincipalKind}/{request.PrincipalId}");
     }
 
-    var effectivePermissions = await GetEffectivePermissions(actor, cancellationToken);
+    var effectivePermissions = await GetEffectivePermissions(actor, tenantId, cancellationToken);
     if (ValidateWriteAuthority(request.Effect, request.ScopeKind, effectivePermissions) is { } authorityError)
     {
       return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
@@ -220,6 +223,19 @@ public class PermissionAssignmentManager(
       request.Effect,
       request.Notes,
       request.IsEnabled);
+
+    if (request.PrincipalKind == PermissionPrincipalKind.User &&
+        request.PrincipalId == actor.PrincipalId &&
+        await FindViolatedSelfProtected(
+          actor,
+          tenantId,
+          direct => [.. direct, assignment],
+          cancellationToken) is { } createViolation)
+    {
+      return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(
+        HttpResultErrorCode.BadRequest,
+        createViolation);
+    }
 
     try
     {
@@ -299,7 +315,7 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.BadRequest, $"Principal not found: {requests[0].PrincipalKind}/{requests[0].PrincipalId}");
     }
 
-    var effectivePermissions = await GetEffectivePermissions(actor, cancellationToken);
+    var effectivePermissions = await GetEffectivePermissions(actor, tenantId, cancellationToken);
     foreach (var request in requests)
     {
       if (ValidateWriteAuthority(request.Effect, request.ScopeKind, effectivePermissions) is { } authorityError)
@@ -362,9 +378,21 @@ public class PermissionAssignmentManager(
         request.Notes,
         request.IsEnabled);
 
-      _appDb.PermissionAssignments.Add(assignment);
       created.Add(assignment);
     }
+
+    if (requests[0].PrincipalKind == PermissionPrincipalKind.User &&
+        requests[0].PrincipalId == actor.PrincipalId &&
+        await FindViolatedSelfProtected(
+          actor,
+          tenantId,
+          direct => [.. direct, .. created],
+          cancellationToken) is { } createManyViolation)
+    {
+      return HttpResult.Fail(HttpResultErrorCode.BadRequest, createManyViolation);
+    }
+
+    _appDb.PermissionAssignments.AddRange(created);
 
     try
     {
@@ -428,7 +456,7 @@ public class PermissionAssignmentManager(
       return HttpResult.Fail(HttpResultErrorCode.NotFound, "Permission assignment not found.");
     }
 
-    var effectivePermissions = await GetEffectivePermissions(actor, cancellationToken);
+    var effectivePermissions = await GetEffectivePermissions(actor, tenantId, cancellationToken);
     if (!IsVisibleToTenant(assignment, tenantId, effectivePermissions))
     {
       return HttpResult.Fail(HttpResultErrorCode.NotFound, "Permission assignment not found.");
@@ -441,23 +469,11 @@ public class PermissionAssignmentManager(
 
     if (IsSelf(assignment, actor.PrincipalId))
     {
-      var grantedAfter = await _appDb.PermissionAssignments
-        .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
-                    x.PrincipalId == actor.PrincipalId &&
-                    x.Id != assignmentId &&
-                    x.Effect == PermissionEffect.Allow &&
-                    x.IsEnabled)
-        .Select(x => x.PermissionName)
-        .ToListAsync(cancellationToken);
-
-      var grantedBefore = new HashSet<string>(grantedAfter);
-      if (assignment.Effect == PermissionEffect.Allow && assignment.IsEnabled)
-      {
-        grantedBefore.Add(assignment.PermissionName);
-      }
-
-      if (FindViolatedSelfProtected(grantedBefore, grantedAfter) is { } violation)
+      if (await FindViolatedSelfProtected(
+        actor,
+        tenantId,
+        direct => [.. direct.Where(row => row.Id != assignmentId)],
+        cancellationToken) is { } violation)
       {
         return HttpResult.Fail(HttpResultErrorCode.BadRequest, violation);
       }
@@ -496,7 +512,7 @@ public class PermissionAssignmentManager(
       .Where(x => assignmentIds.Contains(x.Id))
       .ToListAsync(cancellationToken);
 
-    var effectivePermissions = await GetEffectivePermissions(actor, cancellationToken);
+    var effectivePermissions = await GetEffectivePermissions(actor, tenantId, cancellationToken);
 
     var assignments = foundAssignments
       .Where(x => IsVisibleToTenant(x, tenantId, effectivePermissions))
@@ -516,23 +532,11 @@ public class PermissionAssignmentManager(
 
     if (assignments.Any(x => IsSelf(x, actor.PrincipalId)))
     {
-      var grantedAfter = await _appDb.PermissionAssignments
-        .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
-                    x.PrincipalId == actor.PrincipalId &&
-                    !assignmentIds.Contains(x.Id) &&
-                    x.Effect == PermissionEffect.Allow &&
-                    x.IsEnabled)
-        .Select(x => x.PermissionName)
-        .ToListAsync(cancellationToken);
-
-      var grantedBefore = new HashSet<string>(grantedAfter);
-      foreach (var selfAssignment in assignments.Where(x => IsSelf(x, actor.PrincipalId) && x.Effect == PermissionEffect.Allow && x.IsEnabled))
-      {
-        grantedBefore.Add(selfAssignment.PermissionName);
-      }
-
-      if (FindViolatedSelfProtected(grantedBefore, grantedAfter) is { } violation)
+      if (await FindViolatedSelfProtected(
+        actor,
+        tenantId,
+        direct => [.. direct.Where(row => !assignmentIds.Contains(row.Id))],
+        cancellationToken) is { } violation)
       {
         return HttpResult.Fail<InternalDtos.DeleteManyPermissionAssignmentsResponseDto>(
           HttpResultErrorCode.BadRequest, violation);
@@ -567,7 +571,7 @@ public class PermissionAssignmentManager(
     PrincipalDescriptor actor,
     CancellationToken cancellationToken = default)
   {
-    var effectivePermissions = await GetEffectivePermissions(actor, cancellationToken);
+    var effectivePermissions = await GetEffectivePermissions(actor, tenantId, cancellationToken);
 
     var assignments = await _appDb.PermissionAssignments
       .IgnoreQueryFilters()
@@ -597,7 +601,7 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.BadRequest, $"Principal not found: {principalKind}/{principalId}");
     }
 
-    var effectivePermissions = await GetEffectivePermissions(actor, cancellationToken);
+    var effectivePermissions = await GetEffectivePermissions(actor, tenantId, cancellationToken);
     var replacedScopeKinds = assignments
       .Select(x => x.ScopeKind)
       .ToHashSet();
@@ -620,23 +624,28 @@ public class PermissionAssignmentManager(
 
     if (principalKind == PermissionPrincipalKind.User && principalId == actor.PrincipalId)
     {
-      var grantedBefore = await _appDb.PermissionAssignments
-        .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
-                    x.PrincipalId == actor.PrincipalId &&
-                    replacedScopeKinds.Contains(x.ScopeKind) &&
-                    x.Effect == PermissionEffect.Allow &&
-                    x.IsEnabled)
-        .Select(x => x.PermissionName)
-        .ToListAsync(cancellationToken);
-
-      var grantedAfter = assignments
-        .Where(r => replacedScopeKinds.Contains(r.ScopeKind))
-        .Where(r => r.Effect == PermissionEffect.Allow)
-        .Select(r => r.PermissionName)
+      var replacementRows = assignments
+        .Select(request => PermissionAssignment.CreateGrant(
+          principalKind,
+          principalId,
+          request.PermissionName,
+          request.ScopeKind,
+          NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+          tenantId,
+          AuthorizationChangeLogActorTypes.User,
+          actor.PrincipalId.ToString(),
+          request.Effect,
+          request.Notes,
+          request.IsEnabled))
         .ToList();
-
-      if (FindViolatedSelfProtected(grantedBefore, grantedAfter) is { } violation)
+      if (await FindViolatedSelfProtected(
+        actor,
+        tenantId,
+        direct => [
+          .. direct.Where(row => !replacedScopeKinds.Contains(row.ScopeKind)),
+          .. replacementRows
+        ],
+        cancellationToken) is { } violation)
       {
         return HttpResult.Fail(HttpResultErrorCode.BadRequest, violation);
       }
@@ -777,7 +786,7 @@ public class PermissionAssignmentManager(
         HttpResultErrorCode.NotFound, "Permission assignment not found.");
     }
 
-    var effectivePermissions = await GetEffectivePermissions(actor, cancellationToken);
+    var effectivePermissions = await GetEffectivePermissions(actor, tenantId, cancellationToken);
 
     if (!IsVisibleToTenant(assignment, tenantId, effectivePermissions))
     {
@@ -809,29 +818,27 @@ public class PermissionAssignmentManager(
 
     if (IsSelf(assignment, actor.PrincipalId))
     {
-      var others = await _appDb.PermissionAssignments
-        .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
-                    x.PrincipalId == actor.PrincipalId &&
-                    x.Id != assignmentId &&
-                    x.Effect == PermissionEffect.Allow &&
-                    x.IsEnabled)
-        .Select(x => x.PermissionName)
-        .ToListAsync(cancellationToken);
-
-      var grantedBefore = new HashSet<string>(others);
-      if (assignment.Effect == PermissionEffect.Allow && assignment.IsEnabled)
-      {
-        grantedBefore.Add(assignment.PermissionName);
-      }
-
-      var grantedAfter = new HashSet<string>(others);
-      if (request.Effect == PermissionEffect.Allow && request.IsEnabled)
-      {
-        grantedAfter.Add(request.PermissionName);
-      }
-
-      if (FindViolatedSelfProtected(grantedBefore, grantedAfter) is { } violation)
+      var replacement = PermissionAssignment.CreateGrant(
+        assignment.PrincipalKind,
+        assignment.PrincipalId,
+        request.PermissionName,
+        request.ScopeKind,
+        NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
+        tenantId,
+        assignment.CreatedByPrincipalType ?? AuthorizationChangeLogActorTypes.User,
+        assignment.CreatedByPrincipalId,
+        request.Effect,
+        request.Notes,
+        request.IsEnabled);
+      replacement.Id = assignment.Id;
+      if (await FindViolatedSelfProtected(
+        actor,
+        tenantId,
+        direct => [
+          .. direct.Where(row => row.Id != assignmentId),
+          replacement
+        ],
+        cancellationToken) is { } violation)
       {
         return HttpResult.Fail<InternalDtos.PermissionAssignmentDto>(HttpResultErrorCode.BadRequest, violation);
       }
@@ -864,25 +871,26 @@ public class PermissionAssignmentManager(
     return HttpResult.Ok(MapToDto(assignment));
   }
 
-  /// <summary>
-  /// Anti-lockout guard: rejects removing the actor's last non-self-removable permission.
-  /// Only the actor's own principal is guarded; another authorized holder may still revoke.
-  /// </summary>
-  private static string? FindViolatedSelfProtected(
-    IReadOnlyCollection<string> preOpGranted,
-    IReadOnlyCollection<string> postOpGranted)
-  {
-    foreach (var lostPermission in new HashSet<string>(preOpGranted).Except(postOpGranted))
-    {
-      var metadata = PermissionCatalog.Get(lostPermission);
-      if (metadata is not null && !metadata.SelfRemovable)
-      {
-        return $"You cannot remove '{metadata.DisplayName}' from yourself; retaining it is required to continue managing permissions.";
-      }
-    }
-
-    return null;
-  }
+  private static IReadOnlyList<PermissionRule> CreateSelfProtectionRules(
+    IReadOnlyCollection<PermissionAssignment> directAssignments,
+    IReadOnlyCollection<PermissionAssignment> groupAssignments,
+    Guid tenantId) =>
+    [
+      .. directAssignments
+        .Where(row => row.IsEnabled &&
+                      (row.OwningTenantId is null || row.OwningTenantId == tenantId))
+        .Select(row => PermissionRule.Create(
+          row,
+          RuleSource.Direct,
+          SourcePriority.Direct)),
+      .. groupAssignments
+        .Where(row => row.IsEnabled &&
+                      (row.OwningTenantId is null || row.OwningTenantId == tenantId))
+        .Select(row => PermissionRule.Create(
+          row,
+          RuleSource.UserGroup,
+          SourcePriority.UserGroup))
+    ];
 
   private static bool IsSelf(PermissionAssignment assignment, Guid actorPrincipalId) =>
     assignment.PrincipalKind == PermissionPrincipalKind.User && assignment.PrincipalId == actorPrincipalId;
@@ -988,10 +996,87 @@ public class PermissionAssignmentManager(
                      x.ScopeId == key.ScopeId,
         cancellationToken);
 
-  private Task<IReadOnlySet<string>> GetEffectivePermissions(
+  private async Task<string?> FindViolatedSelfProtected(
     PrincipalDescriptor actor,
-    CancellationToken cancellationToken) =>
-    _permissionEvaluator.GetEffectivePermissionNames(actor, cancellationToken);
+    Guid tenantId,
+    Func<IReadOnlyList<PermissionAssignment>, IReadOnlyList<PermissionAssignment>> mutate,
+    CancellationToken cancellationToken)
+  {
+    var directAssignments = await _appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .AsNoTracking()
+      .Where(row => row.PrincipalKind == PermissionPrincipalKind.User &&
+                    row.PrincipalId == actor.PrincipalId)
+      .ToListAsync(cancellationToken);
+    var groupIds = await _appDb.UserGroupMembers
+      .IgnoreQueryFilters()
+      .AsNoTracking()
+      .Where(member => member.UserId == actor.PrincipalId)
+      .Select(member => member.UserGroupId)
+      .ToListAsync(cancellationToken);
+    var groupAssignments = groupIds.Count == 0
+      ? []
+      : await _appDb.PermissionAssignments
+        .IgnoreQueryFilters()
+        .AsNoTracking()
+        .Where(row => row.PrincipalKind == PermissionPrincipalKind.UserGroup &&
+                      groupIds.Contains(row.PrincipalId))
+        .ToListAsync(cancellationToken);
+
+    var postDirectAssignments = mutate(directAssignments);
+    var beforeRules = CreateSelfProtectionRules(directAssignments, groupAssignments, tenantId);
+    var afterRules = CreateSelfProtectionRules(postDirectAssignments, groupAssignments, tenantId);
+    var serverResource = new ResourceDescriptor(PermissionScopeKind.Server);
+    var tenantResource = new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId);
+
+    foreach (var permissionName in PermissionCatalog.All
+      .Where(entry => !entry.Value.SelfRemovable)
+      .Select(entry => entry.Key))
+    {
+      var resource = PermissionCatalog.Get(permissionName)?.AllowedScopeKinds.Contains(PermissionScopeKind.Server) == true
+        ? serverResource
+        : tenantResource;
+      var allowedBefore = _decisionEvaluator.EvaluateRules(beforeRules, permissionName, resource).Allowed;
+      var allowedAfter = _decisionEvaluator.EvaluateRules(afterRules, permissionName, resource).Allowed;
+      if (allowedBefore && !allowedAfter)
+      {
+        var metadata = PermissionCatalog.Get(permissionName)
+          ?? throw new InvalidOperationException($"Permission '{permissionName}' is missing from the catalog.");
+        return $"You cannot remove '{metadata.DisplayName}' from yourself; retaining it is required to continue managing permissions.";
+      }
+    }
+
+    return null;
+  }
+
+  private async Task<IReadOnlySet<string>> GetEffectivePermissions(
+    PrincipalDescriptor actor,
+    Guid tenantId,
+    CancellationToken cancellationToken)
+  {
+    var permissionNames = new[]
+    {
+      PermissionNames.ServerPermissionsRead,
+      PermissionNames.ServerPermissionsWrite,
+      PermissionNames.TenantPermissionsRead,
+      PermissionNames.TenantPermissionsWrite,
+      PermissionNames.TenantPermissionsDeny
+    };
+    var decisions = await _permissionEvaluator.EvaluateBatch(
+      actor,
+      [
+        new PermissionEvaluationRequest(permissionNames[0], new ResourceDescriptor(PermissionScopeKind.Server)),
+        new PermissionEvaluationRequest(permissionNames[1], new ResourceDescriptor(PermissionScopeKind.Server)),
+        new PermissionEvaluationRequest(permissionNames[2], new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId)),
+        new PermissionEvaluationRequest(permissionNames[3], new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId)),
+        new PermissionEvaluationRequest(permissionNames[4], new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId))
+      ],
+      cancellationToken);
+
+    return permissionNames
+      .Where((_, index) => decisions[index].Allowed)
+      .ToHashSet(StringComparer.Ordinal);
+  }
 
   /// <summary>
   /// Credential principals can't exceed their owning user's rights; validates the row against

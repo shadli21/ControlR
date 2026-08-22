@@ -1656,7 +1656,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var logger = services.GetRequiredService<ILogger<DevicesController>>();
 
     var tenant = await services.CreateTestTenant();
-    _ = await services.CreateTestUser(tenant.Id, email: "seed-logon-scope@test.local");
+    var user = await services.CreateTestUser(tenant.Id, email: "seed-logon-scope@test.local");
 
     var scopedDeviceId = Guid.NewGuid();
     var otherDeviceId = Guid.NewGuid();
@@ -1693,11 +1693,27 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
       await deviceManager.AddOrUpdate(deviceDto, connectionContext);
     }
 
+    var tokenId = Guid.NewGuid();
+    db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.LogonToken,
+      tokenId,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Device,
+      scopedDeviceId,
+      tenant.Id,
+      "test",
+      user.Id.ToString()));
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
     var claims = new List<Claim>
     {
       new(UserClaimTypes.TenantId, tenant.Id.ToString()),
       new(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.LogonTokenMethod),
-      new(UserClaimTypes.DeviceSessionScope, scopedDeviceId.ToString())
+      new(UserClaimTypes.DeviceSessionScope, scopedDeviceId.ToString()),
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
+      new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
+      new(PrincipalClaimTypes.CredentialId, tokenId.ToString()),
+      new(PrincipalClaimTypes.CredentialType, CredentialType.LogonToken.ToString())
     };
 
     controller.ControllerContext = new ControllerContext

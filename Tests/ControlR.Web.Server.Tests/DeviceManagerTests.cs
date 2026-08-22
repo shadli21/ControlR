@@ -321,7 +321,7 @@ public class DeviceManagerTests(ITestOutputHelper testOutput)
     var canInstallAfterDeny = await deviceManager.CanInstallAgentOnDevice(serviceAccount, device);
     Assert.False(canInstallAfterDeny);
 
-    // Server-scoped accounts have no tenant and can never target a tenant device
+    // Assignment-free server accounts follow the central cross-tenant bypass.
     var serverAccount = new ServiceAccount
     {
       Id = Guid.NewGuid(),
@@ -334,7 +334,22 @@ public class DeviceManagerTests(ITestOutputHelper testOutput)
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
     var canServerInstall = await deviceManager.CanInstallAgentOnDevice(serverAccount, device);
-    Assert.False(canServerInstall);
+    Assert.True(canServerInstall);
+
+    // Any assignment disables bypass and constrains the account to its explicit scope.
+    db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.ServiceAccount,
+      serverAccount.Id,
+      PermissionNames.AgentInstall,
+      PermissionScopeKind.Device,
+      Guid.NewGuid(),
+      tenantId,
+      "test",
+      serverAccount.Id.ToString()));
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var canScopedServerInstall = await deviceManager.CanInstallAgentOnDevice(serverAccount, device);
+    Assert.False(canScopedServerInstall);
 
     // Accounts from another tenant cannot reach this device
     var otherTenantAccount = new ServiceAccount

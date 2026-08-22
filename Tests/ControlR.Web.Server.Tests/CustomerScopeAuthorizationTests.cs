@@ -83,12 +83,12 @@ public class CustomerScopeAuthorizationTests(ITestOutputHelper testOutput)
     var resolver = scope.ServiceProvider.GetRequiredService<IDeviceAccessScopeResolver>();
     var principal = new ClaimsPrincipal(new ClaimsIdentity([
       new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
-      new Claim(PrincipalClaimTypes.PrincipalId, user.Id.ToString())
+      new Claim(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
+      new Claim(UserClaimTypes.TenantId, tenant.Id.ToString())
     ], "TestAuth"));
 
     var result = await resolver.Resolve(principal, TestContext.Current.CancellationToken);
 
-    Assert.Equal(DeviceAccessScopeKind.Customers, result.Kind);
-    Assert.Contains(customerId, result.CustomerIds);
+    Assert.Contains(customerId, result.IncludedCustomerIds);
   }
 }

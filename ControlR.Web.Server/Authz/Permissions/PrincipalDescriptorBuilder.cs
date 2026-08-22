@@ -28,6 +28,12 @@ public static class PrincipalDescriptorBuilder
       tenantId = parsedTenantId;
     }
 
+    if (principalType is not PrincipalType.ServerServiceAccount &&
+        !tenantId.HasValue)
+    {
+      return null;
+    }
+
     Guid? credentialId = null;
     var credentialIdClaim = user.FindFirst(PrincipalClaimTypes.CredentialId)?.Value;
     if (Guid.TryParse(credentialIdClaim, out var parsedCredentialId))

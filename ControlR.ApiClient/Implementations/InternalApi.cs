@@ -12,6 +12,7 @@ internal partial class InternalApi(ControlrApi client) :
   IDeviceGroupsApi,
   IDeviceTagsApi,
   IDevicesApi,
+  IDeploymentOptionsApi,
   IEffectivePermissionsApi,
   IEffectiveUserPreferencesApi,
   IInstallerKeysApi,
@@ -41,6 +42,7 @@ internal partial class InternalApi(ControlrApi client) :
   public IAuthApi Auth => this;
   public IAuthorizationChangeLogsApi AuthorizationChangeLogs => this;
   public ICustomersApi Customers => this;
+  public IDeploymentOptionsApi DeploymentOptions => this;
   public IDesktopPreviewApi DesktopPreview => this;
   public IDeviceFileSystemApi DeviceFileSystem => this;
   public IDeviceGroupsApi DeviceGroups => this;

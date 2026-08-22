@@ -10,15 +10,15 @@ namespace ControlR.Web.Server.Authz.Permissions;
 /// </summary>
 public class PermissionRequirementHandler(
   IPermissionEvaluator evaluator,
-  IDbContextFactory<AppDb> dbContextFactory,
+  IResourceDescriptorFactory resourceFactory,
   IHttpContextAccessor httpContextAccessor,
   ILogger<PermissionRequirementHandler> logger)
   : AuthorizationHandler<PermissionRequirement, object>
 {
-  private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly IPermissionEvaluator _evaluator = evaluator;
   private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
   private readonly ILogger<PermissionRequirementHandler> _logger = logger;
+  private readonly IResourceDescriptorFactory _resourceFactory = resourceFactory;
 
   protected override async Task HandleRequirementAsync(
     AuthorizationHandlerContext context,
@@ -52,24 +52,6 @@ public class PermissionRequirementHandler(
     context.Fail(new AuthorizationFailureReason(this, result.DenialReason ?? "Permission denied."));
   }
 
-  private async Task<IReadOnlyCollection<Guid>> ResolveDeviceGroupIds(
-    Device device,
-    CancellationToken cancellationToken)
-  {
-    if (device.DeviceGroupMembers is not null)
-    {
-      return [.. device.DeviceGroupMembers.Select(member => member.DeviceGroupId)];
-    }
-
-    await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-    return await db.DeviceGroupMembers
-      .IgnoreQueryFilters()
-      .AsNoTracking()
-      .Where(member => member.DeviceId == device.Id)
-      .Select(member => member.DeviceGroupId)
-      .ToListAsync(cancellationToken);
-  }
-
   private async Task<ResourceDescriptor> ResolveResource(
     ResourceDescriptor requirementResource,
     object resource,
@@ -78,14 +60,14 @@ public class PermissionRequirementHandler(
   {
     if (resource is Device device)
     {
-      var deviceGroupIds = await ResolveDeviceGroupIds(device, cancellationToken);
-      return new ResourceDescriptor(
-        PermissionScopeKind.Device, device.Id, device.TenantId, device.CustomerId, deviceGroupIds);
+      return await _resourceFactory.CreateDevice(device, cancellationToken);
     }
 
-    if (requirementResource.TenantId is null && principal.TenantId.HasValue)
+    if (requirementResource.Kind == PermissionScopeKind.Tenant &&
+        requirementResource.TenantId is null &&
+        principal.TenantId.HasValue)
     {
-      return requirementResource with { TenantId = principal.TenantId.Value };
+      return _resourceFactory.CreateTenant(principal.TenantId.Value);
     }
 
     return requirementResource;

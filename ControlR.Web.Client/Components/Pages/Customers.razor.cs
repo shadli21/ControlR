@@ -1,15 +1,20 @@
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Client.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.Web.Client.Components.Pages;
 
 public partial class Customers : ComponentBase
 {
+  private bool _canWrite;
   private IEnumerable<InternalDtos.CustomerDto> _customers = [];
   private bool _loading;
   private string _searchString = string.Empty;
+
+  [Inject]
+  public required AuthenticationStateProvider AuthState { get; init; }
 
   [Inject]
   public required IClipboardManager ClipboardManager { get; init; }
@@ -37,6 +42,10 @@ public partial class Customers : ComponentBase
 
   protected override async Task OnInitializedAsync()
   {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    _canWrite = state.User.HasClaim(
+      PermissionPolicies.PermissionClaimType,
+      PermissionNames.TenantCustomersWrite);
     await Refresh();
   }
 

@@ -926,6 +926,66 @@
         ]
       }
     },
+    "/api/deployment-options": {
+      "get": {
+        "tags": [
+          "DeploymentOptions"
+        ],
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The requested API version",
+            "schema": {
+              "enum": [
+                "1.0"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentOptionsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentOptionsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentOptionsDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Cookie": [ ]
+          },
+          {
+            "PersonalAccessToken": [ ]
+          }
+        ]
+      }
+    },
     "/api/desktop-preview/{deviceId}/{targetProcessId}": {
       "get": {
         "tags": [
@@ -10799,6 +10859,24 @@
           }
         }
       },
+      "DeploymentOptionsDto": {
+        "required": [
+          "appendInstanceId",
+          "instanceId"
+        ],
+        "type": "object",
+        "properties": {
+          "appendInstanceId": {
+            "type": "boolean"
+          },
+          "instanceId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "DeviceColumnFilter": {
         "type": "object",
         "properties": {
@@ -13321,6 +13399,9 @@
     },
     {
       "name": "Customers"
+    },
+    {
+      "name": "DeploymentOptions"
     },
     {
       "name": "DesktopPreview"

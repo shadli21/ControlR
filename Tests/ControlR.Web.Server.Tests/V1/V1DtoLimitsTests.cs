@@ -122,7 +122,7 @@ public class V1DtoLimitsTests
   /// Pins the actual DataAnnotations behavior behind the claim formerly made in
   /// LogonTokenScopeService.PrepareScopes. MaxLengthAttribute fails validation for any type
   /// whose Count property exceeds the limit (string, ICollection, or a Count property), so
-  /// [MaxLength(PermissionsMaxLength)] on the V1 DTO's IReadOnlyList&lt;string&gt; Permissions IS
+  /// [MaxLength(PermissionsMaxLength)] on the V1 DTO's read-only string permission list IS
   /// enforced by ASP.NET model binding. The service guard protects the internal LogonTokenRequestDto
   /// path, whose Scopes property carries no [MaxLength].
   /// </summary>

@@ -22,6 +22,7 @@ public class ViewerHub(
   AppDb appDb,
   IAuthorizationService authorizationService,
   IPermissionEvaluator permissionEvaluator,
+  IResourceDescriptorFactory resourceFactory,
   IHubContext<AgentHub, IAgentHubClient> agentHub,
   IEffectiveUserPreferencesResolver effectiveUserPreferencesResolver,
   IHubStreamStore hubStreamStore,
@@ -41,6 +42,7 @@ public class ViewerHub(
   private readonly IHubStreamStore _hubStreamStore = hubStreamStore;
   private readonly ILogger<ViewerHub> _logger = logger;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
+  private readonly IResourceDescriptorFactory _resourceFactory = resourceFactory;
   private readonly TimeProvider _timeProvider = timeProvider;
   private readonly UserManager<AppUser> _userManager = userManager;
 
@@ -180,24 +182,55 @@ public class ViewerHub(
         return HubResult.Fail<DeviceAccessPermissionsDto>("Device not found.");
       }
 
-      if (!await CanAccessDevice(device, DeviceResourcePolicies.Read))
+      var principal = Context.User is null
+        ? null
+        : PrincipalDescriptorBuilder.FromClaims(Context.User);
+      if (principal is null)
+      {
+        return HubResult.Fail<DeviceAccessPermissionsDto>("Unauthorized.");
+      }
+
+      var resource = await _resourceFactory.CreateDevice(device, Context.ConnectionAborted);
+      var permissionNames = new[]
+      {
+        PermissionNames.DeviceRead,
+        PermissionNames.DeviceOverviewRead,
+        PermissionNames.DeviceRemoteControlConnect,
+        PermissionNames.DeviceTerminalUse,
+        PermissionNames.DeviceChatSend,
+        PermissionNames.DeviceFileSystemRead,
+        PermissionNames.DeviceLogsRead,
+        PermissionNames.DeviceVncRelayConnect,
+        PermissionNames.DeviceRemoteControlInteract,
+        PermissionNames.DeviceRemoteControlBlockInput,
+        PermissionNames.DeviceClipboardRead,
+        PermissionNames.DeviceClipboardWrite,
+        PermissionNames.DeviceCtrlAltDelSend
+      };
+      var decisions = await _permissionEvaluator.EvaluateMany(
+        principal,
+        permissionNames,
+        resource,
+        Context.ConnectionAborted);
+
+      if (!decisions[PermissionNames.DeviceRead].Allowed)
       {
         return HubResult.Fail<DeviceAccessPermissionsDto>("Unauthorized.");
       }
 
       var permissions = new DeviceAccessPermissionsDto(
-        await CanAccessDevice(device, DeviceResourcePolicies.OverviewRead),
-        await CanAccessDevice(device, DeviceResourcePolicies.RemoteControlConnect),
-        await CanAccessDevice(device, DeviceResourcePolicies.TerminalUse),
-        await CanAccessDevice(device, DeviceResourcePolicies.ChatSend),
-        await CanAccessDevice(device, DeviceResourcePolicies.FileSystemRead),
-        await CanAccessDevice(device, DeviceResourcePolicies.LogsRead),
-        await CanAccessDevice(device, DeviceResourcePolicies.VncRelayConnect),
-        await CanAccessDevice(device, DeviceResourcePolicies.RemoteControlInteract),
-        await CanAccessDevice(device, DeviceResourcePolicies.RemoteControlBlockInput),
-        await CanAccessDevice(device, DeviceResourcePolicies.ClipboardRead),
-        await CanAccessDevice(device, DeviceResourcePolicies.ClipboardWrite),
-        await CanAccessDevice(device, DeviceResourcePolicies.CtrlAltDelSend));
+        decisions[PermissionNames.DeviceOverviewRead].Allowed,
+        decisions[PermissionNames.DeviceRemoteControlConnect].Allowed,
+        decisions[PermissionNames.DeviceTerminalUse].Allowed,
+        decisions[PermissionNames.DeviceChatSend].Allowed,
+        decisions[PermissionNames.DeviceFileSystemRead].Allowed,
+        decisions[PermissionNames.DeviceLogsRead].Allowed,
+        decisions[PermissionNames.DeviceVncRelayConnect].Allowed,
+        decisions[PermissionNames.DeviceRemoteControlInteract].Allowed,
+        decisions[PermissionNames.DeviceRemoteControlBlockInput].Allowed,
+        decisions[PermissionNames.DeviceClipboardRead].Allowed,
+        decisions[PermissionNames.DeviceClipboardWrite].Allowed,
+        decisions[PermissionNames.DeviceCtrlAltDelSend].Allowed);
 
       return HubResult.Ok(permissions);
     }
@@ -377,7 +410,6 @@ public class ViewerHub(
   }
 
   public async Task<HubResult> RequestRemoteControlSession(
-    Guid deviceId,
     RemoteControlSessionRequestDto sessionRequestDto)
   {
     try
@@ -401,15 +433,15 @@ public class ViewerHub(
         "Starting streaming session requested by user {DisplayName} ({UserId}) for device {DeviceId} from IP {RemoteIp}.",
         displayName,
         userId,
-        deviceId,
+        sessionRequestDto.DeviceId,
         remoteIp);
 
-      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.RemoteControlConnect) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(sessionRequestDto.DeviceId, DeviceResourcePolicies.RemoteControlConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
 
-      if (!CanUseDesktopSession(deviceId, sessionRequestDto.TargetSystemSession))
+      if (!CanUseDesktopSession(sessionRequestDto.DeviceId, sessionRequestDto.TargetSystemSession))
       {
         return HubResult.Fail("The requested desktop session is not authorized.");
       }
@@ -441,11 +473,11 @@ public class ViewerHub(
     }
   }
 
-  public async Task<HubResult> RequestVncSession(Guid deviceId, VncSessionRequestDto sessionRequestDto)
+  public async Task<HubResult> RequestVncSession(VncSessionRequestDto sessionRequestDto)
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.VncRelayConnect) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(sessionRequestDto.DeviceId, DeviceResourcePolicies.VncRelayConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -489,7 +521,7 @@ public class ViewerHub(
         "Starting VNC session requested by user {DisplayName} ({UserId}) for device {DeviceId} from IP {RemoteIp}.",
         displayName,
         userId,
-        deviceId,
+        sessionRequestDto.DeviceId,
         remoteIp);
 
       var device = authResult.Value;
@@ -758,13 +790,30 @@ public class ViewerHub(
       .Where(x => distinctIds.Contains(x.Id))
       .ToListAsync();
 
+    var principal = PrincipalDescriptorBuilder.FromClaims(Context.User);
+    if (principal is null)
+    {
+      return HubResult.Fail("Invalid principal.");
+    }
+
+    var requests = new List<PermissionEvaluationRequest>(devices.Count);
     foreach (var device in devices)
     {
-      var authResult = await _authorizationService.AuthorizeAsync(
-        Context.User, device, DeviceResourcePolicies.Read);
+      requests.Add(new PermissionEvaluationRequest(
+        PermissionNames.DeviceRead,
+        await _resourceFactory.CreateDevice(device, Context.ConnectionAborted)));
+    }
 
-      if (authResult.Succeeded)
+    var decisions = await _permissionEvaluator.EvaluateBatch(
+      principal,
+      requests,
+      Context.ConnectionAborted);
+
+    for (var index = 0; index < devices.Count; index++)
+    {
+      if (decisions[index].Allowed)
       {
+        var device = devices[index];
         await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.DeviceHeartbeat(device.Id));
       }
     }
@@ -930,17 +979,6 @@ public class ViewerHub(
     return displayName.AsTaskResult();
   }
 
-  private async Task<bool> CanAccessDevice(Device device, string policyName)
-  {
-    if (Context.User is not { } user)
-    {
-      return false;
-    }
-
-    var result = await _authorizationService.AuthorizeAsync(user, device, policyName);
-    return result.Succeeded;
-  }
-
   private bool CanUseDesktopSession(Guid deviceId, int systemSessionId)
   {
     var principal = Context.User is null
@@ -1009,20 +1047,18 @@ public class ViewerHub(
       return;
     }
 
-    // Evaluate against a server resource so credential scoping is honored. GetEffectivePermissionNames
-    // returns the underlying user's full name-level set and could let a scoped credential subscribe.
     var serverResource = new ResourceDescriptor(PermissionScopeKind.Server);
-
-    var canReadAlerts = await _permissionEvaluator.Evaluate(
-      principal, PermissionNames.ServerAlertsRead, serverResource, Context.ConnectionAborted);
-    if (canReadAlerts.Allowed)
+    var decisions = await _permissionEvaluator.EvaluateMany(
+      principal,
+      [PermissionNames.ServerAlertsRead, PermissionNames.ServerTelemetryRead],
+      serverResource,
+      Context.ConnectionAborted);
+    if (decisions[PermissionNames.ServerAlertsRead].Allowed)
     {
       await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerAlerts());
     }
 
-    var canReadTelemetry = await _permissionEvaluator.Evaluate(
-      principal, PermissionNames.ServerTelemetryRead, serverResource, Context.ConnectionAborted);
-    if (canReadTelemetry.Allowed)
+    if (decisions[PermissionNames.ServerTelemetryRead].Allowed)
     {
       await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerTelemetry());
     }

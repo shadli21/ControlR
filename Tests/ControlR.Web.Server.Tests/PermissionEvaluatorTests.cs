@@ -449,7 +449,138 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task GetEffectivePermissionNames_DenyOverridesAllow()
+  public async Task EvaluateBatch_PreservesOrderAndCardinalityAcrossResources()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      user.Id,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Device,
+      deviceA.Id,
+      tenant.Id,
+      "test",
+      user.Id.ToString()));
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var requests = new[]
+    {
+      new PermissionEvaluationRequest(
+        PermissionNames.DeviceRead,
+        new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenant.Id)),
+      new PermissionEvaluationRequest(
+        PermissionNames.DeviceRead,
+        new ResourceDescriptor(PermissionScopeKind.Device, deviceA.Id, tenant.Id)),
+      new PermissionEvaluationRequest(
+        PermissionNames.DeviceRead,
+        new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenant.Id))
+    };
+
+    var results = await evaluator.EvaluateBatch(
+      principal,
+      requests,
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(3, results.Count);
+    Assert.False(results[0].Allowed);
+    Assert.True(results[1].Allowed);
+    Assert.False(results[2].Allowed);
+  }
+
+  [Fact]
+  public async Task EvaluateMany_MatchesRepeatedPointChecksAndDeduplicatesNames()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      user.Id,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      user.Id.ToString()));
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      user.Id,
+      PermissionNames.DeviceDelete,
+      PermissionScopeKind.Device,
+      device.Id,
+      tenant.Id,
+      "test",
+      user.Id.ToString(),
+      PermissionEffect.Deny));
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+    var names = new[]
+    {
+      PermissionNames.DeviceRead,
+      PermissionNames.DeviceDelete,
+      PermissionNames.DeviceRead
+    };
+
+    var bulk = await evaluator.EvaluateMany(
+      principal,
+      names,
+      resource,
+      TestContext.Current.CancellationToken);
+    var read = await evaluator.Evaluate(
+      principal,
+      PermissionNames.DeviceRead,
+      resource,
+      TestContext.Current.CancellationToken);
+    var delete = await evaluator.Evaluate(
+      principal,
+      PermissionNames.DeviceDelete,
+      resource,
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(2, bulk.Count);
+    Assert.Equal(read.Allowed, bulk[PermissionNames.DeviceRead].Allowed);
+    Assert.Equal(delete.Allowed, bulk[PermissionNames.DeviceDelete].Allowed);
+  }
+
+  [Fact]
+  public async Task Evaluate_UnknownPermissionWithStaleAllow_Denies()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    const string unknownPermission = "device.stale.unknown";
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      user.Id,
+      unknownPermission,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      user.Id.ToString()));
+
+    var evaluator = GetEvaluator(testApp);
+    var result = await evaluator.Evaluate(
+      CreateUserPrincipal(user.Id, tenant.Id),
+      unknownPermission,
+      new ResourceDescriptor(PermissionScopeKind.Tenant, tenant.Id, tenant.Id),
+      TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("Unknown permission", result.DenialReason);
+  }
+
+  [Fact]
+  public async Task GetPermissionHints_DenyOverridesAllow()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
@@ -482,13 +613,13 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id);
 
-    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+    var result = await evaluator.GetPermissionHints(principal, TestContext.Current.CancellationToken);
 
     Assert.DoesNotContain(PermissionNames.TenantCustomersRead, result);
   }
 
   [Fact]
-  public async Task GetEffectivePermissionNames_IncludesDirectAllow()
+  public async Task GetPermissionHints_IncludesDirectAllow()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
@@ -509,13 +640,13 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id);
 
-    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+    var result = await evaluator.GetPermissionHints(principal, TestContext.Current.CancellationToken);
 
     Assert.Contains(PermissionNames.TenantCustomersRead, result);
   }
 
   [Fact]
-  public async Task GetEffectivePermissionNames_IncludesUserGroupAllow()
+  public async Task GetPermissionHints_IncludesUserGroupAllow()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
@@ -539,7 +670,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id);
 
-    var result = await evaluator.GetEffectivePermissionNames(principal, TestContext.Current.CancellationToken);
+    var result = await evaluator.GetPermissionHints(principal, TestContext.Current.CancellationToken);
 
     Assert.Contains(PermissionNames.TenantUserGroupsRead, result);
   }
@@ -1144,7 +1275,11 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     var principal = CreateUserPrincipal(user.Id, tenant.Id,
       credentialId: patId,
       credentialType: CredentialType.PersonalAccessToken);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+    var resource = new ResourceDescriptor(
+      PermissionScopeKind.Device,
+      device.Id,
+      tenant.Id,
+      DeviceGroupIds: [groupId]);
 
     var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
 

@@ -1,9 +1,22 @@
 using System.Reflection;
+using ControlR.Web.Server.Authz.Permissions;
 
 namespace ControlR.Web.Server.Tests;
 
 public class PermissionPresetsCoverageTests
 {
+  [Fact]
+  public void AgentInstaller_ContainsOnlyDeploymentWorkflowPermissions()
+  {
+    Assert.Equal(
+      [
+        PermissionNames.AgentInstall,
+        PermissionNames.InstallerKeyRead,
+        PermissionNames.InstallerKeyWrite
+      ],
+      PermissionPresets.GetPermissions(PermissionPresets.AgentInstaller));
+  }
+
   [Fact]
   public void AllPermissionNames_AreCoveredByAtLeastOnePreset()
   {
@@ -24,5 +37,37 @@ public class PermissionPresetsCoverageTests
     Assert.True(
       uncovered.Length == 0,
       $"The following permissions are not in any preset: {string.Join(", ", uncovered)}");
+  }
+
+  [Fact]
+  public void AllPresetPermissions_ExistInCatalog()
+  {
+    var unknown = PermissionPresets.All
+      .SelectMany(preset => preset.Value.Select(permission => (preset.Key, permission)))
+      .Where(item => !PermissionCatalog.Exists(item.permission))
+      .ToArray();
+
+    Assert.True(
+      unknown.Length == 0,
+      $"Preset permissions missing from PermissionCatalog: {string.Join(", ", unknown.Select(x => $"{x.Key}/{x.permission}"))}");
+  }
+
+  [Fact]
+  public void PermissionPresets_AllPermissionListsContainNoDuplicates()
+  {
+    foreach (var (presetName, permissions) in PermissionPresets.All)
+    {
+      Assert.Equal(
+        permissions.Count,
+        permissions.Distinct(StringComparer.Ordinal).Count());
+    }
+  }
+
+  [Fact]
+  public void PermissionPresets_AllPresetNamesAreUnique()
+  {
+    Assert.Equal(
+      PermissionPresets.All.Count,
+      PermissionPresets.All.Keys.Distinct(StringComparer.Ordinal).Count());
   }
 }

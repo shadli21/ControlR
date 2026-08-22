@@ -80,6 +80,7 @@ public interface IDeviceManager
 
 public class DeviceManager(
   AppDb appDb,
+  IResourceDescriptorFactory resourceFactory,
   IPermissionEvaluator permissionEvaluator,
   ILogger<DeviceManager> logger) : IDeviceManager
 {
@@ -90,6 +91,7 @@ public class DeviceManager(
   private readonly AppDb _appDb = appDb;
   private readonly ILogger<DeviceManager> _logger = logger;
   private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
+  private readonly IResourceDescriptorFactory _resourceFactory = resourceFactory;
 
   public async Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null, Guid? customerId = null)
   {
@@ -115,13 +117,10 @@ public class DeviceManager(
 
   public async Task<bool> CanAssignTagOnDevice(ServiceAccount serviceAccount, Device device)
   {
-    if (serviceAccount.TenantId is not { } tenantId || tenantId != device.TenantId)
-    {
-      return false;
-    }
-
     var principal = new PrincipalDescriptor(
-      PrincipalType.TenantServiceAccount,
+      serviceAccount.Kind == ServiceAccountKind.Server
+        ? PrincipalType.ServerServiceAccount
+        : PrincipalType.TenantServiceAccount,
       serviceAccount.Id,
       serviceAccount.TenantId,
       AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
@@ -136,13 +135,10 @@ public class DeviceManager(
 
   public async Task<bool> CanInstallAgentOnDevice(ServiceAccount serviceAccount, Device device)
   {
-    if (serviceAccount.TenantId is not { } tenantId || tenantId != device.TenantId)
-    {
-      return false;
-    }
-
     var principal = new PrincipalDescriptor(
-      PrincipalType.TenantServiceAccount,
+      serviceAccount.Kind == ServiceAccountKind.Server
+        ? PrincipalType.ServerServiceAccount
+        : PrincipalType.TenantServiceAccount,
       serviceAccount.Id,
       serviceAccount.TenantId,
       AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
@@ -261,19 +257,7 @@ public class DeviceManager(
 
   private async Task<bool> HasDevicePermission(PrincipalDescriptor principal, Device device, string permissionName)
   {
-    if (principal.TenantId is not { } tenantId || tenantId != device.TenantId)
-    {
-      return false;
-    }
-
-    var deviceGroupIds = await _appDb.DeviceGroupMembers
-      .IgnoreQueryFilters()
-      .Where(member => member.DeviceId == device.Id)
-      .Select(member => member.DeviceGroupId)
-      .ToListAsync();
-
-    var resource = new ResourceDescriptor(
-      PermissionScopeKind.Device, device.Id, tenantId, device.CustomerId, deviceGroupIds);
+    var resource = await _resourceFactory.CreateDevice(device);
 
     var result = await _permissionEvaluator.Evaluate(
       principal,

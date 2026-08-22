@@ -22,8 +22,8 @@ public interface IViewerHub
   Task<HubResult> InvokeCtrlAltDel(Guid deviceId, int targetDesktopProcessId, DesktopSessionType desktopSessionType);
   Task RefreshDeviceInfo(Guid deviceId);
   Task<HubResult> RequestRemoteControlPermission(Guid deviceId, int targetProcessId);
-  Task<HubResult> RequestRemoteControlSession(Guid deviceId, RemoteControlSessionRequestDto sessionRequestDto);
-  Task<HubResult> RequestVncSession(Guid deviceId, VncSessionRequestDto sessionRequestDto);
+  Task<HubResult> RequestRemoteControlSession(RemoteControlSessionRequestDto sessionRequestDto);
+  Task<HubResult> RequestVncSession(VncSessionRequestDto sessionRequestDto);
   Task SendAgentUpdateTrigger(Guid deviceId);
   Task<HubResult> SendChatMessage(Guid deviceId, ChatMessageHubDto dto);
   Task SendDtoToAgent(Guid deviceId, DtoWrapper wrapper);
