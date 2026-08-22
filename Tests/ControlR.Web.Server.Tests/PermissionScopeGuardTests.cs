@@ -131,6 +131,18 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public void DevicePermissions_NeverAllowServerScope()
+  {
+    var devicePermissions = PermissionCatalog.All.Values
+      .Where(metadata => metadata.AllowedScopeKinds.Contains(PermissionScopeKind.Device))
+      .ToArray();
+
+    Assert.NotEmpty(devicePermissions);
+    Assert.All(devicePermissions, metadata =>
+      Assert.DoesNotContain(PermissionScopeKind.Server, metadata.AllowedScopeKinds));
+  }
+
+  [Fact]
   public void DeviceResourcePolicies_AllPermissionsExistInCatalog()
   {
     foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)
@@ -213,18 +225,6 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
       Assert.All(entry.Value.AllowedScopeKinds, scopeKind =>
         Assert.True(Enum.IsDefined(scopeKind)));
     });
-  }
-
-  [Fact]
-  public void DevicePermissions_NeverAllowServerScope()
-  {
-    var devicePermissions = PermissionCatalog.All.Values
-      .Where(metadata => metadata.AllowedScopeKinds.Contains(PermissionScopeKind.Device))
-      .ToArray();
-
-    Assert.NotEmpty(devicePermissions);
-    Assert.All(devicePermissions, metadata =>
-      Assert.DoesNotContain(PermissionScopeKind.Server, metadata.AllowedScopeKinds));
   }
 
   [Fact]

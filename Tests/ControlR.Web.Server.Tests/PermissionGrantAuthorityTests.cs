@@ -23,6 +23,62 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
 {
   private readonly ITestOutputHelper _testOutput = testOutput;
 
+  [Fact]
+  public async Task ApplyPresets_ReplaceExistingFalse_WithExistingDeny_SkipsAllow()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var actor = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"actor-{Guid.NewGuid():N}@t.local");
+    var target = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"target-{Guid.NewGuid():N}@t.local");
+
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.TenantPermissionsWrite,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
+
+    // Seed a DENY for DeviceRead at Tenant scope on the target. ApplyPresets selects existing
+    // keys by (PermissionName, ScopeKind) regardless of effect, so this deny must suppress the
+    // preset's DeviceRead allow (fail-closed: the deny is preserved, no escalation).
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      target.Id,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString(),
+      PermissionEffect.Deny));
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
+
+    var result = await manager.ApplyPresets(
+      new InternalDtos.ApplyPermissionPresetsRequestDto(
+        PermissionPrincipalKind.User,
+        target.Id,
+        [PermissionPresets.DeviceSuperUser],
+        ReplaceExisting: false),
+      tenant.Id,
+      Actor(actor.Id, tenant.Id),
+      TestContext.Current.CancellationToken);
+
+    Assert.True(result.IsSuccess, $"Expected preset application to succeed: {result.Reason}");
+
+    // The preset should have skipped DeviceRead because a deny already occupies that key.
+    var expectedGranted = PermissionPresets.GetPermissions(PermissionPresets.DeviceSuperUser)
+      .Where(name => name != PermissionNames.DeviceRead)
+      .Distinct()
+      .Count();
+    Assert.Equal(expectedGranted, result.Value);
+  }
+
     [Fact]
     public async Task ApplyPresets_WithMixedScopesAndRequiredPermissions_Succeeds()
     {
@@ -159,6 +215,103 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
 
     Assert.False(result.IsSuccess);
     Assert.Equal(HttpResultErrorCode.Forbidden, result.ErrorCode);
+  }
+
+  [Fact]
+  public async Task Create_Deny_WithoutTenantPermissionsDeny_ReturnsForbidden()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var actor = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"actor-{Guid.NewGuid():N}@t.local");
+    var target = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"target-{Guid.NewGuid():N}@t.local");
+
+    // Actor holds TenantPermissionsWrite (can manage allow rules) but NOT TenantPermissionsDeny.
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.TenantPermissionsWrite,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
+    var denyRequest = new InternalDtos.CreatePermissionAssignmentRequestDto(
+      PermissionPrincipalKind.User,
+      target.Id,
+      PermissionNames.DeviceRead,
+      PermissionEffect.Deny,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      null);
+
+    // A tenant writer without TenantPermissionsDeny must be forbidden from creating a deny rule.
+    var denyResult = await manager.Create(
+      denyRequest,
+      tenant.Id,
+      Actor(actor.Id, tenant.Id),
+      TestContext.Current.CancellationToken);
+    Assert.False(denyResult.IsSuccess);
+    Assert.Equal(HttpResultErrorCode.Forbidden, denyResult.ErrorCode);
+
+    // The same actor can still create an allow rule (TenantPermissionsWrite is sufficient).
+    var allowResult = await manager.Create(
+      denyRequest with { Effect = PermissionEffect.Allow },
+      tenant.Id,
+      Actor(actor.Id, tenant.Id),
+      TestContext.Current.CancellationToken);
+    Assert.True(allowResult.IsSuccess, $"Expected allow grant to succeed: {allowResult.Reason}");
+  }
+
+  [Fact]
+  public async Task Create_Deny_WithTenantPermissionsDeny_Succeeds()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var actor = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"actor-{Guid.NewGuid():N}@t.local");
+    var target = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"target-{Guid.NewGuid():N}@t.local");
+
+    // Actor holds both TenantPermissionsWrite and TenantPermissionsDeny.
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.TenantPermissionsWrite,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      actor.Id,
+      PermissionNames.TenantPermissionsDeny,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      actor.Id.ToString()));
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
+
+    var result = await manager.Create(
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.User,
+        target.Id,
+        PermissionNames.DeviceRead,
+        PermissionEffect.Deny,
+        PermissionScopeKind.Tenant,
+        tenant.Id,
+        null),
+      tenant.Id,
+      Actor(actor.Id, tenant.Id),
+      TestContext.Current.CancellationToken);
+
+    Assert.True(result.IsSuccess, $"Expected deny grant to succeed: {result.Reason}");
   }
 
   [Fact]
