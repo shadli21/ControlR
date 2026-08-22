@@ -189,6 +189,8 @@ else
 
     <MudGrid>
       <MudItem xs="12" sm="6">
+        @if (_canAssignDeviceTags)
+        {
         <MudText Typo="Typo.subtitle2" Color="Color.Info">
           Customer
         </MudText>
@@ -204,6 +206,7 @@ else
             </MudSelectItem>
           }
         </MudSelect>
+        }
       </MudItem>
     </MudGrid>
 

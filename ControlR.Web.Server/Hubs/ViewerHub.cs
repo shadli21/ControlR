@@ -192,7 +192,12 @@ public class ViewerHub(
         await CanAccessDevice(device, DeviceResourcePolicies.ChatSend),
         await CanAccessDevice(device, DeviceResourcePolicies.FileSystemRead),
         await CanAccessDevice(device, DeviceResourcePolicies.LogsRead),
-        await CanAccessDevice(device, DeviceResourcePolicies.VncRelayConnect));
+        await CanAccessDevice(device, DeviceResourcePolicies.VncRelayConnect),
+        await CanAccessDevice(device, DeviceResourcePolicies.RemoteControlInteract),
+        await CanAccessDevice(device, DeviceResourcePolicies.RemoteControlBlockInput),
+        await CanAccessDevice(device, DeviceResourcePolicies.ClipboardRead),
+        await CanAccessDevice(device, DeviceResourcePolicies.ClipboardWrite),
+        await CanAccessDevice(device, DeviceResourcePolicies.CtrlAltDelSend));
 
       return HubResult.Ok(permissions);
     }
@@ -355,7 +360,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.VncRelayConnect) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.RemoteControlConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }

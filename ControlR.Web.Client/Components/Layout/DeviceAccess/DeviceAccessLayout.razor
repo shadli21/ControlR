@@ -95,7 +95,9 @@
               @(BrandingConstants.BrandName) - @(_deviceName)
             </PageTitle>
           }
-          @Body
+          <CascadingValue Value="@_deviceAccessPermissions">
+            @Body
+          </CascadingValue>
         }
       </MudMainContent>
     </MudLayout>

@@ -10,6 +10,8 @@ public static class DeviceResourcePolicies
   public const string AgentUpdate = "DeviceAgentUpdate";
   public const string AliasWrite = "DeviceAliasWrite";
   public const string ChatSend = "DeviceChatSend";
+  public const string ClipboardRead = "DeviceClipboardRead";
+  public const string ClipboardWrite = "DeviceClipboardWrite";
   public const string CtrlAltDelSend = "DeviceCtrlAltDelSend";
   public const string Delete = "DeviceDelete";
   public const string DesktopPreviewRead = "DeviceDesktopPreviewRead";
@@ -23,7 +25,9 @@ public static class DeviceResourcePolicies
   public const string OverviewRead = "DeviceOverviewRead";
   public const string PowerManage = "DevicePowerManage";
   public const string Read = "DeviceRead";
+  public const string RemoteControlBlockInput = "DeviceRemoteControlBlockInput";
   public const string RemoteControlConnect = "DeviceRemoteControlConnect";
+  public const string RemoteControlInteract = "DeviceRemoteControlInteract";
   public const string TagsRead = "DeviceTagsRead";
   public const string TagsWrite = "DeviceTagsWrite";
   public const string TerminalUse = "DeviceTerminalUse";
@@ -36,6 +40,10 @@ public static class DeviceResourcePolicies
       [Read] = PermissionNames.DeviceRead,
       [AgentUpdate] = PermissionNames.DeviceAgentUpdate,
       [RemoteControlConnect] = PermissionNames.DeviceRemoteControlConnect,
+      [RemoteControlInteract] = PermissionNames.DeviceRemoteControlInteract,
+      [RemoteControlBlockInput] = PermissionNames.DeviceRemoteControlBlockInput,
+      [ClipboardRead] = PermissionNames.DeviceClipboardRead,
+      [ClipboardWrite] = PermissionNames.DeviceClipboardWrite,
       [Delete] = PermissionNames.DeviceDelete,
       [AliasWrite] = PermissionNames.DeviceAliasWrite,
       [ChatSend] = PermissionNames.DeviceChatSend,

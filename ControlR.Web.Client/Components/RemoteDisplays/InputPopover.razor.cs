@@ -6,16 +6,25 @@ public partial class InputPopover : DisposableComponent
 
   [Inject]
   public required IClipboardManager ClipboardManager { get; init; }
+
+  [CascadingParameter]
+  public DeviceAccessPermissionsDto? DeviceAccessPermissions { get; set; }
+
   [Inject]
   public required IDeviceState DeviceState { get; init; }
+
   [Inject]
   public required ILogger<InputPopover> Logger { get; init; }
+
   [Inject]
   public required IRemoteControlState RemoteControlState { get; init; }
+
   [Inject]
   public required IViewerRemoteControlStream RemoteControlStream { get; init; }
+
   [Inject]
   public required ISnackbar Snackbar { get; init; }
+
   [Inject]
   public required IHubConnection<IViewerHub> ViewerHub { get; init; }
 

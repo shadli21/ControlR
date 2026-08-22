@@ -7,4 +7,9 @@ public sealed record DeviceAccessPermissionsDto(
   bool CanUseChat,
   bool CanReadFileSystem,
   bool CanReadLogs,
-  bool CanUseVncRelay);
+  bool CanUseVncRelay,
+  bool CanInteractWithRemoteControl,
+  bool CanBlockRemoteInput,
+  bool CanReadClipboard,
+  bool CanWriteClipboard,
+  bool CanSendCtrlAltDel);

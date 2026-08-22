@@ -1,4 +1,3 @@
-using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 using ControlR.Libraries.Branding;
 using Microsoft.AspNetCore.Components.Authorization;
 
@@ -8,6 +7,7 @@ public partial class Deploy
 {
   private bool _addTags;
   private bool _appendInstanceId = true;
+  private bool _canAssignDeviceTags;
   private IReadOnlyList<CustomerDto> _customers = [];
   private string? _deviceId;
   private IEnumerable<AgentInstallerKeyDto> _existingKeys = [];
@@ -132,6 +132,8 @@ public partial class Deploy
       _tenantId = tenantId;
     }
 
+    _canAssignDeviceTags = state.User.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.DeviceTagsWrite);
+
     _appendInstanceId = await TenantSettingsProvider.GetAppendInstanceId();
     _instanceId = await TenantSettingsProvider.GetInstanceId();
 
@@ -143,6 +145,11 @@ public partial class Deploy
     else
     {
       Snackbar.Add("Failed to get customers", Severity.Error);
+    }
+
+    if (!_canAssignDeviceTags)
+    {
+      return;
     }
 
     var result = await ControlrApi.Internal.Tags.GetAllTags();
