@@ -183,10 +183,6 @@ public class LogonTokenScopeService(
     PrincipalDescriptor creator,
     CancellationToken cancellationToken)
   {
-    // The V1 DTOs carry [MaxLength(PermissionsMaxLength)], which ASP.NET binding does enforce on
-    // IReadOnlyList<T> (MaxLengthAttribute validates the Count property). The internal
-    // LogonTokenRequestDto.Scopes has no [MaxLength], so this guard is the only cap for that path
-    // and bounds the per-scope DB lookups (N+1) performed later.
     if (requestedScopes is { Count: > DtoLimits.PermissionsMaxLength })
     {
       return HttpResult.Fail<ScopePreparation>(

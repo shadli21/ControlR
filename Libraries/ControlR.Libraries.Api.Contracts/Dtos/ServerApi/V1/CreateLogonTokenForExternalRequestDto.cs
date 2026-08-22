@@ -7,6 +7,7 @@ namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 public record CreateLogonTokenForExternalRequestDto(
   Guid DeviceId,
   Guid TenantId,
+  [property: Required]
   [property: StringLength(DtoLimits.UserCorrelationIdMaxLength)]
   string UserCorrelationId,
   [property: StringLength(DtoLimits.UserDisplayNameMaxLength)]

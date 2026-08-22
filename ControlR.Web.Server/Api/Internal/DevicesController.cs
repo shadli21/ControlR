@@ -56,6 +56,11 @@ public class DevicesController(
     [FromBody] InternalDtos.DeleteDevicesRequestDto requestDto,
     CancellationToken cancellationToken)
   {
+    if (requestDto.DeviceIds.Count > DtoLimits.DeviceIdsMaxCount)
+    {
+      return BadRequest($"Too many device IDs. Maximum allowed is {DtoLimits.DeviceIdsMaxCount}.");
+    }
+
     if (!User.TryGetTenantId(out var tenantId))
     {
       return BadRequest("Tenant ID not found.");

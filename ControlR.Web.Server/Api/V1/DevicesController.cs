@@ -55,6 +55,11 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     [FromBody] V1Dtos.DeleteDevicesRequestDto requestDto,
     CancellationToken cancellationToken)
   {
+    if (requestDto.DeviceIds.Count > DtoLimits.DeviceIdsMaxCount)
+    {
+      return BadRequest($"Too many device IDs. Maximum allowed is {DtoLimits.DeviceIdsMaxCount}.");
+    }
+
     var candidateDevices = await appDb.Devices
       .AsNoTracking()
       .Include(x => x.DeviceGroupMembers)
