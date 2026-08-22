@@ -1,40 +1,36 @@
 using System.Security.Claims;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Authorization.PermissionRules;
 
 namespace ControlR.Web.Server.Services.DeviceManagement;
 
 public interface IDeviceAccessScopeResolver
 {
-  Task<DeviceAccessScope> Resolve(ClaimsPrincipal user, CancellationToken cancellationToken = default);
+  Task<DeviceAccessScope> Resolve(
+    ClaimsPrincipal user,
+    CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Projects a principal's resolved <c>device.read</c> rules (allow/deny) into a
-/// <see cref="DeviceAccessScope"/> query filter.
-/// </summary>
-public class DeviceAccessScopeResolver(
-  IPermissionRuleResolver ruleResolver) : IDeviceAccessScopeResolver
+public sealed class DeviceAccessScopeResolver(
+  IPermissionEvaluationContextLoader contextLoader) : IDeviceAccessScopeResolver
 {
-  private readonly IPermissionRuleResolver _ruleResolver = ruleResolver;
+  private readonly IPermissionEvaluationContextLoader _contextLoader = contextLoader;
 
   public async Task<DeviceAccessScope> Resolve(
     ClaimsPrincipal user,
     CancellationToken cancellationToken = default)
   {
-    // Hard boundary: logon token sessions are always restricted to their scoped device.
-    // If the auth method is logon-token but the scoped-device claim is absent or invalid,
-    // fail rather than falling through to full device.read rule resolution.
-    // The logon-token handler always sets both claims together today, so this is a
-    // latent hardening guard against a malformed principal in the most sensitive boundary.
     if (user.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ==
-        PrincipalClaimValues.LogonTokenMethod)
+        PrincipalClaimValues.LogonTokenMethod &&
+        (!Guid.TryParse(
+           user.FindFirst(PrincipalClaimTypes.CredentialId)?.Value,
+           out _) ||
+         !Guid.TryParse(
+           user.FindFirst(UserClaimTypes.DeviceSessionScope)?.Value,
+           out _)))
     {
-      if (TryGetLogonTokenDeviceScope(user, out var scopedDeviceId))
-      {
-        return DeviceAccessScope.SingleDevice(scopedDeviceId);
-      }
       return DeviceAccessScope.None();
     }
 
@@ -44,117 +40,95 @@ public class DeviceAccessScopeResolver(
       return DeviceAccessScope.None();
     }
 
-    var resolved = await _ruleResolver.Resolve(principal, cancellationToken);
+    var context = await _contextLoader.Load(principal, cancellationToken);
+    if (context.ServerBypass)
+    {
+      return DeviceAccessScope.ServerWide();
+    }
 
-    // Server bypass spans all tenants, which DeviceAccessScope cannot represent; callers
-    // handle server principals first. Fail closed if one reaches this path directly.
-    if (resolved.ServerBypass)
+    var deviceReadRules = context.EffectiveRules
+      .Where(rule => rule.PermissionName == PermissionNames.DeviceRead)
+      .ToList();
+    if (deviceReadRules.Count == 0)
     {
       return DeviceAccessScope.None();
     }
 
-    var deviceReadAssignments = resolved.Rules
-      .Where(rule => rule.Assignment.PermissionName == PermissionNames.DeviceRead)
-      .Select(rule => rule.Assignment)
-      .ToList();
+    if (principal.CredentialType == CredentialType.LogonToken)
+    {
+      if (!principal.CredentialId.HasValue || !principal.DeviceScopeId.HasValue)
+      {
+        return DeviceAccessScope.None();
+      }
 
-    var allows = deviceReadAssignments
-      .Where(x => x.Effect == PermissionEffect.Allow)
-      .ToList();
+      var deviceRules = deviceReadRules
+        .Where(rule => rule.ScopeKind == PermissionScopeKind.Device &&
+                       rule.ScopeId == principal.DeviceScopeId.Value)
+        .ToList();
+      if (deviceRules.Any(rule => rule.Effect == PermissionEffect.Deny) ||
+          !deviceRules.Any(rule => rule.Effect == PermissionEffect.Allow))
+      {
+        return DeviceAccessScope.None();
+      }
 
+      return DeviceAccessScope.Create(
+        false,
+        [],
+        [],
+        [],
+        [principal.DeviceScopeId.Value],
+        [],
+        [],
+        [],
+        []);
+    }
+
+    var scope = BuildScope(deviceReadRules);
+    if (context.HasExplicitPatScope)
+    {
+      var ownerScope = BuildScope(context.OwnerRules
+        .Where(rule => rule.PermissionName == PermissionNames.DeviceRead)
+        .ToList());
+      return scope.RequireOwnerScope(ownerScope);
+    }
+
+    return scope;
+  }
+
+  private static DeviceAccessScope BuildScope(IReadOnlyCollection<PermissionRule> rules)
+  {
+    var allows = rules
+      .Where(rule => rule.Effect == PermissionEffect.Allow)
+      .ToList();
     if (allows.Count == 0)
     {
       return DeviceAccessScope.None();
     }
 
-    var denies = deviceReadAssignments
-      .Where(x => x.Effect == PermissionEffect.Deny)
+    var denies = rules
+      .Where(rule => rule.Effect == PermissionEffect.Deny)
       .ToList();
 
-    // A Server/Tenant-scope deny removes the entire tenant from enumeration, mirroring the
-    // point evaluator's deny-overrides-allow semantics.
-    if (denies.Any(x => x.ScopeKind is PermissionScopeKind.Server or PermissionScopeKind.Tenant))
-    {
-      return DeviceAccessScope.None();
-    }
-
-    var includesTenantWide = allows.Any(x => x.ScopeKind is PermissionScopeKind.Server or PermissionScopeKind.Tenant);
-
-    var deviceGroupIds = ScopeIds(allows, PermissionScopeKind.DeviceGroup);
-    var customerIds = ScopeIds(allows, PermissionScopeKind.CustomerTenant);
-    var deviceIds = ScopeIds(allows, PermissionScopeKind.Device);
-
-    var excludedGroupIds = ScopeIds(denies, PermissionScopeKind.DeviceGroup);
-    var excludedCustomerIds = ScopeIds(denies, PermissionScopeKind.CustomerTenant);
-    var excludedDeviceIds = ScopeIds(denies, PermissionScopeKind.Device);
-
-    if (includesTenantWide &&
-        excludedGroupIds.Count == 0 &&
-        excludedCustomerIds.Count == 0 &&
-        excludedDeviceIds.Count == 0)
-    {
-      return DeviceAccessScope.TenantWide();
-    }
-
-    if (!includesTenantWide &&
-        deviceGroupIds.Count == 0 &&
-        customerIds.Count == 0 &&
-        deviceIds.Count == 0)
-    {
-      return DeviceAccessScope.None();
-    }
-
-    var hasExclusions = excludedGroupIds.Count > 0 ||
-        excludedCustomerIds.Count > 0 ||
-        excludedDeviceIds.Count > 0;
-
-    // Preserve the legacy single-category shapes when they fully describe the scope.
-    if (!includesTenantWide && !hasExclusions)
-    {
-      if (deviceGroupIds.Count > 0 && customerIds.Count == 0 && deviceIds.Count == 0)
-      {
-        return DeviceAccessScope.ForDeviceGroups(deviceGroupIds);
-      }
-
-      if (customerIds.Count > 0 && deviceGroupIds.Count == 0 && deviceIds.Count == 0)
-      {
-        return DeviceAccessScope.ForCustomers(customerIds);
-      }
-
-      if (deviceIds.Count > 0 && deviceGroupIds.Count == 0 && customerIds.Count == 0)
-      {
-        return DeviceAccessScope.ForSpecificDevices(deviceIds);
-      }
-    }
-
-    return DeviceAccessScope.Combined(
-      includesTenantWide,
-      deviceGroupIds,
-      customerIds,
-      deviceIds,
-      excludedGroupIds,
-      excludedCustomerIds,
-      excludedDeviceIds);
+    return DeviceAccessScope.Create(
+      allows.Any(rule => rule.ScopeKind == PermissionScopeKind.Server),
+      ScopeIds(allows, PermissionScopeKind.Tenant),
+      ScopeIds(allows, PermissionScopeKind.DeviceGroup),
+      ScopeIds(allows, PermissionScopeKind.CustomerTenant),
+      ScopeIds(allows, PermissionScopeKind.Device),
+      denies.Any(rule => rule.ScopeKind == PermissionScopeKind.Server)
+        ? [Guid.Empty]
+        : ScopeIds(denies, PermissionScopeKind.Tenant),
+      ScopeIds(denies, PermissionScopeKind.DeviceGroup),
+      ScopeIds(denies, PermissionScopeKind.CustomerTenant),
+      ScopeIds(denies, PermissionScopeKind.Device));
   }
 
-  private static List<Guid> ScopeIds(List<PermissionAssignment> assignments, PermissionScopeKind scopeKind) =>
-    assignments
-      .Where(x => x.ScopeKind == scopeKind && x.ScopeId.HasValue)
-      .Select(x => x.ScopeId.GetValueOrDefault())
+  private static IReadOnlyCollection<Guid> ScopeIds(
+    IReadOnlyCollection<PermissionRule> rules,
+    PermissionScopeKind scopeKind) =>
+    rules
+      .Where(rule => rule.ScopeKind == scopeKind && rule.ScopeId.HasValue)
+      .Select(rule => rule.ScopeId.GetValueOrDefault())
       .Distinct()
       .ToList();
-
-  private static bool TryGetLogonTokenDeviceScope(ClaimsPrincipal user, out Guid deviceId)
-  {
-    deviceId = Guid.Empty;
-
-    var authMethod = user.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value;
-    if (authMethod != PrincipalClaimValues.LogonTokenMethod)
-    {
-      return false;
-    }
-
-    var scopedDeviceIdValue = user.FindFirst(UserClaimTypes.DeviceSessionScope)?.Value;
-    return Guid.TryParse(scopedDeviceIdValue, out deviceId);
-  }
 }

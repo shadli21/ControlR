@@ -17,7 +17,7 @@ namespace ControlR.Web.Server.Tests;
 /// Parity tests asserting that the set-enumeration path (<see cref="IDeviceAccessScopeResolver"/>
 /// projected through <c>ApplyAccessScope</c>) and the point-authorization path
 /// (<see cref="IPermissionEvaluator"/>) agree on which devices a principal may access. Both paths
-/// interpret assignments through the shared <see cref="IPermissionRuleResolver"/>; these tests use
+/// interpret assignments through the shared permission evaluation context; these tests use
 /// assignment-scoped principals (no role bridges) across each scope kind.
 /// </summary>
 public class DeviceScopeParityTests(ITestOutputHelper testOutput)
@@ -195,6 +195,100 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task Parity_PatWithExplicitDeviceScope_EnumeratesOnlyBoundedDevice()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var patId = Guid.NewGuid();
+
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      user.Id,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      user.Id.ToString()));
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.PersonalAccessToken,
+      patId,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Device,
+      deviceA.Id,
+      tenant.Id,
+      "test",
+      user.Id.ToString()));
+
+    var (claims, principal) = CreateCredentialPrincipalPair(
+      user.Id,
+      tenant.Id,
+      patId,
+      CredentialType.PersonalAccessToken);
+
+    await AssertResolverEvaluatorParity(testApp, tenant.Id, claims, principal,
+    [
+      new ParityDevice(deviceA.Id, null, []),
+      new ParityDevice(deviceB.Id, null, [])
+    ]);
+  }
+
+  [Fact]
+  public async Task Parity_ServerServiceAccountWithDeviceScope_EnumeratesAcrossTenantsOnlyMatchingDevice()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenantA = await testApp.App.Services.CreateTestTenant("Tenant A");
+    var tenantB = await testApp.App.Services.CreateTestTenant("Tenant B");
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenantA.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenantB.Id);
+    var serviceAccountId = Guid.NewGuid();
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.ServiceAccount,
+      serviceAccountId,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Device,
+      deviceB.Id,
+      tenantB.Id,
+      "test",
+      serviceAccountId.ToString()));
+
+    var claims = new ClaimsPrincipal(new ClaimsIdentity(
+    [
+      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.ServerServiceAccount),
+      new Claim(PrincipalClaimTypes.PrincipalId, serviceAccountId.ToString())
+    ], "TestAuth"));
+    var principal = PrincipalDescriptorBuilder.FromClaims(claims)
+      ?? throw new InvalidOperationException("Failed to build principal descriptor from claims.");
+
+    using var scope = testApp.App.Services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var resolver = scope.ServiceProvider.GetRequiredService<IDeviceAccessScopeResolver>();
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+    var accessScope = await resolver.Resolve(claims, TestContext.Current.CancellationToken);
+    var listedIds = await db.Devices
+      .IgnoreQueryFilters()
+      .ApplyAccessScope(accessScope)
+      .Select(device => device.Id)
+      .ToListAsync(TestContext.Current.CancellationToken);
+
+    Assert.DoesNotContain(deviceA.Id, listedIds);
+    Assert.Contains(deviceB.Id, listedIds);
+    Assert.False((await evaluator.Evaluate(
+      principal,
+      PermissionNames.DeviceRead,
+      new ResourceDescriptor(PermissionScopeKind.Device, deviceA.Id, tenantA.Id),
+      TestContext.Current.CancellationToken)).Allowed);
+    Assert.True((await evaluator.Evaluate(
+      principal,
+      PermissionNames.DeviceRead,
+      new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenantB.Id),
+      TestContext.Current.CancellationToken)).Allowed);
+  }
+
+  [Fact]
   public async Task Parity_TenantAllowWithDeviceDeny_ExcludesDeniedDevice()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -295,6 +389,25 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
 
       Assert.Equal(result.Allowed, listedDeviceIds.Contains(device.Id));
     }
+  }
+
+  private static (ClaimsPrincipal Claims, PrincipalDescriptor Descriptor) CreateCredentialPrincipalPair(
+    Guid userId,
+    Guid tenantId,
+    Guid credentialId,
+    CredentialType credentialType)
+  {
+    var claims = new ClaimsPrincipal(new ClaimsIdentity(
+    [
+      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
+      new Claim(PrincipalClaimTypes.PrincipalId, userId.ToString()),
+      new Claim(UserClaimTypes.TenantId, tenantId.ToString()),
+      new Claim(PrincipalClaimTypes.CredentialId, credentialId.ToString()),
+      new Claim(PrincipalClaimTypes.CredentialType, credentialType.ToString())
+    ], "TestAuth"));
+    var descriptor = PrincipalDescriptorBuilder.FromClaims(claims)
+      ?? throw new InvalidOperationException("Failed to build principal descriptor from claims.");
+    return (claims, descriptor);
   }
 
   private static (ClaimsPrincipal Claims, PrincipalDescriptor Descriptor) CreateUserPrincipalPair(

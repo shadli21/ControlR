@@ -1,4 +1,5 @@
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authz.Policies;
 using ControlR.Web.Server.Authz.Permissions;
 
 namespace ControlR.Web.Server.Tests;
@@ -13,6 +14,13 @@ public class PermissionPolicyMapTests
       Assert.True(
         PermissionCatalog.Exists(permissionName),
         $"Policy '{policyName}' maps to permission '{permissionName}', which is not in the PermissionCatalog.");
+    }
+
+    foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)
+    {
+      Assert.True(
+        PermissionCatalog.Exists(permissionName),
+        $"Device policy '{policyName}' maps to permission '{permissionName}', which is not in the PermissionCatalog.");
     }
   }
 }

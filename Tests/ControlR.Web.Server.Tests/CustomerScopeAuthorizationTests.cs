@@ -88,7 +88,6 @@ public class CustomerScopeAuthorizationTests(ITestOutputHelper testOutput)
 
     var result = await resolver.Resolve(principal, TestContext.Current.CancellationToken);
 
-    Assert.Equal(DeviceAccessScopeKind.Customers, result.Kind);
-    Assert.Contains(customerId, result.CustomerIds);
+    Assert.Contains(customerId, result.IncludedCustomerIds);
   }
 }

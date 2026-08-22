@@ -68,7 +68,8 @@ public class InvitesController : ControllerBase
   [Authorize(Policy = PolicyNames.RequireUsersRead)]
   public async Task<ActionResult<InternalDtos.TenantInviteResponseDto[]>> GetAll(
     [FromServices] ITenantInvitesProvider tenantInvitesProvider,
-    [FromServices] IPermissionEvaluator permissionEvaluator)
+    [FromServices] IPermissionEvaluator permissionEvaluator,
+    [FromServices] IResourceDescriptorFactory resourceFactory)
   {
     if (!User.TryGetTenantId(out var tenantId))
     {
@@ -84,7 +85,7 @@ public class InvitesController : ControllerBase
       return Unauthorized();
     }
 
-    var resource = new ResourceDescriptor(PermissionScopeKind.Tenant, null, tenantId);
+    var resource = resourceFactory.CreateTenant(tenantId);
     var evalResult = await permissionEvaluator.Evaluate(
       callerPrincipal, PermissionNames.TenantUsersWrite, resource, HttpContext.RequestAborted);
 

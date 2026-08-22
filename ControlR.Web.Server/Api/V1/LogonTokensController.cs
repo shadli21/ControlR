@@ -27,7 +27,7 @@ public class LogonTokensController : ControllerBase
       return BadRequest("Device not found");
     }
 
-    if (!User.IsInTenant(device.TenantId))
+    if (User.TryGetTenantId(out var callerTenantId) && callerTenantId != device.TenantId)
     {
       return BadRequest("Device not found");
     }
@@ -72,7 +72,7 @@ public class LogonTokensController : ControllerBase
       return BadRequest("Device not found");
     }
 
-    if (!User.IsInTenant(device.TenantId))
+    if (User.TryGetTenantId(out var callerTenantId) && callerTenantId != device.TenantId)
     {
       return BadRequest("Device not found");
     }

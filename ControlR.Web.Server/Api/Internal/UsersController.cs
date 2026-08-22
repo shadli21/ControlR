@@ -71,10 +71,22 @@ public class UsersController : ControllerBase
           return BadRequest("Caller principal not found.");
         }
 
-        var callerPermissions = await permissionEvaluator.GetEffectivePermissionNames(callerPrincipal, HttpContext.RequestAborted);
-        var hasServerAdmin = callerPermissions.Contains(PermissionNames.ServerAdmin);
-        var hasTenantWrite = callerPermissions.Contains(PermissionNames.TenantPermissionsWrite);
-        var hasTenantDeny = callerPermissions.Contains(PermissionNames.TenantPermissionsDeny);
+        var serverResource = new ResourceDescriptor(PermissionScopeKind.Server);
+        var tenantResource = new ResourceDescriptor(
+          PermissionScopeKind.Tenant,
+          tenantId,
+          tenantId);
+        var decisions = await permissionEvaluator.EvaluateBatch(
+          callerPrincipal,
+          [
+            new PermissionEvaluationRequest(PermissionNames.ServerAdmin, serverResource),
+            new PermissionEvaluationRequest(PermissionNames.TenantPermissionsWrite, tenantResource),
+            new PermissionEvaluationRequest(PermissionNames.TenantPermissionsDeny, tenantResource)
+          ],
+          HttpContext.RequestAborted);
+        var hasServerAdmin = decisions[0].Allowed;
+        var hasTenantWrite = decisions[1].Allowed;
+        var hasTenantDeny = decisions[2].Allowed;
 
         // A caller may only mint a principal whose management powers they hold. TenantAdministrator
         // grants both permission-management powers, so it cannot be minted from a user-manager
