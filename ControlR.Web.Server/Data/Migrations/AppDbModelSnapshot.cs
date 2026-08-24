@@ -499,8 +499,8 @@ namespace ControlR.Web.Server.Data.Migrations
                         .HasColumnType("character varying(32)");
 
                     b.Property<string>("SessionCorrelationId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
@@ -511,8 +511,8 @@ namespace ControlR.Web.Server.Data.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("UserCorrelationId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(252)
+                        .HasColumnType("character varying(252)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");

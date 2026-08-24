@@ -81,7 +81,63 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task TenantUsersWriteOnly_CannotCreate_TenantAdministratorPreset()
+  public async Task TenantPermissionManager_CanCreate_TenantPermissionPreset()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
+    using var scope = testApp.CreateScope();
+    var services = scope.ServiceProvider;
+
+    var (controller, tenant, caller) = await scope.CreateControllerWithTestData<UsersController>(
+      presets: []);
+
+    await using var db = services.GetRequiredService<AppDb>();
+    db.PermissionAssignments.AddRange(
+      PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        caller.Id,
+        PermissionNames.TenantUsersWrite,
+        PermissionScopeKind.Tenant,
+        tenant.Id,
+        tenant.Id,
+        "test",
+        caller.Id.ToString()),
+      PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        caller.Id,
+        PermissionNames.TenantPermissionsWrite,
+        PermissionScopeKind.Tenant,
+        tenant.Id,
+        tenant.Id,
+        "test",
+        caller.Id.ToString()));
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var request = new InternalDtos.CreateUserRequestDto(
+      UserName: "delegated",
+      Email: "delegated@t.local",
+      Password: "P@ssw0rd!",
+      PresetNames: [PermissionPresets.DeviceSuperUser]);
+
+    var result = await controller.Create(
+      services.GetRequiredService<AppDb>(),
+      services.GetRequiredService<IPermissionEvaluator>(),
+      services.GetRequiredService<IUserCreator>(),
+      request);
+
+    Assert.IsType<CreatedAtActionResult>(result.Result);
+
+    var createdUser = await db.Users.FirstOrDefaultAsync(
+      u => u.Email == "delegated@t.local", TestContext.Current.CancellationToken);
+    Assert.NotNull(createdUser);
+  }
+
+  [Theory]
+  [InlineData(PermissionPresets.AgentInstaller)]
+  [InlineData(PermissionPresets.DeviceSuperUser)]
+  [InlineData(PermissionPresets.InstallerKeyManager)]
+  [InlineData(PermissionPresets.ServiceAccountManager)]
+  [InlineData(PermissionPresets.TenantAdministrator)]
+  public async Task TenantUsersWriteOnly_CannotCreate_TenantPermissionPreset(string presetName)
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
     using var scope = testApp.CreateScope();
@@ -106,7 +162,7 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
       UserName: "escalation",
       Email: "escalation@t.local",
       Password: "P@ssw0rd!",
-      PresetNames: [PermissionPresets.TenantAdministrator]);
+      PresetNames: [presetName]);
 
     var result = await controller.Create(
       services.GetRequiredService<AppDb>(),

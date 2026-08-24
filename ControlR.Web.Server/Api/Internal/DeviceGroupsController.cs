@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -12,15 +13,24 @@ public class DeviceGroupsController(IDeviceGroupManager deviceGroupManager) : Co
   private readonly IDeviceGroupManager _deviceGroupManager = deviceGroupManager;
 
   [HttpPost("{deviceGroupId:guid}/members")]
-  [Authorize(Policy = PolicyNames.RequireDeviceGroupAssignDevices)]
   public async Task<IActionResult> AddMembers(
     [FromRoute] Guid deviceGroupId,
     [FromBody] InternalDtos.AddDeviceGroupMembersRequestDto request,
+    [FromServices] IAuthorizationService authorizationService,
     CancellationToken cancellationToken)
   {
     if (!User.TryGetTenantId(out var tenantId))
     {
       return BadRequest("User tenant not found.");
+    }
+
+    var authorizationResult = await authorizationService.AuthorizeAsync(
+      User,
+      new ResourceDescriptor(PermissionScopeKind.DeviceGroup, deviceGroupId, tenantId),
+      PolicyNames.RequireDeviceGroupAssignDevices);
+    if (!authorizationResult.Succeeded)
+    {
+      return Forbid();
     }
 
     if (!User.TryGetUserId(out var userId))
@@ -126,15 +136,24 @@ public class DeviceGroupsController(IDeviceGroupManager deviceGroupManager) : Co
   }
 
   [HttpDelete("{deviceGroupId:guid}/members")]
-  [Authorize(Policy = PolicyNames.RequireDeviceGroupAssignDevices)]
   public async Task<IActionResult> RemoveMembers(
     [FromRoute] Guid deviceGroupId,
     [FromBody] InternalDtos.RemoveDeviceGroupMembersRequestDto request,
+    [FromServices] IAuthorizationService authorizationService,
     CancellationToken cancellationToken)
   {
     if (!User.TryGetTenantId(out var tenantId))
     {
       return BadRequest("User tenant not found.");
+    }
+
+    var authorizationResult = await authorizationService.AuthorizeAsync(
+      User,
+      new ResourceDescriptor(PermissionScopeKind.DeviceGroup, deviceGroupId, tenantId),
+      PolicyNames.RequireDeviceGroupAssignDevices);
+    if (!authorizationResult.Succeeded)
+    {
+      return Forbid();
     }
 
     if (!User.TryGetUserId(out var userId))

@@ -14,14 +14,14 @@ public class LogonToken : TenantEntityBase
   [StringLength(32)]
   public string? Prefix { get; set; }
 
-  [StringLength(100)]
+  [StringLength(DtoLimits.SessionCorrelationIdMaxLength)]
   public string? SessionCorrelationId { get; set; }
 
   [StringLength(256)]
   public required string Token { get; set; }
   public AppUser? User { get; set; }
 
-  [StringLength(100)]
+  [StringLength(DtoLimits.UserCorrelationIdMaxLength)]
   public string? UserCorrelationId { get; set; }
   public Guid UserId { get; set; }
 }

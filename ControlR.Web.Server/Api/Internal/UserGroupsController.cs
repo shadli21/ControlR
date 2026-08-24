@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -12,15 +13,24 @@ public class UserGroupsController(IUserGroupManager userGroupManager) : Controll
   private readonly IUserGroupManager _userGroupManager = userGroupManager;
 
   [HttpPost("{userGroupId:guid}/members")]
-  [Authorize(Policy = PolicyNames.RequireUserGroupAssignUsers)]
   public async Task<IActionResult> AddMembers(
     [FromRoute] Guid userGroupId,
     [FromBody] InternalDtos.AddUserGroupMembersRequestDto request,
+    [FromServices] IAuthorizationService authorizationService,
     CancellationToken cancellationToken)
   {
     if (!User.TryGetTenantId(out var tenantId))
     {
       return BadRequest("User tenant not found.");
+    }
+
+    var authorizationResult = await authorizationService.AuthorizeAsync(
+      User,
+      new ResourceDescriptor(PermissionScopeKind.UserGroup, userGroupId, tenantId),
+      PolicyNames.RequireUserGroupAssignUsers);
+    if (!authorizationResult.Succeeded)
+    {
+      return Forbid();
     }
 
     if (!User.TryGetUserId(out var userId))
@@ -126,15 +136,24 @@ public class UserGroupsController(IUserGroupManager userGroupManager) : Controll
   }
 
   [HttpDelete("{userGroupId:guid}/members")]
-  [Authorize(Policy = PolicyNames.RequireUserGroupAssignUsers)]
   public async Task<IActionResult> RemoveMembers(
     [FromRoute] Guid userGroupId,
     [FromBody] InternalDtos.RemoveUserGroupMembersRequestDto request,
+    [FromServices] IAuthorizationService authorizationService,
     CancellationToken cancellationToken)
   {
     if (!User.TryGetTenantId(out var tenantId))
     {
       return BadRequest("User tenant not found.");
+    }
+
+    var authorizationResult = await authorizationService.AuthorizeAsync(
+      User,
+      new ResourceDescriptor(PermissionScopeKind.UserGroup, userGroupId, tenantId),
+      PolicyNames.RequireUserGroupAssignUsers);
+    if (!authorizationResult.Succeeded)
+    {
+      return Forbid();
     }
 
     if (!User.TryGetUserId(out var userId))

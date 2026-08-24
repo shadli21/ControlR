@@ -58,6 +58,11 @@ public class PermissionRequirementHandler(
     PrincipalDescriptor principal,
     CancellationToken cancellationToken)
   {
+    if (resource is ResourceDescriptor resourceDescriptor)
+    {
+      return resourceDescriptor;
+    }
+
     if (resource is Device device)
     {
       return await _resourceFactory.CreateDevice(device, cancellationToken);

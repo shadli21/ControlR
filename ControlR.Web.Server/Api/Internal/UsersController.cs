@@ -62,8 +62,12 @@ public class UsersController : ControllerBase
 
       var requiresServerAdmin = presetNames.Contains(PermissionPresets.ServerAdministrator);
       var requiresTenantAdmin = presetNames.Contains(PermissionPresets.TenantAdministrator);
+      var requiresTenantPermissionManagement = presetNames
+        .SelectMany(PermissionPresets.GetPermissions)
+        .Any(permissionName =>
+          PermissionCatalog.GetBroadestLegalScope(permissionName) == PermissionScopeKind.Tenant);
 
-      if (requiresServerAdmin || requiresTenantAdmin)
+      if (requiresServerAdmin || requiresTenantPermissionManagement)
       {
         var callerPrincipal = PrincipalDescriptorBuilder.FromClaims(User);
         if (callerPrincipal is null)
@@ -88,10 +92,12 @@ public class UsersController : ControllerBase
         var hasTenantWrite = decisions[1].Allowed;
         var hasTenantDeny = decisions[2].Allowed;
 
-        // A caller may only mint a principal whose management powers they hold. TenantAdministrator
-        // grants both permission-management powers, so it cannot be minted from a user-manager
-        // (TenantUsersWrite) alone.
         if (requiresServerAdmin && !hasServerAdmin)
+        {
+          return Forbid();
+        }
+
+        if (requiresTenantPermissionManagement && !hasServerAdmin && !hasTenantWrite)
         {
           return Forbid();
         }

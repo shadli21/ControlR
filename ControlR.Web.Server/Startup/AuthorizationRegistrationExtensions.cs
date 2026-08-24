@@ -55,10 +55,17 @@ public static class AuthorizationRegistrationExtensions
 
     foreach (var (policyName, permissionName) in PermissionPolicies.PolicyToPermission)
     {
+      var scopeKind = permissionName switch
+      {
+        PermissionNames.DeviceGroupAssignDevices => PermissionScopeKind.DeviceGroup,
+        PermissionNames.UserGroupAssignUsers => PermissionScopeKind.UserGroup,
+        _ => PermissionScopeKind.Tenant
+      };
+
       authorizationBuilder.AddPolicy(policyName, policy => policy
         .AddAuthenticationSchemes(CustomSchemes.Dynamic)
         .RequireAuthenticatedUser()
-        .RequirePermission(permissionName));
+        .RequirePermission(permissionName, scopeKind));
     }
 
     foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)

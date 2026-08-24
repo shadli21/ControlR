@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data;
+using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.Tenants;
 using ControlR.Web.Server.Tests.Helpers;
@@ -59,6 +60,37 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
     Assert.NotNull(afterRemoveDto);
     Assert.Single(afterRemoveDto.Members);
     Assert.Equal(device2.Id, afterRemoveDto.Members[0].DeviceId);
+  }
+
+  [Fact]
+  public async Task DeviceGroup_AddMembers_WithGroupScopedPermission_AuthorizesOnlyTargetGroup()
+  {
+    var (testServer, client, tenantId, userId) = await CreateAuthenticatedServer();
+    using var _ = testServer;
+
+    var device = await testServer.Services.CreateTestDevice(tenantId);
+    var authorizedGroup = await CreateDeviceGroup(client, "Authorized Device Group");
+    var unauthorizedGroup = await CreateDeviceGroup(client, "Unauthorized Device Group");
+
+    await ReplaceGroupAssignment(
+      testServer.Services,
+      userId,
+      tenantId,
+      PermissionNames.DeviceGroupAssignDevices,
+      PermissionScopeKind.DeviceGroup,
+      authorizedGroup.Id);
+
+    var authorizedResponse = await client.PostAsJsonAsync(
+      $"{HttpConstants.Internal.DeviceGroupsEndpoint}/{authorizedGroup.Id}/members",
+      new InternalDtos.AddDeviceGroupMembersRequestDto([device.Id]),
+      TestContext.Current.CancellationToken);
+    var unauthorizedResponse = await client.PostAsJsonAsync(
+      $"{HttpConstants.Internal.DeviceGroupsEndpoint}/{unauthorizedGroup.Id}/members",
+      new InternalDtos.AddDeviceGroupMembersRequestDto([device.Id]),
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.NoContent, authorizedResponse.StatusCode);
+    Assert.Equal(HttpStatusCode.Forbidden, unauthorizedResponse.StatusCode);
   }
 
   [Fact]
@@ -576,6 +608,38 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task UserGroup_AddMembers_WithGroupScopedPermission_AuthorizesOnlyTargetGroup()
+  {
+    var (testServer, client, tenantId, userId) = await CreateAuthenticatedServer();
+    using var _ = testServer;
+
+    var memberUser = await testServer.Services.CreateTestUser(
+      tenantId, $"member-{Guid.NewGuid():N}@t.local");
+    var authorizedGroup = await CreateUserGroup(client, "Authorized User Group");
+    var unauthorizedGroup = await CreateUserGroup(client, "Unauthorized User Group");
+
+    await ReplaceGroupAssignment(
+      testServer.Services,
+      userId,
+      tenantId,
+      PermissionNames.UserGroupAssignUsers,
+      PermissionScopeKind.UserGroup,
+      authorizedGroup.Id);
+
+    var authorizedResponse = await client.PostAsJsonAsync(
+      $"{HttpConstants.Internal.UserGroupsEndpoint}/{authorizedGroup.Id}/members",
+      new InternalDtos.AddUserGroupMembersRequestDto([memberUser.Id]),
+      TestContext.Current.CancellationToken);
+    var unauthorizedResponse = await client.PostAsJsonAsync(
+      $"{HttpConstants.Internal.UserGroupsEndpoint}/{unauthorizedGroup.Id}/members",
+      new InternalDtos.AddUserGroupMembersRequestDto([memberUser.Id]),
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.NoContent, authorizedResponse.StatusCode);
+    Assert.Equal(HttpStatusCode.Forbidden, unauthorizedResponse.StatusCode);
+  }
+
+  [Fact]
   public async Task UserGroup_CreateGetUpdateDelete_CompletesFullCycle()
   {
     var (testServer, client, _, _) = await CreateAuthenticatedServer();
@@ -684,6 +748,60 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.NotNull(groups);
     Assert.Equal(2, groups.Length);
+  }
+
+  private static async Task<InternalDtos.DeviceGroupDetailDto> CreateDeviceGroup(
+    HttpClient client,
+    string name)
+  {
+    var response = await client.PostAsJsonAsync(
+      HttpConstants.Internal.DeviceGroupsEndpoint,
+      new InternalDtos.CreateDeviceGroupRequestDto(name, null),
+      TestContext.Current.CancellationToken);
+    response.EnsureSuccessStatusCode();
+    return await response.Content.ReadFromJsonAsync<InternalDtos.DeviceGroupDetailDto>(
+      TestContext.Current.CancellationToken) ?? throw new InvalidOperationException("Device group response was empty.");
+  }
+
+  private static async Task<InternalDtos.UserGroupDetailDto> CreateUserGroup(
+    HttpClient client,
+    string name)
+  {
+    var response = await client.PostAsJsonAsync(
+      HttpConstants.Internal.UserGroupsEndpoint,
+      new InternalDtos.CreateUserGroupRequestDto(name, null),
+      TestContext.Current.CancellationToken);
+    response.EnsureSuccessStatusCode();
+    return await response.Content.ReadFromJsonAsync<InternalDtos.UserGroupDetailDto>(
+      TestContext.Current.CancellationToken) ?? throw new InvalidOperationException("User group response was empty.");
+  }
+
+  private static async Task ReplaceGroupAssignment(
+    IServiceProvider services,
+    Guid userId,
+    Guid tenantId,
+    string permissionName,
+    PermissionScopeKind scopeKind,
+    Guid scopeId)
+  {
+    using var scope = services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var existingAssignments = await db.PermissionAssignments
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
+                  x.PrincipalId == userId &&
+                  x.PermissionName == permissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+    db.PermissionAssignments.RemoveRange(existingAssignments);
+    db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      userId,
+      permissionName,
+      scopeKind,
+      scopeId,
+      tenantId,
+      "test",
+      userId.ToString()));
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
   }
 
   private async Task<(TestWebServer server, HttpClient client, Guid tenantId, Guid userId)> CreateAuthenticatedServer()

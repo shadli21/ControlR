@@ -112,9 +112,9 @@ public partial class Permissions_Phase2 : Migration
           ExpiresAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
           IsConsumed = table.Column<bool>(type: "boolean", nullable: false),
           Prefix = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
-          SessionCorrelationId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+          SessionCorrelationId = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
           Token = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-          UserCorrelationId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+          UserCorrelationId = table.Column<string>(type: "character varying(252)", maxLength: 252, nullable: true),
           UserId = table.Column<Guid>(type: "uuid", nullable: false),
           CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
           TenantId = table.Column<Guid>(type: "uuid", nullable: false)
