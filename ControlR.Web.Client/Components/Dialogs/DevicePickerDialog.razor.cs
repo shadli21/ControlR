@@ -63,7 +63,7 @@ public partial class DevicePickerDialog : ComponentBase
     finally
     {
       _loading = false;
-      StateHasChanged();
+      await InvokeAsync(StateHasChanged);
     }
   }
 
