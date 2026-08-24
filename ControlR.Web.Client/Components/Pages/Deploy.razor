@@ -128,7 +128,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           PowerShell
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyWindowsX64Script"
           Adornment="Adornment.End" Value="@WindowsX64DeployScript" />
       </MudTabPanel>
@@ -136,7 +136,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           PowerShell
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyWindowsX86Script"
           Adornment="Adornment.End" Value="@WindowsX86DeployScript" />
       </MudTabPanel>
@@ -144,7 +144,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           zsh
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyMacArm64Script"
           Adornment="Adornment.End" Value="@MacArm64DeployScript" />
       </MudTabPanel>
@@ -152,7 +152,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           zsh
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyMacX64Script"
           Adornment="Adornment.End" Value="@MacX64DeployScript" />
       </MudTabPanel>
@@ -163,7 +163,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           Bash
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyLinuxScript"
           Adornment="Adornment.End" Value="@LinuxDeployScript" />
       </MudTabPanel>
@@ -176,7 +176,7 @@ else
 
     <MudGrid>
       <MudItem xs="12" sm="6">
-        <MudTextField T="string" Label="Installer Key Secret" Value="@_installerKeySecret" InputType="InputType.Password"
+        <MudTextField T="string" Label="Installer Key Secret" Value="@_installerKeySecret" InputType="InputType.Password" ReadOnly
           Variant="Variant.Outlined" AdornmentIcon="@Icons.Material.Filled.ContentCopy" OnAdornmentClick="CopyInstallerKey"
           Adornment="Adornment.End" Class="mt-2 mb-4"
           UserAttributes="@(new Dictionary<string, object> { ["autocomplete"] = "new-password" })" />
