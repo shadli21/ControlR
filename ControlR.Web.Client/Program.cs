@@ -14,11 +14,11 @@ if (builder.HostEnvironment.IsDevelopment())
 builder.Services
   .AddAuthorizationCore(options =>
   {
-    foreach (var (policyName, permissionName) in PermissionPolicies.PolicyToPermission)
+    foreach (var (policyName, definition) in PermissionPolicies.Definitions)
     {
       options.AddPolicy(policyName, policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim(PermissionPolicies.PermissionClaimType, permissionName));
+        .RequireClaim(PermissionPolicies.PermissionClaimType, definition.PermissionName));
     }
   });
 

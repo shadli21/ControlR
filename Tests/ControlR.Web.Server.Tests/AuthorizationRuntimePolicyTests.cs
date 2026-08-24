@@ -16,13 +16,13 @@ public class AuthorizationRuntimePolicyTests(ITestOutputHelper testOutput)
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var provider = testApp.Services.GetRequiredService<IAuthorizationPolicyProvider>();
 
-    foreach (var (policyName, permissionName) in PermissionPolicies.PolicyToPermission)
+    foreach (var (policyName, definition) in PermissionPolicies.Definitions)
     {
       var policy = await provider.GetPolicyAsync(policyName);
       Assert.NotNull(policy);
       var requirement = Assert.Single(policy.Requirements.OfType<PermissionRequirement>());
-      Assert.Equal(permissionName, requirement.PermissionName);
-      Assert.Equal(PermissionScopeKind.Tenant, requirement.Resource.Kind);
+      Assert.Equal(definition.PermissionName, requirement.PermissionName);
+      Assert.Equal(definition.ResourceScopeKind, requirement.Resource.Kind);
     }
 
     foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)

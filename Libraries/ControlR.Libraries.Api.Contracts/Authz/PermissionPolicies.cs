@@ -1,51 +1,54 @@
 namespace ControlR.Libraries.Api.Contracts.Authz;
 
 /// <summary>
-/// Maps each permission-based policy to the permission name it requires. The server
-/// registers these against the permission evaluator; the Blazor client registers them as
-/// permission-claim checks (it cannot run the server-side evaluator).
+/// Maps each permission-based policy to its permission and authorization resource scope. The
+/// server registers these against the permission evaluator; the Blazor client uses the permission
+/// name for claim checks because it cannot run the server-side evaluator.
 /// </summary>
 public static class PermissionPolicies
 {
   public const string PermissionClaimType = "controlr:permission";
 
-  public static IReadOnlyDictionary<string, string> PolicyToPermission { get; } =
-    new Dictionary<string, string>
+  public static IReadOnlyDictionary<string, PermissionPolicyDefinition> Definitions { get; } =
+    new Dictionary<string, PermissionPolicyDefinition>
     {
-      [PolicyNames.RequireAgentInstall] = PermissionNames.AgentInstall,
-      [PolicyNames.RequireAuthorizationLogsRead] = PermissionNames.TenantAuthorizationLogsRead,
-      [PolicyNames.RequireCustomersRead] = PermissionNames.TenantCustomersRead,
-      [PolicyNames.RequireCustomersWrite] = PermissionNames.TenantCustomersWrite,
-      [PolicyNames.RequireDeviceGroupAssignDevices] = PermissionNames.DeviceGroupAssignDevices,
-      [PolicyNames.RequireDeviceGroupsRead] = PermissionNames.TenantDeviceGroupsRead,
-      [PolicyNames.RequireDeviceGroupsWrite] = PermissionNames.TenantDeviceGroupsWrite,
-      [PolicyNames.RequireInstallerKeyRead] = PermissionNames.InstallerKeyRead,
-      [PolicyNames.RequireInstallerKeyWrite] = PermissionNames.InstallerKeyWrite,
-      [PolicyNames.RequirePermissionAssignmentsRead] = PermissionNames.TenantPermissionsRead,
-      [PolicyNames.RequirePermissionAssignmentsWrite] = PermissionNames.TenantPermissionsWrite,
-      [PolicyNames.RequirePersonalAccessTokensOthersRead] = PermissionNames.PersonalAccessTokenOthersRead,
-      [PolicyNames.RequirePersonalAccessTokensOthersWrite] = PermissionNames.PersonalAccessTokenOthersWrite,
-      [PolicyNames.RequireServerAdmin] = PermissionNames.ServerAdmin,
-      [PolicyNames.RequireServerAlertsWrite] = PermissionNames.ServerAlertsWrite,
-      [PolicyNames.RequireServerAuthorizationLogsRead] = PermissionNames.ServerAuthorizationLogsRead,
-      [PolicyNames.RequireServerPermissionsRead] = PermissionNames.ServerPermissionsRead,
-      [PolicyNames.RequireServerPermissionsWrite] = PermissionNames.ServerPermissionsWrite,
-      [PolicyNames.RequireServerTenantsRead] = PermissionNames.ServerTenantsRead,
-      [PolicyNames.RequireServerServiceAccountsRead] = PermissionNames.ServerServiceAccountsRead,
-      [PolicyNames.RequireServerServiceAccountsRotateCredentials] = PermissionNames.ServerServiceAccountsRotateCredentials,
-      [PolicyNames.RequireServerServiceAccountsWrite] = PermissionNames.ServerServiceAccountsWrite,
-      [PolicyNames.RequireServerTelemetryRead] = PermissionNames.ServerTelemetryRead,
-      [PolicyNames.RequireServiceAccountRead] = PermissionNames.ServiceAccountRead,
-      [PolicyNames.RequireServiceAccountRotateCredentials] = PermissionNames.ServiceAccountRotateCredentials,
-      [PolicyNames.RequireServiceAccountWrite] = PermissionNames.ServiceAccountWrite,
-      [PolicyNames.RequireTagsWrite] = PermissionNames.TenantTagsWrite,
-      [PolicyNames.RequireTenantSettingsRead] = PermissionNames.TenantSettingsRead,
-      [PolicyNames.RequireTenantSettingsWrite] = PermissionNames.TenantSettingsWrite,
-      [PolicyNames.RequireTenantUsersDelete] = PermissionNames.TenantUsersDelete,
-      [PolicyNames.RequireTenantUsersWrite] = PermissionNames.TenantUsersWrite,
-      [PolicyNames.RequireUserGroupAssignUsers] = PermissionNames.UserGroupAssignUsers,
-      [PolicyNames.RequireUserGroupsRead] = PermissionNames.TenantUserGroupsRead,
-      [PolicyNames.RequireUserGroupsWrite] = PermissionNames.TenantUserGroupsWrite,
-      [PolicyNames.RequireUsersRead] = PermissionNames.TenantUsersRead,
+      [PolicyNames.RequireAgentInstall] = new(PermissionNames.AgentInstall),
+      [PolicyNames.RequireAuthorizationLogsRead] = new(PermissionNames.TenantAuthorizationLogsRead),
+      [PolicyNames.RequireCustomersRead] = new(PermissionNames.TenantCustomersRead),
+      [PolicyNames.RequireCustomersWrite] = new(PermissionNames.TenantCustomersWrite),
+      [PolicyNames.RequireDeviceGroupAssignDevices] = new(PermissionNames.DeviceGroupAssignDevices, PermissionScopeKind.DeviceGroup),
+      [PolicyNames.RequireDeviceGroupsRead] = new(PermissionNames.TenantDeviceGroupsRead),
+      [PolicyNames.RequireDeviceGroupsWrite] = new(PermissionNames.TenantDeviceGroupsWrite),
+      [PolicyNames.RequireInstallerKeyRead] = new(PermissionNames.InstallerKeyRead),
+      [PolicyNames.RequireInstallerKeyWrite] = new(PermissionNames.InstallerKeyWrite),
+      [PolicyNames.RequirePermissionAssignmentsRead] = new(PermissionNames.TenantPermissionsRead),
+      [PolicyNames.RequirePermissionAssignmentsWrite] = new(PermissionNames.TenantPermissionsWrite),
+      [PolicyNames.RequirePersonalAccessTokensOthersRead] = new(PermissionNames.PersonalAccessTokenOthersRead),
+      [PolicyNames.RequirePersonalAccessTokensOthersWrite] = new(PermissionNames.PersonalAccessTokenOthersWrite),
+      [PolicyNames.RequireServerAdmin] = new(PermissionNames.ServerAdmin),
+      [PolicyNames.RequireServerAlertsWrite] = new(PermissionNames.ServerAlertsWrite),
+      [PolicyNames.RequireServerAuthorizationLogsRead] = new(PermissionNames.ServerAuthorizationLogsRead),
+      [PolicyNames.RequireServerPermissionsRead] = new(PermissionNames.ServerPermissionsRead),
+      [PolicyNames.RequireServerPermissionsWrite] = new(PermissionNames.ServerPermissionsWrite),
+      [PolicyNames.RequireServerTenantsRead] = new(PermissionNames.ServerTenantsRead),
+      [PolicyNames.RequireServerServiceAccountsRead] = new(PermissionNames.ServerServiceAccountsRead),
+      [PolicyNames.RequireServerServiceAccountsRotateCredentials] = new(PermissionNames.ServerServiceAccountsRotateCredentials),
+      [PolicyNames.RequireServerServiceAccountsWrite] = new(PermissionNames.ServerServiceAccountsWrite),
+      [PolicyNames.RequireServerTelemetryRead] = new(PermissionNames.ServerTelemetryRead),
+      [PolicyNames.RequireServiceAccountRead] = new(PermissionNames.ServiceAccountRead),
+      [PolicyNames.RequireServiceAccountRotateCredentials] = new(PermissionNames.ServiceAccountRotateCredentials),
+      [PolicyNames.RequireServiceAccountWrite] = new(PermissionNames.ServiceAccountWrite),
+      [PolicyNames.RequireTagsWrite] = new(PermissionNames.TenantTagsWrite),
+      [PolicyNames.RequireTenantSettingsRead] = new(PermissionNames.TenantSettingsRead),
+      [PolicyNames.RequireTenantSettingsWrite] = new(PermissionNames.TenantSettingsWrite),
+      [PolicyNames.RequireTenantUsersDelete] = new(PermissionNames.TenantUsersDelete),
+      [PolicyNames.RequireTenantUsersWrite] = new(PermissionNames.TenantUsersWrite),
+      [PolicyNames.RequireUserGroupAssignUsers] = new(PermissionNames.UserGroupAssignUsers, PermissionScopeKind.UserGroup),
+      [PolicyNames.RequireUserGroupsRead] = new(PermissionNames.TenantUserGroupsRead),
+      [PolicyNames.RequireUserGroupsWrite] = new(PermissionNames.TenantUserGroupsWrite),
+      [PolicyNames.RequireUsersRead] = new(PermissionNames.TenantUsersRead),
     };
+
+  public static IReadOnlyDictionary<string, string> PolicyToPermission { get; } =
+    Definitions.ToDictionary(x => x.Key, x => x.Value.PermissionName);
 }
