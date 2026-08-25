@@ -27,8 +27,9 @@ public abstract class PeriodicBackgroundService(
     }
     catch (Exception ex) when (catchExceptions)
     {
+      // Log and fall through to the periodic loop so a transient startup failure
+      // retries on the next tick instead of permanently disabling the service.
       Logger.LogError(ex, "Error during background service startup.");
-      return;
     }
 
     while (await timer.WaitForNextTick(throwOnCancellation: false, stoppingToken))
