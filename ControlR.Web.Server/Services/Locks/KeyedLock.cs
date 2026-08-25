@@ -73,9 +73,14 @@ public sealed class KeyedLock : IAsyncLock
 
   private sealed class Releaser(KeyedLock owner, Gate gate) : IAsyncDisposable
   {
+    private int _disposed;
+
     public ValueTask DisposeAsync()
     {
-      owner.Release(gate);
+      if (Interlocked.Exchange(ref _disposed, 1) == 0)
+      {
+        owner.Release(gate);
+      }
       return ValueTask.CompletedTask;
     }
   }

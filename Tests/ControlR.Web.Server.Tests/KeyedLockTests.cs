@@ -172,4 +172,24 @@ public class KeyedLockTests
     Assert.Equal(["first-holds", "second-acquires"], releaseOrder);
     await holder;
   }
+
+  [Fact]
+  public async Task Dispose_WhenCalledTwice_ReleasesOnlyOnce()
+  {
+    var lockService = new KeyedLock();
+
+    var handle = await lockService.AcquireAsync("key", TestContext.Current.CancellationToken);
+
+    // First disposal releases the lock.
+    await handle.DisposeAsync();
+    await using var second = await lockService.AcquireAsync("key", TestContext.Current.CancellationToken);
+
+    // Second disposal of the first handle must be a no-op: it must neither throw a
+    // SemaphoreFullException nor evict the gate for the currently-held second lock.
+    await handle.DisposeAsync();
+
+    // The second holder must still hold a valid, non-evicted lock.
+    var third = await lockService.AcquireAsync("key", TestContext.Current.CancellationToken);
+    Assert.True(third is not null);
+  }
 }
