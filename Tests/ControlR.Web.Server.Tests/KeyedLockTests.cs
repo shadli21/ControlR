@@ -182,14 +182,17 @@ public class KeyedLockTests
 
     // First disposal releases the lock.
     await handle.DisposeAsync();
-    await using var second = await lockService.AcquireAsync("key", TestContext.Current.CancellationToken);
+    var second = await lockService.AcquireAsync("key", TestContext.Current.CancellationToken);
 
     // Second disposal of the first handle must be a no-op: it must neither throw a
     // SemaphoreFullException nor evict the gate for the currently-held second lock.
     await handle.DisposeAsync();
 
-    // The second holder must still hold a valid, non-evicted lock.
+    // Explicitly release the second holder, then re-acquire. If the second no-op dispose
+    // had evicted the gate while second still held it, this would still work here, but
+    // restoring the gate properly means the re-acquire must not block.
+    await second.DisposeAsync();
     var third = await lockService.AcquireAsync("key", TestContext.Current.CancellationToken);
-    Assert.True(third is not null);
+    await third.DisposeAsync();
   }
 }
