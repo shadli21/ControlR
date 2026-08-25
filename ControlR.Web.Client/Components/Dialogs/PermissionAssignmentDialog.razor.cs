@@ -132,7 +132,10 @@ public partial class PermissionAssignmentDialog : ComponentBase
       return;
     }
 
-    if (_scopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant && _scopeId is null)
+    if ((_scopeKind is PermissionScopeKind.Device 
+          or PermissionScopeKind.DeviceGroup 
+          or PermissionScopeKind.CustomerTenant 
+          or PermissionScopeKind.UserGroup) && _scopeId is null)
     {
       Snackbar.Add("Select a scope target", Severity.Error);
       return;
