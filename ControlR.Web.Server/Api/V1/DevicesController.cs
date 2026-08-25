@@ -37,6 +37,11 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
       return NotFound();
     }
 
+    if (!User.CanAccessTenant(device.TenantId))
+    {
+      return Forbid();
+    }
+
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
     if (!authResult.Succeeded)
     {
@@ -69,6 +74,11 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     var authorizedIdSet = new HashSet<Guid>();
     foreach (var device in candidateDevices)
     {
+      if (!User.CanAccessTenant(device.TenantId))
+      {
+        continue;
+      }
+
       var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
       if (authResult.Succeeded)
       {
@@ -136,6 +146,11 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
       return NotFound();
     }
 
+    if (!User.CanAccessTenant(device.TenantId))
+    {
+      return Forbid();
+    }
+
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
     if (!authResult.Succeeded)
     {
@@ -190,6 +205,11 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     if (device is null)
     {
       return NotFound();
+    }
+
+    if (!User.CanAccessTenant(device.TenantId))
+    {
+      return Forbid();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
@@ -299,6 +319,11 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     {
       logger.LogWarning("Device {DeviceId} not found for alias update.", deviceId);
       return NotFound();
+    }
+
+    if (!User.CanAccessTenant(device.TenantId))
+    {
+      return Forbid();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.AliasWrite);

@@ -12,6 +12,21 @@ namespace ControlR.Web.Server.Extensions;
 /// </summary>
 public static class ServerPrincipalExtensions
 {
+
+  /// <summary>
+  /// True for server principals, or when the caller's tenant matches
+  /// <paramref name="resourceTenantId"/>. Defense-in-depth for ID-based V1 endpoints.
+  /// </summary>
+  public static bool CanAccessTenant(this ClaimsPrincipal user, Guid resourceTenantId)
+  {
+    if (user.IsServerPrincipal())
+    {
+      return true;
+    }
+
+    return user.TryGetTenantId(out var callerTenantId) && callerTenantId == resourceTenantId;
+  }
+
   /// <summary>
   /// Maps the authenticated principal's <c>controlr:principal:type</c> claim to the
   /// corresponding <see cref="InstallerKeyCreatorKind"/>. Defaults to <see cref="InstallerKeyCreatorKind.User"/>
@@ -33,20 +48,6 @@ public static class ServerPrincipalExtensions
   public static string? GetPrincipalType(this ClaimsPrincipal user)
   {
     return user.FindFirst(PrincipalClaimTypes.PrincipalType)?.Value;
-  }
-
-  /// <summary>
-  /// True for server principals, or when the caller's tenant matches
-  /// <paramref name="resourceTenantId"/>. Defense-in-depth for ID-based V1 endpoints.
-  /// </summary>
-  public static bool IsInTenant(this ClaimsPrincipal user, Guid resourceTenantId)
-  {
-    if (user.IsServerPrincipal())
-    {
-      return true;
-    }
-
-    return user.TryGetTenantId(out var callerTenantId) && callerTenantId == resourceTenantId;
   }
 
   /// <summary>
