@@ -162,53 +162,24 @@ public static class DeviceQueryExtensions
     bool showOnlyUntaggedDevices,
     bool showOnlyUngroupedDevices = false)
   {
-    var hasTags = tagIds is { Count: > 0 };
-    var hasGroups = deviceGroupIds is { Count: > 0 };
-
-    if (!hasTags && !hasGroups)
+    // "Show only" is exclusive. When active, it disregards any ids in the request.
+    // It returns only devices with zero tags and/or zero group memberships.
+    if (showOnlyUntaggedDevices)
     {
-      if (showOnlyUntaggedDevices && showOnlyUngroupedDevices)
-      {
-        return query.Where(d => !d.Tags!.Any() && !d.DeviceGroupMembers!.Any());
-      }
-      if (showOnlyUntaggedDevices)
-      {
-        return query.Where(d => !d.Tags!.Any());
-      }
-      if (showOnlyUngroupedDevices)
-      {
-        return query.Where(d => !d.DeviceGroupMembers!.Any());
-      }
-      return query;
+      query = query.Where(d => !d.Tags!.Any());
     }
-
-    if (hasTags && hasGroups)
+    else if (tagIds is { Count: > 0 })
     {
-      var tagPredicate = BuildTagMatchPredicate(tagIds, tagMode, showOnlyUntaggedDevices);
-      var groupPredicate = BuildDeviceGroupMatchPredicate(deviceGroupIds, deviceGroupMode);
-      query = query.Where(CombinePredicates(tagPredicate, groupPredicate));
-    }
-    else if (hasTags)
-    {
-      query = query.Where(BuildTagMatchPredicate(tagIds, tagMode, showOnlyUntaggedDevices));
-    }
-    else
-    {
-      var groupPredicate = BuildDeviceGroupMatchPredicate(deviceGroupIds, deviceGroupMode);
-      if (showOnlyUntaggedDevices)
-      {
-        Expression<Func<Device, bool>> untaggedPredicate = d => !d.Tags!.Any();
-        query = query.Where(CombinePredicates(groupPredicate, untaggedPredicate));
-      }
-      else
-      {
-        query = query.Where(groupPredicate);
-      }
+      query = query.Where(BuildTagMatchPredicate(tagIds, tagMode));
     }
 
     if (showOnlyUngroupedDevices)
     {
       query = query.Where(d => !d.DeviceGroupMembers!.Any());
+    }
+    else if (deviceGroupIds is { Count: > 0 })
+    {
+      query = query.Where(BuildDeviceGroupMatchPredicate(deviceGroupIds, deviceGroupMode));
     }
 
     return query;
@@ -287,30 +258,17 @@ public static class DeviceQueryExtensions
   }
 
   private static Expression<Func<Device, bool>> BuildTagMatchPredicate(
-    IReadOnlyList<Guid>? tagIds,
-    FilterMatchMode mode,
-    bool showOnlyUntaggedDevices)
+    IReadOnlyList<Guid> tagIds,
+    FilterMatchMode mode)
   {
     if (mode == FilterMatchMode.All)
     {
       return d =>
-        (d.Tags!.Any() && tagIds!.All(id => d.Tags!.Any(t => t.Id == id))) ||
-        (showOnlyUntaggedDevices && !d.Tags!.Any());
+        d.Tags!.Any() &&
+        tagIds.All(id => d.Tags!.Any(t => t.Id == id));
     }
 
-    return d =>
-      d.Tags!.Any(t => tagIds!.Contains(t.Id)) ||
-      (showOnlyUntaggedDevices && !d.Tags!.Any());
-  }
-
-  private static Expression<Func<Device, bool>> CombinePredicates(
-    Expression<Func<Device, bool>> left,
-    Expression<Func<Device, bool>> right)
-  {
-    var parameter = left.Parameters[0];
-    var rightBody = new ParameterReplacerVisitor(right.Parameters[0], parameter).Visit(right.Body)!;
-    return Expression.Lambda<Func<Device, bool>>(
-      Expression.AndAlso(left.Body, rightBody), parameter);
+    return d => d.Tags!.Any(t => tagIds.Contains(t.Id));
   }
 
   private static IQueryable<Device> FilterByBooleanColumn(
