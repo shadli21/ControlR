@@ -5,7 +5,7 @@ namespace ControlR.Web.Server.Api.Internal;
 
 [Route(HttpConstants.Internal.ServerStatsEndpoint)]
 [ApiController]
-[Authorize(Roles = RoleNames.ServerAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireServerTelemetryRead)]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class ServerStatsController(IServerStatsProvider serverStatsProvider) : ControllerBase
 {

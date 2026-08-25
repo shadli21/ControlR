@@ -5,6 +5,10 @@ namespace ControlR.Web.Server.Data.Entities;
 
 public class PersonalAccessToken : EntityBase
 {
+  public Guid? CreatedByUserId { get; set; }
+
+  public DateTimeOffset? ExpiresAt { get; set; }
+
   [Required]
   [StringLength(256)]
   public required string HashedKey { get; set; }
@@ -12,6 +16,9 @@ public class PersonalAccessToken : EntityBase
   [Required]
   [StringLength(256)]
   public required string Name { get; set; }
+
+  public DateTimeOffset? RevokedAt { get; set; }
+
   public AppUser? User { get; set; }
   
   [Required]

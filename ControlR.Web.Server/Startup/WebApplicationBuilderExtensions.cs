@@ -13,7 +13,9 @@ using ControlR.Web.Server.Services.LogonTokens;
 using ControlR.Web.Client.Services;
 using Microsoft.AspNetCore.Http.Features;
 using ControlR.Web.Server.Services.AgentInstaller;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
+using ControlR.Web.Server.Services.Locks;
 using System.Globalization;
 using System.Threading.RateLimiting;
 using ControlR.Libraries.Shared.Services.Encryption;
@@ -230,11 +232,18 @@ public static class WebApplicationBuilderExtensions
     {
       options.RequireAuthenticationForRequester = true;
     });
-    builder.Services.AddSingleton<ILogonTokenProvider, LogonTokenProvider>();
+    builder.Services.AddScoped<ILogonTokenProvider, LogonTokenProvider>();
+    builder.Services.AddScoped<ILogonTokenScopeService, LogonTokenScopeService>();
     builder.Services.AddSingleton<AgentInstallerKeyUsageCleanupBackgroundService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentInstallerKeyUsageCleanupBackgroundService>());
     builder.Services.AddSingleton<ExternalUserCleanupBackgroundService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<ExternalUserCleanupBackgroundService>());
+    builder.Services.AddSingleton<LogonTokenCleanupBackgroundService>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<LogonTokenCleanupBackgroundService>());
+    builder.Services.AddSingleton<AuthorizationChangeLogCleanupBackgroundService>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<AuthorizationChangeLogCleanupBackgroundService>());
+    builder.Services.AddSingleton<PatScopeTrimBackgroundService>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<PatScopeTrimBackgroundService>());
     builder.Services.AddScoped<IAgentInstallerKeyManager, AgentInstallerKeyManager>();
     builder.Services.AddScoped<IAgentVersionProvider, AgentVersionProvider>();
     builder.Services.AddScoped<IReleaseNotesProvider, ReleaseNotesProvider>();
@@ -251,6 +260,12 @@ public static class WebApplicationBuilderExtensions
     builder.Services.AddScoped<IPublicServerSettingsProvider, PublicServerSettingsProviderServer>();
     builder.Services.AddScoped<ITenantInvitesProvider, TenantInvitesProvider>();
     builder.Services.AddScoped<IServiceAccountManager, ServiceAccountManager>();
+    builder.Services.AddScoped<IDeviceGroupManager, DeviceGroupManager>();
+    builder.Services.AddScoped<ICustomerManager, CustomerManager>();
+    builder.Services.AddScoped<IUserGroupManager, UserGroupManager>();
+    builder.Services.AddScoped<IPermissionAssignmentManager, PermissionAssignmentManager>();
+    builder.Services.AddScoped<IPermissionAssignmentSeeder, PermissionAssignmentSeeder>();
+    builder.Services.AddSingleton<IAsyncLock, KeyedLock>();
 
     return builder;
   }

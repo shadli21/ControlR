@@ -1,8 +1,8 @@
 using ControlR.Web.Server.Authn;
-using ControlR.Web.Server.Authz;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Components.Account;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace ControlR.Web.Server.Startup;
@@ -46,20 +46,37 @@ public static class AuthorizationRegistrationExtensions
       };
     });
 
-    hostBuilder.Services
+    var authorizationBuilder = hostBuilder.Services
       .AddAuthorizationBuilder()
       .SetDefaultPolicy(new AuthorizationPolicyBuilder()
         .AddAuthenticationSchemes(CustomSchemes.Dynamic)
         .RequireAuthenticatedUser()
-        .Build())
-      .AddPolicy(RequireServerServiceAccountPolicy.PolicyName, RequireServerServiceAccountPolicy.Create())
-      .AddPolicy(CombinedAuthorizationPolicies.RequireServerOrTenantAdminPolicy, CombinedAuthorizationPolicies.CreateServerOrTenantAdmin())
-      .AddPolicy(CombinedAuthorizationPolicies.RequireServerOrTenantAdminOrInstallerKeyManagerPolicy, CombinedAuthorizationPolicies.CreateServerOrTenantAdminOrInstallerKeyManager())
-      .AddPolicy(RequireServerAdministratorPolicy.PolicyName, RequireServerAdministratorPolicy.Create())
-      .AddPolicy(DeviceAccessByDeviceResourcePolicy.PolicyName, DeviceAccessByDeviceResourcePolicy.Create());
+        .Build());
 
-    hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderRequirementHandler>();
-    hostBuilder.Services.AddScoped<IAuthorizationHandler, ServiceProviderAsyncRequirementHandler>();
+    foreach (var (policyName, definition) in PermissionPolicies.Definitions)
+    {
+      authorizationBuilder.AddPolicy(policyName, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(definition.PermissionName, definition.ResourceScopeKind));
+    }
+
+    foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)
+    {
+      authorizationBuilder.AddPolicy(policyName, policy => policy
+        .AddAuthenticationSchemes(CustomSchemes.Dynamic)
+        .RequireAuthenticatedUser()
+        .RequirePermission(permissionName, PermissionScopeKind.Device));
+    }
+
+    hostBuilder.Services.AddScoped<IAuthorizationHandler, PermissionRequirementHandler>();
     hostBuilder.Services.AddScoped<IDeviceAccessScopeResolver, DeviceAccessScopeResolver>();
+    hostBuilder.Services.AddSingleton<IDesktopSessionAccessAuthorizer, DesktopSessionAccessAuthorizer>();
+    hostBuilder.Services.AddSingleton<IPermissionDecisionEvaluator, PermissionDecisionEvaluator>();
+    hostBuilder.Services.AddScoped<IResourceDescriptorFactory, ResourceDescriptorFactory>();
+    hostBuilder.Services.AddScoped<IPermissionEvaluationContextLoader, PermissionEvaluationContextLoader>();
+    hostBuilder.Services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
+    hostBuilder.Services.AddScoped<ICredentialScopeService, CredentialScopeService>();
+    hostBuilder.Services.AddSingleton<IAuthorizationChangeLogFactory, AuthorizationChangeLogFactory>();
   }
 }

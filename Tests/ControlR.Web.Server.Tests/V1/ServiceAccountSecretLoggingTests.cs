@@ -29,11 +29,13 @@ public class ServiceAccountSecretLoggingTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
-    var accountId = createResult.Value.ServiceAccount.Id;
+    var accountId = createResult.Value.Id;
 
-    var addCredResult = await manager.AddCredential(
+    var addCredResult = await manager.AddCredentialForServer(
       accountId,
       "Secret Log Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
       TestContext.Current.CancellationToken);
     Assert.True(addCredResult.IsSuccess);
 
@@ -71,7 +73,16 @@ public class ServiceAccountSecretLoggingTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
-    var plainSecret = createResult.Value.PlainTextSecretKey;
+    var addCredResult = await manager.AddCredentialForServer(
+      createResult.Value.Id,
+      "Secret Log Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(addCredResult.IsSuccess);
+
+    var plainSecret = addCredResult.Value.PlainTextSecretKey;
+    Assert.NotNull(plainSecret);
     Assert.NotEmpty(plainSecret);
 
     var capturedMessages = _loggerProvider.Logs.Select(l => l.Message).ToList();

@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Extensions.Dtos.Internal;
 using ControlR.Web.Server.Services.Settings;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +15,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   private readonly ITenantSettingsManager _tenantSettingsManager = tenantSettingsManager;
 
   [HttpDelete("{name}")]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsWrite)]
   public async Task<ActionResult> DeleteSetting(string name)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -44,6 +45,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   }
 
   [HttpGet]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsRead)]
   public async Task<ActionResult<InternalDtos.TenantSettingsDto>> GetAll(CancellationToken cancellationToken)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -56,6 +58,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   }
 
   [HttpGet("{name}")]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsRead)]
   public async Task<ActionResult<InternalDtos.TenantSettingResponseDto?>> GetSetting(string name)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -85,7 +88,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   }
 
   [HttpPost]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsWrite)]
   public async Task<ActionResult<InternalDtos.TenantSettingResponseDto>> SetSetting([FromBody] InternalDtos.TenantSettingRequestDto setting)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -98,7 +101,7 @@ public class TenantSettingsController(AppDb appDb, ITenantSettingsManager tenant
   }
 
   [HttpPut]
-  [Authorize(Roles = RoleNames.TenantAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireTenantSettingsWrite)]
   public async Task<ActionResult<InternalDtos.TenantSettingsDto>> SetSettings(
     [FromBody] InternalDtos.TenantSettingsDto settings,
     CancellationToken cancellationToken)

@@ -21,7 +21,7 @@ internal static class TestPrincipalHelper
     string? accountName = null,
     CancellationToken cancellationToken = default) where T : ControllerBase
   {
-    var (principal, _) = await CreateServerServiceAccountAsync(scope.ServiceProvider, accountName, cancellationToken);
+    var (principal, _, _) = await CreateServerServiceAccountAsync(scope.ServiceProvider, accountName, cancellationToken);
     var controller = scope.CreateController<T>();
     controller.ControllerContext.HttpContext.User = principal;
     return controller;
@@ -31,7 +31,7 @@ internal static class TestPrincipalHelper
   /// Creates a server service account, resolves it from the database, and returns
   /// a <see cref="ClaimsPrincipal"/> configured with the required claims.
   /// </summary>
-  public static async Task<(ClaimsPrincipal Principal, CreateServiceAccountResponseDto Account)> CreateServerServiceAccountAsync(
+  public static async Task<(ClaimsPrincipal Principal, ServiceAccountResult Account, string PlainTextSecretKey)> CreateServerServiceAccountAsync(
     IServiceProvider services,
     string? accountName = null,
     CancellationToken cancellationToken = default)
@@ -44,20 +44,33 @@ internal static class TestPrincipalHelper
       throw new InvalidOperationException($"Failed to create server service account: {account.Reason}");
     }
 
-    return (CreateServerServiceAccountPrincipal(account.Value!), account.Value!);
+    var credResult = await manager.AddCredentialForServer(
+      account.Value.Id, "Test Credential", expiresAt: null, account.Value.Id, cancellationToken);
+
+    if (!credResult.IsSuccess)
+    {
+      throw new InvalidOperationException($"Failed to create initial credential: {credResult.Reason}");
+    }
+
+    return (
+      CreateServerServiceAccountPrincipal(account.Value, credResult.Value.Credential),
+      account.Value,
+      credResult.Value.PlainTextSecretKey);
   }
 
   /// <summary>
   /// Builds a <see cref="ClaimsPrincipal"/> for a server service account from an existing account.
   /// </summary>
-  public static ClaimsPrincipal CreateServerServiceAccountPrincipal(CreateServiceAccountResponseDto account)
+  public static ClaimsPrincipal CreateServerServiceAccountPrincipal(
+    ServiceAccountResult account,
+    ServiceAccountCredentialResult credential)
   {
-    var credential = account.ServiceAccount.Credentials[0];
     return new ClaimsPrincipal(new ClaimsIdentity([
-      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimTypes.ServerServiceAccount),
-      new Claim(PrincipalClaimTypes.PrincipalId, account.ServiceAccount.Id.ToString()),
-      new Claim(UserClaimTypes.AuthenticationMethod, PrincipalClaimTypes.ServiceAccountCredentialMethod),
+      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.ServerServiceAccount),
+      new Claim(PrincipalClaimTypes.PrincipalId, account.Id.ToString()),
+      new Claim(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.ServiceAccountCredentialMethod),
       new Claim(PrincipalClaimTypes.CredentialId, credential.Id.ToString()),
+      new Claim(PrincipalClaimTypes.CredentialType, PrincipalClaimValues.ServiceAccountCredentialType),
     ], "TestAuth"));
   }
 }

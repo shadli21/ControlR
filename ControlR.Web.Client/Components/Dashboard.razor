@@ -28,38 +28,90 @@
 
   <MudPaper Elevation="0" Class="pa-3 mb-3">
     <div class="dashboard-toolbar-main">
-      <div class="dashboard-scope-controls">
-        <div class="dashboard-tags-selector">
-          <UserTagsSelector @bind-SelectedTags:get="_selectedTags" @bind-SelectedTags:set="@OnSelectedTagsChanged" />
+      <div class="dashboard-filter-fields">
+        <div class="dashboard-filter-field">
+          <MudSelect T="Guid" MultiSelection="true"
+                     SelectedValues="_selectedCustomerIds"
+                     SelectedValuesChanged="OnSelectedCustomersChanged"
+                     Label="Filter by customer"
+                     Dense="true"
+                     MultiSelectionTextFunc="@GetCustomerMultiSelectText"
+                     Text="@GetCustomerSelectText()"
+                     AdornmentIcon="@Icons.Material.Filled.Business" Adornment="Adornment.End"
+                     Clearable="true">
+
+            @foreach (var customer in _customers)
+            {
+              <MudSelectItem T="Guid" Value="@customer.Id">@customer.Name</MudSelectItem>
+            }
+          </MudSelect>
         </div>
 
-        <div class="dashboard-toolbar-options">
-          <MudCheckBox T="bool" Value="_includeUntaggedDevices" ValueChanged="IncludeUntaggedDevicesChanged"
-                       Label="Include untagged" Class="dashboard-checkbox" />
+        <div class="dashboard-filter-field">
+          <MudSelect T="Guid" MultiSelection="true"
+                     SelectedValues="_selectedDeviceGroupIds"
+                     SelectedValuesChanged="OnSelectedDeviceGroupsChanged"
+                     Label="Filter by device group"
+                     Dense="true"
+                     MultiSelectionTextFunc="@GetDeviceGroupMultiSelectText"
+                     Text="@GetDeviceGroupSelectText()"
+                     AdornmentIcon="@Icons.Material.Filled.Devices" Adornment="Adornment.End"
+                     Clearable="true"
+                     Disabled="_showOnlyUngrouped">
 
-          <MudCheckBox T="bool" Value="_hideOfflineDevices" ValueChanged="HideOfflineDevicesChanged"
-                       Label="Hide offline" Disabled="ShouldBypassHideOfflineDevices" Class="dashboard-checkbox" />
+            @foreach (var group in _deviceGroups)
+            {
+              <MudSelectItem T="Guid" Value="@group.Id">@group.Name</MudSelectItem>
+            }
+          </MudSelect>
 
-          <MudCheckBox T="bool" Value="_openDeviceInNewTab" ValueChanged="OpenDeviceInNewTabChanged"
-                       Label="Open in new tab" Class="dashboard-checkbox" />
+          <div class="dashboard-filter-match">
+            <MudText Typo="Typo.caption" Class="dashboard-filter-match-label">Match</MudText>
+            <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
+                            Value="_deviceGroupFilterMatchMode"
+                            ValueChanged="OnDeviceGroupFilterMatchModeChanged"
+                            Outlined="true" Color="Color.Primary" Size="Size.Small"
+                            Disabled="_showOnlyUngrouped"
+                            Class="dashboard-filter-match-toggle">
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="Any" />
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="All" />
+            </MudToggleGroup>
+          </div>
+
+          <MudSwitch T="bool" Value="_showOnlyUngrouped" ValueChanged="ShowOnlyUngroupedChanged"
+                     Label="Show only ungrouped" Color="Color.Primary" Size="Size.Small" />
+        </div>
+
+        <div class="dashboard-filter-field">
+          <UserTagsSelector @bind-SelectedTags:get="_selectedTags" @bind-SelectedTags:set="@OnSelectedTagsChanged"
+                            Disabled="_showOnlyUntagged" />
+
+          <div class="dashboard-filter-match">
+            <MudText Typo="Typo.caption" Class="dashboard-filter-match-label">Match</MudText>
+            <MudToggleGroup T="FilterMatchMode" SelectionMode="SelectionMode.SingleSelection"
+                            Value="_tagFilterMatchMode"
+                            ValueChanged="OnTagFilterMatchModeChanged"
+                            Disabled="_showOnlyUntagged"
+                            Outlined="true" Color="Color.Primary" Size="Size.Small"
+                            Class="dashboard-filter-match-toggle">
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.Any" Text="Any" />
+              <MudToggleItem T="FilterMatchMode" Value="FilterMatchMode.All" Text="All" />
+            </MudToggleGroup>
+          </div>
+
+          <MudSwitch T="bool" Value="_showOnlyUntagged" ValueChanged="ShowOnlyUntaggedChanged"
+                     Label="Show only untagged" Color="Color.Primary" Size="Size.Small" />
         </div>
       </div>
+
+      <div class="dashboard-toolbar-options">
+        <MudCheckBox T="bool" Value="_hideOfflineDevices" ValueChanged="HideOfflineDevicesChanged"
+                     Label="Hide offline" Disabled="ShouldBypassHideOfflineDevices" Class="dashboard-checkbox" />
+
+        <MudCheckBox T="bool" Value="_openDeviceInNewTab" ValueChanged="OpenDeviceInNewTabChanged"
+                     Label="Open in new tab" Class="dashboard-checkbox" />
+      </div>
     </div>
-
-    @if (!_loading && !HasScopeSelection)
-    {
-      <MudAlert Severity="Severity.Info" Dense="true" Class="dashboard-inline-alert mt-3">
-        Select at least one tag or include untagged devices.
-      </MudAlert>
-    }
-
-    @if (!_loading && HasHiddenUntaggedDevices)
-    {
-      <MudAlert Severity="Severity.Warning" Dense="true" Class="dashboard-inline-alert mt-3"
-                Icon="@(Icons.Material.Filled.LabelOff)">
-        @HiddenUntaggedAlertText
-      </MudAlert>
-    }
   </MudPaper>
 
   <MudDataGrid T="DeviceViewModel" @ref="_dataGrid" ServerData="LoadServerData" @bind-RowsPerPage="_rowsPerPage"
@@ -166,28 +218,11 @@
         </CellTemplate>
       </PropertyColumn>
 
-      <TemplateColumn T="DeviceViewModel" Sortable="false" Filterable="false" Title="Tags">
+      <PropertyColumn Title="Customer" Property="x => x.Dto.CustomerName" Sortable="true" Filterable="true">
         <CellTemplate>
-          @{
-            var tagCount = context.Item.Dto.TagIds?.Length ?? 0;
-          }
-
-          @if (tagCount == 0)
-          {
-            <MudTooltip Text="Untagged device">
-              <MudText Typo="Typo.body2" Color="Color.Warning">
-                <strong>0</strong>
-              </MudText>
-            </MudTooltip>
-          }
-          else
-          {
-            <MudTooltip Text="@($"{tagCount} tag{(tagCount == 1 ? string.Empty : "s")}")">
-              <MudText Typo="Typo.body2">@tagCount</MudText>
-            </MudTooltip>
-          }
+          @(string.IsNullOrWhiteSpace(context.Item.Dto.CustomerName) ? "—" : context.Item.Dto.CustomerName)
         </CellTemplate>
-      </TemplateColumn>
+      </PropertyColumn>
 
       <PropertyColumn Property="@(x => x.Dto.Platform)" Sortable="true" Filterable="true" Title="Platform">
         <CellTemplate>

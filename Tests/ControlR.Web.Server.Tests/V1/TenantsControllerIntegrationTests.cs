@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.ServiceAccounts;
@@ -23,9 +24,18 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredentialForServer(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var response = await httpClient.PostAsJsonAsync(
       HttpConstants.V1.TenantsEndpoint,
@@ -47,9 +57,18 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredentialForServer(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var createName = "Full Flow Tenant";
     var createResponse = await httpClient.PostAsJsonAsync(
@@ -85,7 +104,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var user = await testServer.Services.CreateTestUser(
       tenant.Id,
       "non-admin@test.local",
-      RoleNames.DeviceSuperUser);
+      PermissionPresets.DeviceSuperUser);
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
@@ -115,7 +134,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var user = await testServer.Services.CreateTestUser(
       tenant.Id,
       "server-admin@test.local",
-      RoleNames.ServerAdministrator);
+      PermissionPresets.ServerAdministrator);
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
@@ -152,9 +171,18 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredentialForServer(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var request = new CreateTenantRequestDto("Integration Test Tenant");
     var response = await httpClient.PostAsJsonAsync(
@@ -182,9 +210,18 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredentialForServer(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var response = await httpClient.GetAsync(
       $"{HttpConstants.V1.TenantsEndpoint}/{Guid.NewGuid()}",
@@ -205,9 +242,18 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredentialForServer(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var createResponse = await httpClient.PostAsJsonAsync(
       HttpConstants.V1.TenantsEndpoint,

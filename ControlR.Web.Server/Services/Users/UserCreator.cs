@@ -2,7 +2,6 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using ControlR.Web.Client.Services;
-using ControlR.Web.Server.Authz.Roles;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -29,13 +28,12 @@ public interface IUserCreator
     bool isPublicRegistration = false,
     CancellationToken cancellationToken = default);
   
-  // Overload to create a user within a tenant and optionally assign roles and tags.
+  // Overload to create a user within a tenant and optionally assign permission presets.
   Task<CreateUserResult> CreateUser(
     string emailAddress,
     string password,
     Guid tenantId,
-    IEnumerable<Guid>? roleIds = null,
-    IEnumerable<Guid>? tagIds = null,
+    IEnumerable<string>? presetNames = null,
     CancellationToken cancellationToken = default);
 
   // Overload for API context where NavigationManager is unavailable.
@@ -49,7 +47,7 @@ public interface IUserCreator
 }
 
   public class UserCreator(
-    AppDb appDb,
+    IPermissionAssignmentSeeder assignmentSeeder,
     UserManager<AppUser> userManager,
     NavigationManager navigationManager,
     IUserStore<AppUser> userStore,
@@ -59,8 +57,10 @@ public interface IUserCreator
     IPublicServerSettingsProvider serverSettings,
     ILogger<UserCreator> logger) : IUserCreator
   {
-    private readonly AppDb _appDb = appDb;
+    public const string PresetsNotFoundErrorCode = "PresetsNotFound";
+    public const string RegistrationDisabledErrorCode = "RegistrationDisabled";
     private readonly IOptionsMonitor<AppOptions> _appOptions = appOptions;
+    private readonly IPermissionAssignmentSeeder _assignmentSeeder = assignmentSeeder;
     private readonly IPublicRegistrationBootstrapGate _bootstrapGate = bootstrapGate;
     private readonly IEmailSender<AppUser> _emailSender = emailSender;
     private readonly ILogger<UserCreator> _logger = logger;
@@ -116,8 +116,7 @@ public interface IUserCreator
     string emailAddress,
     string password,
     Guid tenantId,
-    IEnumerable<Guid>? roleIds = null,
-    IEnumerable<Guid>? tagIds = null,
+    IEnumerable<string>? presetNames = null,
     CancellationToken cancellationToken = default)
   {
     var result = await CreateUserImpl(
@@ -137,57 +136,22 @@ public interface IUserCreator
       return new CreateUserResult(false, IdentityResult.Failed(new IdentityError { Description = "User creation failed. No user returned." }));
     }
 
-    // Assign roles if provided
-    if (roleIds?.Any() == true)
+    // Assign permission presets if provided.
+    if (presetNames?.Any() == true)
     {
-      var roles = await _appDb.Roles.Where(r => roleIds.Contains(r.Id)).ToListAsync(cancellationToken: cancellationToken);
-      var foundRoleIds = roles.Select(r => r.Id).ToHashSet();
-      var missingRoleIds = roleIds.Except(foundRoleIds).ToList();
-      if (missingRoleIds.Count != 0)
+      var missingPresets = presetNames.Except(PermissionPresets.All.Keys).ToList();
+      if (missingPresets.Count != 0)
       {
         await _userManager.DeleteAsync(user);
-        var err = new IdentityError { Description = $"Roles not found: {string.Join(',', missingRoleIds)}." };
+        var err = new IdentityError
+        {
+          Code = PresetsNotFoundErrorCode,
+          Description = $"Presets not found: {string.Join(',', missingPresets)}."
+        };
         return new CreateUserResult(false, IdentityResult.Failed(err));
       }
 
-      foreach (var role in roles)
-      {
-        if (string.IsNullOrWhiteSpace(role.Name))
-        {
-          await _userManager.DeleteAsync(user);
-          var err = new IdentityError { Description = "Role has no name configured." };
-          return new CreateUserResult(false, IdentityResult.Failed(err));
-        }
-
-        // Add mapping directly to AspNetUserRoles to avoid relying on RoleManager lookups in tests.
-        var exists = await _appDb.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleId == role.Id, cancellationToken: cancellationToken);
-        if (!exists)
-        {
-          _appDb.UserRoles.Add(new IdentityUserRole<Guid> { UserId = user.Id, RoleId = role.Id });
-          await _appDb.SaveChangesAsync(cancellationToken);
-        }
-      }
-    }
-
-    // Assign tags if provided
-    if (tagIds?.Any() == true)
-    {
-      var tags = await _appDb.Tags.Where(t => tagIds.Contains(t.Id)).ToListAsync(cancellationToken: cancellationToken);
-      var foundTagIds = tags.Select(t => t.Id).ToHashSet();
-      var missingTagIds = tagIds.Except(foundTagIds).ToList();
-      if (missingTagIds.Count != 0)
-      {
-        await _userManager.DeleteAsync(user);
-        var err = new IdentityError { Description = $"Tags not found: {string.Join(',', missingTagIds)}." };
-        return new CreateUserResult(false, IdentityResult.Failed(err));
-      }
-
-      if (tags.Count != 0)
-      {
-        user.Tags = tags;
-        _appDb.Users.Update(user);
-        await _appDb.SaveChangesAsync(cancellationToken);
-      }
+      await _assignmentSeeder.SeedAssignments(user.Id, user.TenantId, presetNames, cancellationToken);
     }
 
     return new CreateUserResult(true, result.IdentityResult, user);
@@ -234,7 +198,7 @@ public interface IUserCreator
           false,
           IdentityResult.Failed(new IdentityError
           {
-            Code = "RegistrationDisabled",
+            Code = RegistrationDisabledErrorCode,
             Description = "Public registration is not currently enabled."
           }));
       }
@@ -306,9 +270,10 @@ public interface IUserCreator
       if (isServerAdmin)
       {
         _logger.LogInformation(
-          "First user created. User: {UserName}. Assigning server administrator role.",
+          "First user created. User: {UserName}. Assigning server administrator preset.",
           user.UserName);
-        await _userManager.AddToRoleAsync(user, RoleNames.ServerAdministrator);
+        await _assignmentSeeder.SeedAssignments(
+          user.Id, user.TenantId, [PermissionPresets.ServerAdministrator], cancellationToken);
       }
 
       await _userManager.AddClaimAsync(user, new Claim(UserClaimTypes.UserId, $"{user.Id}"));
@@ -319,16 +284,17 @@ public interface IUserCreator
 
       if (isNewTenant)
       {
-        var rolesToAdd = RoleFactory
-          .GetBuiltInRoles()
-          .Where(x => x.Name != RoleNames.ServerAdministrator)
-          .Where(x => x.Name is not null)
-          .Select(x => x.Name!)
-          .ToArray();
-
-        await _userManager.AddToRolesAsync(user, rolesToAdd);
-        var rolesString = string.Join(", ", rolesToAdd);
-        _logger.LogInformation("Assigned default roles for newly-created tenant admin user: {Roles}.", rolesString);
+        _logger.LogInformation("Assigning default presets for newly-created tenant admin user.");
+        await _assignmentSeeder.SeedAssignments(
+          user.Id,
+          user.TenantId,
+          [
+            PermissionPresets.TenantAdministrator,
+            PermissionPresets.DeviceSuperUser,
+            PermissionPresets.AgentInstaller,
+            PermissionPresets.InstallerKeyManager,
+          ],
+          cancellationToken);
       }
 
       if (externalLoginInfo is not null)

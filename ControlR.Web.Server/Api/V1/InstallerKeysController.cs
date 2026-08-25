@@ -8,7 +8,7 @@ namespace ControlR.Web.Server.Api.V1;
 
 [Route(HttpConstants.V1.InstallerKeysEndpoint)]
 [ApiController]
-[Authorize(Policy = RequireServerServiceAccountPolicy.PolicyName)]
+[Authorize(Policy = PolicyNames.RequireInstallerKeyWrite)]
 [ApiVersion(ApiVersions.V1)]
 public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManager) : ControllerBase
 {
@@ -18,10 +18,20 @@ public class InstallerKeysController(IAgentInstallerKeyManager installerKeyManag
   public async Task<ActionResult<V1Dtos.CreateInstallerKeyResponseDto>> Create(
       [FromBody] CreateInstallerKeyRequestDto request)
   {
+    if (!User.TryGetPrincipalId(out var creatorId))
+    {
+      return Forbid();
+    }
+
+    if (!User.TryResolveTenantId(request.TenantId, out var tenantId))
+    {
+      return Forbid();
+    }
+
     var internalDto = await _installerKeyManager.CreateKey(
-        request.TenantId,
-        request.CreatorId,
-        request.CreatorKind,
+        tenantId,
+        creatorId,
+        User.GetCreatorKind(),
         request.KeyType,
         request.AllowedUses,
         request.Expiration,

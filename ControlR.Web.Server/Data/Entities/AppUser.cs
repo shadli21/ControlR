@@ -12,13 +12,13 @@ public class AppUser : IdentityUser<Guid>, ITenantEntityBase
   public DateTimeOffset CreatedAt { get; set; }
   public bool IsOnline { get; set; }
   public DateTimeOffset? LastLogin { get; set; }
+  public List<LogonToken>? LogonTokens { get; set; }
   public List<PersonalAccessToken>? PersonalAccessTokens { get; set; }
   public bool RequirePasswordChange { get; set; }
-  public List<Tag>? Tags { get; set; }
   public Tenant? Tenant { get; set; }
   public Guid TenantId { get; set; }
+  public List<UserGroupMember>? UserGroupMembers { get; set; }
   public List<UserPreference>? UserPreferences { get; set; }
-  public List<IdentityUserRole<Guid>>? UserRoles { get; set; }
   public List<UserStorageItem>? UserStorageItems { get; set; }
 }
 

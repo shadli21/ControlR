@@ -65,7 +65,7 @@ internal class CursorWatcherX11(
     }
   }
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
     try
     {
@@ -146,8 +146,12 @@ internal class CursorWatcherX11(
       // X11 cursor pixels are stored as unsigned long (64-bit on 64-bit Linux systems)
       // Each unsigned long contains ARGB pixel data in the lower 32 bits
       var srcPtr = (ulong*)cursorImage.pixels;
-      
-      var pixelData = new uint[totalPixels];
+
+      // Create the bitmap and write directly into its own buffer.  Using the
+      // bitmap's owned buffer (rather than a pinned managed array aliased via
+      // SetPixels) keeps the pixel memory alive for the bitmap's lifetime.
+      using var bitmap = new SKBitmap(cursorImage.width, cursorImage.height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+      var dstPtr = (uint*)bitmap.GetPixels().ToPointer();
 
       // Convert X11 ARGB format to BGRA format for SkiaSharp
       for (int i = 0; i < totalPixels; i++)
@@ -163,23 +167,9 @@ internal class CursorWatcherX11(
         
         // Convert to BGRA and ensure proper alpha handling
         // If alpha is 0, make pixel transparent; otherwise ensure it's visible
-        if (a == 0)
-        {
-          pixelData[i] = 0; // Fully transparent
-        }
-        else
-        {
-          // Convert ARGB to BGRA: Blue in lowest byte, Green, Red, Alpha in highest byte
-          pixelData[i] = (uint)(a << 24 | r << 16 | g << 8 | b);
-        }
-      }
-
-      // Create bitmap with converted pixel data
-      using var bitmap = new SKBitmap(cursorImage.width, cursorImage.height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
-      
-      fixed (uint* dataPtr = pixelData)
-      {
-        bitmap.SetPixels((IntPtr)dataPtr);
+        dstPtr[i] = a == 0
+          ? 0 // Fully transparent
+          : (uint)(a << 24 | r << 16 | g << 8 | b);
       }
 
       var pngBytes = _imageUtility.Encode(bitmap, SKEncodedImageFormat.Png);

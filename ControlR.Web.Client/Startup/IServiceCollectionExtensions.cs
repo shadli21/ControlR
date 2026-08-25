@@ -62,11 +62,10 @@ public static class ServiceCollectionExtensions
     services.AddScoped<IViewerRemoteControlStream, ViewerRemoteControlStream>();
     services.AddScoped<IStreamMetrics, StreamMetrics>();
     services.AddScoped<IDeviceStore, DeviceStore>();
-    services.AddScoped<IUserTagStore, UserTagStore>();
-    services.AddScoped<IAdminTagStore, AdminTagStore>();
+    services.AddScoped<ITagStore, TagStore>();
     services.AddScoped<IUserStore, UserStore>();
-    services.AddScoped<IRoleStore, RoleStore>();
     services.AddScoped<IInviteStore, InviteStore>();
+    services.AddScoped<IPermissionCatalogStore, PermissionCatalogStore>();
     services.AddScoped<IWhatsNewNotifier, WhatsNewNotifier>();
 
     services.AddTransient<IJsInterop, JsInterop>();

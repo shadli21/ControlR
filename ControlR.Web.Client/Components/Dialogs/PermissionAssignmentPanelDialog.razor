@@ -1,0 +1,13 @@
+@using ControlR.Web.Client.Components.Shared
+
+<MudDialog>
+  <DialogContent>
+    <PermissionAssignmentPanel IsPrincipalLocked="true"
+                              PrincipalKind="@PrincipalKind"
+                              PrincipalId="@PrincipalId"
+                              AccountKind="@AccountKind" />
+  </DialogContent>
+  <DialogActions>
+    <MudButton OnClick="Close">Close</MudButton>
+  </DialogActions>
+</MudDialog>

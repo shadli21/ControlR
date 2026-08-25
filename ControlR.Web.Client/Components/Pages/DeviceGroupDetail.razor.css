@@ -1,0 +1,27 @@
+.group-detail-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.group-detail-top .group-info-grid {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.group-detail-edit {
+  flex-shrink: 0;
+}
+
+.group-info-grid {
+  display: inline-grid;
+  grid-template-columns: min-content auto;
+  text-align: left;
+  column-gap: 20px;
+  row-gap: 8px;
+}
+
+::deep .group-info-grid > :nth-child(odd) {
+  white-space: nowrap;
+}

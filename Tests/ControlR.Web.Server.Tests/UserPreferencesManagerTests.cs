@@ -38,7 +38,8 @@ public class UserPreferencesManagerTests(ITestOutputHelper testOutput) : IAsyncL
     Assert.Equal(UserPreferenceDefinitions.DefaultAutoQualityUpperThresholdMbps, result.AutoQualityUpperThresholdMbps);
     Assert.Equal(UserPreferenceDefinitions.DefaultCaptureCursor, result.CaptureCursor);
     Assert.Equal(UserPreferenceDefinitions.DefaultHideOfflineDevices, result.HideOfflineDevices);
-    Assert.Equal(UserPreferenceDefinitions.DefaultIncludeUntaggedDevices, result.IncludeUntaggedDevices);
+    Assert.Equal(UserPreferenceDefinitions.DefaultShowOnlyUntaggedDevices, result.ShowOnlyUntaggedDevices);
+    Assert.Equal(UserPreferenceDefinitions.DefaultShowOnlyUngroupedDevices, result.ShowOnlyUngroupedDevices);
     Assert.Equal(UserPreferenceDefinitions.DefaultNotifyUserOnSessionStart, result.NotifyUserOnSessionStart);
     Assert.Equal(ThemeMode.Dark, result.ThemeMode);
     Assert.Equal(ViewMode.Fit, result.ViewMode);
@@ -124,6 +125,7 @@ public class UserPreferencesManagerTests(ITestOutputHelper testOutput) : IAsyncL
         true,
         false,
         true,
+        false,
         true,
         true,
         KeyboardInputMode.Physical,
@@ -155,8 +157,8 @@ public class UserPreferencesManagerTests(ITestOutputHelper testOutput) : IAsyncL
       var tenant = await _testApp.Services.CreateTestTenant();
       var user = await _testApp.Services.CreateTestUser(tenant.Id, email: $"user-{Guid.NewGuid():N}@test.local");
 
-      var result = await _userPreferencesManager.SetPreferences(
-        user.Id,
+    var result = await _userPreferencesManager.SetPreferences(
+      user.Id,
       new InternalDtos.UserPreferencesDto(
         6.5,
         85,
@@ -167,6 +169,7 @@ public class UserPreferencesManagerTests(ITestOutputHelper testOutput) : IAsyncL
         true,
         false,
         true,
+        false,
         true,
         true,
         KeyboardInputMode.Physical,
@@ -224,6 +227,7 @@ public class UserPreferencesManagerTests(ITestOutputHelper testOutput) : IAsyncL
         true,
         false,
         true,
+        false,
         true,
         true,
         KeyboardInputMode.Physical,
@@ -245,7 +249,7 @@ public class UserPreferencesManagerTests(ITestOutputHelper testOutput) : IAsyncL
     Assert.True(result.Value.CaptureCursor);
     Assert.True(result.Value.EnableDirectX);
     Assert.False(result.Value.HideOfflineDevices);
-    Assert.True(result.Value.IncludeUntaggedDevices);
+    Assert.True(result.Value.ShowOnlyUntaggedDevices);
     Assert.True(result.Value.IsAutoQualityEnabled);
     Assert.True(result.Value.IsMaxBandwidthEnabled);
     Assert.Equal(KeyboardInputMode.Physical, result.Value.KeyboardInputMode);

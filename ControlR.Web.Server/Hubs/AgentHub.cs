@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.SignalR;
 using ControlR.Web.Server.Services.DeviceManagement;
 using ControlR.Libraries.Shared.Services.Encryption;
+using ControlR.Web.Server.Extensions.Dtos.Internal;
 
 namespace ControlR.Web.Server.Hubs;
 
@@ -251,20 +252,28 @@ public class AgentHub(
         return await HandleAgentUpdateForDecommission(agentDto, device);
       }
 
-      // Allow agents to self-bootstrap when enabled
+      // Self-bootstrap: only permitted when exactly one tenant exists.
+      // Multi-tenant deployments must use installer keys with an explicit tenant.
       if (_appOptions.Value.AllowAgentsToSelfBootstrap && agentDto.TenantId == Guid.Empty)
       {
-        var lastTenant = await _appDb.Tenants
+        var tenants = await _appDb.Tenants
           .OrderByDescending(x => x.CreatedAt)
-          .FirstOrDefaultAsync();
+          .Take(2)
+          .ToListAsync();
 
-        if (lastTenant is null)
+        if (tenants.Count == 0)
         {
           return HubResult.Fail<InternalDtos.DeviceResponseDto>("No tenants found.");
         }
 
+        if (tenants.Count > 1)
+        {
+          return HubResult.Fail<InternalDtos.DeviceResponseDto>(
+            "Self-bootstrap is only allowed on single-tenant servers. Use an installer key instead.");
+        }
+
         // Update the DTO with the assigned TenantId
-        agentDto = agentDto with { TenantId = lastTenant.Id };
+        agentDto = agentDto with { TenantId = tenants[0].Id };
       }
 
       if (agentDto.TenantId == Guid.Empty)
@@ -293,7 +302,6 @@ public class AgentHub(
       }
 
       var deviceEntity = updateResult.Value;
-      await AddToGroups(deviceEntity);
 
       var isOutdated = await GetIsAgentOutdated(deviceEntity);
       Device = deviceEntity.ToInternalResponseDto(isOutdated);
@@ -315,7 +323,6 @@ public class AgentHub(
     {
       var agentDto = signedDto.Dto;
 
-      // 1. Determine the public key to verify against.
       // Only trust the agent-supplied key when self-bootstrap is enabled.
       var device = await _appDb.Devices.FindAsync(agentDto.Id);
       var storedPublicKey = device?.PublicKey;
@@ -332,7 +339,6 @@ public class AgentHub(
         ? storedPublicKey
         : signedDto.PublicKey;
 
-      // 2. Validate and decode public key
       var keyValidationResult = _keyProvider.ValidatePublicKeyBase64(publicKeyBase64);
       if (!keyValidationResult.IsSuccess)
       {
@@ -345,7 +351,6 @@ public class AgentHub(
 
       var publicKeyBytes = keyValidationResult.Value;
 
-      // 3. Verify signature
       if (!_keyProvider.Verify(signedDto, publicKeyBytes))
       {
         _logger.LogWarning(
@@ -356,7 +361,7 @@ public class AgentHub(
         return HubResult.Fail<InternalDtos.DeviceResponseDto>("Signature verification failed.");
       }
 
-      // 4. Verify timestamp freshness (disabled if AgentClockSkewTolerance is null)
+      // Disabled when AgentClockSkewTolerance is null.
       var clockSkew = _appOptions.Value.AgentClockSkewTolerance;
       if (clockSkew.HasValue && !_keyProvider.VerifyTimestamp(signedDto, clockSkew.Value))
       {
@@ -367,28 +372,36 @@ public class AgentHub(
         return HubResult.Fail<InternalDtos.DeviceResponseDto>("Timestamp expired.");
       }
 
-      // 5. Handle decommissioning if enabled
+      // Handle decommissioning if enabled.
       if (_serverOptions.Value.DecommissionServer)
       {
         return await HandleAgentUpdateForDecommission(agentDto, device);
       }
 
-      // 6. Allow agents to self-bootstrap when enabled.
+      // Allow agents to self-bootstrap when enabled. Only permitted when exactly one
+      // tenant exists, so there's no ambiguity about where the agent lands. Multi-tenant
+      // deployments must use installer keys, which carry an explicit tenant.
       if (_appOptions.Value.AllowAgentsToSelfBootstrap && agentDto.TenantId == Guid.Empty)
       {
-        var lastTenant = await _appDb.Tenants
+        var tenants = await _appDb.Tenants
           .OrderByDescending(x => x.CreatedAt)
-          .FirstOrDefaultAsync();
+          .Take(2)
+          .ToListAsync();
 
-        if (lastTenant is null)
+        if (tenants.Count == 0)
         {
           return HubResult.Fail<InternalDtos.DeviceResponseDto>("No tenants found.");
         }
 
-        agentDto = agentDto with { TenantId = lastTenant.Id };
+        if (tenants.Count > 1)
+        {
+          return HubResult.Fail<InternalDtos.DeviceResponseDto>(
+            "Self-bootstrap is only allowed on single-tenant servers. Use an installer key instead.");
+        }
+
+        agentDto = agentDto with { TenantId = tenants[0].Id };
       }
 
-      // 7. Validate tenant ID
       if (agentDto.TenantId == Guid.Empty)
       {
         return HubResult.Fail<InternalDtos.DeviceResponseDto>("Invalid tenant ID.");
@@ -417,8 +430,6 @@ public class AgentHub(
 
       var deviceEntity = updateResult.Value;
 
-      await AddToGroups(deviceEntity);
-
       var isOutdated = await GetIsAgentOutdated(deviceEntity);
       Device = deviceEntity.ToInternalResponseDto(isOutdated);
 
@@ -446,27 +457,6 @@ public class AgentHub(
     catch
     {
       // Ignore errors while draining
-    }
-  }
-
-  private async Task AddToGroups(Device deviceEntity)
-  {
-    if (Device is not null)
-    {
-      return;
-    }
-
-    await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.GetTenantDevicesGroupName(deviceEntity.TenantId));
-    await Groups.AddToGroupAsync(Context.ConnectionId,
-      HubGroupNames.GetDeviceGroupName(deviceEntity.Id, deviceEntity.TenantId));
-
-    if (deviceEntity.Tags is { Count: > 0 } tags)
-    {
-      foreach (var tag in tags)
-      {
-        await Groups.AddToGroupAsync(Context.ConnectionId,
-          HubGroupNames.GetTagGroupName(tag.Id, deviceEntity.TenantId));
-      }
     }
   }
 
@@ -548,20 +538,12 @@ public class AgentHub(
   private async Task SendDeviceUpdate(Device device, InternalDtos.DeviceResponseDto dto)
   {
     await _viewerHub.Clients
-      .Group(HubGroupNames.GetUserRoleGroupName(RoleNames.DeviceSuperUser, device.TenantId))
+      .Group(HubGroupNames.DeviceHeartbeat(device.Id))
       .ReceiveDeviceUpdate(dto);
 
     // Invalidate the device grid cache using the extension method.
     await _outputCacheStore.InvalidateDeviceCacheAsync(device.Id);
     _logger.LogDebug("Invalidated device grid cache after device update: {DeviceId}", device.Id);
-
-    if (device.Tags is null)
-    {
-      return;
-    }
-
-    var groupNames = device.Tags.Select(x => HubGroupNames.GetTagGroupName(x.Id, x.TenantId));
-    await _viewerHub.Clients.Groups(groupNames).ReceiveDeviceUpdate(dto);
   }
 
   private async Task<HubResult<Device>> UpdateDeviceEntity(

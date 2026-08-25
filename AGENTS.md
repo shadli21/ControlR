@@ -18,9 +18,7 @@ Cross-platform remote access and control. .NET 10 backend (ASP.NET Core), Blazor
 
 ## General Instructions
 
-- *IMPORTANT* Use `semantic_search` as your default tool for searching and exploring the codebase.
-- *IMPORTANT* Do not default to `Glob`, `Grep`, `Read`, and similar tools.  Use these only after trying `semantic_search`.
-- `brave-search_brave_web_search` is available for web searches. Use when external data is needed.
+- Various web search tools are available. Use them when external data is needed, when you need info about specific libraries or APIs, etc.
 
 ## Service Registration Locations
 
@@ -40,6 +38,13 @@ Services use extension methods, not direct `Program.cs` registrations:
 - Hub groups organized by tenant, device tags, and user roles via `HubGroupNames.GetTenantDevicesGroupName()`, `GetTagGroupName()`, etc.
 - **Agent ↔ DesktopClient IPC** via named pipes (`IIpcConnection`). Agent forwards `RemoteControlRequestIpcDto` to the user-session DesktopClient; DesktopClient reports back for relay to server.
 
+## Tenant Isolation (EF Query Filters)
+
+- `AppDb` applies **claims-driven global query filters**: `UseUserClaims(user)` (`Data/Configuration/DbContextOptionsBuilderExtensions.cs`) reads the authenticated principal's tenant/user claims when the context is created. When a tenant claim is present, most tenant-owned entities (`Users`, `Devices`, `UserGroups`, `DeviceGroups`, `Customers`, `Tags`, etc.) are filtered automatically — including via `[FromServices] AppDb` in controllers.
+- **Server principals** (no tenant claim, e.g. server service accounts) get an **unfiltered context by explicit contract**. That is what enables their cross-tenant access.
+- **Exempt by design — NO query filters:** `PermissionAssignment`, `ServiceAccount`, `AuthorizationChangeLog`. Tenant isolation for these is enforced in service code (e.g. `PermissionAssignmentManager.IsVisibleToTenant`). Never assume a filter exists for them.
+- For security-critical boundaries, don't rely solely on the implicit filters: explicit `TenantId == tenantId` predicates are encouraged. They survive unfiltered contexts and make the boundary self-documenting.
+
 ## DTO Locations
 
 DTOs go under `\Libraries\ControlR.Libraries.Api.Contracts\Dtos\`:
@@ -55,10 +60,19 @@ DTOs live in `Dtos/ServerApi/` under `ControlR.Libraries.Api.Contracts.Dtos.Serv
 | Location | Contents | Lifecycle |
 |---|---|---|
 | `Dtos/ServerApi/Internal/` | Internal (BFF) only | Dynamic, changes freely |
-| `Dtos/ServerApi/V1/` | V1 (S2S) only | Stable contract |
+| `Dtos/ServerApi/V1/` | Versioned API contracts | Stable contract |
 
 **Rules:**
 - Every DTO belongs to exactly one route root's folder (`Internal/`, `V1/`, …). There is no shared root `Dtos/ServerApi/` folder for DTOs.
+
+### Readonly Collections on DTOs
+
+- ServerApi request/response DTO collection properties and record parameters must be **read-only collection types**: `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, `IEnumerable<T>`, or `ImmutableArray<T>`.
+  - ✅ `IReadOnlyList<Guid> DeviceIds`, `ImmutableArray<Guid>? TagIds`
+  - ❌ `List<Guid> DeviceIds`, `Guid[] DeviceIds`, `HashSet<Guid>` — never expose mutable or array collections on a DTO.
+- Exception: **raw binary `byte[]` payloads** (image/video/stream data such as `JpegData`, `PacketData`, `Signature`) stay `byte[]`. Hub, IPC, and remote-control wire-format DTOs are out of scope for this rule.
+- When a DTO collection changes, **propagate the read-only type downstream** (service/manager/EF query-extension method parameters) instead of converting with `.ToList()`/`.ToArray()` at the controller boundary — only convert where an out-of-scope target (e.g. a `string[]` hub contract) requires it.
+- Use `.Count` (not `.Length`) when consuming `IReadOnlyList`/`IReadOnlyCollection` members.
 
 ## API Routing & Versioning
 
@@ -67,10 +81,12 @@ DTOs live in `Dtos/ServerApi/` under `ControlR.Libraries.Api.Contracts.Dtos.Serv
 | Root | URL prefix | Stability | Consumer |
 |---|---|---|---|
 | `Api/Internal` | `/api/internal/*` | Unversioned, volatile | Internal. BFF (Blazor UI) |
-| `Api/V1` | `/api/v1/*` | Stable contract | S2S automation |
+| `Api/V1` | `/api/v1/*` | Stable contract | Endpoint-specific authorization; may accept users, PATs, server service accounts, or tenant service accounts |
 | `Api/Agent` | `/api/agent/*`, | Unversioned, volatile | Internal. Public APIs for agent. |
 
 - Controllers live in `Api/{Root}/` with namespace `ControlR.Web.Server.Api.{Root}`.
+- Do not infer an endpoint's audience or resource scope from the `Api/V1` route root. V1 describes contract stability. Determine authorization and tenant/server scope from each controller's policy, resource authorization, explicit tenant checks, and manager method calls.
+- V1 controllers may support user, PAT, server service-account, and tenant service-account principals when their endpoint authorization permits them. A V1 controller that uses `ForServer` methods is server-scoped because of that endpoint's explicit contract, not because it is V1.
 - Controller class names carry **no** version or audience prefix. The namespace + `[ApiVersion]` attribute convey that.
   - ✅ `Api/V1/DevicesController.cs` — namespace `Api.V1`
   - ❌ `V1DevicesController.cs` — version noise in the class name

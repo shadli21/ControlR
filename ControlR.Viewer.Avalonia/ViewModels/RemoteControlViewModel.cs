@@ -497,7 +497,7 @@ public partial class RemoteControlViewModel : ViewModelBase<RemoteControlView>, 
         NotifyUserOnSessionStart: false,
         RequireConsent: false);
 
-      var remoteControlSessionResult = await _hubConnection.Server.RequestRemoteControlSession(session.Device.Id, requestDto);
+      var remoteControlSessionResult = await _hubConnection.Server.RequestRemoteControlSession(requestDto);
 
       if (!remoteControlSessionResult.IsSuccess)
       {

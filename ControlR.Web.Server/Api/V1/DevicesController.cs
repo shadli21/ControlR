@@ -3,6 +3,11 @@ using System.Runtime.CompilerServices;
 using Asp.Versioning;
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Hubs.Clients;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Extensions.Database;
+using ControlR.Web.Server.Extensions.Dtos.V1;
+using ControlR.Web.Server.Services.Authorization;
+using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using DeviceResponseDto = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.DeviceResponseDto;
@@ -11,15 +16,18 @@ namespace ControlR.Web.Server.Api.V1;
 
 [Route(HttpConstants.V1.DevicesEndpoint)]
 [ApiController]
-[Authorize(Policy = RequireServerServiceAccountPolicy.PolicyName)]
+[Authorize]
 [ApiVersion(ApiVersions.V1)]
-public class DevicesController() : ControllerBase
+public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResolver) : ControllerBase
 {
+  private readonly IDeviceAccessScopeResolver _deviceAccessScopeResolver = deviceAccessScopeResolver;
+
   [HttpDelete("{deviceId:guid}")]
   [ProducesResponseType(StatusCodes.Status204NoContent)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   public async Task<IActionResult> DeleteDevice(
     [FromServices] AppDb appDb,
+    [FromServices] IAuthorizationService authorizationService,
     [FromRoute] Guid deviceId,
     CancellationToken cancellationToken)
   {
@@ -27,6 +35,17 @@ public class DevicesController() : ControllerBase
     if (device is null)
     {
       return NotFound();
+    }
+
+    if (!User.CanAccessTenant(device.TenantId))
+    {
+      return Forbid();
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     appDb.Devices.Remove(device);
@@ -37,24 +56,44 @@ public class DevicesController() : ControllerBase
   [HttpPost("delete-many")]
   public async Task<ActionResult<V1Dtos.DeleteManyDevicesResponseDto>> DeleteMany(
     [FromServices] AppDb appDb,
+    [FromServices] IAuthorizationService authorizationService,
     [FromBody] V1Dtos.DeleteDevicesRequestDto requestDto,
     CancellationToken cancellationToken)
   {
-    var authorizedDeviceIds = await appDb.Devices
+    if (requestDto.DeviceIds.Count > DtoLimits.DeviceIdsMaxCount)
+    {
+      return BadRequest($"Too many device IDs. Maximum allowed is {DtoLimits.DeviceIdsMaxCount}.");
+    }
+
+    var candidateDevices = await appDb.Devices
+      .AsNoTracking()
+      .Include(x => x.DeviceGroupMembers)
       .Where(d => requestDto.DeviceIds.Contains(d.Id))
-      .Select(d => d.Id)
       .ToListAsync(cancellationToken);
 
-    var authorizedIdSet = authorizedDeviceIds.ToHashSet();
+    var authorizedIdSet = new HashSet<Guid>();
+    foreach (var device in candidateDevices)
+    {
+      if (!User.CanAccessTenant(device.TenantId))
+      {
+        continue;
+      }
+
+      var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
+      if (authResult.Succeeded)
+      {
+        authorizedIdSet.Add(device.Id);
+      }
+    }
 
     var deletedCount = await appDb.Devices
       .Where(x => authorizedIdSet.Contains(x.Id))
       .ExecuteDeleteAsync(cancellationToken);
 
-    if (deletedCount == authorizedDeviceIds.Count)
+    if (deletedCount == authorizedIdSet.Count)
     {
       return new V1Dtos.DeleteManyDevicesResponseDto(
-        SuccessIds: [.. authorizedDeviceIds],
+        SuccessIds: [.. authorizedIdSet],
         FailureIds: [.. requestDto.DeviceIds.Except(authorizedIdSet)]);
     }
 
@@ -75,12 +114,10 @@ public class DevicesController() : ControllerBase
     [FromServices] IAgentVersionProvider agentVersionProvider,
     [EnumeratorCancellation] CancellationToken cancellationToken)
   {
-    var query = appDb.Devices
-      .Include(x => x.Tags)
-      .AsSplitQuery()
-      .OrderBy(x => x.CreatedAt);
+    var query = await appDb.Devices.Include(x => x.Tags).AsSplitQuery()
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver, cancellationToken);
 
-    await foreach (var device in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+    await foreach (var device in query.OrderBy(x => x.CreatedAt).AsAsyncEnumerable().WithCancellation(cancellationToken))
     {
       var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion, cancellationToken);
       yield return device.ToV1ResponseDto(isOutdated);
@@ -88,13 +125,15 @@ public class DevicesController() : ControllerBase
   }
 
   [HttpGet("{deviceId:guid}/desktop-sessions")]
-  [ProducesResponseType<IReadOnlyList<V1Dtos.DesktopSessionResponseDto>>(StatusCodes.Status200OK)]
+  [ProducesResponseType<V1Dtos.DesktopSessionsResponseDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   [ProducesResponseType(StatusCodes.Status409Conflict)]
-  public async Task<ActionResult<IReadOnlyList<V1Dtos.DesktopSessionResponseDto>>> GetDesktopSessions(
+  public async Task<ActionResult<V1Dtos.DesktopSessionsResponseDto>> GetDesktopSessions(
     [FromRoute] Guid deviceId,
     [FromServices] AppDb appDb,
     [FromServices] IHubContext<AgentHub, IAgentHubClient> agentHub,
+    [FromServices] IDesktopSessionAccessAuthorizer desktopSessionAccessAuthorizer,
+    [FromServices] IAuthorizationService authorizationService,
     [FromServices] ILogger<DevicesController> logger,
     CancellationToken cancellationToken)
   {
@@ -105,6 +144,17 @@ public class DevicesController() : ControllerBase
     if (device is null)
     {
       return NotFound();
+    }
+
+    if (!User.CanAccessTenant(device.TenantId))
+    {
+      return Forbid();
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     if (!device.IsOnline || string.IsNullOrWhiteSpace(device.ConnectionId))
@@ -118,8 +168,18 @@ public class DevicesController() : ControllerBase
         .Client(device.ConnectionId)
         .GetActiveDesktopSessions();
 
-      var dtos = sessions.Select(V1Dtos.DesktopSessionResponseDto.From).ToList();
-      return Ok(dtos);
+      var principal = PrincipalDescriptorBuilder.FromClaims(User);
+      if (principal is null)
+      {
+        return Unauthorized();
+      }
+
+      sessions = sessions
+        .Where(x => desktopSessionAccessAuthorizer.CanUse(principal, deviceId, x.SystemSessionId))
+        .ToArray();
+
+      var dtos = sessions.Select(V1Dtos.DesktopSessionResponseDto.From).ToArray();
+      return Ok(new V1Dtos.DesktopSessionsResponseDto { Items = dtos });
     }
     catch (Exception ex)
     {
@@ -137,6 +197,7 @@ public class DevicesController() : ControllerBase
   public async Task<ActionResult<DeviceResponseDto>> GetDevice(
     [FromServices] AppDb appDb,
     [FromServices] IAgentVersionProvider agentVersionProvider,
+    [FromServices] IAuthorizationService authorizationService,
     [FromRoute] Guid deviceId,
     CancellationToken cancellationToken)
   {
@@ -144,6 +205,17 @@ public class DevicesController() : ControllerBase
     if (device is null)
     {
       return NotFound();
+    }
+
+    if (!User.CanAccessTenant(device.TenantId))
+    {
+      return Forbid();
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion, cancellationToken);
@@ -155,9 +227,10 @@ public class DevicesController() : ControllerBase
     [FromServices] AppDb appDb,
     [EnumeratorCancellation] CancellationToken cancellationToken)
   {
-    var query = appDb.Devices.OrderBy(x => x.CreatedAt);
+    var query = await appDb.Devices
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver, cancellationToken);
 
-    await foreach (var device in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
+    await foreach (var device in query.OrderBy(x => x.CreatedAt).AsAsyncEnumerable().WithCancellation(cancellationToken))
     {
       yield return device.ToV1SummaryDto();
     }
@@ -172,22 +245,34 @@ public class DevicesController() : ControllerBase
     CancellationToken cancellationToken)
   {
     var isRelationalDatabase = appDb.Database.IsRelational();
-    var authorizedQuery = appDb.Devices.AsQueryable();
+    var authorizedQuery = await appDb.Devices.AsQueryable()
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver, cancellationToken);
 
     var filteredQuery = authorizedQuery
       .FilterBySearchText(requestDto.SearchText, isRelationalDatabase)
       .FilterByOnlineOffline(requestDto.HideOfflineDevices)
       .FilterByColumnFilters(requestDto.FilterDefinitions, isRelationalDatabase, logger);
 
-    var scopedQuery = filteredQuery.FilterByTagIds(requestDto.TagIds, requestDto.IncludeUntaggedDevices);
+    var scopedQuery = filteredQuery.FilterByTagsAndDeviceGroups(
+      requestDto.TagIds,
+      requestDto.TagFilterMatchMode,
+      requestDto.DeviceGroupIds,
+      requestDto.DeviceGroupFilterMatchMode,
+      requestDto.ShowOnlyUntaggedDevices,
+      requestDto.ShowOnlyUngroupedDevices);
     var totalCount = await scopedQuery.CountAsync(cancellationToken);
+
+    // Clamp the page so the skip multiplication cannot overflow int (which would
+    // produce a negative SQL OFFSET and fail the query).
+    var clampedPageSize = Math.Max(1, requestDto.PageSize);
+    var clampedPage = Math.Clamp(requestDto.Page, 0, int.MaxValue / clampedPageSize);
 
     var devices = await scopedQuery
       .ApplySorting(requestDto.SortDefinitions)
       .Include(x => x.Tags)
       .AsSplitQuery()
-      .Skip(requestDto.Page * requestDto.PageSize)
-      .Take(requestDto.PageSize)
+      .Skip(clampedPage * clampedPageSize)
+      .Take(clampedPageSize)
       .ToListAsync(cancellationToken);
 
     var pagedDtos = new List<DeviceResponseDto>(devices.Count);
@@ -215,6 +300,7 @@ public class DevicesController() : ControllerBase
     [FromBody] V1Dtos.UpdateDeviceAliasRequestDto requestDto,
     [FromServices] AppDb appDb,
     [FromServices] IAgentVersionProvider agentVersionProvider,
+    [FromServices] IAuthorizationService authorizationService,
     [FromServices] ILogger<DevicesController> logger,
     CancellationToken cancellationToken)
   {
@@ -233,6 +319,17 @@ public class DevicesController() : ControllerBase
     {
       logger.LogWarning("Device {DeviceId} not found for alias update.", deviceId);
       return NotFound();
+    }
+
+    if (!User.CanAccessTenant(device.TenantId))
+    {
+      return Forbid();
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.AliasWrite);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
     }
 
     device.Alias = requestDto.Alias ?? string.Empty;

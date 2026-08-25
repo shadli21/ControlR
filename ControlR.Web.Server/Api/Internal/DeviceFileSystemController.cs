@@ -43,7 +43,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.FileSystemWrite);
 
     if (!authResult.Succeeded)
     {
@@ -107,7 +107,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.FileSystemDelete);
 
     if (!authResult.Succeeded)
     {
@@ -215,7 +215,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.FileSystemTransferDownload);
 
     if (!authResult.Succeeded)
     {
@@ -308,7 +308,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.FileSystemRead);
 
     if (!authResult.Succeeded)
     {
@@ -390,7 +390,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.LogsRead);
 
     if (!authResult.Succeeded)
     {
@@ -476,7 +476,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.LogsRead);
 
     if (!authResult.Succeeded)
     {
@@ -544,7 +544,7 @@ public class DeviceFileSystemController : ControllerBase
       var authResult = await authorizationService.AuthorizeAsync(
         User,
         device,
-        DeviceAccessByDeviceResourcePolicy.PolicyName);
+        DeviceResourcePolicies.FileSystemRead);
       if (!authResult.Succeeded)
       {
         return Forbid();
@@ -600,7 +600,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.FileSystemRead);
 
     if (!authResult.Succeeded)
     {
@@ -659,7 +659,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.FileSystemRead);
 
     if (!authResult.Succeeded)
     {
@@ -739,7 +739,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.FileSystemTransferUpload);
 
     if (!authResult.Succeeded)
     {
@@ -853,7 +853,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.FileSystemRead);
 
     if (!authResult.Succeeded)
     {
@@ -901,7 +901,7 @@ public class DeviceFileSystemController : ControllerBase
     ILogger<DeviceFileSystemController> logger,
     CancellationToken cancellationToken)
   {
-    if (request.TargetPaths is null || request.TargetPaths.Length == 0)
+    if (request.TargetPaths is null || request.TargetPaths.Count == 0)
     {
       return BadRequest("At least one target path is required.");
     }
@@ -925,7 +925,7 @@ public class DeviceFileSystemController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.FileSystemTransferDownload);
 
     if (!authResult.Succeeded)
     {
@@ -942,7 +942,7 @@ public class DeviceFileSystemController : ControllerBase
 
     var streamId = Guid.NewGuid();
     using var signaler = hubStreamStore.GetOrCreate<byte[]>(streamId, TimeSpan.FromMinutes(30));
-    var downloadRequest = new FileArchiveDownloadHubDto(streamId, archiveFileName, request.TargetPaths);
+    var downloadRequest = new FileArchiveDownloadHubDto(streamId, archiveFileName, request.TargetPaths.ToArray());
 
     try
     {
@@ -978,7 +978,7 @@ public class DeviceFileSystemController : ControllerBase
 
       logger.LogInformation("Archive download completed for device {DeviceId} with {ItemCount} item(s)",
         deviceId,
-        request.TargetPaths.Length);
+        request.TargetPaths.Count);
 
       return new EmptyResult();
     }

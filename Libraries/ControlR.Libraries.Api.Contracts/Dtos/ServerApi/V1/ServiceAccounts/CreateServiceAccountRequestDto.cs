@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 
+using ControlR.Libraries.Api.Contracts.Constants;
+
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.ServiceAccounts;
 
 public record CreateServiceAccountRequestDto(
   [property: Required]
-  [property: StringLength(100, MinimumLength = 1)]
+  [property: StringLength(DtoLimits.ServiceAccountNameMaxLength, MinimumLength = DtoLimits.ServiceAccountNameMinLength)]
   string Name,
-  [property: StringLength(500)]
+  [property: StringLength(DtoLimits.ServiceAccountDescriptionMaxLength)]
   string? Description);
-

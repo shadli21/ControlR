@@ -1,8 +1,6 @@
-#pragma warning disable BB0001 // Member order is incorrect
 using System.Net;
 using ControlR.ApiClient;
 using ControlR.Libraries.Api.Contracts.Dtos;
-using ControlR.Libraries.Api.Contracts.Dtos.ServerApi;
 using ControlR.Web.Client.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,11 +9,11 @@ namespace ControlR.Web.Client.Tests;
 
 public class UserStorageClientTests
 {
+  private readonly UserStorageClient _client;
   private readonly Mock<IControlrApi> _mockApi;
   private readonly Mock<IControlrInternalApi> _mockInternalApi;
-  private readonly Mock<IUserStorageApi> _mockUserStorageApi;
   private readonly Mock<ILogger<UserStorageClient>> _mockLogger;
-  private readonly UserStorageClient _client;
+  private readonly Mock<IUserStorageApi> _mockUserStorageApi;
 
   public UserStorageClientTests()
   {
@@ -37,30 +35,38 @@ public class UserStorageClientTests
   }
 
   [Fact]
-  public async Task GetItem_WhenKeyIsCached_ReturnsCachedValue()
+  public async Task Cache_WhenUpdatingExistingKey_DoesNotEvictOtherEntries()
   {
     var cancellationToken = TestContext.Current.CancellationToken;
 
-    // Set up the API to be called once
+    // Fill cache to near max
+    for (var i = 0; i < 99; i++)
+    {
+      var key = $"key-{i}";
+      var localKey = key;
+      _mockUserStorageApi
+        .Setup(x => x.GetUserStorageItem(localKey, It.IsAny<CancellationToken>()))
+        .ReturnsAsync(new ApiResult<UserStorageResponseDto>(
+          new UserStorageResponseDto(localKey, $"value-{i}"),
+          true,
+          HttpStatusCode.OK));
+
+      await _client.GetItem(localKey, cancellationToken);
+    }
+
+    // Update an existing key - should not evict
     _mockUserStorageApi
-      .Setup(x => x.GetUserStorageItem("existing-key", It.IsAny<CancellationToken>()))
+      .Setup(x => x.SetUserStorageItem(It.IsAny<UserStorageRequestDto>(), It.IsAny<CancellationToken>()))
       .ReturnsAsync(new ApiResult<UserStorageResponseDto>(
-        new UserStorageResponseDto("existing-key", "cached-value"),
+        new UserStorageResponseDto("key-0", "updated-value"),
         true,
         HttpStatusCode.OK));
 
-    // First call fetches from API
-    var result1 = await _client.GetItem("existing-key", cancellationToken);
-    Assert.Equal("cached-value", result1);
+    await _client.SetItem("key-0", "updated-value", cancellationToken);
 
-    // Second call should use cache, not API
-    var result2 = await _client.GetItem("existing-key", cancellationToken);
-    Assert.Equal("cached-value", result2);
-
-    // Verify API was called only once
-    _mockUserStorageApi.Verify(
-      x => x.GetUserStorageItem("existing-key", It.IsAny<CancellationToken>()),
-      Times.Once);
+    // key-0 should still be cached (updated)
+    var cached = await _client.GetItem("key-0", cancellationToken);
+    Assert.Equal("updated-value", cached);
   }
 
   [Fact]
@@ -106,6 +112,19 @@ public class UserStorageClientTests
   }
 
   [Fact]
+  public async Task GetItem_WhenApiThrowsNonCancellation_PropagatesException()
+  {
+    var cancellationToken = TestContext.Current.CancellationToken;
+
+    _mockUserStorageApi
+      .Setup(x => x.GetUserStorageItem("error-key", It.IsAny<CancellationToken>()))
+      .ThrowsAsync(new HttpRequestException("Network error"));
+
+    await Assert.ThrowsAsync<HttpRequestException>(() =>
+        _client.GetItem("error-key", cancellationToken));
+  }
+
+  [Fact]
   public async Task GetItem_WhenCancellationRequested_PropagatesException()
   {
     using var cts = new CancellationTokenSource();
@@ -120,16 +139,30 @@ public class UserStorageClientTests
   }
 
   [Fact]
-  public async Task GetItem_WhenApiThrowsNonCancellation_PropagatesException()
+  public async Task GetItem_WhenKeyIsCached_ReturnsCachedValue()
   {
     var cancellationToken = TestContext.Current.CancellationToken;
 
+    // Set up the API to be called once
     _mockUserStorageApi
-      .Setup(x => x.GetUserStorageItem("error-key", It.IsAny<CancellationToken>()))
-      .ThrowsAsync(new HttpRequestException("Network error"));
+      .Setup(x => x.GetUserStorageItem("existing-key", It.IsAny<CancellationToken>()))
+      .ReturnsAsync(new ApiResult<UserStorageResponseDto>(
+        new UserStorageResponseDto("existing-key", "cached-value"),
+        true,
+        HttpStatusCode.OK));
 
-    await Assert.ThrowsAsync<HttpRequestException>(() =>
-        _client.GetItem("error-key", cancellationToken));
+    // First call fetches from API
+    var result1 = await _client.GetItem("existing-key", cancellationToken);
+    Assert.Equal("cached-value", result1);
+
+    // Second call should use cache, not API
+    var result2 = await _client.GetItem("existing-key", cancellationToken);
+    Assert.Equal("cached-value", result2);
+
+    // Verify API was called only once
+    _mockUserStorageApi.Verify(
+      x => x.GetUserStorageItem("existing-key", It.IsAny<CancellationToken>()),
+      Times.Once);
   }
 
   [Fact]
@@ -180,33 +213,6 @@ public class UserStorageClientTests
   }
 
   [Fact]
-  public async Task SetItem_WhenCancellationRequested_PropagatesException()
-  {
-    using var cts = new CancellationTokenSource();
-    cts.Cancel();
-
-    _mockUserStorageApi
-      .Setup(x => x.SetUserStorageItem(It.IsAny<UserStorageRequestDto>(), It.IsAny<CancellationToken>()))
-      .ThrowsAsync(new OperationCanceledException());
-
-    await Assert.ThrowsAsync<OperationCanceledException>(() =>
-        _client.SetItem("cancel-key", "value", cts.Token));
-  }
-
-  [Fact]
-  public async Task SetItem_WhenApiThrowsNonCancellation_PropagatesException()
-  {
-    var cancellationToken = TestContext.Current.CancellationToken;
-
-    _mockUserStorageApi
-      .Setup(x => x.SetUserStorageItem(It.IsAny<UserStorageRequestDto>(), It.IsAny<CancellationToken>()))
-      .ThrowsAsync(new HttpRequestException("Network error"));
-
-    await Assert.ThrowsAsync<HttpRequestException>(() =>
-        _client.SetItem("error-key", "value", cancellationToken));
-  }
-
-  [Fact]
   public async Task SetItem_WhenApiReturnsNullResponseValue_DoesNotCacheNull()
   {
     var cancellationToken = TestContext.Current.CancellationToken;
@@ -233,37 +239,29 @@ public class UserStorageClientTests
   }
 
   [Fact]
-  public async Task Cache_WhenUpdatingExistingKey_DoesNotEvictOtherEntries()
+  public async Task SetItem_WhenApiThrowsNonCancellation_PropagatesException()
   {
     var cancellationToken = TestContext.Current.CancellationToken;
 
-    // Fill cache to near max
-    for (var i = 0; i < 99; i++)
-    {
-      var key = $"key-{i}";
-      var localKey = key;
-      _mockUserStorageApi
-        .Setup(x => x.GetUserStorageItem(localKey, It.IsAny<CancellationToken>()))
-        .ReturnsAsync(new ApiResult<UserStorageResponseDto>(
-          new UserStorageResponseDto(localKey, $"value-{i}"),
-          true,
-          HttpStatusCode.OK));
-
-      await _client.GetItem(localKey, cancellationToken);
-    }
-
-    // Update an existing key - should not evict
     _mockUserStorageApi
       .Setup(x => x.SetUserStorageItem(It.IsAny<UserStorageRequestDto>(), It.IsAny<CancellationToken>()))
-      .ReturnsAsync(new ApiResult<UserStorageResponseDto>(
-        new UserStorageResponseDto("key-0", "updated-value"),
-        true,
-        HttpStatusCode.OK));
+      .ThrowsAsync(new HttpRequestException("Network error"));
 
-    await _client.SetItem("key-0", "updated-value", cancellationToken);
+    await Assert.ThrowsAsync<HttpRequestException>(() =>
+        _client.SetItem("error-key", "value", cancellationToken));
+  }
 
-    // key-0 should still be cached (updated)
-    var cached = await _client.GetItem("key-0", cancellationToken);
-    Assert.Equal("updated-value", cached);
+  [Fact]
+  public async Task SetItem_WhenCancellationRequested_PropagatesException()
+  {
+    using var cts = new CancellationTokenSource();
+    cts.Cancel();
+
+    _mockUserStorageApi
+      .Setup(x => x.SetUserStorageItem(It.IsAny<UserStorageRequestDto>(), It.IsAny<CancellationToken>()))
+      .ThrowsAsync(new OperationCanceledException());
+
+    await Assert.ThrowsAsync<OperationCanceledException>(() =>
+        _client.SetItem("cancel-key", "value", cts.Token));
   }
 }

@@ -4,6 +4,7 @@ using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.LogonTokens;
 using ControlR.Web.Server.Tests.Helpers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,14 +25,11 @@ public class ServerPrincipalEndpointTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
 
     var tenant = await services.CreateTestTenant();
-    var creator = await services.CreateTestUser(tenant.Id, email: "creator@test.local");
     var controller = scope.CreateController<InstallerKeysController>();
     controller.ControllerContext.HttpContext.User = await services.CreateServerPrincipal();
 
     var result = await controller.Create(new CreateInstallerKeyRequestDto(
       tenant.Id,
-      creator.Id,
-      CreatorKind.User,
       InstallerKeyType.Persistent));
 
     Assert.NotNull(result.Result);
@@ -57,7 +55,8 @@ public class ServerPrincipalEndpointTests(ITestOutputHelper testOutput)
 
     var result = await controller.CreateForUser(
       services.GetRequiredService<AppDb>(),
-      services.GetRequiredService<ILogonTokenProvider>(),
+      services.GetRequiredService<IAuthorizationService>(),
+      services.GetRequiredService<ILogonTokenScopeService>(),
       new CreateLogonTokenForUserRequestDto(device.Id, tenant.Id, user.Id, ExpirationMinutes: 15));
 
     Assert.NotNull(result.Result);
@@ -83,12 +82,12 @@ public class ServerPrincipalEndpointTests(ITestOutputHelper testOutput)
     controller.ControllerContext.HttpContext.User = await services.CreateServerPrincipal();
     var agentVersionProvider = services.GetRequiredService<IAgentVersionProvider>();
 
-    var resultA = await controller.GetDevice(appDb, agentVersionProvider, deviceA.Id, TestContext.Current.CancellationToken);
+    var resultA = await controller.GetDevice(appDb, agentVersionProvider, services.GetRequiredService<IAuthorizationService>(), deviceA.Id, TestContext.Current.CancellationToken);
     var okResultA = Assert.IsType<ActionResult<DeviceResponseDto>>(resultA);
     Assert.NotNull(okResultA.Value);
     Assert.Equal(deviceA.Id, okResultA.Value.Id);
 
-    var resultB = await controller.GetDevice(appDb, agentVersionProvider, deviceB.Id, TestContext.Current.CancellationToken);
+    var resultB = await controller.GetDevice(appDb, agentVersionProvider, services.GetRequiredService<IAuthorizationService>(), deviceB.Id, TestContext.Current.CancellationToken);
     var okResultB = Assert.IsType<ActionResult<DeviceResponseDto>>(resultB);
     Assert.NotNull(okResultB.Value);
     Assert.Equal(deviceB.Id, okResultB.Value.Id);

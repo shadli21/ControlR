@@ -1,0 +1,16 @@
+using System.ComponentModel.DataAnnotations;
+using ControlR.Libraries.Api.Contracts.Enums;
+
+namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
+
+/// <summary>
+/// A single permission scope granted to a credential (PAT or logon token).
+/// </summary>
+public record CredentialScopeDto(
+  [property: Required]
+  [property: StringLength(150, MinimumLength = 1)]
+  string PermissionName,
+
+  PermissionScopeKind ScopeKind,
+
+  Guid? ScopeId);

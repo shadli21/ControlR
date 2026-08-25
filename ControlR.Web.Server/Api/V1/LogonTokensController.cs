@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services.LogonTokens;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,7 +7,7 @@ namespace ControlR.Web.Server.Api.V1;
 
 [Route(HttpConstants.V1.LogonTokensEndpoint)]
 [ApiController]
-[Authorize(Policy = RequireServerServiceAccountPolicy.PolicyName)]
+[Authorize]
 [ApiVersion(ApiVersions.V1)]
 public class LogonTokensController : ControllerBase
 {
@@ -17,7 +17,8 @@ public class LogonTokensController : ControllerBase
   [ProducesResponseType(StatusCodes.Status500InternalServerError)]
   public async Task<ActionResult<V1Dtos.LogonTokenResponseDto>> CreateForExternal(
     [FromServices] AppDb appDb,
-    [FromServices] ILogonTokenProvider logonTokenProvider,
+    [FromServices] IAuthorizationService authorizationService,
+    [FromServices] ILogonTokenScopeService logonTokenScopeService,
     [FromBody] V1Dtos.CreateLogonTokenForExternalRequestDto request)
   {
     var device = await appDb.Devices.FindAsync(request.DeviceId);
@@ -26,13 +27,26 @@ public class LogonTokensController : ControllerBase
       return BadRequest("Device not found");
     }
 
-    var result = await logonTokenProvider.CreateTokenForExternal(
-      request.DeviceId,
-      request.TenantId,
-      request.UserCorrelationId,
-      request.ExpirationMinutes,
-      userDisplayName: request.UserDisplayName,
-      sessionCorrelationId: request.SessionCorrelationId);
+    if (!User.IsServerPrincipal() &&
+      (!User.TryGetTenantId(out var callerTenantId) || callerTenantId != device.TenantId))
+    {
+      return BadRequest("Device not found");
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.LogonTokenCreate);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
+    }
+
+    var creator = PrincipalDescriptorBuilder.FromClaims(User);
+    if (creator is null)
+    {
+      return BadRequest("Caller principal not found.");
+    }
+
+    var result = await logonTokenScopeService.CreateTokenWithScopes(
+      LogonTokenCreationRequest.From(request), creator, HttpContext.RequestAborted);
 
     if (!result.IsSuccess)
     {
@@ -46,9 +60,11 @@ public class LogonTokensController : ControllerBase
   [ProducesResponseType<V1Dtos.LogonTokenResponseDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
+  [ProducesResponseType(StatusCodes.Status500InternalServerError)]
   public async Task<ActionResult<V1Dtos.LogonTokenResponseDto>> CreateForUser(
     [FromServices] AppDb appDb,
-    [FromServices] ILogonTokenProvider logonTokenProvider,
+    [FromServices] IAuthorizationService authorizationService,
+    [FromServices] ILogonTokenScopeService logonTokenScopeService,
     [FromBody] V1Dtos.CreateLogonTokenForUserRequestDto request)
   {
     var device = await appDb.Devices.FindAsync(request.DeviceId);
@@ -57,12 +73,26 @@ public class LogonTokensController : ControllerBase
       return BadRequest("Device not found");
     }
 
-    var result = await logonTokenProvider.CreateToken(
-      request.DeviceId,
-      request.TenantId,
-      request.UserId,
-      request.ExpirationMinutes,
-      sessionCorrelationId: request.SessionCorrelationId);
+    if (!User.IsServerPrincipal() &&
+      (!User.TryGetTenantId(out var callerTenantId) || callerTenantId != device.TenantId))
+    {
+      return BadRequest("Device not found");
+    }
+
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.LogonTokenCreate);
+    if (!authResult.Succeeded)
+    {
+      return Forbid();
+    }
+
+    var creator = PrincipalDescriptorBuilder.FromClaims(User);
+    if (creator is null)
+    {
+      return BadRequest("Caller principal not found.");
+    }
+
+    var result = await logonTokenScopeService.CreateTokenWithScopes(
+      LogonTokenCreationRequest.From(request), creator, HttpContext.RequestAborted);
 
     if (!result.IsSuccess)
     {
@@ -72,7 +102,7 @@ public class LogonTokensController : ControllerBase
     return Ok(BuildResponse(result.Value));
   }
 
-  private V1Dtos.LogonTokenResponseDto BuildResponse(LogonTokenModel logonToken)
+  private V1Dtos.LogonTokenResponseDto BuildResponse(LogonTokenResult logonToken)
   {
     var deviceAccessUrl = new Uri(
       Request.ToOrigin(),

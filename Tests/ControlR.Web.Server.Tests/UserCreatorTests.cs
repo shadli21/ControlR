@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Options;
@@ -72,12 +73,11 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_ExistingTenant_DoesNotAssignDefaultRoles()
+    public async Task CreateUser_ExistingTenant_DoesNotAssignDefaultPresets()
     {
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
         var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
         await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
 
         // Create first user so next one isn't server admin
@@ -90,8 +90,9 @@ public class UserCreatorTests(ITestOutputHelper output)
         var result = await userCreator.CreateUser("user@example.com", "Password123!", tenant.Id);
 
         Assert.True(result.Succeeded);
-        var roles = await userManager.GetRolesAsync(result.User!);
-        Assert.Empty(roles);
+        var assignmentCount = await appDb.PermissionAssignments
+          .CountAsync(x => x.PrincipalId == result.User!.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(0, assignmentCount);
     }
 
     [Fact]
@@ -100,17 +101,20 @@ public class UserCreatorTests(ITestOutputHelper output)
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
         var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
 
         var result = await userCreator.CreateUser("admin@example.com", "Password123!", null, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Succeeded);
-        var roles = await userManager.GetRolesAsync(result.User!);
-        Assert.Contains(RoleNames.ServerAdministrator, roles);
+        var permissions = await appDb.PermissionAssignments
+          .Where(x => x.PrincipalId == result.User!.Id)
+          .Select(x => x.PermissionName)
+          .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Contains(PermissionNames.ServerAdmin, permissions);
     }
 
     [Fact]
-    public async Task CreateUser_MissingRoles_FailsAndCleansUp()
+    public async Task CreateUser_MissingPresets_FailsAndCleansUp()
     {
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
@@ -121,17 +125,15 @@ public class UserCreatorTests(ITestOutputHelper output)
         appDb.Tenants.Add(tenant);
         await appDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var missingRoleId = Guid.NewGuid();
-
         var result = await userCreator.CreateUser(
             "fail@example.com", 
             "Password123!", 
             tenant.Id, 
-            roleIds: [missingRoleId],
+            presetNames: ["Nonexistent Preset"],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Succeeded);
-        Assert.Contains(result.IdentityResult.Errors, e => e.Description.Contains("Roles not found"));
+        Assert.Contains(result.IdentityResult.Errors, e => e.Code == UserCreator.PresetsNotFoundErrorCode);
 
         // Verify user was deleted
         var user = await appDb.Users.FirstOrDefaultAsync(u => u.Email == "fail@example.com", TestContext.Current.CancellationToken);
@@ -139,36 +141,7 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_MissingTags_FailsAndCleansUp()
-    {
-        await using var testApp = await TestAppBuilder.CreateTestApp(output);
-        using var scope = testApp.CreateScope();
-        var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-        await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
-
-        var tenant = new Tenant { Name = "Test Tenant" };
-        appDb.Tenants.Add(tenant);
-        await appDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var missingTagId = Guid.NewGuid();
-
-        var result = await userCreator.CreateUser(
-            "failtags@example.com", 
-            "Password123!", 
-            tenant.Id, 
-            tagIds: [missingTagId],
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains(result.IdentityResult.Errors, e => e.Description.Contains("Tags not found"));
-
-        // Verify user was deleted
-        var user = await appDb.Users.FirstOrDefaultAsync(u => u.Email == "failtags@example.com", TestContext.Current.CancellationToken);
-        Assert.Null(user);
-    }
-
-    [Fact]
-    public async Task CreateUser_NewTenant_AssignsDefaultRoles()
+    public async Task CreateUser_NewTenant_AssignsDefaultPresets()
     {
         var config = new Dictionary<string, string?>
         {
@@ -178,7 +151,7 @@ public class UserCreatorTests(ITestOutputHelper output)
         await using var testApp = await TestAppBuilder.CreateTestApp(output, extraConfiguration: config);
         using var scope = testApp.CreateScope();
         var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
 
         // Create first user so next one isn't server admin
         await userCreator.CreateUser("admin@example.com", "Password123!", null, cancellationToken: TestContext.Current.CancellationToken);
@@ -190,11 +163,14 @@ public class UserCreatorTests(ITestOutputHelper output)
              output.WriteLine($"CreateUser failed: {string.Join(", ", result.IdentityResult.Errors.Select(e => e.Description))}");
         }
         Assert.True(result.Succeeded);
-        var roles = await userManager.GetRolesAsync(result.User!);
-        Assert.Contains(RoleNames.TenantAdministrator, roles);
-        Assert.Contains(RoleNames.DeviceSuperUser, roles);
-        Assert.Contains(RoleNames.AgentInstaller, roles);
-        Assert.DoesNotContain(RoleNames.ServerAdministrator, roles);
+        var permissions = await appDb.PermissionAssignments
+          .Where(x => x.PrincipalId == result.User!.Id)
+          .Select(x => x.PermissionName)
+          .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
+        Assert.Contains(PermissionNames.DeviceRead, permissions);
+        Assert.Contains(PermissionNames.AgentInstall, permissions);
+        Assert.DoesNotContain(PermissionNames.ServerAdmin, permissions);
     }
 
     [Fact]
@@ -238,54 +214,35 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_WithRolesAndTags_Succeeds()
+    public async Task CreateUser_WithPresets_Succeeds()
     {
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
         var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
         await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
 
         // Create tenant
         var tenant = new Tenant { Name = "Test Tenant" };
         appDb.Tenants.Add(tenant);
-        
-        // Create tags
-        var tag1 = new Tag { Name = "Tag1", Tenant = tenant };
-        var tag2 = new Tag { Name = "Tag2", Tenant = tenant };
-        appDb.Tags.AddRange(tag1, tag2);
         await appDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        // Create custom role
-        var role = new AppRole { Name = "CustomRole" };
-        await roleManager.CreateAsync(role);
 
         var email = "complex@example.com";
         var result = await userCreator.CreateUser(
             email, 
             "Password123!", 
             tenant.Id, 
-            roleIds: [role.Id], 
-            tagIds: [tag1.Id, tag2.Id],
+            presetNames: [PermissionPresets.DeviceSuperUser],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Succeeded);
-        Assert.NotNull(result.User);
-        
-        // Verify roles
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-        var userRoles = await userManager.GetRolesAsync(result.User);
-        Assert.Contains("CustomRole", userRoles);
+        var user = result.User;
+        Assert.NotNull(user);
 
-        // Verify tags
-        // Need to reload user with tags
-        var userWithTags = await appDb.Users.Include(u => u.Tags)
-            .FirstOrDefaultAsync(u => u.Id == result.User.Id, TestContext.Current.CancellationToken);
-        Assert.NotNull(userWithTags);
-        Assert.NotNull(userWithTags.Tags);
-        Assert.Equal(2, userWithTags.Tags.Count);
-        Assert.Contains(userWithTags.Tags, t => t.Name == "Tag1");
-        Assert.Contains(userWithTags.Tags, t => t.Name == "Tag2");
+        // Verify the preset's permissions were assigned.
+        var hasDeviceRead = await appDb.PermissionAssignments.AnyAsync(
+            x => x.PrincipalId == user.Id && x.PermissionName == PermissionNames.DeviceRead,
+            TestContext.Current.CancellationToken);
+        Assert.True(hasDeviceRead);
     }
 
     [Fact]

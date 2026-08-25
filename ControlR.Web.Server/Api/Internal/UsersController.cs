@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Data.Enums;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Users;
 using ControlR.Libraries.Api.Contracts.Constants;
 
@@ -6,11 +9,12 @@ namespace ControlR.Web.Server.Api.Internal;
 
 [Route(HttpConstants.Internal.UsersEndpoint)]
 [ApiController]
-[Authorize(Roles = RoleNames.TenantAdministrator)]
+[Authorize]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class UsersController : ControllerBase
 {
   [HttpPost("{userId:guid}/reset-password")]
+  [Authorize(Policy = PolicyNames.RequireTenantUsersWrite)]
   public async Task<ActionResult<InternalDtos.AdminResetPasswordResponseDto>> AdminResetPassword(
     [FromRoute] Guid userId,
     [FromServices] IPasswordManager passwordManager)
@@ -35,9 +39,10 @@ public class UsersController : ControllerBase
   }
 
   [HttpPost]
+  [Authorize(Policy = PolicyNames.RequireTenantUsersWrite)]
   public async Task<ActionResult<InternalDtos.UserResponseDto>> Create(
     [FromServices] AppDb appDb,
-    [FromServices] UserManager<AppUser> userManager,
+    [FromServices] IPermissionEvaluator permissionEvaluator,
     [FromServices] IUserCreator userCreator,
     [FromBody] InternalDtos.CreateUserRequestDto request)
   {
@@ -46,31 +51,58 @@ public class UsersController : ControllerBase
       return BadRequest("User tenant not found.");
     }
 
-    var requestRoleIds = request.RoleIds?.ToArray();
-    if (requestRoleIds is { Length: > 0 } roleIds)
+    var presetNames = request.PresetNames?.ToArray();
+    if (presetNames is { Length: > 0 })
     {
-      var roles = await appDb.Roles.Where(r => roleIds.Contains(r.Id)).ToListAsync();
-      var foundRoleIds = roles.Select(r => r.Id).ToHashSet();
-      var missingRoleIds = roleIds.Except(foundRoleIds).ToList();
-      if (missingRoleIds.Count != 0)
+      var missingPresets = presetNames.Except(PermissionPresets.All.Keys).ToList();
+      if (missingPresets.Count != 0)
       {
-        return BadRequest($"Roles not found: {string.Join(',', missingRoleIds)}");
+        return BadRequest($"Presets not found: {string.Join(',', missingPresets)}");
       }
 
-      if (roles.Any(r => r.Name == RoleNames.ServerAdministrator))
+      var requiresServerAdmin = presetNames.Contains(PermissionPresets.ServerAdministrator);
+      var requiresTenantAdmin = presetNames.Contains(PermissionPresets.TenantAdministrator);
+      var requiresTenantPermissionManagement = presetNames
+        .SelectMany(PermissionPresets.GetPermissions)
+        .Any(permissionName =>
+          PermissionCatalog.GetBroadestLegalScope(permissionName) == PermissionScopeKind.Tenant);
+
+      if (requiresServerAdmin || requiresTenantPermissionManagement)
       {
-        if (!User.TryGetUserId(out var callerUserId))
+        var callerPrincipal = PrincipalDescriptorBuilder.FromClaims(User);
+        if (callerPrincipal is null)
         {
-          return BadRequest("Caller user id not found");
+          return BadRequest("Caller principal not found.");
         }
 
-        var callerUser = await appDb.Users.FirstOrDefaultAsync(u => u.Id == callerUserId);
-        if (callerUser == null)
+        var serverResource = new ResourceDescriptor(PermissionScopeKind.Server);
+        var tenantResource = new ResourceDescriptor(
+          PermissionScopeKind.Tenant,
+          tenantId,
+          tenantId);
+        var decisions = await permissionEvaluator.EvaluateBatch(
+          callerPrincipal,
+          [
+            new PermissionEvaluationRequest(PermissionNames.ServerAdmin, serverResource),
+            new PermissionEvaluationRequest(PermissionNames.TenantPermissionsWrite, tenantResource),
+            new PermissionEvaluationRequest(PermissionNames.TenantPermissionsDeny, tenantResource)
+          ],
+          HttpContext.RequestAborted);
+        var hasServerAdmin = decisions[0].Allowed;
+        var hasTenantWrite = decisions[1].Allowed;
+        var hasTenantDeny = decisions[2].Allowed;
+
+        if (requiresServerAdmin && !hasServerAdmin)
         {
-          return BadRequest("Caller user not found");
+          return Forbid();
         }
 
-        if (!await userManager.IsInRoleAsync(callerUser, RoleNames.ServerAdministrator))
+        if (requiresTenantPermissionManagement && !hasServerAdmin && !hasTenantWrite)
+        {
+          return Forbid();
+        }
+
+        if (requiresTenantAdmin && !hasServerAdmin && !(hasTenantWrite && hasTenantDeny))
         {
           return Forbid();
         }
@@ -81,8 +113,7 @@ public class UsersController : ControllerBase
       string.IsNullOrWhiteSpace(request.Email) ? request.UserName : request.Email,
       request.Password ?? string.Empty,
       tenantId,
-      requestRoleIds,
-      request.TagIds,
+      presetNames,
       cancellationToken: HttpContext.RequestAborted);
 
     if (!createResult.Succeeded)
@@ -96,11 +127,25 @@ public class UsersController : ControllerBase
       return BadRequest("User creation failed");
     }
 
-    var response = new InternalDtos.UserResponseDto(user.Id, user.UserName, user.Email);
+    var createdAt = await appDb.Users
+      .Where(x => x.Id == user.Id)
+      .Select(x => x.CreatedAt)
+      .FirstOrDefaultAsync();
+    var permissions = await appDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id &&
+                  x.PrincipalKind == PermissionPrincipalKind.User &&
+                  x.Effect == PermissionEffect.Allow &&
+                  x.IsEnabled)
+      .Select(x => x.PermissionName)
+      .Distinct()
+      .ToListAsync();
+
+    var response = new InternalDtos.UserResponseDto(user.Id, user.UserName, user.Email, createdAt, [.. permissions]);
     return CreatedAtAction(nameof(GetAll), new { id = user.Id }, response);
   }
 
   [HttpPost("{userId:guid}/personal-access-tokens")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokensOthersWrite)]
   public async Task<ActionResult<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateUserPersonalAccessToken(
     [FromRoute] Guid userId,
     [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
@@ -130,6 +175,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpDelete("{userId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireTenantUsersDelete)]
   public async Task<IActionResult> Delete(
     [FromRoute] Guid userId,
     [FromServices] UserManager<AppUser> userManager,
@@ -138,6 +184,11 @@ public class UsersController : ControllerBase
     if (!User.TryGetTenantId(out var tenantId))
     {
       return BadRequest("User tenant not found.");
+    }
+
+    if (User.TryGetUserId(out var callerUserId) && callerUserId == userId)
+    {
+      return BadRequest("You cannot delete your own account. Use the identity-management pages instead.");
     }
 
     var user = await appDb.Users
@@ -159,6 +210,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpDelete("{userId:guid}/personal-access-tokens/{tokenId:guid}")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokensOthersWrite)]
   public async Task<IActionResult> DeleteUserPersonalAccessToken(
     [FromRoute] Guid userId,
     [FromRoute] Guid tokenId,
@@ -188,6 +240,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpGet]
+  [Authorize(Policy = PolicyNames.RequireUsersRead)]
   public async Task<ActionResult<List<InternalDtos.UserResponseDto>>> GetAll(
     [FromServices] AppDb appDb)
   {
@@ -196,13 +249,44 @@ public class UsersController : ControllerBase
       return BadRequest("User tenant not found.");
     }
 
-    return await appDb.Users
+    var users = await appDb.Users
       .Where(x => x.TenantId == tenantId)
-      .Select(x => new InternalDtos.UserResponseDto(x.Id, x.UserName, x.Email))
+      .OrderBy(x => x.UserName)
+      .ThenBy(x => x.Id)
+      .Select(x => new { x.Id, x.UserName, x.Email, x.CreatedAt })
       .ToListAsync();
+
+    var userIds = users.Select(x => x.Id).ToList();
+
+    var displayNames = await appDb.UserPreferences
+      .Where(x => userIds.Contains(x.UserId) && x.Name == UserPreferenceNames.UserDisplayName)
+      .Select(x => new { x.UserId, x.Value })
+      .ToListAsync();
+
+    var displayNamesLookup = displayNames.ToDictionary(x => x.UserId, x => x.Value);
+
+    var permissionsByUser = await appDb.PermissionAssignments
+      .Where(x => userIds.Contains(x.PrincipalId) &&
+                  x.PrincipalKind == PermissionPrincipalKind.User &&
+                  x.Effect == PermissionEffect.Allow &&
+                  x.IsEnabled)
+      .Select(x => new { x.PrincipalId, x.PermissionName })
+      .ToListAsync();
+
+    var permissionsLookup = permissionsByUser
+      .GroupBy(x => x.PrincipalId)
+      .ToDictionary(group => group.Key, group => group.Select(x => x.PermissionName).Distinct().ToList());
+
+    return users
+      .Select(x => new InternalDtos.UserResponseDto(
+        x.Id, x.UserName, x.Email, x.CreatedAt,
+        permissionsLookup.GetValueOrDefault(x.Id) ?? [],
+        displayNamesLookup.GetValueOrDefault(x.Id)))
+      .ToList();
   }
 
   [HttpGet("{userId:guid}/personal-access-tokens")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokensOthersRead)]
   public async Task<ActionResult<IEnumerable<InternalDtos.PersonalAccessTokenResponseDto>>> GetUserPersonalAccessTokens(
     [FromRoute] Guid userId,
     [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
@@ -226,6 +310,7 @@ public class UsersController : ControllerBase
   }
 
   [HttpPut("{userId:guid}/personal-access-tokens/{tokenId:guid}")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokensOthersWrite)]
   public async Task<ActionResult<InternalDtos.PersonalAccessTokenResponseDto>> UpdateUserPersonalAccessToken(
     [FromRoute] Guid userId,
     [FromRoute] Guid tokenId,

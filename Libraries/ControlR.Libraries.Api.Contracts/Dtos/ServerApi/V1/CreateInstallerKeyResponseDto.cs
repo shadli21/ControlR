@@ -1,5 +1,3 @@
-using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
-
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 
 public record CreateInstallerKeyResponseDto(
@@ -14,7 +12,7 @@ public record CreateInstallerKeyResponseDto(
 {
   public static CreateInstallerKeyResponseDto From(InternalDtos.CreateInstallerKeyResponseDto internalDto)
   {
-    return new(
+    return new CreateInstallerKeyResponseDto(
       internalDto.Id,
       internalDto.CreatorId,
       internalDto.KeyType,

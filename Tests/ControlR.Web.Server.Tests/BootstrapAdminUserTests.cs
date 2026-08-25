@@ -21,7 +21,7 @@ public class BootstrapAdminUserTests(ITestOutputHelper output)
   private const string PatTokenId = "11111111-2222-3333-4444-555555555555";
 
   [Fact]
-  public async Task Bootstrap_CreatesUserAndAssignsRolesAndConfirmsEmail()
+  public async Task Bootstrap_CreatesUserAndAssignsPresetsAndConfirmsEmail()
   {
     var config = new Dictionary<string, string?>
     {
@@ -46,12 +46,15 @@ public class BootstrapAdminUserTests(ITestOutputHelper output)
     Assert.NotEqual(Guid.Empty, user.TenantId);
     Assert.True(user.EmailConfirmed);
 
-    var roles = await userManager.GetRolesAsync(user);
-    Assert.Contains(RoleNames.ServerAdministrator, roles);
-    Assert.Contains(RoleNames.TenantAdministrator, roles);
-    Assert.Contains(RoleNames.DeviceSuperUser, roles);
-    Assert.Contains(RoleNames.AgentInstaller, roles);
-    Assert.Contains(RoleNames.InstallerKeyManager, roles);
+    var permissions = await appDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+    Assert.Contains(PermissionNames.ServerAdmin, permissions);
+    Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
+    Assert.Contains(PermissionNames.DeviceRead, permissions);
+    Assert.Contains(PermissionNames.AgentInstall, permissions);
+    Assert.Contains(PermissionNames.InstallerKeyRead, permissions);
 
     var claims = await userManager.GetClaimsAsync(user);
     Assert.Contains(claims, c => c.Type == UserClaimTypes.UserId && c.Value == user.Id.ToString());

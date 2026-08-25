@@ -1,0 +1,18 @@
+@using ControlR.Web.Client.Components.Tags
+@attribute [Route(ClientRoutes.Tags)]
+@attribute [Authorize(Policy = PolicyNames.RequireTagsWrite)]
+
+<PageTitle>Tags</PageTitle>
+
+<PrimaryTitle>
+  Tags
+</PrimaryTitle>
+
+<MudTabs TabPanelsClass="pa-4">
+  <MudTabPanel Text="Tags" Icon="@(Icons.Material.Filled.Label)" IconColor="Color.Secondary">
+    <TagsTabContent />
+  </MudTabPanel>
+  <MudTabPanel Text="Devices" Icon="@(Icons.Material.Filled.Devices)" IconColor="Color.Secondary">
+    <DevicesTabContent />
+  </MudTabPanel>
+</MudTabs>

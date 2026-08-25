@@ -1,4 +1,5 @@
 ﻿using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -24,9 +25,7 @@ internal static class ControllerExtensions
     ArgumentNullException.ThrowIfNull(controller);
     ArgumentNullException.ThrowIfNull(user);
 
-    var userRoles = await userManager.GetRolesAsync(user);
     var userClaims = await userManager.GetClaimsAsync(user);
-    var roleClaims = userRoles.Select(role => new Claim(ClaimTypes.Role, role));
 
     Claim[] claims =
     [
@@ -35,7 +34,9 @@ internal static class ControllerExtensions
       new(ClaimTypes.Email, $"{user.Email}"),
       new(UserClaimTypes.TenantId, user.TenantId.ToString()),
       new(UserClaimTypes.UserId, user.Id.ToString()),
-      ..roleClaims,
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
+      new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
+      new(UserClaimTypes.AuthenticationMethod, "cookie"),
       ..userClaims
     ];
 

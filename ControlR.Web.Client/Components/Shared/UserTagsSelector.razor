@@ -1,13 +1,14 @@
 @using System.Collections.Immutable
 @using ControlR.Web.Client.StateManagement.Stores
 
-@inject IUserTagStore UserTagStore
+@inject ITagStore TagStore
 
-<MudSelect T="string" MultiSelection="true" QuickSearchInterval="@(TimeSpan.FromMilliseconds(50))" Text="@GetText()"
+<MudSelect T="string" MultiSelection="true" QuickSearchInterval="@(TimeSpan.FromMilliseconds(50))" Label="Filter by tags"
+           Text="@GetText()"
            MultiSelectionTextFunc="@GetTagsMultiSelectText" AdornmentIcon="@Icons.Material.Filled.Tag" Adornment="Adornment.End"
-           SelectedValues="_selectedTagNames" SelectedValuesChanged="HandleSelectedTagsChanged" SelectAll="true" FullWidth="true"
-           SelectAllText="All Tags" Immediate="true">
-  @foreach (var tag in UserTagStore.Items)
+           SelectedValues="_selectedTagNames" SelectedValuesChanged="HandleSelectedTagsChanged" FullWidth="true"
+           Immediate="true" Disabled="Disabled">
+  @foreach (var tag in TagStore.Items)
   {
     <MudSelectItem Value="@tag.Name">
       @tag.Name
@@ -17,6 +18,9 @@
 
 @code {
   private HashSet<string> _selectedTagNames = [];
+
+  [Parameter]
+  public bool Disabled { get; set; }
 
   [Parameter]
   public ImmutableArray<TagViewModel> SelectedTags { get; set; }
@@ -29,9 +33,9 @@
   {
     await base.OnInitializedAsync();
 
-    if (UserTagStore.Items.Count == 0)
+    if (TagStore.Items.Count == 0)
     {
-      await UserTagStore.Refresh();
+      await TagStore.Refresh();
     }
   }
 
@@ -45,10 +49,10 @@
   {
     if (tags.Count == 0)
     {
-      return "No tags selected";
+      return string.Empty;
     }
 
-    if (_selectedTagNames.Count == UserTagStore.Items.Count)
+    if (_selectedTagNames.Count == TagStore.Items.Count)
     {
       return "All tags selected";
     }
@@ -61,10 +65,10 @@
   {
     if (_selectedTagNames.Count == 0)
     {
-      return "No tag filter";
+      return string.Empty;
     }
 
-    if (_selectedTagNames.Count == UserTagStore.Items.Count)
+    if (_selectedTagNames.Count == TagStore.Items.Count)
     {
       return "All tags selected";
     }
@@ -82,7 +86,7 @@
   {
     _selectedTagNames = tags?.ToHashSet() ?? [];
 
-    SelectedTags = UserTagStore.Items
+    SelectedTags = TagStore.Items
       .Where(x => _selectedTagNames.Contains(x.Name))
       .ToImmutableArray();
 

@@ -1,0 +1,76 @@
+﻿<MudGrid>
+  <MudItem md="4" sm="6" xs="12">
+    <MudText Typo="Typo.h6" Class="mt-2 mb-4 text-center">
+      Tags
+    </MudText>
+
+    <MudTextField T="string"
+                  @bind-Value="_newTagName"
+                  Label="Create New Tag"
+                  InputType="InputType.Text"
+                  Immediate
+                  Placeholder="Enter the name for the new tag"
+                  AdornmentIcon="@(Icons.Material.Filled.NewLabel)"
+                  OnAdornmentClick="CreateTag"
+                  AdornmentColor="Color.Success"
+                  AdornmentAriaLabel="Create Tag"
+                  Adornment="Adornment.End"
+                  OnKeyDown="HandleNewTagKeyDown"
+                  Class="mb-2"
+                  Validation="@((string x) => ValidateNewTagName(x))">
+    </MudTextField>
+
+    <MudTextField T="string" 
+                  @bind-Value="_tagSearchPattern"
+                  Label="Search"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Immediate="true"
+                  Class="my-2"
+                  Clearable="true" />
+
+    <MudPaper MaxHeight="500px" Class="overflow-y-auto">
+      <MudList T="TagViewModel"
+               @bind-SelectedValue="_selectedTag"
+               SelectionMode="SelectionMode.SingleSelection"
+               Color="Color.Info">
+
+        @foreach (var tag in FilteredTags)
+        {
+          <MudListItem T="TagViewModel" Value="@tag">
+            @tag.Name
+          </MudListItem>
+        }
+
+      </MudList>
+    </MudPaper>
+    <div class="d-flex justify-end">
+      <MudTooltip Text="Rename Tag">
+        <MudIconButton Color="Color.Info"
+                       ButtonType="ButtonType.Button"
+                       Icon="@(Icons.Material.Filled.EditNote)"
+                       Disabled="@(_selectedTag == null)"
+                       OnClick="RenameSelectedTag" />
+      </MudTooltip>
+      <MudTooltip Text="Delete Tag">
+        <MudIconButton Color="Color.Error"
+                       ButtonType="ButtonType.Button"
+                       Icon="@(Icons.Material.Filled.Delete)"
+                       Disabled="@(_selectedTag == null)"
+                       OnClick="DeleteSelectedTag"/>
+      </MudTooltip>
+    </div>
+  </MudItem>
+  <MudItem md="8" sm="6" xs="12">
+    <MudText Typo="Typo.h6" Class="mt-2 mb-4 text-center">
+      Devices
+    </MudText>
+    @if (_selectedTag is not null)
+    {
+      <DevicesListToggled 
+        PageSize="10"
+        DeviceToggled="@(args => HandleDeviceToggled(args))"
+        IsDeviceToggled="@(device => _selectedTag.DeviceIds.Contains(device.Id))" />
+    }
+  </MudItem>
+</MudGrid>

@@ -1,0 +1,311 @@
+using ControlR.Web.Client.Components.Shared;
+using Microsoft.AspNetCore.Components.Authorization;
+using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
+
+namespace ControlR.Web.Client.Components.Pages;
+
+public partial class ServiceAccounts : ComponentBase
+{
+  private readonly HashSet<Guid> _togglingIds = [];
+
+  private InternalDtos.TenantServiceAccountDto[] _accounts = [];
+  private bool _loading;
+  private string _searchString = string.Empty;
+
+  [Inject]
+  public required AuthenticationStateProvider AuthState { get; init; }
+
+  [Inject]
+  public required IClipboardManager ClipboardManager { get; init; }
+
+  [Inject]
+  public required IControlrApi ControlrApi { get; init; }
+
+  [Inject]
+  public required IDialogService DialogService { get; init; }
+
+  [Inject]
+  public required ISnackbar Snackbar { get; init; }
+
+  [Inject]
+  public required TimeProvider TimeProvider { get; init; }
+
+  private Func<InternalDtos.TenantServiceAccountDto, bool> QuickFilter => account =>
+  {
+    if (string.IsNullOrWhiteSpace(_searchString))
+    {
+      return true;
+    }
+
+    return account.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+           (account.Description?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+  };
+
+  protected override async Task OnInitializedAsync()
+  {
+    await Refresh();
+  }
+
+  private static string TruncateId(Guid id)
+  {
+    return $"{id.ToString()[..8]}...";
+  }
+
+  private async Task AddCredential(InternalDtos.TenantServiceAccountDto account)
+  {
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+    var dialog = await DialogService.ShowAsync<CreateServiceAccountCredentialDialog>(
+      $"Add Credential to \"{account.Name}\"", options);
+    var result = await dialog.Result;
+
+    if (result is null || result.Canceled || result.Data is not CreateServiceAccountCredentialDialogResult dialogResult)
+    {
+      return;
+    }
+
+    var apiResult = await ControlrApi.Internal.TenantServiceAccounts.AddCredential(
+      account.Id, new InternalDtos.CreateTenantServiceAccountCredentialRequestDto(dialogResult.Name, dialogResult.ExpiresAt));
+
+    if (!apiResult.IsSuccess)
+    {
+      Snackbar.Add(apiResult.Reason, Severity.Error);
+      return;
+    }
+
+    await ShowSecretDialog("Credential Created", apiResult.Value.PlainTextSecretKey, apiResult.Value.Credential.Name);
+    await Refresh();
+  }
+
+  private async Task CopyId(Guid id)
+  {
+    await ClipboardManager.SetText(id.ToString());
+    Snackbar.Add("Copied to clipboard", Severity.Success);
+  }
+
+  private async Task CreateAccount()
+  {
+    var canIssueCredential = await HasPermission(PermissionNames.ServiceAccountRotateCredentials);
+
+    var parameters = new DialogParameters<CreateServiceAccountDialog>
+    {
+      { x => x.CanIssueCredential, canIssueCredential },
+      { x => x.RotatePermissionLabel, "Rotate Service Account Credentials" }
+    };
+
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+    var dialog = await DialogService.ShowAsync<CreateServiceAccountDialog>("Create Service Account", parameters, options);
+    var result = await dialog.Result;
+
+    if (result is null || result.Canceled || result.Data is not CreateServiceAccountDialogResult dialogResult)
+    {
+      return;
+    }
+
+    var createResult = await ControlrApi.Internal.TenantServiceAccounts.Create(
+      new InternalDtos.CreateTenantServiceAccountRequestDto(dialogResult.Name, dialogResult.Description));
+
+    if (!createResult.IsSuccess)
+    {
+      Snackbar.Add(createResult.Reason, Severity.Error);
+      return;
+    }
+
+    var account = createResult.Value;
+
+    if (dialogResult.CredentialName is { } credentialName)
+    {
+      var credResult = await ControlrApi.Internal.TenantServiceAccounts.AddCredential(
+        account.Id, new InternalDtos.CreateTenantServiceAccountCredentialRequestDto(credentialName, dialogResult.CredentialExpiresAt));
+
+      if (!credResult.IsSuccess)
+      {
+        Snackbar.Add($"Account created, but credential creation failed: {credResult.Reason}", Severity.Warning);
+        await Refresh();
+        return;
+      }
+
+      await ShowSecretDialog("Service Account Created", credResult.Value.PlainTextSecretKey, account.Name);
+    }
+    else
+    {
+      Snackbar.Add("Service account created without a credential", Severity.Success);
+    }
+
+    await Refresh();
+  }
+
+  private async Task DeleteAccount(InternalDtos.TenantServiceAccountDto account)
+  {
+    var confirmed = await DialogService.ShowMessageBoxAsync(
+      "Delete Service Account",
+      $"Are you sure you want to delete \"{account.Name}\"? All credentials will be revoked.",
+      "Delete", "Cancel");
+
+    if (!confirmed.GetValueOrDefault())
+    {
+      return;
+    }
+
+    var result = await ControlrApi.Internal.TenantServiceAccounts.Delete(account.Id);
+    if (!result.IsSuccess)
+    {
+      Snackbar.Add(result.Reason, Severity.Error);
+      return;
+    }
+
+    Snackbar.Add("Service account deleted", Severity.Success);
+    await Refresh();
+  }
+
+  private async Task EditAccount(InternalDtos.TenantServiceAccountDto account)
+  {
+    var parameters = new DialogParameters<EditServiceAccountDialog>
+    {
+      { x => x.Name, account.Name },
+      { x => x.Description, account.Description }
+    };
+
+    var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+    var dialog = await DialogService.ShowAsync<EditServiceAccountDialog>($"Edit {account.Name}", parameters, options);
+    var result = await dialog.Result;
+
+    if (result is null || result.Canceled || result.Data is not EditServiceAccountDialogResult editResult)
+    {
+      return;
+    }
+
+    var index = Array.FindIndex(_accounts, x => x.Id == account.Id);
+    var currentEnabled = index >= 0 ? _accounts[index].IsEnabled : account.IsEnabled;
+
+    var updateResult = await ControlrApi.Internal.TenantServiceAccounts.Update(
+      account.Id, new InternalDtos.UpdateTenantServiceAccountRequestDto(editResult.Name, editResult.Description, currentEnabled));
+
+    if (!updateResult.IsSuccess)
+    {
+      Snackbar.Add(updateResult.Reason, Severity.Error);
+      return;
+    }
+
+    Snackbar.Add("Service account updated", Severity.Success);
+    await Refresh();
+  }
+
+  private async Task EditPermissions(InternalDtos.TenantServiceAccountDto account)
+  {
+    var parameters = new DialogParameters<PermissionAssignmentPanelDialog>
+    {
+      { x => x.PrincipalKind, PermissionPrincipalKind.ServiceAccount },
+      { x => x.PrincipalId, account.Id }
+    };
+
+    await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
+      $"Permissions: {account.Name}", parameters, PermissionAssignmentPanelDialog.DefaultOptions);
+  }
+
+  private int GetActiveCount(IReadOnlyList<InternalDtos.TenantServiceAccountCredentialDto> credentials)
+  {
+    return credentials.Count(cred =>
+      cred.RevokedAt is null && (cred.ExpiresAt is null || cred.ExpiresAt > TimeProvider.GetUtcNow()));
+  }
+
+  private async Task<bool> HasPermission(string permissionName)
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    return state.User.HasClaim(PermissionPolicies.PermissionClaimType, permissionName);
+  }
+
+  private async Task Refresh()
+  {
+    _loading = true;
+    StateHasChanged();
+
+    try
+    {
+      var result = await ControlrApi.Internal.TenantServiceAccounts.GetAll();
+      if (result.IsSuccess)
+      {
+        _accounts = result.Value;
+      }
+      else
+      {
+        Snackbar.Add(result.Reason, Severity.Error);
+      }
+    }
+    finally
+    {
+      _loading = false;
+      StateHasChanged();
+    }
+  }
+
+  private async Task RevokeCredential(Guid serviceAccountId, Guid credentialId)
+  {
+    var confirmed = await DialogService.ShowMessageBoxAsync(
+      "Revoke Credential",
+      "Are you sure you want to revoke this credential? The holder will no longer be able to authenticate.",
+      "Revoke", "Cancel");
+
+    if (!confirmed.GetValueOrDefault())
+    {
+      return;
+    }
+
+    var result = await ControlrApi.Internal.TenantServiceAccounts.RevokeCredential(serviceAccountId, credentialId);
+    if (!result.IsSuccess)
+    {
+      Snackbar.Add(result.Reason, Severity.Error);
+      return;
+    }
+
+    Snackbar.Add("Credential revoked", Severity.Success);
+    await Refresh();
+  }
+
+  private async Task ShowSecretDialog(string title, string secret, string subtitle)
+  {
+    var parameters = new DialogParameters<SecretDisplayDialog>
+    {
+      { x => x.Title, title },
+      { x => x.Secret, secret },
+      { x => x.SecretLabel, "Secret Key" },
+      { x => x.Subtitle, subtitle },
+      { x => x.SubtitleLabel, "Name" }
+    };
+
+    var options = SecretDisplayDialog.DefaultOptions;
+
+    await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
+  }
+
+  private async Task ToggleEnabled(InternalDtos.TenantServiceAccountDto account, bool enabled)
+  {
+    if (_togglingIds.Contains(account.Id)) return;
+
+    _togglingIds.Add(account.Id);
+    try
+    {
+      var index = Array.FindIndex(_accounts, x => x.Id == account.Id);
+      if (index < 0) return;
+
+      var latest = _accounts[index];
+      var result = await ControlrApi.Internal.TenantServiceAccounts.Update(latest.Id,
+        new InternalDtos.UpdateTenantServiceAccountRequestDto(latest.Name, latest.Description, enabled));
+
+      if (!result.IsSuccess)
+      {
+        Snackbar.Add(result.Reason, Severity.Error);
+        return;
+      }
+
+      index = Array.FindIndex(_accounts, x => x.Id == account.Id);
+      if (index >= 0)
+      {
+        _accounts = [.. _accounts[..index], result.Value, .. _accounts[(index + 1)..]];
+      }
+    }
+    finally
+    {
+      _togglingIds.Remove(account.Id);
+    }
+  }
+}

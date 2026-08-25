@@ -27,15 +27,16 @@ public abstract class PeriodicBackgroundService(
     }
     catch (Exception ex) when (catchExceptions)
     {
+      // Log and fall through to the periodic loop so a transient startup failure
+      // retries on the next tick instead of permanently disabling the service.
       Logger.LogError(ex, "Error during background service startup.");
-      return;
     }
 
     while (await timer.WaitForNextTick(throwOnCancellation: false, stoppingToken))
     {
       try
       {
-        await HandleElapsed();
+        await HandleElapsed(stoppingToken);
       }
       catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
       {
@@ -51,7 +52,7 @@ public abstract class PeriodicBackgroundService(
     Logger.LogInformation("Stopping background service. Application is stopping.");
   }
 
-  protected abstract Task HandleElapsed();
+  protected abstract Task HandleElapsed(CancellationToken stoppingToken);
 
   protected virtual Task OnStartingAsync(CancellationToken stoppingToken) => Task.CompletedTask;
 }

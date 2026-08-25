@@ -1,0 +1,92 @@
+@attribute [Route(ClientRoutes.DeviceGroupDetail)]
+@attribute [Authorize(Policy = PolicyNames.RequireDeviceGroupsRead)]
+
+<PageTitle>@(_group?.Name ?? "Device Group")</PageTitle>
+
+<PrimaryTitle>
+  <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo(ClientRoutes.DeviceGroups))" />
+    <MudText Typo="Typo.h4" Color="Color.Primary">@(_group?.Name ?? "Loading...")</MudText>
+  </MudStack>
+</PrimaryTitle>
+
+@if (_loading)
+{
+  <MudProgressCircular Indeterminate="true" />
+}
+else if (_group is null)
+{
+  <MudAlert Severity="Severity.Error">Device group not found.</MudAlert>
+}
+else
+{
+  <MudPaper Class="pa-4 mb-4">
+    <div class="group-detail-top">
+      <div class="group-info-grid">
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Group ID:</MudText>
+        <div class="d-flex align-center gap-2">
+          <MudText Typo="Typo.body1">
+            @_group.Id
+          </MudText>
+          <MudTooltip Text="Copy ID">
+            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Default" Size="Size.Small"
+                           OnClick="CopyGroupId" />
+          </MudTooltip>
+        </div>
+
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Description:</MudText>
+        <MudText Typo="Typo.body1">@(string.IsNullOrWhiteSpace(_group.Description) ? "—" : _group.Description)</MudText>
+
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Created:</MudText>
+        <MudText Typo="Typo.body1">@_group.CreatedAt.ToLocalTime()</MudText>
+      </div>
+
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                 StartIcon="@Icons.Material.Filled.Edit" OnClick="EditGroup" Class="group-detail-edit">
+        Edit
+      </MudButton>
+    </div>
+  </MudPaper>
+
+  <MudDataGrid T="DeviceGroupMemberDto" Items="_group.Members" Hover="true" Breakpoint="Breakpoint.Sm">
+    <ToolBarContent>
+      <MudText Typo="Typo.subtitle1">Members (@_group.Members.Count)</MudText>
+      <MudSpacer />
+      <div class="d-flex align-center gap-3">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AddMembers">
+          Add Members
+        </MudButton>
+        <MudTooltip Text="Refresh">
+          <MudIconButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
+                         Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshGroup" />
+        </MudTooltip>
+      </div>
+    </ToolBarContent>
+    <Columns>
+      <PropertyColumn Property="x => x.DeviceName" Title="Device" />
+      <PropertyColumn Property="x => x.Alias" Title="Alias">
+        <CellTemplate>
+          @(string.IsNullOrWhiteSpace(context.Item.Alias) ? "—" : context.Item.Alias)
+        </CellTemplate>
+      </PropertyColumn>
+      <PropertyColumn Property="x => x.CustomerName" Title="Customer">
+        <CellTemplate>
+          @(string.IsNullOrWhiteSpace(context.Item.CustomerName) ? "—" : context.Item.CustomerName)
+        </CellTemplate>
+      </PropertyColumn>
+      <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+        <CellTemplate>
+          <MudTooltip Text="Remove member">
+            <MudIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline" Color="Color.Error"
+                           OnClick="@(() => RemoveMember(context.Item))" />
+          </MudTooltip>
+        </CellTemplate>
+      </TemplateColumn>
+    </Columns>
+    <PagerContent>
+      <MudDataGridPager T="DeviceGroupMemberDto" />
+    </PagerContent>
+  </MudDataGrid>
+}

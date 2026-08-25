@@ -17,21 +17,23 @@ public interface IViewerHub
     Guid terminalSessionId);
   Task DisposeDeviceAccessActivity();
   Task<DesktopSession[]> GetActiveDesktopSessions(Guid deviceId);
+  Task<HubResult<DeviceAccessPermissionsDto>> GetDeviceAccessPermissions(Guid deviceId);
   Task<HubResult<PwshCompletionsResponseDto>> GetPwshCompletions(PwshCompletionsRequestDto request);
   Task<HubResult> InvokeCtrlAltDel(Guid deviceId, int targetDesktopProcessId, DesktopSessionType desktopSessionType);
   Task RefreshDeviceInfo(Guid deviceId);
   Task<HubResult> RequestRemoteControlPermission(Guid deviceId, int targetProcessId);
-  Task<HubResult> RequestRemoteControlSession(Guid deviceId, RemoteControlSessionRequestDto sessionRequestDto);
-  Task<HubResult> RequestVncSession(Guid deviceId, VncSessionRequestDto sessionRequestDto);
+  Task<HubResult> RequestRemoteControlSession(RemoteControlSessionRequestDto sessionRequestDto);
+  Task<HubResult> RequestVncSession(VncSessionRequestDto sessionRequestDto);
   Task SendAgentUpdateTrigger(Guid deviceId);
   Task<HubResult> SendChatMessage(Guid deviceId, ChatMessageHubDto dto);
   Task SendDtoToAgent(Guid deviceId, DtoWrapper wrapper);
-  Task SendDtoToUserGroups(DtoWrapper wrapper);
   Task SendPowerStateChange(Guid deviceId, PowerStateChangeType changeType);
   Task<HubResult> SendTerminalInput(Guid deviceId, TerminalInputDto dto);
-  Task SendWakeDevice(Guid deviceId, string[] macAddresses);
+  Task<HubResult<string>> SendWakeDevice(Guid deviceId, string[] macAddresses);
   Task<HubResult> StartDeviceAccessActivity(Guid deviceId);
+  Task<HubResult> SubscribeToDeviceHeartbeats(Guid[] deviceIds);
   Task<HubResult> TestVncConnection(Guid guid, int port);
   Task UninstallAgent(Guid deviceId, string reason);
+  Task UnsubscribeFromDeviceHeartbeats(Guid[] deviceIds);
   Task<HubResult> UploadFile(FileUploadMetadata metadata, ChannelReader<byte[]> fileStream);
 }

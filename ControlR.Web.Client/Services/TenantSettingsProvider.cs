@@ -8,9 +8,9 @@ public interface ITenantSettingsProvider
   Task<string?> GetInstanceId();
   Task<bool?> GetNotifyUserOnSessionStart();
   Task<TenantSettingsDto> GetSettings();
-  Task SetAppendInstanceId(bool value);
+  Task<bool> SetAppendInstanceId(bool value);
   Task<bool> SetInstanceId(string? value);
-  Task SetNotifyUserOnSessionStart(bool? value);
+  Task<bool> SetNotifyUserOnSessionStart(bool? value);
 }
 
 internal class TenantSettingsProvider(
@@ -62,9 +62,9 @@ internal class TenantSettingsProvider(
     return _settings ?? CreateDefaultSettings();
   }
 
-  public async Task SetAppendInstanceId(bool value)
+  public async Task<bool> SetAppendInstanceId(bool value)
   {
-    await SetSetting(TenantSettingNames.AppendInstanceId, value);
+    return await SetSetting(TenantSettingNames.AppendInstanceId, value);
   }
 
   public async Task<bool> SetInstanceId(string? value)
@@ -86,13 +86,12 @@ internal class TenantSettingsProvider(
       normalizedValue = normalizationResult.Value;
     }
 
-    await SetSetting(TenantSettingNames.InstanceId, normalizedValue);
-    return true;
+    return await SetSetting(TenantSettingNames.InstanceId, normalizedValue);
   }
 
-  public async Task SetNotifyUserOnSessionStart(bool? value)
+  public async Task<bool> SetNotifyUserOnSessionStart(bool? value)
   {
-    await SetSetting(TenantSettingNames.NotifyUserOnSessionStart, value);
+    return await SetSetting(TenantSettingNames.NotifyUserOnSessionStart, value);
   }
 
   private static TenantSettingsDto CreateDefaultSettings()
@@ -101,7 +100,7 @@ internal class TenantSettingsProvider(
     return TenantSettingDefinitions.CreateDto(values);
   }
 
-  private async Task SetSetting<T>(string settingName, T newValue)
+  private async Task<bool> SetSetting<T>(string settingName, T newValue)
   {
     try
     {
@@ -115,11 +114,12 @@ internal class TenantSettingsProvider(
             deleteResult.StatusCode);
 
           _snackbar.Add(deleteResult.Reason, Severity.Error);
+          return false;
         }
 
         _settings = null;
         _effectiveUserPreferences.InvalidateCache();
-        return;
+        return true;
       }
       
       var stringValue = TenantSettingDefinitions.FormatValue(settingName, newValue)?.Trim();
@@ -129,7 +129,7 @@ internal class TenantSettingsProvider(
       {
         _logger.LogWarning("Failed to normalize setting {SettingName}. Reason: {Reason}", settingName, normalizationResult.ErrorMessage);
         _snackbar.Add(normalizationResult.ErrorMessage ?? "Setting value is invalid.", Severity.Error);
-        return;
+        return false;
       }
 
       var request = new TenantSettingRequestDto(settingName, normalizationResult.Value ?? string.Empty);
@@ -142,16 +142,18 @@ internal class TenantSettingsProvider(
           setResult.StatusCode);
           
         _snackbar.Add(setResult.Reason, Severity.Error);
-        return;
+        return false;
       }
 
       _settings = null;
       _effectiveUserPreferences.InvalidateCache();
+      return true;
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error while setting setting for {SettingName}.", settingName);
       _snackbar.Add("Error while setting setting", Severity.Error);
+      return false;
     }
   }
 }

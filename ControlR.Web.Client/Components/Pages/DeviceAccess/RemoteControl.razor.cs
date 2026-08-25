@@ -447,7 +447,7 @@ public partial class RemoteControl : ViewportAwareComponent
         notifyUserPreference.Value,
         RequireConsent: false);
 
-      var remoteControlSessionResult = await ViewerHub.Server.RequestRemoteControlSession(session.Device.Id, requestDto);
+      var remoteControlSessionResult = await ViewerHub.Server.RequestRemoteControlSession(requestDto);
 
       if (!remoteControlSessionResult.IsSuccess)
       {

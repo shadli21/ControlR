@@ -45,6 +45,13 @@
         </div>
 
         <MudText Typo="Typo.subtitle1" Color="Color.Secondary">
+          Customer:
+        </MudText>
+        <MudText Typo="Typo.body1">
+          @DeviceDisplay.GetCustomerDisplay(Device)
+        </MudText>
+
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">
           Online Status:
         </MudText>
         <MudText Typo="Typo.body1">
@@ -124,7 +131,7 @@
           @Device.AgentVersion
         </MudText>
 
-        @if (Device.CurrentUsers.Length > 0)
+        @if (Device.CurrentUsers.Count > 0)
         {
           <MudText Typo="Typo.subtitle1" Color="Color.Secondary">
             Active Users:

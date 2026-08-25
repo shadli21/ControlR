@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Extensions.Dtos.Internal;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -30,7 +31,7 @@ public class ServerAlertController(AppDb appDb) : ControllerBase
   }
 
   [HttpPost]
-  [Authorize(Roles = RoleNames.ServerAdministrator)]
+  [Authorize(Policy = PolicyNames.RequireServerAlertsWrite)]
   public async Task<ActionResult<InternalDtos.ServerAlertResponseDto>> UpdateAlert([FromBody] InternalDtos.ServerAlertRequestDto request)
   {
     var alert = await _appDb

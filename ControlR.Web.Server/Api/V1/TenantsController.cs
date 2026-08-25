@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
+using ControlR.Web.Server.Extensions.Dtos.V1;
 using ControlR.Web.Server.Services.Tenants;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +9,7 @@ namespace ControlR.Web.Server.Api.V1;
 
 [Route(HttpConstants.V1.TenantsEndpoint)]
 [ApiController]
-[Authorize(Policy = RequireServerServiceAccountPolicy.PolicyName)]
+[Authorize(Policy = PolicyNames.RequireServerAdmin)]
 [ApiVersion(ApiVersions.V1)]
 public class TenantsController(ITenantProvisioningService tenantProvisioningService) : ControllerBase
 {
@@ -20,13 +21,13 @@ public class TenantsController(ITenantProvisioningService tenantProvisioningServ
     [FromBody] CreateTenantRequestDto request,
     CancellationToken cancellationToken)
   {
-    var result = await tenantProvisioningService.CreateTenant(request, cancellationToken);
+    var result = await tenantProvisioningService.CreateTenant(request.Name, cancellationToken);
     if (!result.IsSuccess)
     {
-      return result.ToActionResult();
+      return result.ToActionResult(x => x.ToV1CreateTenantDto());
     }
 
-    return CreatedAtAction(nameof(Get), new { id = result.Value.TenantId }, result.Value);
+    return CreatedAtAction(nameof(Get), new { id = result.Value.Id }, result.Value.ToV1CreateTenantDto());
   }
 
   [HttpDelete("{id:guid}")]
@@ -56,10 +57,10 @@ public class TenantsController(ITenantProvisioningService tenantProvisioningServ
     var result = await tenantProvisioningService.GetTenant(id, cancellationToken);
     if (!result.IsSuccess)
     {
-      return result.ToActionResult();
+      return result.ToActionResult(x => x.ToV1GetTenantDto());
     }
 
-    return Ok(result.Value);
+    return Ok(result.Value.ToV1GetTenantDto());
   }
 
   [HttpPut("{id:guid}")]
@@ -72,12 +73,12 @@ public class TenantsController(ITenantProvisioningService tenantProvisioningServ
     [FromBody] UpdateTenantRequestDto request,
     CancellationToken cancellationToken)
   {
-    var result = await tenantProvisioningService.UpdateTenant(id, request, cancellationToken);
+    var result = await tenantProvisioningService.UpdateTenant(id, request.Name, cancellationToken);
     if (!result.IsSuccess)
     {
-      return result.ToActionResult();
+      return result.ToActionResult(x => x.ToV1GetTenantDto());
     }
 
-    return Ok(result.Value);
+    return Ok(result.Value.ToV1GetTenantDto());
   }
 }

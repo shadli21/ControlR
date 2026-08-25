@@ -1,0 +1,54 @@
+@attribute [Route(ClientRoutes.Users)]
+@attribute [Authorize(Policy = PolicyNames.RequireUsersRead)]
+
+<PageTitle>Users</PageTitle>
+
+<PrimaryTitle>
+  Users
+</PrimaryTitle>
+
+<GridToolbar @bind-SearchValue="_searchString" OnRefresh="Refresh" />
+
+<MudDataGrid T="UserResponseDto"
+             Items="_users"
+             SortDefinitions="_sortDefinitions"
+             Hover="true"
+             Loading="_loading"
+             QuickFilter="QuickFilter"
+             Breakpoint="Breakpoint.Sm">
+  <Columns>
+    <PropertyColumn Property="x => x.UserName" Title="Username" />
+    <TemplateColumn Title="Display Name" Sortable="true" SortBy="@(x => x.DisplayName)">
+      <CellTemplate>
+        @(string.IsNullOrWhiteSpace(context.Item.DisplayName) ? "—" : context.Item.DisplayName)
+      </CellTemplate>
+    </TemplateColumn>
+    <TemplateColumn Title="Permissions" Sortable="true" SortBy="@(x => x.Permissions.Count)">
+      <CellTemplate>
+        @context.Item.Permissions.Count
+      </CellTemplate>
+    </TemplateColumn>
+    <PropertyColumn Property="x => x.CreatedAt" Title="Created" />
+    <TemplateColumn Title="ID" Sortable="false" Filterable="false">
+      <CellTemplate>
+        <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
+          <MudText Typo="Typo.body2">@(TruncateId(context.Item.Id))</MudText>
+          <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                         Size="Size.Small"
+                         OnClick="@(() => CopyId(context.Item.Id))" />
+        </MudStack>
+      </CellTemplate>
+    </TemplateColumn>
+    <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+      <CellTemplate>
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
+          <MudMenuItem Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Info" OnClick="@(() => EditPermissions(context.Item))">Edit Permissions</MudMenuItem>
+          <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(context.Item.Id == _currentUserId)" OnClick="@(() => DeleteUser(context.Item))">Delete</MudMenuItem>
+        </MudMenu>
+      </CellTemplate>
+    </TemplateColumn>
+  </Columns>
+  <PagerContent>
+    <MudDataGridPager T="UserResponseDto" />
+  </PagerContent>
+</MudDataGrid>

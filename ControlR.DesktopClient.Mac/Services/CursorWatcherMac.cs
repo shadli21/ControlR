@@ -36,7 +36,7 @@ internal class CursorWatcherMac(
     await base.ExecuteAsync(stoppingToken);
   }
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
     await CheckCursorChange();
   }

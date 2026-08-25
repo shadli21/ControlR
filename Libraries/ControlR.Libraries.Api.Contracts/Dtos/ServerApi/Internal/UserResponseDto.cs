@@ -3,4 +3,7 @@ namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 public record UserResponseDto(
   Guid Id,
   string? UserName,
-  string? Email);
+  string? Email,
+  DateTimeOffset CreatedAt,
+  IReadOnlyList<string> Permissions,
+  string? DisplayName = null);

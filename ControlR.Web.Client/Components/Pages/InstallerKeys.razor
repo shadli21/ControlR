@@ -1,5 +1,5 @@
 @attribute [Route(ClientRoutes.InstallerKeys)]
-@attribute [Authorize(Roles = $"{RoleNames.TenantAdministrator}, {RoleNames.InstallerKeyManager}")]
+@attribute [Authorize(Policy = PolicyNames.RequireInstallerKeyRead)]
 
 @using ControlR.Libraries.Api.Contracts.Dtos.ServerApi
 @using ControlR.Web.Client.Authz
@@ -14,7 +14,7 @@
              Hover="true"
              Breakpoint="Breakpoint.Sm"
              Loading="@_loading"
-             QuickFilter="@_quickFilter">
+             QuickFilter="@QuickFilter">
     <ToolBarContent>
         <MudSpacer />
         <MudTextField @bind-Value="_searchString"

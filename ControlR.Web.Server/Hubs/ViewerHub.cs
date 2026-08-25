@@ -8,6 +8,8 @@ using ControlR.Libraries.Shared.Helpers;
 using ControlR.Libraries.Api.Contracts.Hubs.Clients;
 using Microsoft.AspNetCore.SignalR;
 using ControlR.Web.Server.Services.Settings;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Services.Authorization;
 using System.Diagnostics;
 using System.Security.Claims;
 
@@ -19,20 +21,28 @@ public class ViewerHub(
   UserManager<AppUser> userManager,
   AppDb appDb,
   IAuthorizationService authorizationService,
+  IPermissionEvaluator permissionEvaluator,
+  IResourceDescriptorFactory resourceFactory,
   IHubContext<AgentHub, IAgentHubClient> agentHub,
   IEffectiveUserPreferencesResolver effectiveUserPreferencesResolver,
   IHubStreamStore hubStreamStore,
+  IDesktopSessionAccessAuthorizer desktopSessionAccessAuthorizer,
   IOptionsMonitor<AppOptions> appOptions,
   ILogger<ViewerHub> logger)
   : HubWithItems<IViewerHubClient>, IViewerHub
 {
+  private const int MaxHeartbeatSubscriptionBatch = 100;
+
   private readonly IHubContext<AgentHub, IAgentHubClient> _agentHub = agentHub;
   private readonly AppDb _appDb = appDb;
   private readonly IOptionsMonitor<AppOptions> _appOptions = appOptions;
   private readonly IAuthorizationService _authorizationService = authorizationService;
+  private readonly IDesktopSessionAccessAuthorizer _desktopSessionAccessAuthorizer = desktopSessionAccessAuthorizer;
   private readonly IEffectiveUserPreferencesResolver _effectiveUserPreferencesResolver = effectiveUserPreferencesResolver;
   private readonly IHubStreamStore _hubStreamStore = hubStreamStore;
   private readonly ILogger<ViewerHub> _logger = logger;
+  private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
+  private readonly IResourceDescriptorFactory _resourceFactory = resourceFactory;
   private readonly TimeProvider _timeProvider = timeProvider;
   private readonly UserManager<AppUser> _userManager = userManager;
 
@@ -53,7 +63,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.ChatSend) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -81,7 +91,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.TerminalUse) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -102,7 +112,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.TerminalUse) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Forbidden.");
       }
@@ -133,13 +143,24 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.RemoteControlConnect) is not { IsSuccess: true } authResult)
       {
         return [];
       }
 
       var device = authResult.Value;
-      return await _agentHub.Clients.Client(device.ConnectionId).GetActiveDesktopSessions();
+      var principal = Context.User is null
+        ? null
+        : PrincipalDescriptorBuilder.FromClaims(Context.User);
+      if (principal is null)
+      {
+        return [];
+      }
+
+      var sessions = await _agentHub.Clients.Client(device.ConnectionId).GetActiveDesktopSessions();
+      return sessions
+        .Where(x => _desktopSessionAccessAuthorizer.CanUse(principal, deviceId, x.SystemSessionId))
+        .ToArray();
     }
     catch (Exception ex)
     {
@@ -148,11 +169,83 @@ public class ViewerHub(
     }
   }
 
+  public async Task<HubResult<DeviceAccessPermissionsDto>> GetDeviceAccessPermissions(Guid deviceId)
+  {
+    try
+    {
+      var device = await _appDb.Devices
+        .AsNoTracking()
+        .FirstOrDefaultAsync(x => x.Id == deviceId);
+
+      if (device is null)
+      {
+        return HubResult.Fail<DeviceAccessPermissionsDto>("Device not found.");
+      }
+
+      var principal = Context.User is null
+        ? null
+        : PrincipalDescriptorBuilder.FromClaims(Context.User);
+      if (principal is null)
+      {
+        return HubResult.Fail<DeviceAccessPermissionsDto>("Unauthorized.");
+      }
+
+      var resource = await _resourceFactory.CreateDevice(device, Context.ConnectionAborted);
+      var permissionNames = new[]
+      {
+        PermissionNames.DeviceRead,
+        PermissionNames.DeviceOverviewRead,
+        PermissionNames.DeviceRemoteControlConnect,
+        PermissionNames.DeviceTerminalUse,
+        PermissionNames.DeviceChatSend,
+        PermissionNames.DeviceFileSystemRead,
+        PermissionNames.DeviceLogsRead,
+        PermissionNames.DeviceVncRelayConnect,
+        PermissionNames.DeviceRemoteControlInteract,
+        PermissionNames.DeviceRemoteControlBlockInput,
+        PermissionNames.DeviceClipboardRead,
+        PermissionNames.DeviceClipboardWrite,
+        PermissionNames.DeviceCtrlAltDelSend
+      };
+      var decisions = await _permissionEvaluator.EvaluateMany(
+        principal,
+        permissionNames,
+        resource,
+        Context.ConnectionAborted);
+
+      if (!decisions[PermissionNames.DeviceRead].Allowed)
+      {
+        return HubResult.Fail<DeviceAccessPermissionsDto>("Unauthorized.");
+      }
+
+      var permissions = new DeviceAccessPermissionsDto(
+        decisions[PermissionNames.DeviceOverviewRead].Allowed,
+        decisions[PermissionNames.DeviceRemoteControlConnect].Allowed,
+        decisions[PermissionNames.DeviceTerminalUse].Allowed,
+        decisions[PermissionNames.DeviceChatSend].Allowed,
+        decisions[PermissionNames.DeviceFileSystemRead].Allowed,
+        decisions[PermissionNames.DeviceLogsRead].Allowed,
+        decisions[PermissionNames.DeviceVncRelayConnect].Allowed,
+        decisions[PermissionNames.DeviceRemoteControlInteract].Allowed,
+        decisions[PermissionNames.DeviceRemoteControlBlockInput].Allowed,
+        decisions[PermissionNames.DeviceClipboardRead].Allowed,
+        decisions[PermissionNames.DeviceClipboardWrite].Allowed,
+        decisions[PermissionNames.DeviceCtrlAltDelSend].Allowed);
+
+      return HubResult.Ok(permissions);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error while resolving device-access permissions for device {DeviceId}.", deviceId);
+      return HubResult.Fail<DeviceAccessPermissionsDto>("An error occurred while resolving device permissions.");
+    }
+  }
+
   public async Task<HubResult<PwshCompletionsResponseDto>> GetPwshCompletions(PwshCompletionsRequestDto request)
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(request.DeviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(request.DeviceId, DeviceResourcePolicies.TerminalUse) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail<PwshCompletionsResponseDto>("Forbidden.");
       }
@@ -181,7 +274,7 @@ public class ViewerHub(
         targetDesktopProcessId,
         Context.UserIdentifier);
 
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.CtrlAltDelSend) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -226,16 +319,7 @@ public class ViewerHub(
         return;
       }
 
-      if (!Context.User.TryGetTenantId(out var tenantId))
-      {
-        _logger.LogCritical("Failed to get tenant ID.");
-        return;
-      }
-
-      var user = await _appDb.Users
-        .Include(x => x.Tags)
-        .FirstOrDefaultAsync(x => x.Id == userId);
-
+      var user = await _appDb.Users.FirstOrDefaultAsync(x => x.Id == userId);
       if (user is null)
       {
         _logger.LogCritical("Failed to find user from UserManager.");
@@ -246,31 +330,7 @@ public class ViewerHub(
       user.LastLogin = _timeProvider.GetUtcNow();
       await _appDb.SaveChangesAsync();
 
-      if (Context.User.IsInRole(RoleNames.ServerAdministrator))
-      {
-        await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerAdministrators);
-      }
-
-      if (Context.User.IsInRole(RoleNames.TenantAdministrator))
-      {
-        await Groups.AddToGroupAsync(Context.ConnectionId,
-          HubGroupNames.GetUserRoleGroupName(RoleNames.TenantAdministrator, tenantId));
-      }
-
-      if (Context.User.IsInRole(RoleNames.DeviceSuperUser))
-      {
-        await Groups.AddToGroupAsync(Context.ConnectionId,
-          HubGroupNames.GetUserRoleGroupName(RoleNames.DeviceSuperUser, tenantId));
-      }
-
-      if (user.Tags is { Count: > 0 } tags)
-      {
-        foreach (var tag in tags)
-        {
-          await Groups.AddToGroupAsync(Context.ConnectionId,
-            HubGroupNames.GetTagGroupName(tag.Id, tenantId));
-        }
-      }
+      await JoinServerTopics();
     }
     catch (Exception ex)
     {
@@ -314,7 +374,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.Read) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -333,7 +393,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.RemoteControlConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -350,7 +410,6 @@ public class ViewerHub(
   }
 
   public async Task<HubResult> RequestRemoteControlSession(
-    Guid deviceId,
     RemoteControlSessionRequestDto sessionRequestDto)
   {
     try
@@ -374,12 +433,17 @@ public class ViewerHub(
         "Starting streaming session requested by user {DisplayName} ({UserId}) for device {DeviceId} from IP {RemoteIp}.",
         displayName,
         userId,
-        deviceId,
+        sessionRequestDto.DeviceId,
         remoteIp);
 
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(sessionRequestDto.DeviceId, DeviceResourcePolicies.RemoteControlConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
+      }
+
+      if (!CanUseDesktopSession(sessionRequestDto.DeviceId, sessionRequestDto.TargetSystemSession))
+      {
+        return HubResult.Fail("The requested desktop session is not authorized.");
       }
 
       var device = authResult.Value;
@@ -409,11 +473,11 @@ public class ViewerHub(
     }
   }
 
-  public async Task<HubResult> RequestVncSession(Guid deviceId, VncSessionRequestDto sessionRequestDto)
+  public async Task<HubResult> RequestVncSession(VncSessionRequestDto sessionRequestDto)
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(sessionRequestDto.DeviceId, DeviceResourcePolicies.VncRelayConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -457,7 +521,7 @@ public class ViewerHub(
         "Starting VNC session requested by user {DisplayName} ({UserId}) for device {DeviceId} from IP {RemoteIp}.",
         displayName,
         userId,
-        deviceId,
+        sessionRequestDto.DeviceId,
         remoteIp);
 
       var device = authResult.Value;
@@ -490,7 +554,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.AgentUpdate) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -509,9 +573,14 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.ChatSend) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
+      }
+
+      if (!CanUseDesktopSession(deviceId, dto.TargetSystemSession))
+      {
+        return HubResult.Fail("The requested desktop session is not authorized.");
       }
 
       var user = await GetRequiredUser(q => q.Include(u => u.UserPreferences));
@@ -545,6 +614,8 @@ public class ViewerHub(
     }
   }
 
+  // Intentionally general-purpose and currently unused by any client. Will be
+  // exercised by an upcoming refactor that routes generic DTOs to the agent.
   public async Task SendDtoToAgent(Guid deviceId, DtoWrapper wrapper)
   {
     try
@@ -566,44 +637,11 @@ public class ViewerHub(
     }
   }
 
-  public async Task SendDtoToUserGroups(DtoWrapper wrapper)
-  {
-    if (!TryGetUserId(out var userId) ||
-        !TryGetTenantId(out var tenantId))
-    {
-      return;
-    }
-
-    if (Context.User!.IsInRole(RoleNames.DeviceSuperUser))
-    {
-      await _agentHub
-        .Clients
-        .Group(HubGroupNames.GetTenantDevicesGroupName(tenantId))
-        .ReceiveDto(wrapper);
-      return;
-    }
-
-    var user = await _userManager
-      .Users
-      .AsNoTracking()
-      .Include(x => x.Tags!)
-      .ThenInclude(x => x.Devices)
-      .FirstOrDefaultAsync(x => x.Id == userId);
-
-    if (user?.Tags is null)
-    {
-      return;
-    }
-
-    var groupNames = user.Tags.Select(x => HubGroupNames.GetTagGroupName(x.Id, x.TenantId));
-    await _agentHub.Clients.Groups(groupNames).ReceiveDto(wrapper);
-  }
-
   public async Task SendPowerStateChange(Guid deviceId, PowerStateChangeType changeType)
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.PowerManage) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -622,7 +660,7 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.TerminalUse) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -645,33 +683,51 @@ public class ViewerHub(
     }
   }
 
-  public async Task SendWakeDevice(Guid deviceId, string[] macAddresses)
+  public async Task<HubResult<string>> SendWakeDevice(Guid deviceId, string[] macAddresses)
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.WakeSend) is not { IsSuccess: true } authResult)
       {
-        return;
+        return HubResult.Fail<string>("Unauthorized.");
       }
 
-      var tagsIds = await _appDb.Devices
-        .Include(x => x.Tags)
-        .Where(x => x.Id == deviceId)
-        .SelectMany(x => x.Tags!)
-        .Select(x => x.Id)
+      var target = authResult.Value;
+
+      // A magic packet only reaches the target's LAN if an online neighbor emits it there,
+      // so fan out only to online devices that share the target's network (same public IP).
+      // Device group/tag membership is organizational, not spatial, and is not a proximity signal.
+      if (string.IsNullOrWhiteSpace(target.PublicIpV4))
+      {
+        return HubResult.Ok($"The target device has no known public IP, so no network neighbors could be found to broadcast the magic packet.");
+      }
+
+      var connectionIds = await _appDb.Devices
+        .Where(device => device.Id != deviceId &&
+                         device.TenantId == target.TenantId &&
+                         device.CustomerId == target.CustomerId &&
+                         device.PublicIpV4 == target.PublicIpV4 &&
+                         device.IsOnline &&
+                         device.ConnectionId != string.Empty)
+        .Select(device => device.ConnectionId)
         .ToListAsync();
 
-      var tagGroupNames = tagsIds.Select(tagId =>
-        HubGroupNames.GetTagGroupName(tagId, authResult.Value.TenantId));
+      if (connectionIds.Count == 0)
+      {
+        return HubResult.Ok($"No online devices sharing public IP {target.PublicIpV4} were found. The target may need an online agent on the same network to be woken.");
+      }
 
       var dto = new WakeDeviceDto(macAddresses);
       await _agentHub.Clients
-        .Groups(tagGroupNames)
+        .Clients(connectionIds)
         .InvokeWakeDevice(dto);
+
+      return HubResult.Ok($"Magic packet broadcast by {connectionIds.Count} devic{(connectionIds.Count == 1 ? "e" : "es")} with public IP {target.PublicIpV4}.");
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error while sending wake device command.");
+      return HubResult.Fail<string>("An error occurred while sending the wake command.");
     }
   }
 
@@ -710,11 +766,66 @@ public class ViewerHub(
     return HubResult.Ok();
   }
 
+  public async Task<HubResult> SubscribeToDeviceHeartbeats(Guid[] deviceIds)
+  {
+    if (Context.User is null)
+    {
+      return HubResult.Fail("Not authenticated.");
+    }
+
+    if (deviceIds is not { Length: > 0 })
+    {
+      return HubResult.Ok();
+    }
+
+    if (deviceIds.Length > MaxHeartbeatSubscriptionBatch)
+    {
+      return HubResult.Fail(
+        $"Too many device IDs ({deviceIds.Length}). Subscribe at most {MaxHeartbeatSubscriptionBatch} devices per call.");
+    }
+
+    var distinctIds = deviceIds.Distinct().ToArray();
+
+    var devices = await _appDb.Devices.AsNoTracking()
+      .Where(x => distinctIds.Contains(x.Id))
+      .ToListAsync();
+
+    var principal = PrincipalDescriptorBuilder.FromClaims(Context.User);
+    if (principal is null)
+    {
+      return HubResult.Fail("Invalid principal.");
+    }
+
+    var requests = new List<PermissionEvaluationRequest>(devices.Count);
+    foreach (var device in devices)
+    {
+      requests.Add(new PermissionEvaluationRequest(
+        PermissionNames.DeviceRead,
+        await _resourceFactory.CreateDevice(device, Context.ConnectionAborted)));
+    }
+
+    var decisions = await _permissionEvaluator.EvaluateBatch(
+      principal,
+      requests,
+      Context.ConnectionAborted);
+
+    for (var index = 0; index < devices.Count; index++)
+    {
+      if (decisions[index].Allowed)
+      {
+        var device = devices[index];
+        await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.DeviceHeartbeat(device.Id));
+      }
+    }
+
+    return HubResult.Ok();
+  }
+
   public async Task<HubResult> TestVncConnection(Guid guid, int port)
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(guid) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(guid, DeviceResourcePolicies.VncRelayConnect) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -734,7 +845,9 @@ public class ViewerHub(
   {
     try
     {
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      // Uninstalling removes the agent from the machine, so it requires delete authority
+      // rather than the catch-all read policy.
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.Delete) is not { IsSuccess: true } authResult)
       {
         return;
       }
@@ -754,6 +867,19 @@ public class ViewerHub(
     }
   }
 
+  public async Task UnsubscribeFromDeviceHeartbeats(Guid[] deviceIds)
+  {
+    if (deviceIds is not { Length: > 0 })
+    {
+      return;
+    }
+
+    foreach (var deviceId in deviceIds.Distinct())
+    {
+      await Groups.RemoveFromGroupAsync(Context.ConnectionId, HubGroupNames.DeviceHeartbeat(deviceId));
+    }
+  }
+
   public async Task<HubResult> UploadFile(
     FileUploadMetadata fileUploadMetadata,
     ChannelReader<byte[]> fileStream)
@@ -763,7 +889,7 @@ public class ViewerHub(
 
       var deviceId = fileUploadMetadata.DeviceId;
 
-      if (await TryAuthorizeAgainstDevice(deviceId) is not { IsSuccess: true } authResult)
+      if (await TryAuthorizeAgainstDevice(deviceId, DeviceResourcePolicies.FileSystemWrite) is not { IsSuccess: true } authResult)
       {
         return HubResult.Fail("Unauthorized.");
       }
@@ -853,6 +979,15 @@ public class ViewerHub(
     return displayName.AsTaskResult();
   }
 
+  private bool CanUseDesktopSession(Guid deviceId, int systemSessionId)
+  {
+    var principal = Context.User is null
+      ? null
+      : PrincipalDescriptorBuilder.FromClaims(Context.User);
+    return principal is not null &&
+      _desktopSessionAccessAuthorizer.CanUse(principal, deviceId, systemSessionId);
+  }
+
   private async Task<HubResult<string>> GetDisplayName(Guid userId)
   {
     var user = await _userManager.Users
@@ -897,8 +1032,41 @@ public class ViewerHub(
     return user;
   }
 
+  private async Task JoinServerTopics()
+  {
+    if (Context.User is null)
+    {
+      return;
+    }
+
+    var principal = Context.User is null
+      ? null
+      : PrincipalDescriptorBuilder.FromClaims(Context.User);
+    if (principal is null)
+    {
+      return;
+    }
+
+    var serverResource = new ResourceDescriptor(PermissionScopeKind.Server);
+    var decisions = await _permissionEvaluator.EvaluateMany(
+      principal,
+      [PermissionNames.ServerAlertsRead, PermissionNames.ServerTelemetryRead],
+      serverResource,
+      Context.ConnectionAborted);
+    if (decisions[PermissionNames.ServerAlertsRead].Allowed)
+    {
+      await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerAlerts());
+    }
+
+    if (decisions[PermissionNames.ServerTelemetryRead].Allowed)
+    {
+      await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.ServerTelemetry());
+    }
+  }
+
   private async Task<HubResult<Device>> TryAuthorizeAgainstDevice(
     Guid deviceId,
+    string? policyName = null,
     [CallerMemberName] string? callerName = null)
   {
     if (Context.User is null)
@@ -920,7 +1088,7 @@ public class ViewerHub(
     var authResult = await _authorizationService.AuthorizeAsync(
       Context.User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      policyName ?? DeviceResourcePolicies.Read);
 
     if (authResult.Succeeded)
     {

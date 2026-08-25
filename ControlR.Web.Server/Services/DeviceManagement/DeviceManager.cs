@@ -4,6 +4,10 @@ using System.Collections.Immutable;
 using System.Reflection;
 using System.Net.Sockets;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos;
+using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Data.Enums;
+using ControlR.Web.Server.Services.Authorization;
 
 namespace ControlR.Web.Server.Services.DeviceManagement;
 
@@ -17,13 +21,21 @@ public interface IDeviceManager
   /// </summary>
   /// <param name="deviceDto">The data transfer object containing device details.</param>
   /// <param name="context">The context information regarding the device's connection.</param>
-  /// <param name="tagIds">
-  ///   Optional list of tag IDs to associate with the device.
-  ///   If null, tags will not be modified.
-  ///   If an empty array is provided, all tags will be removed, if any exist.
-  /// </param>
+  /// <param name="tagIds">Tag ids to set; null = leave unchanged, empty = clear.</param>
+  /// <param name="customerId">Customer to assign; null = leave unchanged.</param>
   /// <returns>The added or updated <see cref="Device"/> entity.</returns>
-  Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, Guid[]? tagIds = null, string? publicKeyBase64 = null);
+  Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null, Guid? customerId = null);
+
+  /// <summary>
+  /// Determines whether the specified user is authorized to assign tags on the given device.
+  /// </summary>
+  Task<bool> CanAssignTagOnDevice(AppUser user, Device device);
+
+  /// <summary>
+  /// Determines whether the specified tenant-scoped service account is authorized to assign
+  /// tags on the given device.
+  /// </summary>
+  Task<bool> CanAssignTagOnDevice(ServiceAccount serviceAccount, Device device);
 
   /// <summary>
   /// Determines whether the specified user is authorized to install an agent on the given device.
@@ -34,6 +46,12 @@ public interface IDeviceManager
   ///   <c>true</c> if the user belongs to the same tenant as the device and has the necessary permissions; otherwise, <c>false</c>.
   /// </returns>
   Task<bool> CanInstallAgentOnDevice(AppUser user, Device device);
+
+  /// <summary>
+  /// Determines whether the specified tenant-scoped service account is authorized to install
+  /// an agent on the given device.
+  /// </summary>
+  Task<bool> CanInstallAgentOnDevice(ServiceAccount serviceAccount, Device device);
 
   /// <summary>
   /// Marks a specific device as offline and updates its last seen timestamp.
@@ -51,21 +69,19 @@ public interface IDeviceManager
   /// </summary>
   /// <param name="deviceDto">The data transfer object containing updated device details.</param>
   /// <param name="context">The context information regarding the device's connection.</param>
-  /// <param name="tagIds">
-  ///   Optional list of tag IDs to associate with the device.
-  ///   If null, tags will not be modified.
-  ///   If an empty array is provided, all tags will be removed.
-  /// </param>
+  /// <param name="tagIds">Tag ids to set; null = leave unchanged, empty = clear.</param>
+  /// <param name="customerId">Customer to assign; null = leave unchanged.</param>
   /// <returns>
   ///   A <see cref="Result{Device}"/> containing the updated device if successful,
   ///   or a failure result if the device does not exist.
   /// </returns>
-  Task<Result<Device>> UpdateDevice(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, Guid[]? tagIds = null, string? publicKeyBase64 = null);
+  Task<Result<Device>> UpdateDevice(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null, Guid? customerId = null);
 }
 
 public class DeviceManager(
   AppDb appDb,
-  UserManager<AppUser> userManager,
+  IResourceDescriptorFactory resourceFactory,
+  IPermissionEvaluator permissionEvaluator,
   ILogger<DeviceManager> logger) : IDeviceManager
 {
   private const BindingFlags PropertiesBindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
@@ -74,9 +90,10 @@ public class DeviceManager(
 
   private readonly AppDb _appDb = appDb;
   private readonly ILogger<DeviceManager> _logger = logger;
-  private readonly UserManager<AppUser> _userManager = userManager;
+  private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
+  private readonly IResourceDescriptorFactory _resourceFactory = resourceFactory;
 
-  public async Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, Guid[]? tagIds = null, string? publicKeyBase64 = null)
+  public async Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null, Guid? customerId = null)
   {
     var entity = await _appDb.Devices
       .IgnoreQueryFilters()
@@ -88,18 +105,45 @@ public class DeviceManager(
 
     entity ??= new Device();
 
-    await UpdateDeviceEntity(entity, deviceDto, context, entityState, tagIds, publicKeyBase64);
+    await UpdateDeviceEntity(entity, deviceDto, context, entityState, tagIds, publicKeyBase64, customerId);
 
     return entity;
   }
 
-  public async Task<bool> CanInstallAgentOnDevice(AppUser user, Device device)
+  public async Task<bool> CanAssignTagOnDevice(AppUser user, Device device)
+    => await CanAssignTagOnDevice(
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, AuthMethod: "cookie"),
+      device);
+
+  public async Task<bool> CanAssignTagOnDevice(ServiceAccount serviceAccount, Device device)
   {
-    if (user.TenantId != device.TenantId)
-    {
-      return false;
-    }
-    return await _userManager.IsInRoleAsync(user, RoleNames.AgentInstaller);
+    var principal = new PrincipalDescriptor(
+      serviceAccount.Kind == ServiceAccountKind.Server
+        ? PrincipalType.ServerServiceAccount
+        : PrincipalType.TenantServiceAccount,
+      serviceAccount.Id,
+      serviceAccount.TenantId,
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
+
+    return await CanAssignTagOnDevice(principal, device);
+  }
+
+  public async Task<bool> CanInstallAgentOnDevice(AppUser user, Device device)
+    => await CanInstallAgentOnDevice(
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, AuthMethod: "cookie"),
+      device);
+
+  public async Task<bool> CanInstallAgentOnDevice(ServiceAccount serviceAccount, Device device)
+  {
+    var principal = new PrincipalDescriptor(
+      serviceAccount.Kind == ServiceAccountKind.Server
+        ? PrincipalType.ServerServiceAccount
+        : PrincipalType.TenantServiceAccount,
+      serviceAccount.Id,
+      serviceAccount.TenantId,
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
+
+    return await CanInstallAgentOnDevice(principal, device);
   }
 
   public async Task<Result<Device>> MarkDeviceOffline(Guid deviceId, DateTimeOffset lastSeen)
@@ -122,7 +166,7 @@ public class DeviceManager(
     return Result.Ok(entity);
   }
 
-  public async Task<Result<Device>> UpdateDevice(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, Guid[]? tagIds = null, string? publicKeyBase64 = null)
+  public async Task<Result<Device>> UpdateDevice(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null, Guid? customerId = null)
   {
     var entity = await _appDb.Devices
       .IgnoreQueryFilters()
@@ -133,7 +177,12 @@ public class DeviceManager(
       return Result.Fail<Device>("Device does not exist in the database.");
     }
 
-    await UpdateDeviceEntity(entity, deviceDto, context, EntityState.Modified, tagIds, publicKeyBase64);
+    if (entity.TenantId != Guid.Empty && entity.TenantId != deviceDto.TenantId)
+    {
+      return Result.Fail<Device>("Device belongs to a different tenant.");
+    }
+
+    await UpdateDeviceEntity(entity, deviceDto, context, EntityState.Modified, tagIds, publicKeyBase64, customerId);
 
     return Result.Ok(entity);
   }
@@ -177,29 +226,45 @@ public class DeviceManager(
       }
       else
       {
-        // If the value from DTO is null, we need to be careful.
         if (dtoValue == null)
         {
-          // If the target property in the Entity is a VALUE type, and it's NOT a Nullable<T> (e.g., int, bool),
-          // then we CANNOT assign null. Skip this property.
+          // Can't assign null to a non-nullable value type; skip.
           if (prop.Metadata.ClrType.IsValueType && Nullable.GetUnderlyingType(prop.Metadata.ClrType) == null)
           {
             continue;
           }
 
-          // If the target property in the Entity is a REFERENCE type, and it's NOT marked as nullable in the model
-          // (meaning it corresponds to a non-nullable column in the DB, or a non-nullable C# reference type),
-          // then we CANNOT assign null. Skip this property.
+          // Can't assign null to a non-nullable reference type; skip.
           if (!prop.Metadata.ClrType.IsValueType && !prop.Metadata.IsNullable)
           {
             continue;
           }
         }
-        // If dtoValue is not null, or if the target property can accept null (either nullable value type or nullable reference type),
-        // then it's safe to assign.
         prop.CurrentValue = dtoValue;
       }
     }
+  }
+
+  private async Task<bool> CanAssignTagOnDevice(PrincipalDescriptor principal, Device device)
+    => await HasDevicePermission(principal, device, PermissionNames.DeviceTagsWrite);
+
+  /// <summary>
+  /// Evaluates <see cref="PermissionNames.AgentInstall"/> at device scope so device-scoped
+  /// denies on <paramref name="device"/> are honored regardless of broader tenant rights.
+  /// </summary>
+  private async Task<bool> CanInstallAgentOnDevice(PrincipalDescriptor principal, Device device)
+    => await HasDevicePermission(principal, device, PermissionNames.AgentInstall);
+
+  private async Task<bool> HasDevicePermission(PrincipalDescriptor principal, Device device, string permissionName)
+  {
+    var resource = await _resourceFactory.CreateDevice(device);
+
+    var result = await _permissionEvaluator.Evaluate(
+      principal,
+      permissionName,
+      resource,
+      CancellationToken.None);
+    return result.Allowed;
   }
 
   private async Task UpdateDeviceEntity(
@@ -207,12 +272,22 @@ public class DeviceManager(
     DeviceUpdateRequestDto deviceDto,
     DeviceConnectionContext context,
     EntityState entityState,
-    Guid[]? tagIds = null,
-    string? publicKeyBase64 = null)
+    IReadOnlyList<Guid>? tagIds = null,
+    string? publicKeyBase64 = null,
+    Guid? customerId = null)
   {
     var entry = _appDb.Entry(entity);
     await entry.Reference(x => x.Tenant).LoadAsync();
     await entry.Collection(x => x.Tags!).LoadAsync();
+
+    // A device's tenant is immutable once assigned. Reject any attempt to re-home an
+    // existing device into a different tenant.
+    if (entity.TenantId != Guid.Empty && entity.TenantId != deviceDto.TenantId)
+    {
+      throw new InvalidOperationException(
+        $"Device {deviceDto.Id} belongs to tenant {entity.TenantId} and cannot be moved to tenant {deviceDto.TenantId}.");
+    }
+
     entry.State = entityState;
 
     SetValuesExcept(
@@ -229,7 +304,11 @@ public class DeviceManager(
         .ToListAsync();
     }
 
-    // Apply server-side determined properties from context
+    if (customerId is not null)
+    {
+      entity.CustomerId = customerId;
+    }
+
     entity.ConnectionId = context.ConnectionId;
     entity.IsOnline = context.IsOnline;
     entity.LastSeen = context.LastSeen;

@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using ControlR.Web.Server.Data.Extensions;
+using ControlR.Web.Server.Extensions.Database;
 
 namespace ControlR.Web.Server.Services.Settings;
 

@@ -41,26 +41,36 @@ public class PersonalAccessTokenAuthenticationHandler(
       return AuthenticateResult.NoResult();
     }
 
-    // Basic rate limiting keyed by remote IP
+    // Two-axis throttling: independent limits per source IP and per token.
+    // Combined (IP, token) keys would let an attacker rotate token IDs
+    // from one IP to bypass the limit; independent keys per axis let each axis
+    // catch its own attack pattern.
     var remoteIp = Context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    var failureKey = CacheKeys.GetPersonalAccessTokenAuthFailure(remoteIp);
-    if (_failureCache.TryGetValue<int>(failureKey, out var failureCount) && failureCount >= MaxFailures)
+    var tokenIdPrefix = providedPat.Split(':', 2).FirstOrDefault();
+    var ipFailureKey = CacheKeys.GetPersonalAccessTokenAuthFailureByIp(remoteIp);
+    var tokenFailureKey = CacheKeys.GetPersonalAccessTokenAuthFailureByToken(tokenIdPrefix);
+
+    if (_failureCache.TryGetValue<int>(ipFailureKey, out var ipFailures) && ipFailures >= MaxFailures)
     {
-      return AuthenticateResult.Fail("Too many failed token attempts. Try again later.");
+      return AuthenticateResult.Fail("Too many failed token attempts from this source. Try again later.");
+    }
+
+    if (_failureCache.TryGetValue<int>(tokenFailureKey, out var tokenFailures) && tokenFailures >= MaxFailures)
+    {
+      return AuthenticateResult.Fail("Too many failed attempts for this token. Try again later.");
     }
 
     var validationResult = await _personalAccessTokenManager.ValidateToken(providedPat);
     if (!validationResult.IsSuccess || !validationResult.Value.IsValid)
     {
-      // Increment failure counter
-      var newCount = failureCount + 1;
-      _failureCache.Set(failureKey, newCount, _failureWindow);
+      _failureCache.Set(ipFailureKey, ipFailures + 1, _failureWindow);
+      _failureCache.Set(tokenFailureKey, tokenFailures + 1, _failureWindow);
       return AuthenticateResult.Fail("Invalid personal access token");
     }
 
     var result = validationResult.Value;
 
-    // Load the user by id and build a ClaimsPrincipal similar to other authentication handlers
+    // By ID, like the other authentication handlers.
     var user = await _userManager.FindByIdAsync(result.UserId.Value.ToString());
     if (user is null)
     {
@@ -73,8 +83,8 @@ public class PersonalAccessTokenAuthenticationHandler(
       return AuthenticateResult.Fail("User account is locked");
     }
 
-    // Successful auth resets failure counter
-    _failureCache.Remove(failureKey);
+    _failureCache.Remove(ipFailureKey);
+    _failureCache.Remove(tokenFailureKey);
 
     var claims = new List<Claim>
     {
@@ -82,19 +92,16 @@ public class PersonalAccessTokenAuthenticationHandler(
       new(UserClaimTypes.TenantId, user.TenantId.ToString()),
       new(ClaimTypes.NameIdentifier, user.Id.ToString()),
       new(ClaimTypes.Name, user.UserName ?? "User"),
-      new(UserClaimTypes.AuthenticationMethod, PersonalAccessTokenAuthenticationSchemeOptions.DefaultScheme),
+      new(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.PersonalAccessTokenMethod),
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
+      new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
+      new(PrincipalClaimTypes.CredentialId, result.TokenId.Value.ToString()),
+      new(PrincipalClaimTypes.CredentialType, PrincipalClaimValues.PersonalAccessTokenCredentialType),
     };
 
     if (!string.IsNullOrWhiteSpace(user.Email))
     {
       claims.Add(new Claim(ClaimTypes.Email, user.Email));
-    }
-
-    // Add role claims from user manager
-    var roles = await _userManager.GetRolesAsync(user);
-    foreach (var role in roles)
-    {
-      claims.Add(new Claim(ClaimTypes.Role, role));
     }
 
     var identity = new ClaimsIdentity(claims, Scheme.Name);

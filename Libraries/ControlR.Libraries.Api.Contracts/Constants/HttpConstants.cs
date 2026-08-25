@@ -12,30 +12,36 @@ public static class HttpConstants
   public static class Internal
   {
     public const string AuthEndpoint = "/api/auth";
+    public const string AuthorizationChangeLogsEndpoint = "/api/authorization-change-logs";
+    public const string CustomersEndpoint = "/api/customers";
+    public const string DeploymentOptionsEndpoint = "/api/deployment-options";
     public const string DesktopPreviewEndpoint = "/api/desktop-preview";
     public const string DeviceFileSystemEndpoint = "/api/device-file-system";
+    public const string DeviceGroupsEndpoint = "/api/device-groups";
     public const string DevicesEndpoint = "/api/devices";
     public const string DeviceTagsEndpoint = "/api/device-tags";
+    public const string EffectivePermissionsEndpoint = "/api/effective-permissions";
     public const string EffectiveUserPreferencesEndpoint = "/api/effective-user-preferences";
     public const string InstallerKeysEndpoint = "/api/installer-keys";
     public const string InvitesEndpoint = "/api/invites";
     public const string LogonTokensEndpoint = "/api/logon-tokens";
+    public const string PermissionAssignmentsEndpoint = "/api/permission-assignments";
     public const string PersonalAccessTokensEndpoint = "/api/personal-access-tokens";
     public const string PublicServerSettingsEndpoint = "/api/public-server-settings";
-    public const string RolesEndpoint = "/api/roles";
     public const string ServerAlertEndpoint = "/api/server-alert";
     public const string ServerLogsEndpoint = "/api/server-logs";
+    public const string ServerServiceAccountsEndpoint = "/api/server-service-accounts";
     public const string ServerStatsEndpoint = "/api/server-stats";
     public const string TagsEndpoint = "/api/tags";
     public const string TenantsEndpoint = "/api/tenants";
+    public const string TenantServiceAccountsEndpoint = "/api/tenant-service-accounts";
     public const string TenantSettingsEndpoint = "/api/tenant-settings";
     public const string TestEmailEndpoint = "/api/test-email";
+    public const string UserGroupsEndpoint = "/api/user-groups";
     public const string UserPreferencesEndpoint = "/api/user-preferences";
-    public const string UserRolesEndpoint = "/api/user-roles";
     public const string UsersEndpoint = "/api/users";
     public const string UserServerSettingsEndpoint = "/api/user-server-settings";
     public const string UserStorageEndpoint = "/api/user-storage";
-    public const string UserTagsEndpoint = "/api/user-tags";
     public const string VersionEndpoint = "/api/version";
   }
   public static class V1
@@ -43,7 +49,8 @@ public static class HttpConstants
     public const string DevicesEndpoint = "/api/v1/devices";
     public const string InstallerKeysEndpoint = "/api/v1/installer-keys";
     public const string LogonTokensEndpoint = "/api/v1/logon-tokens";
-    public const string ServiceAccountsEndpoint = "/api/v1/service-accounts";
+    public const string ServerServiceAccountsEndpoint = "/api/v1/server-service-accounts";
     public const string TenantsEndpoint = "/api/v1/tenants";
+    public const string TenantServiceAccountsEndpoint = "/api/v1/tenant-service-accounts";
   }
 }

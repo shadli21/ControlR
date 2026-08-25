@@ -1,4 +1,5 @@
 ﻿@implements IDisposable
+@using System.Security.Claims
 
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager NavMan
@@ -11,18 +12,22 @@
   <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
     Home
   </MudNavLink>
-  <MudNavLink Disabled="!_isAuthenticated" Href="@(ClientRoutes.Deploy)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.RocketLaunch">
+  <MudNavLink Disabled="!_isAuthenticated" Href="@(ClientRoutes.Deploy)" Match="NavLinkMatch.Prefix"
+              Icon="@Icons.Material.Filled.RocketLaunch">
     Deploy
   </MudNavLink>
-  <AuthorizeView Roles="@($"{RoleNames.TenantAdministrator}, {RoleNames.InstallerKeyManager}")">
-    <MudNavLink Disabled="!_isAuthenticated" Href="@(ClientRoutes.InstallerKeys)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.InstallDesktop">
+  <AuthorizeView Policy="@(PolicyNames.RequireInstallerKeyRead)">
+    <MudNavLink Disabled="!_isAuthenticated" Href="@(ClientRoutes.InstallerKeys)" Match="NavLinkMatch.Prefix"
+                Icon="@Icons.Material.Filled.InstallDesktop">
       Installer Keys
     </MudNavLink>
   </AuthorizeView>
-  <MudNavLink Disabled="!_isAuthenticated" Href="@(ClientRoutes.PersonalAccessTokens)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Key">
+  <MudNavLink Disabled="!_isAuthenticated" Href="@(ClientRoutes.PersonalAccessTokens)" Match="NavLinkMatch.Prefix"
+              Icon="@Icons.Material.Filled.Key">
     Access Tokens
   </MudNavLink>
-  <MudNavLink Disabled="!_isAuthenticated" Href="@(ClientRoutes.Settings)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">
+  <MudNavLink Disabled="!_isAuthenticated" Href="@(ClientRoutes.Settings)" Match="NavLinkMatch.Prefix"
+              Icon="@Icons.Material.Filled.Settings">
     Settings
   </MudNavLink>
 
@@ -30,40 +35,117 @@
     About
   </MudNavLink>
 
-  <AuthorizeView Roles="@($"{RoleNames.TenantAdministrator}")">
+  @if (_canSeeTenantAdmin)
+  {
     <div class="ms-2 mt-5">
       <MudText Typo="Typo.caption" Color="Color.Default">
         Tenant Admin
       </MudText>
     </div>
-    <MudNavLink Href="@(ClientRoutes.Permissions)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupervisedUserCircle">
-      Permissions
-    </MudNavLink>
-    <MudNavLink Href="@(ClientRoutes.Invite)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Email">
-      Invite
-    </MudNavLink>
-    <MudNavLink Href="@(ClientRoutes.TenantSettings)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">
-      Tenant Settings
-    </MudNavLink>
-  </AuthorizeView>
-  <AuthorizeView Roles="@(RoleNames.ServerAdministrator)">
-    <Authorized>
-      <div class="ms-2 mt-5">
-        <MudText Typo="Typo.caption" Color="Color.Default">
-          Server Admin
-        </MudText>
-      </div>
-      <MudNavLink Href="@(ClientRoutes.ServerSettings)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">
+    <AuthorizeView Policy="@(PolicyNames.RequireUsersRead)">
+      <MudNavLink Href="@(ClientRoutes.Users)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People">
+        Users
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireUserGroupsRead)">
+      <MudNavLink Href="@(ClientRoutes.UserGroups)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Groups">
+        User Groups
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireDeviceGroupsRead)">
+      <MudNavLink Href="@(ClientRoutes.DeviceGroups)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Devices">
+        Device Groups
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireCustomersRead)">
+      <MudNavLink Href="@(ClientRoutes.Customers)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Business">
+        Customers
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequirePermissionAssignmentsRead)">
+      <MudNavLink Href="@(ClientRoutes.Permissions)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">
+        Permissions
+      </MudNavLink>
+    </AuthorizeView>
+    @*
+      This tenant link is suppressed for users who already hold the server-scoped
+      Authorization Logs permission, so they don't see the same link in both the
+      Tenant Admin and Server Admin sections.
+    *@
+    @if (!_canSeeServerAuthorizationLogs)
+    {
+      <AuthorizeView Policy="@(PolicyNames.RequireAuthorizationLogsRead)">
+        <MudNavLink Href="@(ClientRoutes.AuthorizationLogs)" Match="NavLinkMatch.Prefix"
+                    Icon="@Icons.Material.Filled.History">
+          Authorization Logs
+        </MudNavLink>
+      </AuthorizeView>
+    }
+    <AuthorizeView Policy="@(PolicyNames.RequireTagsWrite)">
+      <MudNavLink Href="@(ClientRoutes.Tags)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.NewLabel">
+        Device Tags
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireServiceAccountRead)">
+      <MudNavLink Href="@(ClientRoutes.TenantServiceAccounts)" Match="NavLinkMatch.Prefix"
+                  Icon="@Icons.Material.Filled.Badge">
+        Tenant Service Accounts
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireTenantUsersWrite)">
+      <MudNavLink Href="@(ClientRoutes.Invite)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Email">
+        Invite
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequirePermissionAssignmentsRead)">
+      <MudNavLink Href="@(ClientRoutes.EffectivePermissions)" Match="NavLinkMatch.Prefix"
+                  Icon="@Icons.Material.Filled.FactCheck">
+        Effective Permissions
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireTenantSettingsRead)">
+      <MudNavLink Href="@(ClientRoutes.TenantSettings)" Match="NavLinkMatch.Prefix"
+                  Icon="@Icons.Material.Filled.Settings">
+        Tenant Settings
+      </MudNavLink>
+    </AuthorizeView>
+  }
+  @if (_canSeeServerAdmin)
+  {
+    <div class="ms-2 mt-5">
+      <MudText Typo="Typo.caption" Color="Color.Default">
+        Server Admin
+      </MudText>
+    </div>
+    <AuthorizeView Policy="@(PolicyNames.RequireServerServiceAccountsRead)">
+      <MudNavLink Href="@(ClientRoutes.ServerServiceAccounts)" Match="NavLinkMatch.Prefix"
+                  Icon="@Icons.Material.Filled.SupervisorAccount">
+        Server Service Accounts
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireServerAuthorizationLogsRead)">
+      <MudNavLink Href="@(ClientRoutes.ServerAuthorizationLogs)" Match="NavLinkMatch.Prefix"
+                  Icon="@Icons.Material.Filled.History">
+        Authorization Logs
+      </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireServerAdmin)">
+      <MudNavLink Href="@(ClientRoutes.ServerSettings)" Match="NavLinkMatch.Prefix"
+                  Icon="@Icons.Material.Filled.Settings">
         Server Settings
       </MudNavLink>
-      <MudNavLink Href="@(ClientRoutes.ServerStats)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings">
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireServerTelemetryRead)">
+      <MudNavLink Href="@(ClientRoutes.ServerStats)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.QueryStats">
         Server Stats
       </MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@(PolicyNames.RequireServerTelemetryRead)">
       <MudNavLink Href="@(ClientRoutes.ServerLogs)" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TextSnippet">
         Server Logs
       </MudNavLink>
-    </Authorized>
-  </AuthorizeView>
+    </AuthorizeView>
+  }
 
   <MudDivider Class="mt-2 mb-2" />
 
@@ -105,9 +187,34 @@
 
 @code {
 
+  private static readonly string[] TenantAdminSectionPermissions =
+  [
+    PermissionNames.TenantPermissionsRead,
+    PermissionNames.TenantUsersRead,
+    PermissionNames.TenantUsersWrite,
+    PermissionNames.TenantUserGroupsRead,
+    PermissionNames.TenantDeviceGroupsRead,
+    PermissionNames.TenantCustomersRead,
+    PermissionNames.TenantTagsWrite,
+    PermissionNames.ServiceAccountRead,
+    PermissionNames.TenantSettingsRead,
+    PermissionNames.TenantAuthorizationLogsRead,
+  ];
+
+  private static readonly string[] ServerAdminSectionPermissions =
+  [
+    PermissionNames.ServerServiceAccountsRead,
+    PermissionNames.ServerAdmin,
+    PermissionNames.ServerAuthorizationLogsRead,
+    PermissionNames.ServerTelemetryRead,
+  ];
+
   private string? _currentUrl;
   private bool _isAuthenticated;
   private bool _isPublicRegistrationEnabled;
+  private bool _canSeeTenantAdmin;
+  private bool _canSeeServerAdmin;
+  private bool _canSeeServerAuthorizationLogs;
 
   public void Dispose()
   {
@@ -120,9 +227,10 @@
     await base.OnInitializedAsync();
 
     _isPublicRegistrationEnabled = (await PublicRegistingsProvider.GetPublicServerSettings()).IsPublicRegistrationEnabled;
-    
+
     var state = await AuthState.GetAuthenticationStateAsync();
     _isAuthenticated = state.User.IsAuthenticated();
+    UpdateSectionVisibility(state.User);
 
     AuthState.AuthenticationStateChanged += HandleAuthStateChanged;
     _currentUrl = NavMan.ToBaseRelativePath(NavMan.Uri);
@@ -135,6 +243,7 @@
     {
       var state = await stateTask;
       _isAuthenticated = state.User.IsAuthenticated();
+      UpdateSectionVisibility(state.User);
       await InvokeAsync(StateHasChanged);
     }
     catch (Exception ex)
@@ -149,9 +258,10 @@
     {
       return;
     }
-    
+
     var result = await ControlrApi.Value.Auth.LogOut();
-    if (!result.IsSuccess) {
+    if (!result.IsSuccess)
+    {
       Snackbar.Add("Logout failed", Severity.Error);
       return;
     }
@@ -163,5 +273,18 @@
   {
     _currentUrl = NavMan.ToBaseRelativePath(e.Location);
     InvokeAsync(StateHasChanged);
+  }
+
+  private void UpdateSectionVisibility(ClaimsPrincipal user)
+  {
+    _canSeeTenantAdmin = HasAnyPermission(user, TenantAdminSectionPermissions);
+    _canSeeServerAdmin = HasAnyPermission(user, ServerAdminSectionPermissions);
+    _canSeeServerAuthorizationLogs = user.HasClaim(PermissionPolicies.PermissionClaimType,
+PermissionNames.ServerAuthorizationLogsRead);
+  }
+
+  private static bool HasAnyPermission(ClaimsPrincipal user, string[] permissions)
+  {
+    return permissions.Any(permission => user.HasClaim(PermissionPolicies.PermissionClaimType, permission));
   }
 }

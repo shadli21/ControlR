@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 
+using ControlR.Libraries.Api.Contracts.Constants;
+
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 
 public record CreateTenantRequestDto(
   [property: Required]
-  [property: StringLength(100)]
+  [property: StringLength(DtoLimits.TenantNameMaxLength)]
   string Name);

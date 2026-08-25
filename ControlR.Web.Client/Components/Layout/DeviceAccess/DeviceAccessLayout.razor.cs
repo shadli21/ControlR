@@ -6,11 +6,13 @@ namespace ControlR.Web.Client.Components.Layout.DeviceAccess;
 public partial class DeviceAccessLayout
 {
   private bool _canGoBack;
+  private DeviceAccessPermissionsDto? _deviceAccessPermissions;
   private Guid _deviceId;
   private string? _deviceName;
   private string? _errorText;
   private HubConnectionState _hubConnectionState = HubConnectionState.Disconnected;
   private Guid _previousDeviceId;
+  private Guid _subscribedDeviceId;
 
   [Inject]
   public required ILazyInjector<IChatState> ChatState { get; init; }
@@ -75,6 +77,7 @@ public partial class DeviceAccessLayout
         await TryDisposeTerminal();
         await TryDisposeSessionActivity();
         await TryDisposeRemoteControlSession();
+        await TryUnsubscribeHeartbeat();
         ChatState.Value.Clear();
       }
       await base.DisposeAsync();
@@ -123,6 +126,7 @@ public partial class DeviceAccessLayout
 
       await GetDeviceInfo();
       _previousDeviceId = _deviceId;
+      _deviceAccessPermissions = null;
 
       // Registrations are removed in BaseLayout when disposing.
       Messenger.Value.Register<DtoReceivedMessage<DeviceResponseDto>>(this, HandleDeviceDtoReceivedMessage);
@@ -136,7 +140,9 @@ public partial class DeviceAccessLayout
       }
       else
       {
+        await RefreshDeviceAccessPermissions();
         await StartDeviceAccessActivity();
+        await SyncHeartbeatSubscription();
       }
     }
     catch (Exception ex)
@@ -163,6 +169,23 @@ public partial class DeviceAccessLayout
     {
       await GetDeviceInfo();
       _previousDeviceId = _deviceId;
+      _deviceAccessPermissions = null;
+      await RefreshDeviceAccessPermissions();
+      await SyncHeartbeatSubscription();
+    }
+  }
+
+  private void EnforceCurrentPagePermission()
+  {
+    if (_deviceAccessPermissions is null)
+    {
+      return;
+    }
+
+    var currentPath = new Uri(NavManager.Uri).AbsolutePath;
+    if (!DeviceAccessPagePermissions.CanAccess(_deviceAccessPermissions, currentPath))
+    {
+      NavigateToFirstAllowedPage();
     }
   }
 
@@ -224,7 +247,6 @@ public partial class DeviceAccessLayout
       return;
     }
 
-    // Add the response to our chat messages
     var chatMessage = new ChatMessage
     {
       Message = response.Message,
@@ -269,7 +291,11 @@ public partial class DeviceAccessLayout
     _hubConnectionState = message.NewState;
     if (_hubConnectionState == HubConnectionState.Connected)
     {
+      // Server-side group memberships reset on (re)connect; re-subscribe to the device heartbeat.
+      _subscribedDeviceId = Guid.Empty;
+      await RefreshDeviceAccessPermissions();
       await StartDeviceAccessActivity();
+      await SyncHeartbeatSubscription();
     }
     await InvokeAsync(StateHasChanged);
   }
@@ -277,6 +303,31 @@ public partial class DeviceAccessLayout
   private void NavigateBackToDashboard()
   {
     NavManager.NavigateTo("/");
+  }
+
+  private void NavigateToFirstAllowedPage()
+  {
+    var targetPath = DeviceAccessPagePermissions.FirstAllowedRoute(_deviceAccessPermissions);
+    if (targetPath is null)
+    {
+      _errorText = "You are not authorized to access any device-access page.";
+      return;
+    }
+
+    NavManager.NavigateTo($"{targetPath}?deviceId={_deviceId}", replace: true);
+  }
+
+  private async Task RefreshDeviceAccessPermissions()
+  {
+    if (!ViewerHub.Value.IsConnected || _deviceId == Guid.Empty)
+    {
+      return;
+    }
+
+    var result = await ViewerHub.Value.Server.GetDeviceAccessPermissions(_deviceId);
+    _deviceAccessPermissions = result.IsSuccess ? result.Value : null;
+    EnforceCurrentPagePermission();
+    await InvokeAsync(StateHasChanged);
   }
 
   private async Task StartDeviceAccessActivity()
@@ -292,6 +343,31 @@ public partial class DeviceAccessLayout
     catch (Exception ex)
     {
       Logger.LogError(ex, "Error starting device access activity.");
+    }
+  }
+
+  private async Task SyncHeartbeatSubscription()
+  {
+    if (!ViewerHub.Value.IsConnected || _deviceId == Guid.Empty || _subscribedDeviceId == _deviceId)
+    {
+      return;
+    }
+
+    if (_subscribedDeviceId != Guid.Empty)
+    {
+      await ViewerHub.Value.Server.UnsubscribeFromDeviceHeartbeats([_subscribedDeviceId]);
+    }
+
+    var result = await ViewerHub.Value.Server.SubscribeToDeviceHeartbeats([_deviceId]);
+    if (result.IsSuccess)
+    {
+      _subscribedDeviceId = _deviceId;
+    }
+    else
+    {
+      _subscribedDeviceId = Guid.Empty;
+      Logger.LogWarning("Failed to subscribe to the device heartbeat: {Reason}", result.Reason);
+      Snackbar.Value.Add($"Failed to subscribe to the device heartbeat: {result.Reason}", Severity.Warning);
     }
   }
 
@@ -387,6 +463,21 @@ public partial class DeviceAccessLayout
     catch (Exception ex)
     {
       Logger.LogError(ex, "Error disposing terminal session.");
+    }
+  }
+
+  private async Task TryUnsubscribeHeartbeat()
+  {
+    try
+    {
+      if (ViewerHub.Value.IsConnected && _subscribedDeviceId != Guid.Empty)
+      {
+        await ViewerHub.Value.Server.UnsubscribeFromDeviceHeartbeats([_subscribedDeviceId]);
+      }
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Error unsubscribing from the device heartbeat.");
     }
   }
 

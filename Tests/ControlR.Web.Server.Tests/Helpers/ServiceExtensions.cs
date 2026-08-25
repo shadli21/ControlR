@@ -1,6 +1,8 @@
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Data;
+using ControlR.Web.Server.Services.PermissionAssignments;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Services.Users;
 using Microsoft.AspNetCore.Http;
@@ -46,9 +48,9 @@ internal static class ServiceExtensions
   /// <returns>The configured controller instance</returns>
   public static async Task<T> CreateControllerWithServerPrincipal<T>(this IServiceScope scope, string? accountName = null) where T : ControllerBase
   {
-    var serverPrincipal = await scope.ServiceProvider.CreateServerPrincipal(accountName);
+    var (principal, _, _) = await TestPrincipalHelper.CreateServerServiceAccountAsync(scope.ServiceProvider, accountName);
     var controller = scope.CreateController<T>();
-    controller.ControllerContext.HttpContext.User = serverPrincipal;
+    controller.ControllerContext.HttpContext.User = principal;
     return controller;
   }
 
@@ -59,24 +61,24 @@ internal static class ServiceExtensions
   /// <param name="scope">The service scope to use for dependency resolution</param>
   /// <param name="tenantName">Optional tenant name</param>
   /// <param name="userEmail">Optional user email</param>
-  /// <param name="roles">Optional roles to assign to the user</param>
+  /// <param name="presets">Optional permission presets to assign to the user</param>
   /// <returns>A tuple containing the controller, tenant, and user</returns>
   public static async Task<(T controller, Tenant tenant, AppUser user)> CreateControllerWithTestData<T>(
     this IServiceScope scope,
     string tenantName = "Test Tenant",
     string userEmail = "test@example.com",
-    params string[] roles) where T : ControllerBase
+    params string[] presets) where T : ControllerBase
   {
     var services = scope.ServiceProvider;
     var tenant = await services.CreateTestTenant(tenantName);
 
     // Ensure there is a seed user so our test user won't become the first-user admin automatically.
-    if (!roles.Contains(RoleNames.ServerAdministrator))
+    if (!presets.Contains(PermissionPresets.ServerAdministrator))
     {
       await services.CreateTestUser(tenant.Id, email: "seed@t.local");
     }
 
-    var user = await services.CreateTestUser(tenant.Id, userEmail, roles);
+    var user = await services.CreateTestUser(tenant.Id, userEmail, presets);
     var controller = await scope.CreateControllerWithUser<T>(user);
 
     return (controller, tenant, user);
@@ -107,10 +109,15 @@ internal static class ServiceExtensions
   {
     var manager = services.GetRequiredService<IServiceAccountManager>();
     var accountNameValue = accountName ?? $"server-principal-{Guid.NewGuid():N}";
-    var result = await manager.CreateForServer(accountNameValue, null, TestContext.Current.CancellationToken);
+    var accountResult = await manager.CreateForServer(accountNameValue, null, TestContext.Current.CancellationToken);
 
-    Assert.True(result.IsSuccess);
-    return TestPrincipalHelper.CreateServerServiceAccountPrincipal(result.Value);
+    Assert.True(accountResult.IsSuccess);
+
+    var credResult = await manager.AddCredentialForServer(
+      accountResult.Value.Id, "Credential", expiresAt: null, accountResult.Value.Id, TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
+    return TestPrincipalHelper.CreateServerServiceAccountPrincipal(accountResult.Value, credResult.Value.Credential);
   }
 
   /// <summary>
@@ -181,22 +188,21 @@ internal static class ServiceExtensions
   }
 
   /// <summary>
-  /// Creates a test user with the specified roles and saves it to the database.
+  /// Creates a test user with the specified permission presets and saves it to the database.
   /// </summary>
   /// <param name="services">The service provider.</param>
   /// <param name="tenantId">The tenant ID for the user.</param>
   /// <param name="email">Optional email, defaults to "test@example.com".</param>
-  /// <param name="roles">Optional roles to assign to the user.</param>
+  /// <param name="presets">Optional permission presets to assign to the user.</param>
   /// <returns>The created user.</returns>
   public static async Task<AppUser> CreateTestUser(
     this IServiceProvider services,
     Guid tenantId,
     string email = "test@example.com",
-    params string[] roles)
+    params string[] presets)
   {
     using var scope = services.CreateScope();
     var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
 
     var userResult = await userCreator.CreateUser(email, "T3stP@ssw0rd!", tenantId);
     if (!userResult.Succeeded)
@@ -205,25 +211,34 @@ internal static class ServiceExtensions
     }
 
     var user = userResult.User;
-    await AddRolesIfMissingAsync(userManager, user, roles);
+    await SeedPresetAssignmentsAsync(scope.ServiceProvider, user, presets);
     return user;
   }
 
   /// <summary>
-  /// Creates a test user with the specified roles and saves it to the database.
+  /// Creates a test user in a brand-new, isolated tenant (no tenantId supplied), and saves it
+  /// to the database.
   /// </summary>
+  /// <remarks>
+  /// Because no tenant is supplied, <see cref="IUserCreator"/> creates a new isolated tenant for
+  /// this user. The user also becomes the self-registered first-user server administrator when
+  /// the app instance is empty (as it is for a fresh <c>TestAppBuilder.CreateTestApp</c>), and
+  /// NOT when other users already exist. This mirrors production's first-user-self-registration
+  /// behavior. Prefer passing an explicit <c>tenantId</c> (and an explicit
+  /// <c>PermissionPresets.ServerAdministrator</c> when a server admin is intended) to avoid
+  /// depending on this value.
+  /// </remarks>
   /// <param name="services">The service provider.</param>
   /// <param name="email">Optional email, defaults to "test@example.com".</param>
-  /// <param name="roles">Optional roles to assign to the user.</param>
+  /// <param name="presets">Optional permission presets to assign to the user.</param>
   /// <returns>The created user.</returns>
   public static async Task<AppUser> CreateTestUser(
     this IServiceProvider services,
     string email = "test@example.com",
-    params string[] roles)
+    params string[] presets)
   {
     using var scope = services.CreateScope();
     var userCreator = scope.ServiceProvider.GetRequiredService<IUserCreator>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
 
     var userResult = await userCreator.CreateUser(email, "T3stP@ssw0rd!", returnUrl: null);
     if (!userResult.Succeeded)
@@ -232,24 +247,16 @@ internal static class ServiceExtensions
     }
 
     var user = userResult.User;
-    await AddRolesIfMissingAsync(userManager, user, roles);
+    await SeedPresetAssignmentsAsync(scope.ServiceProvider, user, presets);
     return user;
   }
 
-  private static async Task AddRolesIfMissingAsync(UserManager<AppUser> userManager, AppUser user, IEnumerable<string> roles)
+  private static async Task SeedPresetAssignmentsAsync(
+    IServiceProvider provider,
+    AppUser user,
+    IEnumerable<string> presetNames)
   {
-    var existingRoles = new HashSet<string>(await userManager.GetRolesAsync(user));
-    foreach (var role in roles)
-    {
-      if (!existingRoles.Contains(role))
-      {
-        var addResult = await userManager.AddToRoleAsync(user, role);
-        if (!addResult.Succeeded)
-        {
-          throw new InvalidOperationException($"Failed to add role {role} to user: {string.Join(", ", addResult.Errors.Select(e => e.Description))}");
-        }
-        existingRoles.Add(role);
-      }
-    }
+    var seeder = provider.GetRequiredService<IPermissionAssignmentSeeder>();
+    await seeder.SeedAssignments(user.Id, user.TenantId, presetNames);
   }
 }

@@ -1,3 +1,4 @@
+using ControlR.Web.Client.Components.Shared;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace ControlR.Web.Client.Components.Pages;
@@ -35,26 +36,27 @@ public partial class PersonalAccessTokens
 
       if (result.IsSuccess)
       {
-        // Show the dialog with the new personal access token
-        var parameters = new DialogParameters
+        var createdToken = result.Value.PersonalAccessToken;
+
+        var parameters = new DialogParameters<SecretDisplayDialog>
         {
-          { nameof(PersonalAccessTokenDialog.PersonalAccessToken), result.Value.PersonalAccessToken },
-          { nameof(PersonalAccessTokenDialog.PlainTextKey), result.Value.PlainTextToken }
+          { x => x.Title, "Personal Access Token Created" },
+          { x => x.Secret, result.Value.PlainTextToken },
+          { x => x.SecretLabel, "Personal Access Token" },
+          { x => x.Subtitle, createdToken.Name },
+          { x => x.SubtitleLabel, "Token Name" }
         };
 
-        var dialogOptions = new DialogOptions
-        {
-          BackdropClick = false,
-          FullWidth = true,
-          MaxWidth = MaxWidth.Small
-        };
+        var dialogOptions = SecretDisplayDialog.DefaultOptions;
 
-        await DialogService.ShowAsync<PersonalAccessTokenDialog>("Personal Access Token Created", parameters, dialogOptions);
+        var dialogRef = await DialogService.ShowAsync<SecretDisplayDialog>("Personal Access Token Created", parameters, dialogOptions);
+        await dialogRef.Result;
 
-        // Refresh the list and clear the input
         await LoadPersonalAccessTokens();
         _newTokenName = string.Empty;
         Snackbar.Add("Personal access token created successfully", Severity.Success);
+
+        await ManagePermissions(createdToken);
       }
       else
       {
@@ -125,12 +127,36 @@ public partial class PersonalAccessTokens
       _isLoading = false;
     }
   }
+
+  private async Task ManagePermissions(PersonalAccessTokenResponseDto personalAccessToken)
+  {
+    var parameters = new DialogParameters<PermissionAssignmentPanelDialog>
+    {
+      { x => x.PrincipalKind, PermissionPrincipalKind.PersonalAccessToken },
+      { x => x.PrincipalId, personalAccessToken.Id }
+    };
+
+    var dialogRef = await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
+      $"Permissions: {personalAccessToken.Name}",
+      parameters,
+      PermissionAssignmentPanelDialog.DefaultOptions);
+    await dialogRef.Result;
+
+    await LoadPersonalAccessTokens();
+  }
+
   private async Task OnKeyDown(KeyboardEventArgs e)
   {
     if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newTokenName))
     {
       await CreatePersonalAccessToken();
     }
+  }
+
+  private async Task Refresh()
+  {
+    await LoadPersonalAccessTokens();
+    Snackbar.Add("Personal access tokens refreshed", Severity.Success);
   }
 
   private async Task RenamePersonalAccessToken(PersonalAccessTokenResponseDto personalAccessToken)

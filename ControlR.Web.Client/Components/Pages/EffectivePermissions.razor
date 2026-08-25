@@ -1,0 +1,72 @@
+@attribute [Route(ClientRoutes.EffectivePermissions)]
+@attribute [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
+
+<PageTitle>Effective Permissions</PageTitle>
+
+<PrimaryTitle>
+  Effective Permissions
+</PrimaryTitle>
+
+<MudGrid>
+  <MudItem xs="12" md="5">
+    <MudPaper Class="pa-4">
+      <MudText Typo="Typo.h6" Class="mb-3">Query Parameters</MudText>
+      <MudSelect T="PermissionPrincipalKind" @bind-Value="_principalKind" Label="Principal Kind" Class="mb-2">
+        <MudSelectItem Value="PermissionPrincipalKind.User">User</MudSelectItem>
+        <MudSelectItem Value="PermissionPrincipalKind.UserGroup">User Group</MudSelectItem>
+        <MudSelectItem Value="PermissionPrincipalKind.ServiceAccount">Service Account</MudSelectItem>
+      </MudSelect>
+      <PrincipalAutocomplete PrincipalKind="_principalKind"
+                             @bind-SelectedId="_selectedPrincipalId"
+                             Label="Search Principal"
+                             Class="mb-2" />
+      <MudSelect T="string" @bind-Value="_permissionName" Label="Permission" Class="mb-2"
+                 Dense="true" MaxHeight="400">
+        @foreach (var entry in _catalog)
+        {
+          <MudSelectItem T="string" Value="@entry.Name">@entry.DisplayName (@entry.Name)</MudSelectItem>
+        }
+      </MudSelect>
+      <MudSelect T="PermissionScopeKind" @bind-Value="_scopeKind" Label="Scope Kind" Class="mb-2">
+        <MudSelectItem Value="PermissionScopeKind.Server">Server</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.Tenant">Tenant</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.Device">Device</MudSelectItem>
+        <MudSelectItem Value="PermissionScopeKind.DeviceGroup">Device Group</MudSelectItem>
+      </MudSelect>
+      <ScopeAutocomplete ScopeKind="_scopeKind"
+                         @bind-SelectedId="_scopeId"
+                         Label="Scope"
+                         Class="mb-3" />
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Query" FullWidth="true">
+        Evaluate
+      </MudButton>
+    </MudPaper>
+  </MudItem>
+  <MudItem xs="12" md="7">
+    @if (_result is not null)
+    {
+      <MudPaper Class="pa-4">
+        @if (_result.IsAllowed)
+        {
+          <MudAlert Severity="Severity.Success">
+            <MudText Typo="Typo.h6">Allowed</MudText>
+            <MudText Typo="Typo.body2">The principal has the requested permission.</MudText>
+          </MudAlert>
+        }
+        else
+        {
+          <MudAlert Severity="Severity.Error">
+            <MudText Typo="Typo.h6">Denied</MudText>
+            <MudText Typo="Typo.body2">@(_result.DenyReason ?? "Permission denied by policy evaluation.")</MudText>
+          </MudAlert>
+        }
+      </MudPaper>
+    }
+    else
+    {
+      <MudText Typo="Typo.body1" Color="Color.Default">
+        Enter query parameters and click Evaluate to check effective permissions.
+      </MudText>
+    }
+  </MudItem>
+</MudGrid>

@@ -20,9 +20,9 @@ public static class AuthenticationRegistrationExtensions
         options.Password.RequireNonAlphanumeric = false;
         options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
       })
-      .AddRoles<AppRole>()
       .AddEntityFrameworkStores<AppDb>()
       .AddSignInManager()
+      .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>()
       .AddDefaultTokenProviders();
 
     if (appOptions.EnableInteractiveBearerLogin)

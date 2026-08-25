@@ -14,7 +14,12 @@ if (builder.HostEnvironment.IsDevelopment())
 builder.Services
   .AddAuthorizationCore(options =>
   {
-    options.AddPolicy(RequireServerAdministratorPolicy.PolicyName, RequireServerAdministratorPolicy.Create());
+    foreach (var (policyName, definition) in PermissionPolicies.Definitions)
+    {
+      options.AddPolicy(policyName, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim(PermissionPolicies.PermissionClaimType, definition.PermissionName));
+    }
   });
 
 builder.Services.AddCascadingAuthenticationState();

@@ -28,7 +28,7 @@ public class RemoteControlPermissionMonitorMac(
   private readonly INavigationProvider _navigationProvider = navigationProvider;
   private readonly IToaster _toaster = toaster;
 
-  protected override async Task HandleElapsed()
+  protected override async Task HandleElapsed(CancellationToken stoppingToken)
   {
     await CheckPermissions();
   }

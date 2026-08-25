@@ -4,10 +4,13 @@ using System.Runtime.InteropServices;
 using System.Security.Claims;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos;
 using ControlR.Libraries.Api.Contracts.Dtos.Devices;
+using ControlR.Libraries.Api.Contracts.FilterSort;
 using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.DeviceManagement;
 using ControlR.Web.Server.Tests.Helpers;
@@ -38,7 +41,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // One device exists, two don't
     var existingId = Guid.NewGuid();
@@ -78,7 +81,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Act
     var request = new InternalDtos.DeleteDevicesRequestDto([.. nonExistentIds, existingId]);
-    var result = await controller.DeleteMany(db, request, TestContext.Current.CancellationToken);
+    var result = await controller.DeleteMany(db, services.GetRequiredService<IAuthorizationService>(), request, TestContext.Current.CancellationToken);
 
     // Assert
     var response = result.Value;
@@ -100,7 +103,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create an abundance of devices (15 total).
     // 10 will be requested for deletion, 5 stay untouched.
@@ -182,7 +185,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
       // Act — request 10 existing + 3 non-existent
       var request = new InternalDtos.DeleteDevicesRequestDto([.. deleteRequestIds, .. nonExistentIds]);
-      var result = await controller.DeleteMany(db, request, TestContext.Current.CancellationToken);
+      var result = await controller.DeleteMany(db, services.GetRequiredService<IAuthorizationService>(), request, TestContext.Current.CancellationToken);
 
       // Assert
       var response = result.Value;
@@ -237,6 +240,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     // Act
     var result = await controller.DeleteMany(
       scope.ServiceProvider.GetRequiredService<AppDb>(),
+      scope.ServiceProvider.GetRequiredService<IAuthorizationService>(),
       request,
       TestContext.Current.CancellationToken);
 
@@ -255,7 +259,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Devices that exist and will be requested for deletion
     var deleteIds = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
@@ -307,7 +311,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Act
     var request = new InternalDtos.DeleteDevicesRequestDto(deleteIds);
-    var result = await controller.DeleteMany(db, request, TestContext.Current.CancellationToken);
+    var result = await controller.DeleteMany(db, services.GetRequiredService<IAuthorizationService>(), request, TestContext.Current.CancellationToken);
 
     // Assert
     var response = result.Value;
@@ -338,7 +342,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Create test tenant and user
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create test tag
     var tagId = Guid.NewGuid();
@@ -425,7 +429,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with different online status
     for (var i = 0; i < 5; i++)
@@ -513,7 +517,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with specific combinations for multi-filter testing
     var testData = new[]
@@ -630,7 +634,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with varying numeric properties
     var cpuValues = new[] { 0.1, 0.3, 0.5, 0.7, 0.9 };
@@ -770,7 +774,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Create test tenant and user
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create test devices with varying string properties
     var devices = new[]
@@ -880,7 +884,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with specific patterns for testing
     var testDevices = new[]
@@ -1033,7 +1037,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices with 0 and non-zero CPU utilization
     var cpuValues = new[] { 0.0, 0.5, 0.0, 0.8 };
@@ -1125,7 +1129,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create a test device
     var deviceDto = new DeviceUpdateRequestDto(
@@ -1224,7 +1228,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var tenant2 = await services.CreateTestTenant("Tenant 2");
 
     // Create user for tenant 1
-    var user1 = await services.CreateTestUser(tenant1.Id, email: "user1@example.com", roles: RoleNames.DeviceSuperUser);
+    var user1 = await services.CreateTestUser(tenant1.Id, email: "user1@example.com", presets: PermissionPresets.DeviceSuperUser);
 
     // Create devices for both tenants
     for (int i = 0; i < 5; i++)
@@ -1335,7 +1339,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Create test tenant and user
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     // Create test tags
     var tagIds = new[] { Guid.NewGuid(), Guid.NewGuid() }.ToImmutableArray();
@@ -1464,7 +1468,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var request6 = new InternalDtos.DeviceSearchRequestDto
     {
       TagIds = [tagIds[0]],
-      IncludeUntaggedDevices = true,
+      ShowOnlyUntaggedDevices = true,
       Page = 0,
       PageSize = 20
     };
@@ -1480,7 +1484,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     // Test case 7: Filter by untagged devices only
     var request7 = new InternalDtos.DeviceSearchRequestDto
     {
-      IncludeUntaggedDevices = true,
+      ShowOnlyUntaggedDevices = true,
       Page = 0,
       PageSize = 20
     };
@@ -1504,7 +1508,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(5, response1.FilterCounts.OfflineDevices);
     Assert.Equal(4, response1.FilterCounts.TaggedDevices);
     Assert.Equal(6, response1.FilterCounts.UntaggedDevices);
-    Assert.Equal(6, response1.HiddenUntaggedDevices);
 
     // Test case 2: Filter by online status
     Assert.NotNull(response2);
@@ -1515,7 +1518,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(0, response2.FilterCounts.OfflineDevices);
     Assert.Equal(2, response2.FilterCounts.TaggedDevices);
     Assert.Equal(3, response2.FilterCounts.UntaggedDevices);
-    Assert.Equal(3, response2.HiddenUntaggedDevices);
     Assert.NotNull(response3);
     Assert.NotNull(response3.Items);
     Assert.All(response3.Items, device => Assert.NotNull(device.TagIds));
@@ -1523,7 +1525,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(4, response3.TotalItems);
     Assert.Equal(4, response3.FilterCounts.TaggedDevices);
     Assert.Equal(0, response3.FilterCounts.UntaggedDevices);
-    Assert.Equal(6, response3.HiddenUntaggedDevices);
 
     // Test case 4: Search by name
     Assert.NotNull(response4);
@@ -1539,16 +1540,14 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     }
 
     // Test case 6: Selected tag plus untagged devices
+    // ShowOnlyUntaggedDevices is exclusive: it disregards the supplied TagIds and returns
+    // only the untagged devices.
     Assert.NotNull(response6);
     Assert.NotNull(response6.Items);
-    Assert.Equal(10, response6.Items.Count);
-    Assert.Equal(5, response6.FilterCounts.OnlineDevices);
-    Assert.Equal(5, response6.FilterCounts.OfflineDevices);
-    Assert.Equal(4, response6.FilterCounts.TaggedDevices);
+    Assert.Equal(6, response6.Items.Count);
+    Assert.Equal(0, response6.FilterCounts.TaggedDevices);
     Assert.Equal(6, response6.FilterCounts.UntaggedDevices);
-    Assert.Equal(0, response6.HiddenUntaggedDevices);
-    Assert.Contains(response6.Items, device => device.TagIds is { Length: 0 });
-    Assert.Contains(response6.Items, device => device.TagIds?.Contains(tagIds[0]) == true);
+    Assert.All(response6.Items, device => Assert.True(device.TagIds is null or { Length: 0 }));
 
     // Test case 7: Untagged devices only
     Assert.NotNull(response7);
@@ -1556,7 +1555,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(6, response7.Items.Count);
     Assert.Equal(0, response7.FilterCounts.TaggedDevices);
     Assert.Equal(6, response7.FilterCounts.UntaggedDevices);
-    Assert.Equal(0, response7.HiddenUntaggedDevices);
     Assert.All(response7.Items, device => Assert.True(device.TagIds is null or { Length: 0 }));
   }
 
@@ -1571,7 +1569,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     var deviceDto = new DeviceUpdateRequestDto(
       Name: "Cross-Tenant Device",
@@ -1627,7 +1625,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     await using var db = services.GetRequiredService<AppDb>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     await controller.SetControllerUser(user, services.GetRequiredService<UserManager<AppUser>>());
 
@@ -1640,180 +1638,6 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Assert
     Assert.Empty(results);
-  }
-
-  [Fact]
-  public async Task GetDevices_StreamOnlyAuthorizedDevices()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
-    using var scope = testApp.CreateScope();
-    var services = scope.ServiceProvider;
-    var controller = scope.CreateController<DevicesController>();
-    await using var db = services.GetRequiredService<AppDb>();
-
-    var userManager = services.GetRequiredService<UserManager<AppUser>>();
-    var deviceManager = services.GetRequiredService<IDeviceManager>();
-    var agentVersionProvider = services.GetRequiredService<IAgentVersionProvider>();
-
-    var tenant = await services.CreateTestTenant();
-    _ = await services.CreateTestUser(tenant.Id, email: "seed-user-stream@test.local");
-    var user = await services.CreateTestUser(tenant.Id, email: "tagged-user-stream@test.local");
-
-    var allowedTag = new Tag { Id = Guid.NewGuid(), Name = "Allowed", TenantId = tenant.Id };
-    var blockedTag = new Tag { Id = Guid.NewGuid(), Name = "Blocked", TenantId = tenant.Id };
-    db.Tags.AddRange(allowedTag, blockedTag);
-
-    var persistedUser = await db.Users
-      .Include(x => x.Tags)
-      .FirstAsync(x => x.Id == user.Id, TestContext.Current.CancellationToken);
-    persistedUser.Tags ??= [];
-    persistedUser.Tags.Add(allowedTag);
-    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-    for (var i = 0; i < 3; i++)
-    {
-      var deviceDto = new DeviceUpdateRequestDto(
-        Name: $"Scoped Stream Device {i}",
-        AgentVersion: "1.0.0",
-        CpuUtilization: i + 1,
-        Id: Guid.NewGuid(),
-        Is64Bit: true,
-        OsArchitecture: Architecture.X64,
-        Platform: SystemPlatform.Windows,
-        ProcessorCount: 8,
-        OsDescription: "Windows 11",
-        TenantId: tenant.Id,
-        TotalMemory: 16384,
-        TotalStorage: 1024000,
-        UsedMemory: 8192,
-        UsedStorage: 512000,
-        CurrentUsers: [$"User{i}"],
-        MacAddresses: [$"00:00:00:00:10:{i:D2}"],
-        LocalIpV4: $"10.0.0.{i}",
-        LocalIpV6: $"fe80::10:{i}",
-        Drives: [new Drive { Name = "C:", VolumeLabel = "System", TotalSize = 1024000, FreeSpace = 512000 }]);
-
-      var connectionContext = new DeviceConnectionContext(
-        ConnectionId: $"stream-auth-{i}",
-        RemoteIpAddress: IPAddress.Loopback,
-        LastSeen: DateTimeOffset.UtcNow,
-        IsOnline: true);
-
-      Guid[]? tagIds = i switch
-      {
-        0 => [allowedTag.Id],
-        1 => [blockedTag.Id],
-        _ => null
-      };
-
-      await deviceManager.AddOrUpdate(deviceDto, connectionContext, tagIds);
-    }
-
-    await controller.SetControllerUser(user, userManager);
-
-    var results = new List<InternalDtos.DeviceResponseDto>();
-    await foreach (var device in controller.Get(db, agentVersionProvider))
-    {
-      results.Add(device);
-    }
-
-    Assert.Single(results);
-    Assert.All(results, device => Assert.Contains(allowedTag.Id, device.TagIds!));
-  }
-
-  [Fact]
-  public async Task SearchDevices_FiltersCountsToAuthorizedDevices()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
-    using var scope = testApp.CreateScope();
-    var services = scope.ServiceProvider;
-    var controller = scope.CreateController<DevicesController>();
-    await using var db = services.GetRequiredService<AppDb>();
-
-    var userManager = services.GetRequiredService<UserManager<AppUser>>();
-    var deviceManager = services.GetRequiredService<IDeviceManager>();
-    var agentVersionProvider = services.GetRequiredService<IAgentVersionProvider>();
-    var logger = services.GetRequiredService<ILogger<DevicesController>>();
-
-    var tenant = await services.CreateTestTenant();
-    _ = await services.CreateTestUser(tenant.Id, email: "seed-user@test.local");
-    var user = await services.CreateTestUser(tenant.Id, email: "tagged-user@test.local");
-
-    var allowedTag = new Tag { Id = Guid.NewGuid(), Name = "Allowed", TenantId = tenant.Id };
-    var blockedTag = new Tag { Id = Guid.NewGuid(), Name = "Blocked", TenantId = tenant.Id };
-    db.Tags.AddRange(allowedTag, blockedTag);
-
-    var persistedUser = await db.Users
-      .Include(x => x.Tags)
-      .FirstAsync(x => x.Id == user.Id, TestContext.Current.CancellationToken);
-    persistedUser.Tags ??= [];
-    persistedUser.Tags.Add(allowedTag);
-    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-    for (var i = 0; i < 3; i++)
-    {
-      var deviceDto = new DeviceUpdateRequestDto(
-        Name: $"Scoped Device {i}",
-        AgentVersion: "1.0.0",
-        CpuUtilization: i + 1,
-        Id: Guid.NewGuid(),
-        Is64Bit: true,
-        OsArchitecture: Architecture.X64,
-        Platform: SystemPlatform.Windows,
-        ProcessorCount: 8,
-        OsDescription: "Windows 11",
-        TenantId: tenant.Id,
-        TotalMemory: 16384,
-        TotalStorage: 1024000,
-        UsedMemory: 8192,
-        UsedStorage: 512000,
-        CurrentUsers: [$"User{i}"],
-        MacAddresses: [$"00:00:00:00:00:{i:D2}"],
-        LocalIpV4: $"192.168.50.{i}",
-        LocalIpV6: $"fe80::{i}",
-        Drives: [new Drive { Name = "C:", VolumeLabel = "System", TotalSize = 1024000, FreeSpace = 512000 }]);
-
-      var connectionContext = new DeviceConnectionContext(
-        ConnectionId: $"auth-test-{i}",
-        RemoteIpAddress: IPAddress.Loopback,
-        LastSeen: DateTimeOffset.UtcNow,
-        IsOnline: i == 0);
-
-      Guid[]? tagIds = i switch
-      {
-        0 => [allowedTag.Id],
-        1 => [blockedTag.Id],
-        _ => null
-      };
-
-      await deviceManager.AddOrUpdate(deviceDto, connectionContext, tagIds);
-    }
-
-    await controller.SetControllerUser(user, userManager);
-
-    var result = await controller.SearchDevices(
-      new InternalDtos.DeviceSearchRequestDto
-      {
-        Page = 0,
-        PageSize = 20
-      },
-      db,
-      agentVersionProvider,
-      logger);
-
-    var response = result.Value;
-
-    Assert.NotNull(response);
-    Assert.True(response.AnyDevicesForUser);
-    Assert.NotNull(response.Items);
-    Assert.Single(response.Items);
-    Assert.Equal(1, response.TotalItems);
-    Assert.Equal(1, response.FilterCounts.TaggedDevices);
-    Assert.Equal(0, response.FilterCounts.UntaggedDevices);
-    Assert.Equal(1, response.FilterCounts.OnlineDevices);
-    Assert.Equal(0, response.FilterCounts.OfflineDevices);
-    Assert.Equal(0, response.HiddenUntaggedDevices);
-    Assert.All(response.Items, device => Assert.Contains(allowedTag.Id, device.TagIds!));
   }
 
   [Fact]
@@ -1831,7 +1655,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var logger = services.GetRequiredService<ILogger<DevicesController>>();
 
     var tenant = await services.CreateTestTenant();
-    _ = await services.CreateTestUser(tenant.Id, email: "seed-logon-scope@test.local");
+    var user = await services.CreateTestUser(tenant.Id, email: "seed-logon-scope@test.local");
 
     var scopedDeviceId = Guid.NewGuid();
     var otherDeviceId = Guid.NewGuid();
@@ -1868,11 +1692,27 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
       await deviceManager.AddOrUpdate(deviceDto, connectionContext);
     }
 
+    var tokenId = Guid.NewGuid();
+    db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.LogonToken,
+      tokenId,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Device,
+      scopedDeviceId,
+      tenant.Id,
+      "test",
+      user.Id.ToString()));
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
     var claims = new List<Claim>
     {
       new(UserClaimTypes.TenantId, tenant.Id.ToString()),
-      new(UserClaimTypes.AuthenticationMethod, LogonTokenAuthenticationSchemeOptions.DefaultScheme),
-      new(UserClaimTypes.DeviceSessionScope, scopedDeviceId.ToString())
+      new(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.LogonTokenMethod),
+      new(UserClaimTypes.DeviceSessionScope, scopedDeviceId.ToString()),
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
+      new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
+      new(PrincipalClaimTypes.CredentialId, tokenId.ToString()),
+      new(PrincipalClaimTypes.CredentialType, CredentialType.LogonToken.ToString())
     };
 
     controller.ControllerContext = new ControllerContext
@@ -1905,7 +1745,92 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(1, response.FilterCounts.UntaggedDevices);
     Assert.Equal(1, response.FilterCounts.OnlineDevices);
     Assert.Equal(0, response.FilterCounts.OfflineDevices);
-    Assert.Equal(1, response.HiddenUntaggedDevices);
+  }
+
+  [Fact]
+  public void SearchDevices_TagAndDeviceGroupMatchModes_CombineCorrectly()
+  {
+    // Exercises FilterByTagsAndDeviceGroups, the shared helper both the Internal and
+    // V1 search endpoints delegate to. LINQ-to-objects avoids the EF in-memory provider's
+    // inability to translate List.All(...) sub-queries, which the relational SQL does support.
+    var tagA = Guid.NewGuid();
+    var tagB = Guid.NewGuid();
+    var groupX = Guid.NewGuid();
+    var groupY = Guid.NewGuid();
+
+    Device Dev(Guid[] tags, Guid[] groups) => new()
+    {
+      Id = Guid.NewGuid(),
+      Tags = tags.Select(t => new Tag { Id = t, Name = t.ToString() }).ToList(),
+      DeviceGroupMembers = groups.Select(g => new DeviceGroupMember { DeviceGroupId = g }).ToList()
+    };
+
+    // d1: tag A, group X | d2: A+B, X | d3: A, X+Y | d4: B, Y | d5: A+B, X+Y
+    var devices = new[]
+    {
+      Dev([tagA], [groupX]),
+      Dev([tagA, tagB], [groupX]),
+      Dev([tagA], [groupX, groupY]),
+      Dev([tagB], [groupY]),
+      Dev([tagA, tagB], [groupX, groupY])
+    }.AsQueryable();
+
+    int Count(List<Guid>? tags, FilterMatchMode tagMode, List<Guid>? groups, FilterMatchMode groupMode, bool includeUntagged = false)
+      => devices
+        .FilterByTagsAndDeviceGroups(tags, tagMode, groups, groupMode, includeUntagged)
+        .Count();
+
+    // Tags, Any over [A,B]: every device carries at least one → 5.
+    Assert.Equal(5, Count([tagA, tagB], FilterMatchMode.Any, null, FilterMatchMode.Any));
+    // Tags, All over [A,B]: only BOTH A and B → d2, d5 → 2.
+    Assert.Equal(2, Count([tagA, tagB], FilterMatchMode.All, null, FilterMatchMode.Any));
+    // Groups, Any over [X,Y]: every device is in a group → 5.
+    Assert.Equal(5, Count(null, FilterMatchMode.Any, [groupX, groupY], FilterMatchMode.Any));
+    // Groups, All over [X,Y]: only BOTH X and Y → d3, d5 → 2.
+    Assert.Equal(2, Count(null, FilterMatchMode.Any, [groupX, groupY], FilterMatchMode.All));
+    // Cross, Tags Any [A] + Groups Any [Y]: has A and in Y → d3, d5 → 2.
+    Assert.Equal(2, Count([tagA], FilterMatchMode.Any, [groupY], FilterMatchMode.Any));
+    // Cross, Tags All [A,B] + Groups All [X,Y]: only d5 → 1.
+    Assert.Equal(1, Count([tagA, tagB], FilterMatchMode.All, [groupX, groupY], FilterMatchMode.All));
+    // Default (Any) Tags [A]: d1, d2, d3, d5 → 4.
+    Assert.Equal(4, Count([tagA], FilterMatchMode.Any, null, FilterMatchMode.Any));
+
+    // Include untagged with Tags All [A]: unrecognized under the new contract because
+    // showOnlyUntaggedDevices is exclusive and disregards the supplied tag ids. Setup a
+    // dedicated device set to exercise each exclusive combination independently.
+    var untagged = new Device
+    {
+      Id = Guid.NewGuid(),
+      Tags = [],
+      DeviceGroupMembers = []
+    };
+    var untaggedInGroupX = new Device
+    {
+      Id = Guid.NewGuid(),
+      Tags = [],
+      DeviceGroupMembers = [new DeviceGroupMember { DeviceGroupId = groupX }]
+    };
+    var withUntagged = devices.Concat([untagged, untaggedInGroupX]).AsQueryable();
+
+    int ExclusiveCount(List<Guid>? tags, List<Guid>? groups, bool showOnlyUntagged, bool showOnlyUngrouped)
+      => withUntagged
+        .FilterByTagsAndDeviceGroups(
+          tags, FilterMatchMode.All,
+          groups, FilterMatchMode.All,
+          showOnlyUntagged,
+          showOnlyUngrouped)
+        .Count();
+
+    // showOnlyUntagged disregards the supplied tag ids -> zero tags, regardless of group:
+    // untagged and untaggedInGroupX both have no tags -> 2.
+    Assert.Equal(2, ExclusiveCount([tagA], null, showOnlyUntagged: true, showOnlyUngrouped: false));
+
+    // showOnlyUngrouped disregards the supplied group ids -> zero groups, regardless of tags:
+    // only untagged has no groups (untaggedInGroupX is in group X) -> 1.
+    Assert.Equal(1, ExclusiveCount(null, [groupX], showOnlyUntagged: false, showOnlyUngrouped: true));
+
+    // Both flags disregard their respective ids -> zero tags AND zero groups -> untagged only -> 1.
+    Assert.Equal(1, ExclusiveCount([tagA], [groupX], showOnlyUntagged: true, showOnlyUngrouped: true));
   }
 
   [Fact]
@@ -1968,7 +1893,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var deviceManager = services.GetRequiredService<IDeviceManager>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     var deviceId = Guid.NewGuid();
     var deviceDto = new DeviceUpdateRequestDto(
@@ -2086,7 +2011,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Create user in a different tenant
     var userTenant = await services.CreateTestTenant("User Tenant");
-    var user = await services.CreateTestUser(userTenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(userTenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     await controller.SetControllerUser(user, userManager);
 
@@ -2116,7 +2041,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     var deviceManager = services.GetRequiredService<IDeviceManager>();
 
     var tenant = await services.CreateTestTenant();
-    var user = await services.CreateTestUser(tenant.Id, roles: RoleNames.DeviceSuperUser);
+    var user = await services.CreateTestUser(tenant.Id, presets: PermissionPresets.DeviceSuperUser);
 
     var deviceId = Guid.NewGuid();
     var deviceDto = new DeviceUpdateRequestDto(

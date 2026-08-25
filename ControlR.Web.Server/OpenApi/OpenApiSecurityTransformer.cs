@@ -9,6 +9,7 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
   private const string CookieScheme = "Cookie";
   private const string PatScheme = PersonalAccessTokenAuthenticationSchemeOptions.DefaultScheme;
   private const string ServiceAccountScheme = ServiceAccountCredentialAuthenticationSchemeOptions.DefaultScheme;
+  private const string V1DocumentName = "v1";
 
   public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
   {
@@ -53,18 +54,12 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
       return Task.CompletedTask;
     }
 
-    var policyNames = authorizeData
-      .Select(ad => ad.Policy)
-      .Where(p => !string.IsNullOrEmpty(p))
-      .Select(p => p!)
-      .ToHashSet();
-
     var groupName = context.Description.ActionDescriptor.EndpointMetadata
       .OfType<EndpointGroupNameAttribute>()
       .Select(e => e.EndpointGroupName)
       .FirstOrDefault();
 
-    var schemes = ResolveSecuritySchemes(policyNames, groupName);
+    var schemes = ResolveSecuritySchemes(groupName, context.DocumentName);
     if (schemes.Count == 0)
     {
       return Task.CompletedTask;
@@ -83,14 +78,9 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
     return Task.CompletedTask;
   }
 
-  private static HashSet<string> ResolveSecuritySchemes(HashSet<string> policyNames, string? groupName)
+  private static HashSet<string> ResolveSecuritySchemes(string? groupName, string documentName)
   {
     var schemes = new HashSet<string>();
-
-    if (policyNames.Contains(RequireServerServiceAccountPolicy.PolicyName))
-    {
-      schemes.Add(ServiceAccountScheme);
-    }
 
     if (groupName == OpenApiConstants.InternalGroupName)
     {
@@ -98,8 +88,7 @@ public class OpenApiSecurityTransformer : IOpenApiDocumentTransformer, IOpenApiO
       schemes.Add(PatScheme);
     }
 
-    if (policyNames.Contains(CombinedAuthorizationPolicies.RequireServerOrTenantAdminPolicy) ||
-        policyNames.Contains(CombinedAuthorizationPolicies.RequireServerOrTenantAdminOrInstallerKeyManagerPolicy))
+    if (documentName == V1DocumentName)
     {
       schemes.Add(ServiceAccountScheme);
       schemes.Add(CookieScheme);

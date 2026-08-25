@@ -1,6 +1,8 @@
 using ControlR.Libraries.Shared.Helpers;
 using ControlR.Web.Client;
+using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Primitives;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Users;
 
 namespace ControlR.Web.Server.Services;
@@ -22,15 +24,18 @@ public interface ITenantInvitesProvider
 
   Task<InternalDtos.TenantInviteResponseDto[]> GetAllInvites(
     Guid tenantId,
-    Uri origin);
+    Uri origin,
+    bool includeActivationCode);
 }
 
 public class TenantInvitesProvider(
   IDbContextFactory<AppDb> dbContextFactory,
   UserManager<AppUser> userManager,
   IUserCreator userCreator,
+  IAuthorizationChangeLogFactory changeLogFactory,
   ILogger<TenantInvitesProvider> logger) : ITenantInvitesProvider
 {
+  private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogger<TenantInvitesProvider> _logger = logger;
   private readonly IUserCreator _userCreator = userCreator;
@@ -78,13 +83,71 @@ public class TenantInvitesProvider(
       return HttpResult.Fail<InternalDtos.AcceptInvitationResponseDto>(HttpResultErrorCode.BadRequest, "Failed to set new password");
     }
 
-    // Clear only UserRoles and Tags when moving to new tenant
-    var trackedUser = await ClearUserRolesAndTags(appDb, invitee.Id);
+    var trackedUser = await GetTrackedUser(appDb, invitee.Id);
 
-    // Update tenant ID on the tracked entity
     trackedUser.TenantId = invite.TenantId;
+
+    // Tenant move invalidates former-tenant grants; the rule resolver keeps stale rows inert,
+    // so remove them only to clear residue and record the removals in the change log.
+    var staleAssignments = await appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.User && x.PrincipalId == invitee.Id)
+      .ToListAsync();
+
+    foreach (var assignment in staleAssignments)
+    {
+      appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+        AuthorizationChangeLogActions.PermissionAssignmentDeleted,
+        AuthorizationChangeLogActorTypes.System,
+        actorPrincipalId: null,
+        AuthorizationChangeLogTargetTypes.PermissionAssignment,
+        assignment.Id,
+        assignment.OwningTenantId,
+        before: new PermissionAssignmentSnapshot(
+          assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));
+    }
+
+    appDb.PermissionAssignments.RemoveRange(staleAssignments);
+
+    var staleMemberships = await appDb.UserGroupMembers
+      .IgnoreQueryFilters()
+      .Where(x => x.UserId == invitee.Id)
+      .ToListAsync();
+    appDb.UserGroupMembers.RemoveRange(staleMemberships);
+
+    // Remove PAT scope rows keyed to the token principal so none survive the move.
+    var stalePatTokenIds = appDb.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .Where(x => x.UserId == invitee.Id)
+      .Select(x => x.Id);
+
+    var stalePatScopeRows = await appDb.PermissionAssignments
+      .IgnoreQueryFilters()
+      .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
+                  stalePatTokenIds.Contains(x.PrincipalId))
+      .ToListAsync();
+
+    foreach (var assignment in stalePatScopeRows)
+    {
+      appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+        AuthorizationChangeLogActions.PermissionAssignmentDeleted,
+        AuthorizationChangeLogActorTypes.System,
+        actorPrincipalId: null,
+        AuthorizationChangeLogTargetTypes.PermissionAssignment,
+        assignment.Id,
+        assignment.OwningTenantId,
+        before: new PermissionAssignmentSnapshot(
+          assignment.PermissionName, assignment.Effect, assignment.ScopeKind, assignment.ScopeId)));
+    }
+
+    appDb.PermissionAssignments.RemoveRange(stalePatScopeRows);
+
     appDb.TenantInvites.Remove(invite);
     await appDb.SaveChangesAsync();
+
+    _logger.LogInformation(
+      "User {UserId} moved to tenant {TenantId}: removed {AssignmentCount} assignment(s), {PatScopeCount} PAT scope row(s), and {MembershipCount} group membership(s).",
+      invitee.Id, invite.TenantId, staleAssignments.Count, stalePatScopeRows.Count, staleMemberships.Count);
 
     var response = new InternalDtos.AcceptInvitationResponseDto(true);
     return HttpResult.Ok(response);
@@ -172,7 +235,10 @@ public class TenantInvitesProvider(
     return HttpResult.Ok();
   }
 
-  public async Task<InternalDtos.TenantInviteResponseDto[]> GetAllInvites(Guid tenantId, Uri origin)
+  public async Task<InternalDtos.TenantInviteResponseDto[]> GetAllInvites(
+    Guid tenantId,
+    Uri origin,
+    bool includeActivationCode)
   {
     await using var appDb = await _dbContextFactory.CreateDbContextAsync();
 
@@ -182,33 +248,21 @@ public class TenantInvitesProvider(
         x.Id,
         x.CreatedAt,
         x.InviteeEmail,
-        new Uri(origin, $"{ClientRoutes.InviteConfirmationBase}/{x.ActivationCode}")))
+        includeActivationCode
+          ? new Uri(origin, $"{ClientRoutes.InviteConfirmationBase}/{x.ActivationCode}")
+          : new Uri(origin, ClientRoutes.InviteConfirmationBase)))
       .ToArrayAsync();
   }
 
-  private async Task<AppUser> ClearUserRolesAndTags(AppDb appDb, Guid userId)
+  private async Task<AppUser> GetTrackedUser(AppDb appDb, Guid userId)
   {
-    // Remove UserRoles
-    var userRoles = await appDb.UserRoles
-      .Where(ur => ur.UserId == userId)
-      .ToListAsync();
-
-    appDb.UserRoles.RemoveRange(userRoles);
-
-    // Remove Tags
     var user = await appDb.Users
       .IgnoreQueryFilters()
-      .Include(u => u.Tags)
       .FirstOrDefaultAsync(u => u.Id == userId);
 
     if (user is null)
     {
       throw new InvalidOperationException($"User with ID {userId} not found.");
-    }
-
-    if (user.Tags is not null)
-    {
-      user.Tags.Clear();
     }
 
     return user;

@@ -27,21 +27,33 @@ internal static class HttpExtensions
 
   private static string EnrichErrorMessage(string rawContent, ProblemDetailsDto? problemDetails)
   {
-    if (problemDetails == null)
+    if (problemDetails is { } pd)
     {
-      return rawContent;
+      var bestMessage = GetBestMessage(pd);
+      if (pd.Status.HasValue)
+      {
+        return $"[Status: {pd.Status}] {bestMessage}";
+      }
+
+      return bestMessage;
     }
 
-    // If we have ProblemDetails, prefer its structured message.
-    var bestMessage = GetBestMessage(problemDetails);
-
-    // Optionally include the status code for context.
-    if (problemDetails.Status.HasValue)
+    // Not a ProblemDetails response (e.g. controller BadRequest("string")).
+    // Use raw content as the error message, unescaping JSON string quotes if present.
+    var trimmed = rawContent.Trim();
+    if (trimmed.Length > 2 && trimmed[0] == '"' && trimmed[^1] == '"')
     {
-      return $"[Status: {problemDetails.Status}] {bestMessage}";
+      try
+      {
+        return JsonSerializer.Deserialize<string>(trimmed) ?? trimmed;
+      }
+      catch
+      {
+        return trimmed[1..^1];
+      }
     }
 
-    return bestMessage;
+    return string.IsNullOrWhiteSpace(trimmed) ? "An unexpected error occurred." : trimmed;
   }
 
   private static string GetBestMessage(ProblemDetailsDto problemDetails)
@@ -55,9 +67,18 @@ internal static class HttpExtensions
     try
     {
       var rawContent = await response.Content.ReadAsStringAsync();
-      var problemDetails = JsonSerializer.Deserialize<ProblemDetailsDto>(rawContent, _jsonOptions);
-      var enrichedMessage = EnrichErrorMessage(rawContent, problemDetails);
 
+      ProblemDetailsDto? problemDetails = null;
+      try
+      {
+        problemDetails = JsonSerializer.Deserialize<ProblemDetailsDto>(rawContent, _jsonOptions);
+      }
+      catch
+      {
+        // Not a ProblemDetails response -- EnrichErrorMessage will use raw content.
+      }
+
+      var enrichedMessage = EnrichErrorMessage(rawContent, problemDetails);
       return new HttpRequestException(enrichedMessage, null, response.StatusCode);
     }
     catch

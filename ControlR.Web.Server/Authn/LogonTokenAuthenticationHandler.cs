@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -52,14 +53,24 @@ public class LogonTokenAuthenticationHandler(
       return AuthenticateResult.Fail("User not found for logon token.");
     }
 
+    // Check lockout status — matches the guard in PersonalAccessTokenAuthenticationHandler.
+    if (await _userManager.IsLockedOutAsync(user))
+    {
+      return AuthenticateResult.Fail("User account is locked");
+    }
+
     var claims = new List<Claim>
     {
       new(UserClaimTypes.UserId, user.Id.ToString()),
       new(UserClaimTypes.TenantId, user.TenantId.ToString()),
       new(ClaimTypes.NameIdentifier, user.Id.ToString()),
       new(ClaimTypes.Name, user.UserName ?? "User"),
-      new(UserClaimTypes.AuthenticationMethod, LogonTokenAuthenticationSchemeOptions.DefaultScheme),
+      new(UserClaimTypes.AuthenticationMethod, PrincipalClaimValues.LogonTokenMethod),
       new(UserClaimTypes.DeviceSessionScope, deviceId.ToString()),
+      new(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
+      new(PrincipalClaimTypes.PrincipalId, user.Id.ToString()),
+      new(PrincipalClaimTypes.CredentialId, tokenValidation.TokenId.Value.ToString()),
+      new(PrincipalClaimTypes.CredentialType, PrincipalClaimValues.LogonTokenCredentialType),
     };
 
     if (!string.IsNullOrWhiteSpace(user.Email))
@@ -72,10 +83,16 @@ public class LogonTokenAuthenticationHandler(
       claims.Add(new(UserClaimTypes.SessionCorrelationId, tokenValidation.SessionCorrelationId));
     }
 
-    var roles = await _userManager.GetRolesAsync(user);
-    foreach (var role in roles)
+    foreach (var sessionId in tokenValidation.AllowedDesktopSessionIds ?? [])
     {
-      claims.Add(new Claim(ClaimTypes.Role, role));
+      claims.Add(new(
+        UserClaimTypes.AllowedDesktopSessionId,
+        sessionId.ToString(CultureInfo.InvariantCulture)));
+    }
+
+    if (tokenValidation.AllowedDesktopSessionIds is not null)
+    {
+      claims.Add(new(UserClaimTypes.DesktopSessionRestriction, bool.TrueString));
     }
 
     try
@@ -98,7 +115,13 @@ public class LogonTokenAuthenticationHandler(
     var principal = new ClaimsPrincipal(identity);
     var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
-    await Context.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+    var cookieProperties = new AuthenticationProperties
+    {
+      ExpiresUtc = tokenValidation.ExpiresAt,
+      IsPersistent = true,
+      AllowRefresh = false
+    };
+    await Context.SignInAsync(IdentityConstants.ApplicationScheme, principal, cookieProperties);
 
     return AuthenticateResult.Success(ticket);
   }

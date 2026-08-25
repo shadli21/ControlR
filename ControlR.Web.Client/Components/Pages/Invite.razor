@@ -1,6 +1,6 @@
 @using ControlR.Web.Client.StateManagement.Stores
 @attribute [Route(ClientRoutes.Invite)]
-@attribute [Authorize(Roles = RoleNames.TenantAdministrator)]
+@attribute [Authorize(Policy = PolicyNames.RequireTenantUsersWrite)]
 @inject ILogger<Invite> Logger
 @inject IInviteStore InviteStore
 @inject IControlrInternalApi ControlrApi
@@ -42,7 +42,7 @@
                       Placeholder="Enter the email of the new user"
                       AdornmentIcon="@(Icons.Material.Filled.PersonAdd)"
                       OnAdornmentClick="InvokeSubmit"
-                      UserAttributes="_inputAttributes"
+                      UserAttributes="InputAttributesHelper.SuppressAutofill"
                       AdornmentColor="Color.Success"
                       AdornmentAriaLabel="Invite User"
                       Adornment="Adornment.End"
@@ -130,12 +130,7 @@
   private EditContext? _editContext;
   private bool _loading = true;
   private string _searchText = string.Empty;
-  private readonly Dictionary<string, object> _inputAttributes = new()
-    {
-      ["autocapitalize"] = "off",
-      ["spellcheck"] = "false",
-      ["autocomplete"] = "off"
-    };
+
 
   private ObservableCollection<TenantInviteResponseDto> Invitations { get; } = [];
 

@@ -1,5 +1,5 @@
 @attribute [Route(ClientRoutes.Deploy)]
-@attribute [Authorize(Roles = RoleNames.AgentInstaller)]
+@attribute [Authorize(Policy = PolicyNames.RequireAgentInstall)]
 
 <PageTitle>Deploy</PageTitle>
 
@@ -21,7 +21,7 @@
           <MudText Color="Color.Info">
             Key Type
           </MudText>
-          <MudRadioGroup T="@InstallerKeyType" @bind-Value="@_installerKeyType">
+          <MudRadioGroup T="@InstallerKeyType" Value="@_installerKeyType" ValueChanged="@OnInstallerKeyTypeChanged">
             <MudRadio Value="@InstallerKeyType.UsageBased">
               Usage-Based
             </MudRadio>
@@ -33,12 +33,14 @@
             </MudRadio>
           </MudRadioGroup>
 
-          <MudTextField T="string" @bind-Value="@_friendlyName" Label="Friendly Name (Optional)" Class="my-4" />
+          <MudTextField T="string" @bind-Value="@_friendlyName" Label="Friendly Name (Optional)" Class="my-4"
+            UserAttributes="InputAttributesHelper.SuppressAutofill" />
 
           @if (_installerKeyType == InstallerKeyType.UsageBased)
           {
             <div class="mt-2">
-              <MudNumericField T="uint" @bind-Value="@_totalUsesAllowed" Min="1" Label="Total uses allowed" Required />
+              <MudNumericField T="uint" @bind-Value="@_totalUsesAllowed" Min="1" Label="Total uses allowed" Required
+                UserAttributes="InputAttributesHelper.SuppressAutofill" />
             </div>
 
             <div class="mt-2">
@@ -52,10 +54,11 @@
           {
             <div class="mt-2">
               <MudDatePicker @bind-Date="@_inputExpirationDate" Label="Expiration Date" MinDate="@DateTime.Now.Date"
-                Required />
+                Required UserAttributes="InputAttributesHelper.SuppressAutofill" />
             </div>
             <div class="mt-2">
-              <MudTimePicker @bind-Time="@_inputExpirationTime" Label="Expiration Time" AmPm="true" Required />
+              <MudTimePicker @bind-Time="@_inputExpirationTime" Label="Expiration Time" AmPm="true" Required
+                UserAttributes="InputAttributesHelper.SuppressAutofill" />
             </div>
           }
           <div class="mt-4">
@@ -81,6 +84,7 @@
             }
           </MudSelect>
           <MudTextField Label="Key Secret" @bind-Value="_existingKeySecretInput" InputType="InputType.Password"
+            UserAttributes="@(new Dictionary<string, object> { ["autocomplete"] = "new-password" })"
             Class="mt-4" />
           <div class="mt-4">
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@UseExistingKey">
@@ -94,6 +98,11 @@
 }
 else
 {
+  <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@ResetToKeySelection"
+    StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-4">
+    Back to Create Key
+  </MudButton>
+
   <MudText Typo="Typo.subtitle1" GutterBottom>
     Run these scripts on a remote device to install the agent.
   </MudText>
@@ -119,7 +128,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           PowerShell
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyWindowsX64Script"
           Adornment="Adornment.End" Value="@WindowsX64DeployScript" />
       </MudTabPanel>
@@ -127,7 +136,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           PowerShell
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyWindowsX86Script"
           Adornment="Adornment.End" Value="@WindowsX86DeployScript" />
       </MudTabPanel>
@@ -135,7 +144,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           zsh
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyMacArm64Script"
           Adornment="Adornment.End" Value="@MacArm64DeployScript" />
       </MudTabPanel>
@@ -143,7 +152,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           zsh
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyMacX64Script"
           Adornment="Adornment.End" Value="@MacX64DeployScript" />
       </MudTabPanel>
@@ -154,7 +163,7 @@ else
         <MudText Typo="Typo.subtitle2" Color="Color.Info" Class="mt-4" GutterBottom>
           Bash
         </MudText>
-        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled"
+        <MudTextField T="string" Label="Copy and paste to install agent" Variant="Variant.Filled" ReadOnly
           AdornmentIcon="@(Icons.Material.Filled.ContentCopy)" OnAdornmentClick="CopyLinuxScript"
           Adornment="Adornment.End" Value="@LinuxDeployScript" />
       </MudTabPanel>
@@ -165,56 +174,88 @@ else
         It is not stored in the database in a reversible way and cannot be retrieved later.
     </MudAlert>
 
-    <MudTextField T="string" Label="Installer Key Secret" Value="@_installerKeySecret" InputType="InputType.Password"
-      Variant="Variant.Outlined" AdornmentIcon="@Icons.Material.Filled.ContentCopy" OnAdornmentClick="CopyInstallerKey"
-      Adornment="Adornment.End" Class="mt-2 mb-4" />
-
+    <MudGrid>
+      <MudItem xs="12" sm="6">
+        <MudTextField T="string" Label="Installer Key Secret" Value="@_installerKeySecret" InputType="InputType.Password" ReadOnly
+          Variant="Variant.Outlined" AdornmentIcon="@Icons.Material.Filled.ContentCopy" OnAdornmentClick="CopyInstallerKey"
+          Adornment="Adornment.End" Class="mt-2 mb-4"
+          UserAttributes="@(new Dictionary<string, object> { ["autocomplete"] = "new-password" })" />
+      </MudItem>
+    </MudGrid>
 
     <MudText Typo="Typo.h6" Color="Color.Primary" GutterBottom>
       Options
     </MudText>
 
-    <div class="mt-4">
-      <MudText Typo="Typo.subtitle2" Color="Color.Info">
-        Device Tags
-      </MudText>
-      <MudText Typo="Typo.body1" GutterBottom>
-        If enabled, the device will be assigned the selected tags upon installation.
-        Tags are used to link devices to users for access control.
-      </MudText>
-      <MudCheckBox @bind-Value="_addTags" Label="Add device tags" />
-
-      @if (_addTags && !_tags.Any())
-      {
-        <MudAlert Severity="Severity.Warning" Class="mt-2">
-          No tags are available. Tenant admins can create tags in the Permissions section.
-        </MudAlert>
-      }
-
-      <MudSelect T="TagResponseDto" @bind-SelectedValues="_selectedTags" Disabled="!_addTags" Immediate MultiSelection
-        FullWidth="false" Text="@(SelectedTagsText)" Label="Tags">
-        @foreach (var tag in _tags)
+    <MudGrid>
+      <MudItem xs="12" sm="6">
+        @if (_canReadCustomers)
         {
-          <MudSelectItem Value="@tag">
-            @(tag.Name)
-          </MudSelectItem>
+        <MudText Typo="Typo.subtitle2" Color="Color.Info">
+          Customer
+        </MudText>
+        <MudText Typo="Typo.body1" GutterBottom>
+          Optionally assign the device to a customer upon installation.
+        </MudText>
+        <MudSelect T="CustomerDto" @bind-Value="_selectedCustomer" Label="Customer" Clearable
+          ToStringFunc="@(c => c?.Name ?? "")">
+          @foreach (var customer in _customers)
+          {
+            <MudSelectItem Value="@customer">
+              @(customer.Name)
+            </MudSelectItem>
+          }
+        </MudSelect>
         }
-      </MudSelect>
-    </div>
+      </MudItem>
+    </MudGrid>
 
-    <div class="mt-8">
-      <MudText Typo="Typo.subtitle2" Color="Color.Info">
-        Device ID
-      </MudText>
-      <MudText Typo="Typo.body1" GutterBottom>
-        By default, a random device ID will be generated during installation.
-        Optionally, you can specify a predetermined ID here that will be assigned to the device.
-        The device ID must be a valid GUID (e.g. <code>New-Guid</code> in pwsh).
-      </MudText>
-      <MudAlert Severity="Severity.Info" Class="my-2">
-        If you specify a device ID, it must be unique for each device/install.
-      </MudAlert>
-      <MudTextField @bind-Value="_deviceId" Class="mt-2" Label="Device ID (GUID)" Validation="@DeviceIdValidator" />
-    </div>
+    <MudGrid Class="mt-4">
+      <MudItem xs="12" sm="6">
+        <MudText Typo="Typo.subtitle2" Color="Color.Info">
+          Device Tags
+        </MudText>
+        <MudText Typo="Typo.body1" GutterBottom>
+          If enabled, the device will be assigned the selected tags upon installation.
+          Tags are used to link devices to users for access control.
+        </MudText>
+        <MudCheckBox @bind-Value="_addTags" Label="Add device tags" />
+
+        @if (_addTags && !_tags.Any())
+        {
+          <MudAlert Severity="Severity.Warning" Class="mt-2">
+            No tags are available. Tenant admins can create tags in the Permissions section.
+          </MudAlert>
+        }
+
+        <MudSelect T="TagResponseDto" @bind-SelectedValues="_selectedTags" Disabled="!_addTags" Immediate MultiSelection
+          FullWidth="false" Text="@(SelectedTagsText)" Label="Tags">
+          @foreach (var tag in _tags)
+          {
+            <MudSelectItem Value="@tag">
+              @(tag.Name)
+            </MudSelectItem>
+          }
+        </MudSelect>
+      </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mt-8">
+      <MudItem xs="12" sm="6">
+        <MudText Typo="Typo.subtitle2" Color="Color.Info">
+          Device ID
+        </MudText>
+        <MudText Typo="Typo.body1" GutterBottom>
+          By default, a random device ID will be generated during installation.
+          Optionally, you can specify a predetermined ID here that will be assigned to the device.
+          The device ID must be a valid GUID (e.g. <code>New-Guid</code> in pwsh).
+        </MudText>
+        <MudAlert Severity="Severity.Info" Class="my-2">
+          If you specify a device ID, it must be unique for each device/install.
+        </MudAlert>
+        <MudTextField @bind-Value="_deviceId" Class="mt-2" Label="Device ID (GUID)" Validation="@DeviceIdValidator"
+          UserAttributes="InputAttributesHelper.SuppressAutofill" />
+      </MudItem>
+    </MudGrid>
   </div>
 }

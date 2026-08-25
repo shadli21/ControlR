@@ -2,24 +2,9 @@
 
 public static class HubGroupNames
 {
-  public const string ServerAdministrators = "server-administrators";
+  public static string DeviceHeartbeat(Guid deviceId) => $"device:{deviceId}:heartbeat";
 
-  public static string GetDeviceGroupName(Guid deviceId, Guid tenantId)
-  {
-    return $"tenant-{tenantId}-device-{deviceId}";
-  }
+  public static string ServerAlerts() => "server:alerts";
 
-  public static string GetTagGroupName(Guid tagId, Guid tenantId)
-  {
-    return $"tenant-{tenantId}-tag-{tagId}";
-  }
-
-  public static string GetTenantDevicesGroupName(Guid tenantId)
-  {
-    return $"tenant-{tenantId}-devices";
-  }
-  public static string GetUserRoleGroupName(string roleName, Guid tenantId)
-  {
-    return $"tenant-{tenantId}-user-role-{roleName}";
-  }
+  public static string ServerTelemetry() => "server:telemetry";
 }

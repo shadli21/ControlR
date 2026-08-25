@@ -22,13 +22,26 @@ public static class HttpResultExtensions
   }
 
   /// <summary>
-  /// Converts an HttpResult&lt;T&gt; to an ActionResult&lt;T&gt; based on the error code.
+  /// Converts a successful typed HTTP result to an action result while preserving its value.
   /// </summary>
   public static ActionResult<T> ToActionResult<T>(this HttpResult<T> result)
   {
     if (result.IsSuccess)
     {
       return new OkObjectResult(result.Value);
+    }
+
+    return CreateProblemResult(result.ToHttpResult());
+  }
+
+  /// <summary>
+  /// Converts a successful typed HTTP result to an action result after mapping its value.
+  /// </summary>
+  public static ActionResult<TDto> ToActionResult<T, TDto>(this HttpResult<T> result, Func<T, TDto> mapper)
+  {
+    if (result.IsSuccess)
+    {
+      return new OkObjectResult(mapper(result.Value));
     }
 
     return CreateProblemResult(result.ToHttpResult());

@@ -26,8 +26,8 @@ public record DeviceResponseDto(
   double TotalStorage,
   double UsedMemory,
   double UsedStorage,
-  string[] CurrentUsers,
-  string[] MacAddresses,
+  IReadOnlyList<string> CurrentUsers,
+  IReadOnlyList<string> MacAddresses,
   string PublicIpV4,
   string PublicIpV6,
   string LocalIpV4,
@@ -39,6 +39,10 @@ public record DeviceResponseDto(
   public ImmutableArray<Guid>? TagIds { get; set; }
 
   public string? Alias { get; init; }
+
+  public Guid? CustomerId { get; init; }
+
+  public string? CustomerName { get; init; }
 
   [IgnoreDataMember]
   [JsonIgnore]

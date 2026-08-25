@@ -44,7 +44,7 @@ public class DesktopPreviewController : ControllerBase
     var authResult = await authorizationService.AuthorizeAsync(
       User,
       device,
-      DeviceAccessByDeviceResourcePolicy.PolicyName);
+      DeviceResourcePolicies.DesktopPreviewRead);
 
     if (!authResult.Succeeded)
     {
@@ -67,9 +67,35 @@ public class DesktopPreviewController : ControllerBase
       targetProcessId,
       User.Identity?.Name);
 
+    // An offline device has an empty ConnectionId; SignalR's Clients.Client("") is a no-op
+    // that returns default (null), so guard before dereferencing.
+    if (string.IsNullOrEmpty(device.ConnectionId))
+    {
+      logger.LogWarning(
+        "Desktop preview request for device {DeviceId} rejected: device is not connected.",
+        deviceId);
+      return Problem(
+        detail: "Device is not connected.",
+        statusCode: StatusCodes.Status503ServiceUnavailable,
+        title: "Desktop preview request failed");
+    }
+
     var requestResult = await agentHub.Clients
       .Client(device.ConnectionId)
       .RequestDesktopPreview(desktopPreviewRequestDto);
+
+    if (requestResult is null)
+    {
+      logger.LogWarning(
+        "Desktop preview request for device {DeviceId} and process {TargetProcessId} returned no result.",
+        deviceId,
+        targetProcessId);
+
+      return Problem(
+        detail: "Desktop preview request returned no result.",
+        statusCode: StatusCodes.Status503ServiceUnavailable,
+        title: "Desktop preview request failed");
+    }
 
     if (!requestResult.IsSuccess)
     {

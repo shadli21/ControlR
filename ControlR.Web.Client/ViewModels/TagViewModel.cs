@@ -9,6 +9,4 @@ public class TagViewModel(TagResponseDto dto)
   public string Name { get; } = dto.Name;
 
   public TagType Type { get; set; } = dto.Type;
-
-  public ConcurrentHashSet<Guid> UserIds { get; } = [.. dto.UserIds];
 }

@@ -21,14 +21,23 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredentialForServer(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var tenant = await testServer.Services.CreateTestTenant();
     var user = await testServer.Services.CreateTestUser(tenant.Id, email: "ik-int@test.local");
 
-    var request = new CreateInstallerKeyRequestDto(tenant.Id, user.Id, CreatorKind.User, InstallerKeyType.Persistent);
+    var request = new CreateInstallerKeyRequestDto(tenant.Id, InstallerKeyType.Persistent);
     var response = await httpClient.PostAsJsonAsync(
       HttpConstants.V1.InstallerKeysEndpoint,
       request,
@@ -53,9 +62,18 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
       null,
       TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
+
+    var credResult = await saManager.AddCredentialForServer(
+      saResult.Value.Id,
+      "Test Credential",
+      expiresAt: null,
+      Guid.NewGuid(),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess);
+
     httpClient.DefaultRequestHeaders.Add(
       ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
-      saResult.Value.PlainTextSecretKey);
+      credResult.Value.PlainTextSecretKey);
 
     var tenant = await testServer.Services.CreateTestTenant();
     var user = await testServer.Services.CreateTestUser(tenant.Id, email: "lt-int@test.local");
@@ -81,7 +99,7 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
     using var httpClient = await testServer.GetHttpClient();
 
     var tenant = await testServer.Services.CreateTestTenant();
-    var request = new CreateInstallerKeyRequestDto(tenant.Id, Guid.NewGuid(), CreatorKind.User, InstallerKeyType.Persistent);
+    var request = new CreateInstallerKeyRequestDto(tenant.Id, InstallerKeyType.Persistent);
     var response = await httpClient.PostAsJsonAsync(
       HttpConstants.V1.InstallerKeysEndpoint,
       request,

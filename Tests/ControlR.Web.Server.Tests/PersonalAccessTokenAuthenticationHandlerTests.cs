@@ -1,8 +1,10 @@
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Services;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Tests.Helpers;
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Authz.Permissions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
@@ -53,12 +55,41 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var tenantClaim = result.Principal.FindFirst(UserClaimTypes.TenantId);
     Assert.NotNull(tenantClaim);
     Assert.Equal(tenantId.ToString(), tenantClaim.Value);
+  }
 
-    // First user should be in all roles.
-    Assert.True(result.Principal.IsInRole(RoleNames.ServerAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.TenantAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.DeviceSuperUser));
-    Assert.True(result.Principal.IsInRole(RoleNames.AgentInstaller));
+  [Fact]
+  public async Task HandleAuthenticateAsync_LockedOutUser_ReturnsFail()
+  {
+    // Arrange — lockout propagation through the PAT auth pipeline.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
+    using var scope = testApp.CreateScope();
+    var services = scope.ServiceProvider;
+
+    var tenant = await services.CreateTestTenant();
+    var user = await services.CreateTestUser(tenant.Id);
+    var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var createRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key");
+    var createResult = await patManager.CreateToken(createRequest, user.Id);
+    var plainTextToken = createResult.Value!.PlainTextToken;
+
+    // Lock the user (re-fetch so EF tracks the instance correctly).
+    var userManager = services.GetRequiredService<UserManager<AppUser>>();
+    var trackedUser = await userManager.FindByIdAsync(user.Id.ToString());
+    Assert.NotNull(trackedUser);
+    await userManager.SetLockoutEnabledAsync(trackedUser, true);
+    await userManager.SetLockoutEndDateAsync(trackedUser, DateTimeOffset.UtcNow.AddHours(1));
+
+    var context = CreateHttpContext(plainTextToken);
+    var handler = await CreateHandler(services, context);
+
+    // Act
+    var result = await handler.AuthenticateAsync();
+
+    // Assert
+    Assert.False(result.Succeeded);
+    Assert.NotNull(result.Failure);
+    Assert.Equal("User account is locked", result.Failure.Message);
   }
 
   [Fact]
@@ -91,12 +122,6 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     Assert.NotNull(identity);
     Assert.Equal(PersonalAccessTokenAuthenticationSchemeOptions.DefaultScheme, identity.AuthenticationType);
     Assert.True(identity.IsAuthenticated);
-
-    // First user should be in all roles.
-    Assert.True(result.Principal.IsInRole(RoleNames.ServerAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.TenantAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.DeviceSuperUser));
-    Assert.True(result.Principal.IsInRole(RoleNames.AgentInstaller));
 
     // Assert UserManager<T> works with the resulting principal.
     var identityUser = await userManager.GetUserAsync(result.Principal);
@@ -211,7 +236,100 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
       expectedLastUsed.AddMilliseconds(-5),
       expectedLastUsed.AddMilliseconds(5));
   }
-  
+
+  [Fact]
+  public async Task HandleAuthenticateAsync_TooManyFailures_ThrottlesByTokenId()
+  {
+    // Arrange — throttle after MaxFailures (5) bad attempts within the failure window.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
+    using var scope = testApp.CreateScope();
+    var services = scope.ServiceProvider;
+
+    // Use a token id prefix that won't match any real token, so all attempts fail validation.
+    const string badTokenPrefix = "badprefix:secret";
+
+    // Act — 5 failed attempts, then a 6th should be throttled.
+    for (var i = 0; i < 5; i++)
+    {
+      var failedContext = CreateHttpContext(badTokenPrefix);
+      var failedHandler = await CreateHandler(services, failedContext);
+      var failedResult = await failedHandler.AuthenticateAsync();
+      Assert.False(failedResult.Succeeded);
+      Assert.Equal("Invalid personal access token", failedResult.Failure?.Message);
+    }
+
+    var throttledContext = CreateHttpContext(badTokenPrefix);
+    var throttledHandler = await CreateHandler(services, throttledContext);
+    var throttledResult = await throttledHandler.AuthenticateAsync();
+
+    // Assert — the 6th call must hit the throttle branch, not the validation branch.
+    // The handler checks the IP-based throttle first; from a single source IP after 5
+    // bad attempts, the IP-axis throttle fires (the token-axis throttle would fire
+    // from a fresh IP after 5 token-id-specific failures).
+    Assert.False(throttledResult.Succeeded);
+    Assert.NotNull(throttledResult.Failure);
+    Assert.Equal(
+      "Too many failed token attempts from this source. Try again later.",
+      throttledResult.Failure.Message);
+  }
+
+  [Fact]
+  public async Task HandleAuthenticateAsync_ValidToken_EmitsCanonicalPrincipalAndCredentialClaims()
+  {
+    // Arrange — every claim the PermissionEvaluator reads must be emitted.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
+    using var scope = testApp.CreateScope();
+    var services = scope.ServiceProvider;
+
+    var tenant = await services.CreateTestTenant();
+    var user = await services.CreateTestUser(tenant.Id);
+    var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var createRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Canonical Claim Test");
+    var createResult = await patManager.CreateToken(createRequest, user.Id);
+    Assert.True(createResult.IsSuccess);
+    var plainTextToken = createResult.Value!.PlainTextToken;
+
+    var context = CreateHttpContext(plainTextToken);
+    var handler = await CreateHandler(services, context);
+
+    // Act
+    var result = await handler.AuthenticateAsync();
+
+    // Assert
+    Assert.True(result.Succeeded);
+    Assert.NotNull(result.Principal);
+
+    // Canonical identity claims
+    var tenantClaim = result.Principal.FindFirst(UserClaimTypes.TenantId);
+    Assert.NotNull(tenantClaim);
+    Assert.Equal(tenant.Id.ToString(), tenantClaim.Value);
+
+    var userIdClaim = result.Principal.FindFirst(UserClaimTypes.UserId);
+    Assert.NotNull(userIdClaim);
+    Assert.Equal(user.Id.ToString(), userIdClaim.Value);
+
+    var authMethodClaim = result.Principal.FindFirst(UserClaimTypes.AuthenticationMethod);
+    Assert.NotNull(authMethodClaim);
+    Assert.Equal(PrincipalClaimValues.PersonalAccessTokenMethod, authMethodClaim.Value);
+
+    // Principal descriptor claims (consumed by PermissionEvaluator)
+    var principalTypeClaim = result.Principal.FindFirst(PrincipalClaimTypes.PrincipalType);
+    Assert.NotNull(principalTypeClaim);
+    Assert.Equal(PrincipalClaimValues.User, principalTypeClaim.Value);
+
+    var principalIdClaim = result.Principal.FindFirst(PrincipalClaimTypes.PrincipalId);
+    Assert.NotNull(principalIdClaim);
+    Assert.Equal(user.Id.ToString(), principalIdClaim.Value);
+
+    var credentialIdClaim = result.Principal.FindFirst(PrincipalClaimTypes.CredentialId);
+    Assert.NotNull(credentialIdClaim);
+    Assert.Equal(createResult.Value.PersonalAccessToken.Id.ToString(), credentialIdClaim.Value);
+
+    var credentialTypeClaim = result.Principal.FindFirst(PrincipalClaimTypes.CredentialType);
+    Assert.NotNull(credentialTypeClaim);
+    Assert.Equal(PrincipalClaimValues.PersonalAccessTokenCredentialType, credentialTypeClaim.Value);
+  }
 
   [Fact]
   public async Task HandleUserAuthenticateAsync_ShouldSucceed_WithValidPersonalAccessToken()
@@ -225,7 +343,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
 
     var normalUser = await services.CreateTestUser(
       tenantId: tenantId,
-      roles: [RoleNames.DeviceSuperUser, RoleNames.AgentInstaller]);
+      presets: [PermissionPresets.DeviceSuperUser, PermissionPresets.AgentInstaller]);
 
     var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
 
@@ -249,15 +367,9 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var tenantClaim = result.Principal.FindFirst(UserClaimTypes.TenantId);
     Assert.NotNull(tenantClaim);
     Assert.Equal(tenantId.ToString(), tenantClaim.Value);
-
-    // New user should only have the roles specified.
-    Assert.False(result.Principal.IsInRole(RoleNames.ServerAdministrator));
-    Assert.False(result.Principal.IsInRole(RoleNames.TenantAdministrator));
-    Assert.True(result.Principal.IsInRole(RoleNames.DeviceSuperUser));
-    Assert.True(result.Principal.IsInRole(RoleNames.AgentInstaller));
   }
 
-  private static DefaultHttpContext CreateHttpContext(string? token)
+  private static DefaultHttpContext CreateHttpContext(string? token, IServiceProvider? services = null)
   {
     var context = new DefaultHttpContext();
 
@@ -265,6 +377,11 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     {
       // The handler expects a personal access token header
       context.Request.Headers[PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName] = token;
+    }
+
+    if (services is not null)
+    {
+      context.RequestServices = services;
     }
 
     return context;

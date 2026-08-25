@@ -1,4 +1,5 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services.LogonTokens;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,11 +13,13 @@ public class LogonTokensController : ControllerBase
 {
   [HttpPost]
   [ProducesResponseType<InternalDtos.LogonTokenResponseDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
+  [ProducesResponseType(StatusCodes.Status500InternalServerError)]
   public async Task<ActionResult<InternalDtos.LogonTokenResponseDto>> CreateLogonToken(
     [FromServices] AppDb appDb,
-    [FromServices] ILogonTokenProvider logonTokenProvider,
     [FromServices] IAuthorizationService authorizationService,
+    [FromServices] ILogonTokenScopeService logonTokenScopeService,
     [FromBody] InternalDtos.LogonTokenRequestDto request)
   {
     if (!User.TryGetTenantId(out var tenantId))
@@ -30,27 +33,25 @@ public class LogonTokensController : ControllerBase
     }
 
     var device = await appDb.Devices.FindAsync(request.DeviceId);
-    if (device is null)
+    if (device is null || device.TenantId != tenantId)
     {
       return BadRequest("Device not found.");
     }
 
-    if (device.TenantId != tenantId)
-    {
-      return BadRequest("Device not found.");
-    }
-
-    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+    var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.LogonTokenCreate);
     if (!authResult.Succeeded)
     {
       return Forbid();
     }
 
-    var result = await logonTokenProvider.CreateToken(
-      request.DeviceId,
-      tenantId,
-      userId,
-      request.ExpirationMinutes);
+    var creator = PrincipalDescriptorBuilder.FromClaims(User);
+    if (creator is null)
+    {
+      return BadRequest("User principal not found.");
+    }
+
+    var result = await logonTokenScopeService.CreateTokenWithScopes(
+      LogonTokenCreationRequest.From(request, tenantId, userId), creator, HttpContext.RequestAborted);
 
     if (!result.IsSuccess)
     {

@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Services.Users;
 using Microsoft.AspNetCore.Identity.Data;
 
 namespace ControlR.Web.Server.EndpointFilters;
@@ -34,7 +35,7 @@ public class IdentityApiRegisterFilter : IEndpointFilter
 
     if (!result.Succeeded)
     {
-      if (result.IdentityResult.Errors.Any(e => e.Code == "RegistrationDisabled"))
+      if (result.IdentityResult.Errors.Any(e => e.Code == UserCreator.RegistrationDisabledErrorCode))
       {
         return Results.NotFound();
       }

@@ -6,7 +6,7 @@ on:
   pull_request_review_comment:
     types: [created, edited]
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, reopened]
 
 permissions:
   id-token: write
@@ -18,9 +18,12 @@ jobs:
   bitbound-bot:
     runs-on: ${{ fromJson('["self-hosted","Linux"]') }}
     if: |
-      (github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment') && (
-        contains(github.event.comment.body, '/bb') ||
-        contains(github.event.comment.body, '/bbb')
+      github.repository == 'bitbound/ControlR-dev' &&
+      github.actor == 'bitbound' &&
+      (
+        (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name) ||
+        ((github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment') &&
+          contains(github.event.comment.body, '/bb'))
       )
     timeout-minutes: 30
     concurrency:
@@ -41,7 +44,7 @@ jobs:
           client-id: ${{ secrets.BBB_CLIENT_ID }}
           private-key: ${{ secrets.BBB_PRIVATE_KEY }}
 
-      - uses: anomalyco/opencode/github@latest
+      - uses: anomalyco/opencode/github@2c14fc5586fe0b88e5c04732d2e846769cc35671
         timeout-minutes: 30
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -49,31 +52,4 @@ jobs:
         with:
           model: ${{vars.BBB_MODEL}}
           use_github_token: true
-          mentions: "/bbb,/bb"
-
-  code-review:
-    if: github.event_name == 'pull_request'
-    runs-on: ${{ fromJson('["self-hosted","Linux"]') }}
-    concurrency:
-      group: code-review-${{ github.event.pull_request.number || github.run_id }}
-      cancel-in-progress: true
-    timeout-minutes: 30
-
-    steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.BBB_CLIENT_ID }}
-          private-key: ${{ secrets.BBB_PRIVATE_KEY }}
-
-      - name: Run OpenCodeReview
-        uses: alibaba/open-code-review@be5e79c1a70a7e04bede846bae42cc7cda96b90d
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        with:
-          llm_url: ${{ vars.OCR_LLM_URL }}
-          llm_auth_token: "no-token-needed"
-          llm_model: ${{ vars.OCR_LLM_MODEL }}
-          llm_use_anthropic: false
-          github_token: ${{ steps.app-token.outputs.token }}
+          mentions: "/bb"

@@ -1,0 +1,10 @@
+@attribute [Route(ClientRoutes.Permissions)]
+@attribute [Authorize(Policy = PolicyNames.RequirePermissionAssignmentsRead)]
+
+<PageTitle>Permission Assignments</PageTitle>
+
+<PrimaryTitle>
+  Permission Assignments
+</PrimaryTitle>
+
+<PermissionAssignmentPanel />

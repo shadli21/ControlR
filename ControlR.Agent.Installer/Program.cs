@@ -49,6 +49,9 @@ const string InstallerKeyIdShortAlias = "-ki";
 const string InstallerKeyIdLongAlias = "--installer-key-id";
 const string DeviceIdShortAlias = "-d";
 const string DeviceIdLongAlias = "--device-id";
+const string CustomerIdShortAlias = "-c";
+const string CustomerIdLongAlias = "--customer";
+const string CustomerIdDescription = "An optional customer ID to assign the device to upon installation.";
 const string TempDirectoryPrefix = "controlr-install-";
 const string TempBundleFileName = "ControlR.Agent.bundle.zip";
 
@@ -123,6 +126,12 @@ static Command GetInstallCommand()
     Description = DeviceIdDescription
   };
 
+  var customerIdOption = new Option<Guid?>(CustomerIdShortAlias, CustomerIdLongAlias)
+  {
+    Required = false,
+    Description = CustomerIdDescription
+  };
+
   var installCommand = new Command(InstallCommandName, InstallCommandDescription)
   {
     serverUriOption,
@@ -132,6 +141,7 @@ static Command GetInstallCommand()
     installerKeySecretOption,
     installerKeyIdOption,
     deviceIdOption,
+    customerIdOption,
   };
 
   installCommand.SetAction(async parseResult =>
@@ -145,6 +155,7 @@ static Command GetInstallCommand()
       InstallerKeyId = parseResult.GetValue(installerKeyIdOption),
       DeviceId = parseResult.GetValue(deviceIdOption),
       TagIds = ParseTagIds(parseResult.GetValue(deviceTagsOption)),
+      CustomerId = parseResult.GetValue(customerIdOption),
     };
 
     return await RunInstall(installRequest, parseResult.GetValue(instanceIdOption));
@@ -250,6 +261,7 @@ static async Task<int> RunInstall(AgentInstallRequest request, string? instanceI
       InstallerKeyId = request.InstallerKeyId,
       DeviceId = request.DeviceId,
       TagIds = request.TagIds,
+      CustomerId = request.CustomerId,
     };
 
     await installer.Install(installRequest);

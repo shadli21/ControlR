@@ -22,21 +22,6 @@ namespace ControlR.Web.Server.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("AppUserTag", b =>
-                {
-                    b.Property<Guid>("TagsId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UsersId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("TagsId", "UsersId");
-
-                    b.HasIndex("UsersId");
-
-                    b.ToTable("AppUserTag");
-                });
-
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.AgentInstallerKey", b =>
                 {
                     b.Property<Guid>("Id")
@@ -113,70 +98,6 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.HasIndex("TenantId");
 
                     b.ToTable("AgentInstallerKeyUsages");
-                });
-
-            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.AppRole", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("NormalizedName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedName")
-                        .IsUnique()
-                        .HasDatabaseName("RoleNameIndex");
-
-                    b.ToTable("AspNetRoles", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("8ad85243-aa78-7539-0bf7-0cd6f27bcaa5"),
-                            ConcurrencyStamp = "d6b798d2-a7f0-492b-a6ad-7eba9b1e3beb",
-                            Name = "Server Administrator",
-                            NormalizedName = "SERVER ADMINISTRATOR"
-                        },
-                        new
-                        {
-                            Id = new Guid("ed0dddf2-c2b2-4160-9ece-4a9e03b2e828"),
-                            ConcurrencyStamp = "b23bdf83-ecc8-4ca2-ba24-dc1780bfefc6",
-                            Name = "Tenant Administrator",
-                            NormalizedName = "TENANT ADMINISTRATOR"
-                        },
-                        new
-                        {
-                            Id = new Guid("98aecfed-4095-42fd-e4b8-556d5b723bb6"),
-                            ConcurrencyStamp = "0b692fe4-63e1-4a99-b021-4fc48ed81f4c",
-                            Name = "Device Superuser",
-                            NormalizedName = "DEVICE SUPERUSER"
-                        },
-                        new
-                        {
-                            Id = new Guid("dde33610-89dc-e6a4-8d8a-33f3823a180e"),
-                            ConcurrencyStamp = "ccfd2843-8a06-43d4-9bf3-6110b4e65900",
-                            Name = "Agent Installer",
-                            NormalizedName = "AGENT INSTALLER"
-                        },
-                        new
-                        {
-                            Id = new Guid("963de2cb-fc55-43cd-11ac-dd6261c81bd8"),
-                            ConcurrencyStamp = "a7e1a339-19c3-4d44-97e3-239636906a45",
-                            Name = "Installer Key Manager",
-                            NormalizedName = "INSTALLER KEY MANAGER"
-                        });
                 });
 
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.AppUser", b =>
@@ -269,6 +190,101 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.AuthorizationChangeLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("ActorPrincipalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorPrincipalType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("AfterJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BeforeJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("OwningTenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("OwningTenantId");
+
+                    b.ToTable("AuthorizationChangeLogs");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Customers");
+                });
+
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.Device", b =>
                 {
                     b.Property<Guid>("Id")
@@ -301,6 +317,9 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.PrimitiveCollection<string[]>("CurrentUsers")
                         .IsRequired()
                         .HasColumnType("text[]");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("DeviceGroupId")
                         .HasColumnType("uuid");
@@ -384,9 +403,202 @@ namespace ControlR.Web.Server.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CustomerId");
+
                     b.HasIndex("TenantId");
 
                     b.ToTable("Devices");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.DeviceGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("DeviceGroups");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.DeviceGroupMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("DeviceGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("DeviceGroupId", "DeviceId")
+                        .IsUnique();
+
+                    b.ToTable("DeviceGroupMembers");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.LogonToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("AllowedDesktopSessionIds")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsConsumed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Prefix")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("SessionCorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("UserCorrelationId")
+                        .HasMaxLength(252)
+                        .HasColumnType("character varying(252)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LogonTokens");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.PermissionAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("CreatedByPrincipalId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("CreatedByPrincipalType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Effect")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("OwningTenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PermissionName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PrincipalKind")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("ScopeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ScopeKind")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PrincipalKind", "PrincipalId");
+
+                    b.HasIndex("ScopeKind", "ScopeId");
+
+                    b.HasIndex("PrincipalKind", "PrincipalId", "PermissionName", "ScopeKind", "ScopeId", "Effect")
+                        .IsUnique();
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("PrincipalKind", "PrincipalId", "PermissionName", "ScopeKind", "ScopeId", "Effect"), false);
+
+                    b.ToTable("PermissionAssignments");
                 });
 
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.PersonalAccessToken", b =>
@@ -401,6 +613,12 @@ namespace ControlR.Web.Server.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("HashedKey")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -413,6 +631,9 @@ namespace ControlR.Web.Server.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -685,6 +906,66 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.ToTable("TenantSettings");
                 });
 
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.UserGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("UserGroups");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.UserGroupMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("UserGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserGroupId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserGroupMembers");
+                });
+
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.UserPreference", b =>
                 {
                     b.Property<Guid>("Id")
@@ -789,30 +1070,6 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.ToTable("DataProtectionKeys");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("AspNetRoleClaims", (string)null);
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")
@@ -876,21 +1133,6 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.ToTable("AspNetUserPasskeys", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("UserId", "RoleId");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("AspNetUserRoles", (string)null);
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -910,21 +1152,6 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("AppUserTag", b =>
-                {
-                    b.HasOne("ControlR.Web.Server.Data.Entities.Tag", null)
-                        .WithMany()
-                        .HasForeignKey("TagsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ControlR.Web.Server.Data.Entities.AppUser", null)
-                        .WithMany()
-                        .HasForeignKey("UsersId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.AgentInstallerKey", b =>
@@ -968,8 +1195,24 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.Customer", b =>
+                {
+                    b.HasOne("ControlR.Web.Server.Data.Entities.Tenant", "Tenant")
+                        .WithMany("Customers")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.Device", b =>
                 {
+                    b.HasOne("ControlR.Web.Server.Data.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ControlR.Web.Server.Data.Entities.Tenant", "Tenant")
                         .WithMany("Devices")
                         .HasForeignKey("TenantId")
@@ -1013,9 +1256,68 @@ namespace ControlR.Web.Server.Data.Migrations
                                 .HasForeignKey("DeviceId");
                         });
 
+                    b.Navigation("Customer");
+
                     b.Navigation("Drives");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.DeviceGroup", b =>
+                {
+                    b.HasOne("ControlR.Web.Server.Data.Entities.Tenant", "Tenant")
+                        .WithMany("DeviceGroups")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.DeviceGroupMember", b =>
+                {
+                    b.HasOne("ControlR.Web.Server.Data.Entities.DeviceGroup", "DeviceGroup")
+                        .WithMany("Members")
+                        .HasForeignKey("DeviceGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControlR.Web.Server.Data.Entities.Device", "Device")
+                        .WithMany("DeviceGroupMembers")
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+
+                    b.Navigation("DeviceGroup");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.LogonToken", b =>
+                {
+                    b.HasOne("ControlR.Web.Server.Data.Entities.Device", "Device")
+                        .WithMany("LogonTokens")
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControlR.Web.Server.Data.Entities.Tenant", "Tenant")
+                        .WithMany("LogonTokens")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControlR.Web.Server.Data.Entities.AppUser", "User")
+                        .WithMany("LogonTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.PersonalAccessToken", b =>
@@ -1083,6 +1385,36 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.UserGroup", b =>
+                {
+                    b.HasOne("ControlR.Web.Server.Data.Entities.Tenant", "Tenant")
+                        .WithMany("UserGroups")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.UserGroupMember", b =>
+                {
+                    b.HasOne("ControlR.Web.Server.Data.Entities.UserGroup", "UserGroup")
+                        .WithMany("Members")
+                        .HasForeignKey("UserGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControlR.Web.Server.Data.Entities.AppUser", "User")
+                        .WithMany("UserGroupMembers")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("UserGroup");
+                });
+
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.UserPreference", b =>
                 {
                     b.HasOne("ControlR.Web.Server.Data.Entities.AppUser", "User")
@@ -1116,15 +1448,6 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.HasOne("ControlR.Web.Server.Data.Entities.Tag", null)
                         .WithMany()
                         .HasForeignKey("TagsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
-                {
-                    b.HasOne("ControlR.Web.Server.Data.Entities.AppRole", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1198,21 +1521,6 @@ namespace ControlR.Web.Server.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
-                {
-                    b.HasOne("ControlR.Web.Server.Data.Entities.AppRole", null)
-                        .WithMany("UserRoles")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ControlR.Web.Server.Data.Entities.AppUser", null)
-                        .WithMany("UserRoles")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
                     b.HasOne("ControlR.Web.Server.Data.Entities.AppUser", null)
@@ -1227,20 +1535,29 @@ namespace ControlR.Web.Server.Data.Migrations
                     b.Navigation("Usages");
                 });
 
-            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.AppRole", b =>
-                {
-                    b.Navigation("UserRoles");
-                });
-
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.AppUser", b =>
                 {
+                    b.Navigation("LogonTokens");
+
                     b.Navigation("PersonalAccessTokens");
+
+                    b.Navigation("UserGroupMembers");
 
                     b.Navigation("UserPreferences");
 
-                    b.Navigation("UserRoles");
-
                     b.Navigation("UserStorageItems");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.Device", b =>
+                {
+                    b.Navigation("DeviceGroupMembers");
+
+                    b.Navigation("LogonTokens");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.DeviceGroup", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.ServiceAccount", b =>
@@ -1250,7 +1567,13 @@ namespace ControlR.Web.Server.Data.Migrations
 
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.Tenant", b =>
                 {
+                    b.Navigation("Customers");
+
+                    b.Navigation("DeviceGroups");
+
                     b.Navigation("Devices");
+
+                    b.Navigation("LogonTokens");
 
                     b.Navigation("Tags");
 
@@ -1258,7 +1581,14 @@ namespace ControlR.Web.Server.Data.Migrations
 
                     b.Navigation("TenantSettings");
 
+                    b.Navigation("UserGroups");
+
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("ControlR.Web.Server.Data.Entities.UserGroup", b =>
+                {
+                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

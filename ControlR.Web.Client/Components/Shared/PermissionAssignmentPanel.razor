@@ -1,0 +1,164 @@
+@using ControlR.Libraries.Api.Contracts.Enums
+@using ControlR.Web.Client.Components.Shared
+@using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal
+
+<MudPaper Class="pa-3 mb-3" Elevation="2">
+  <MudGrid Spacing="2">
+    <MudItem xs="12" md="3">
+      <MudSelect T="PermissionPrincipalKind" Value="_principalKind" ValueChanged="OnPrincipalKindChanged"
+                 Label="Principal Kind" Disabled="IsPrincipalLocked">
+        <MudSelectItem Value="@(PermissionPrincipalKind.User)">User</MudSelectItem>
+        <MudSelectItem Value="@(PermissionPrincipalKind.UserGroup)">User Group</MudSelectItem>
+        <MudSelectItem Value="@(PermissionPrincipalKind.ServiceAccount)">Service Account</MudSelectItem>
+        <MudSelectItem Value="@(PermissionPrincipalKind.PersonalAccessToken)">Personal Access Token</MudSelectItem>
+      </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="9">
+      <PrincipalAutocomplete PrincipalKind="_principalKind" SelectedId="_selectedPrincipalId"
+                             SelectedIdChanged="OnPrincipalIdChanged" Label="Principal"
+                             AccountKind="AccountKind"
+                             Disabled="IsPrincipalLocked" />
+      @if (_selectedPrincipalId is null)
+      {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+          Select a principal to view and manage its permission assignments.
+        </MudAlert>
+      }
+    </MudItem>
+  </MudGrid>
+</MudPaper>
+
+@if (_hasWritePermission)
+{
+<MudPaper Class="pa-3 mb-3" Elevation="2">
+  <MudText Typo="Typo.subtitle2" Class="mb-2">Presets</MudText>
+  <MudGrid Spacing="2" Justify="Justify.FlexEnd">
+    <MudItem xs="12" md="6">
+      <MudSelect T="string" MultiSelection="true" SelectedValues="_selectedPresetNames"
+                 SelectedValuesChanged="OnPresetSelectionChanged" Label="Permission Presets" Dense="true"
+                 SelectAll SelectAllText="Select All"
+                 Disabled="@(_selectedPrincipalId is null)">
+        @foreach (var preset in _presets)
+        {
+          <MudSelectItem T="string" Value="@preset.Name">@preset.Name</MudSelectItem>
+        }
+      </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="6">
+      <MudSelect T="PresetApplyMode" @bind-Value="_presetMode" Label="Mode" Dense="true"
+                 Disabled="@(_selectedPrincipalId is null)">
+        <MudSelectItem Value="PresetApplyMode.Merge">Merge</MudSelectItem>
+        <MudSelectItem Value="PresetApplyMode.Replace">Replace</MudSelectItem>
+      </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="6">
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyPresets"
+                 Disabled="@(!_selectedPresetNames.Any() || _selectedPrincipalId is null)" FullWidth="true">
+        Apply Presets
+      </MudButton>
+    </MudItem>
+  </MudGrid>
+</MudPaper>
+}
+
+<div class="permission-toolbar-row mt-8">
+  <div class="permission-toolbar-left">
+    @if (_hasWritePermission && _selectedAssignments.Count > 0)
+    {
+      <MudText Typo="Typo.subtitle2" Class="mr-2">
+        @_selectedAssignments.Count selected
+      </MudText>
+      <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
+                 OnClick="DeleteSelectedAssignments" Size="Size.Small" Disabled="_bulkDeleting">
+        Delete Selected
+      </MudButton>
+    }
+  </div>
+  <GridToolbar @bind-SearchValue="_searchString" OnRefresh="LoadAssignments" Disabled="@(_selectedPrincipalId is null)">
+    <Actions>
+      @if (_hasWritePermission)
+      {
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="CreateAssignment" Disabled="@(_selectedPrincipalId is null)">
+          New Assignment
+        </MudButton>
+      }
+    </Actions>
+  </GridToolbar>
+</div>
+
+<MudDataGrid T="InternalDtos.PermissionAssignmentDto" Items="_assignments" Hover="true" Dense="true" Loading="_loading"
+                 MultiSelection="true" SelectOnRowClick="false" @bind-SelectedItems="_selectedAssignments" QuickFilter="QuickFilter">
+  <NoRecordsContent>
+    <MudText Typo="Typo.body1" Align="Align.Center" Class="py-4">
+      @(_selectedPrincipalId is null
+        ? "Select a principal to view its permission assignments."
+        : "This principal has no permission assignments.")
+    </MudText>
+  </NoRecordsContent>
+  <Columns>
+    @if (_hasWritePermission)
+    {
+      <SelectColumn ShowInFooter="false" />
+    }
+    <PropertyColumn Property="x => x.PermissionName" Title="Permission" />
+    <TemplateColumn Title="Effect" Sortable="true" SortBy="@(x => x.Effect)">
+      <CellTemplate>
+        <MudChip T="string" Size="Size.Small"
+                 Color="@(context.Item.Effect == PermissionEffect.Allow ? Color.Success : Color.Error)"
+                 Icon="@(context.Item.Effect == PermissionEffect.Allow ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)">
+          @context.Item.Effect
+        </MudChip>
+      </CellTemplate>
+    </TemplateColumn>
+    <TemplateColumn Title="Scope" Sortable="true" SortBy="@(x => x.ScopeKind)">
+      <CellTemplate>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+          <MudChip T="string" Size="Size.Small" Color="Color.Default">@context.Item.ScopeKind</MudChip>
+          @if (context.Item.ScopeId is { } scopeId)
+          {
+            <MudText Typo="Typo.body2">@scopeId.ToString()[..8]...</MudText>
+          }
+        </MudStack>
+      </CellTemplate>
+    </TemplateColumn>
+    <TemplateColumn Title="Enabled" Sortable="true" SortBy="@(x => x.IsEnabled)">
+      <CellTemplate>
+        <MudSwitch T="bool" Value="context.Item.IsEnabled"
+                   ValueChanged="@((enabled) => ToggleEnabled(context.Item, enabled))" Color="Color.Primary"
+                   Disabled="@(!_hasWritePermission || _togglingIds.Contains(context.Item.Id) || IsProtectedSelfLastGrant(context.Item))" />
+      </CellTemplate>
+    </TemplateColumn>
+    <TemplateColumn Title="Notes" Sortable="false" Filterable="false">
+      <CellTemplate>
+        @{
+          var notes = context.Item.Notes;
+          var hasNotes = !string.IsNullOrWhiteSpace(notes);
+        }
+        <MudTooltip Text="@(hasNotes ? "Show notes" : "Notes are empty")" Placement="Placement.Left">
+          <MudIconButton Icon="@Icons.Material.Filled.Info" Color="@(hasNotes ? Color.Info : Color.Default)"
+                         Size="Size.Small" Disabled="@(!hasNotes)" OnClick="@(() => ShowNotes(notes))" />
+        </MudTooltip>
+      </CellTemplate>
+    </TemplateColumn>
+    @if (_hasWritePermission)
+    {
+      <TemplateColumn Title="" Sortable="false" Filterable="false">
+        <CellTemplate>
+          <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopRight">
+            <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info"
+                         OnClick="@(() => EditAssignment(context.Item))">
+              Edit
+            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
+                         Disabled="IsProtectedSelfLastGrant(context.Item)"
+                         OnClick="@(() => DeleteAssignment(context.Item))">
+              Delete
+            </MudMenuItem>
+          </MudMenu>
+        </CellTemplate>
+      </TemplateColumn>
+    }
+  </Columns>
+</MudDataGrid>

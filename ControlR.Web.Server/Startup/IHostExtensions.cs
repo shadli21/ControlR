@@ -1,20 +1,10 @@
 ﻿using System.Security.Claims;
 using ControlR.Libraries.Shared.Helpers;
-using ControlR.Web.Server.Authz.Roles;
 
 namespace ControlR.Web.Server.Startup;
 
 public static class HostExtensions
 {
-  public static async Task AddBuiltInRoles(this IHost host)
-  {
-    await using var scope = host.Services.CreateAsyncScope();
-    await using var context = scope.ServiceProvider.GetRequiredService<AppDb>();
-    var builtInRoles = RoleFactory.GetBuiltInRoles();
-    await context.Roles.AddRangeAsync(builtInRoles);
-    await context.SaveChangesAsync();
-  }
-
   public static async Task ApplyMigrations(this IHost host)
   {
     await using var scope = host.Services.CreateAsyncScope();
@@ -103,26 +93,16 @@ public static class HostExtensions
 
     logger.LogInformation("Bootstrap admin user created: {Email}.", options.AdminEmail);
 
-    // Assign all built-in roles. When new roles are added to RoleFactory,
-    // they are automatically assigned to the bootstrapped admin.
-    var builtInRoles = RoleFactory
-      .GetBuiltInRoles()
-      .Where(x => x.Name is not null)
-      .Select(x => x.Name!)
-      .ToArray();
-
-    var roleResult = await userManager.AddToRolesAsync(user, builtInRoles);
-    if (!roleResult.Succeeded)
-    {
-      foreach (var error in roleResult.Errors)
-      {
-        logger.LogError(
-          "Bootstrap role assignment error. Code: {Code}. Description: {Description}",
-          error.Code,
-          error.Description);
-      }
-      throw new InvalidOperationException($"Bootstrap admin role assignment failed: {string.Join("; ", roleResult.Errors.Select(e => e.Description))}");
-    }
+    await sp.GetRequiredService<IPermissionAssignmentSeeder>().SeedAssignments(
+      user.Id,
+      user.TenantId,
+      [
+        PermissionPresets.ServerAdministrator,
+        PermissionPresets.TenantAdministrator,
+        PermissionPresets.DeviceSuperUser,
+        PermissionPresets.AgentInstaller,
+        PermissionPresets.InstallerKeyManager,
+      ]);
 
     var claimResult = await userManager.AddClaimsAsync(user, [
       new Claim(UserClaimTypes.UserId, $"{user.Id}"),

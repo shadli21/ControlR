@@ -1,8 +1,8 @@
 using ControlR.Web.Client.Services;
 using ControlR.Libraries.Api.Contracts.Settings;
-using ControlR.Web.Server.Data.Extensions;
 using ControlR.Web.Server.Primitives;
 using Microsoft.AspNetCore.Components.Authorization;
+using ControlR.Web.Server.Extensions.Dtos.Internal;
 
 namespace ControlR.Web.Server.Services.Settings;
 
@@ -110,14 +110,10 @@ public class UserPreferencesManager(
       Value = normalizationResult.Value ?? string.Empty
     };
 
-    await appDb.AddOrUpdate(
+    var savedPreference = await appDb.AddOrUpdate(
       entity: entity, 
       match: x => x.Name == entity.Name && x.UserId == entity.UserId, 
       cancellationToken: cancellationToken);
-
-    var savedPreference = await appDb.UserPreferences
-      .AsNoTracking()
-      .SingleAsync(x => x.UserId == userId && x.Name == preference.Name, cancellationToken);
 
     return HttpResult.Ok(savedPreference.ToInternalResponseDto());
   }

@@ -1,4 +1,3 @@
-using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 using ControlR.Libraries.Branding;
 using Microsoft.AspNetCore.Components.Authorization;
 
@@ -8,6 +7,9 @@ public partial class Deploy
 {
   private bool _addTags;
   private bool _appendInstanceId = true;
+  private bool _canAssignDeviceTags;
+  private bool _canReadCustomers;
+  private IReadOnlyList<CustomerDto> _customers = [];
   private string? _deviceId;
   private IEnumerable<AgentInstallerKeyDto> _existingKeys = [];
   private string? _existingKeySecretInput;
@@ -19,6 +21,7 @@ public partial class Deploy
   private InstallerKeyType _installerKeyType;
   private string? _instanceId;
   private string? _keyExpiration;
+  private CustomerDto? _selectedCustomer;
   private AgentInstallerKeyDto? _selectedExistingKey;
   private IReadOnlyCollection<TagResponseDto>? _selectedTags;
   private IReadOnlyList<TagResponseDto> _tags = [];
@@ -28,16 +31,19 @@ public partial class Deploy
 
   [Inject]
   public required AuthenticationStateProvider AuthState { get; init; }
+
   [Inject]
   public required IClipboardManager Clipboard { get; init; }
+
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
+
   [Inject]
   public required NavigationManager NavMan { get; init; }
+
   [Inject]
   public required ISnackbar Snackbar { get; init; }
-  [Inject]
-  public required ITenantSettingsProvider TenantSettingsProvider { get; init; }
+
   [Inject]
   public required TimeProvider TimeProvider { get; init; }
 
@@ -89,12 +95,10 @@ public partial class Deploy
         $"sudo /tmp/{BrandingConstants.InstallerBaseName} install {GetCommonArgs()}";
     }
   }
-  
   private string SelectedTagsText =>
     _selectedTags is null
       ? ""
       : string.Join(", ", _selectedTags.Select(x => x.Name));
-
   private string WindowsX64DeployScript
   {
     get
@@ -126,10 +130,40 @@ public partial class Deploy
       _tenantId = tenantId;
     }
 
-    _appendInstanceId = await TenantSettingsProvider.GetAppendInstanceId();
-    _instanceId = await TenantSettingsProvider.GetInstanceId();
+    _canAssignDeviceTags = state.User.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.DeviceTagsWrite);
+    _canReadCustomers = state.User.HasClaim(
+      PermissionPolicies.PermissionClaimType,
+      PermissionNames.TenantCustomersRead);
 
-    var result = await ControlrApi.Internal.UserTags.GetAllowedTags();
+    var deploymentOptionsResult = await ControlrApi.Internal.DeploymentOptions.GetDeploymentOptions();
+    if (!deploymentOptionsResult.IsSuccess)
+    {
+      Snackbar.Add(deploymentOptionsResult.Reason, Severity.Error);
+      return;
+    }
+
+    _appendInstanceId = deploymentOptionsResult.Value.AppendInstanceId;
+    _instanceId = deploymentOptionsResult.Value.InstanceId;
+
+    if (_canReadCustomers)
+    {
+      var customersResult = await ControlrApi.Internal.Customers.GetAll();
+      if (customersResult.IsSuccess)
+      {
+        _customers = customersResult.Value;
+      }
+      else
+      {
+        Snackbar.Add(customersResult.Reason, Severity.Error);
+      }
+    }
+
+    if (!_canAssignDeviceTags)
+    {
+      return;
+    }
+
+    var result = await ControlrApi.Internal.Tags.GetAllTags();
     if (result.IsSuccess)
     {
       _tags = result.Value;
@@ -227,7 +261,7 @@ public partial class Deploy
     var createResult = await ControlrApi.Internal.InstallerKeys.CreateInstallerKey(dto);
     if (!createResult.IsSuccess)
     {
-      Snackbar.Add("Failed to create installer key", Severity.Error);
+      Snackbar.Add(createResult.Reason, Severity.Error);
       return;
     }
 
@@ -261,7 +295,7 @@ public partial class Deploy
     var createResult = await ControlrApi.Internal.InstallerKeys.CreateInstallerKey(dto);
     if (!createResult.IsSuccess)
     {
-      Snackbar.Add("Failed to create installer key", Severity.Error);
+      Snackbar.Add(createResult.Reason, Severity.Error);
       return;
     }
 
@@ -286,7 +320,7 @@ public partial class Deploy
     var createResult = await ControlrApi.Internal.InstallerKeys.CreateInstallerKey(dto);
     if (!createResult.IsSuccess)
     {
-      Snackbar.Add("Failed to create installer key", Severity.Error);
+      Snackbar.Add(createResult.Reason, Severity.Error);
       return;
     }
 
@@ -316,6 +350,11 @@ public partial class Deploy
     if (!string.IsNullOrWhiteSpace(_deviceId) && Guid.TryParse(_deviceId, out _))
     {
       args += $" -d {_deviceId}";
+    }
+
+    if (_selectedCustomer is not null)
+    {
+      args += $" -c {_selectedCustomer.Id}";
     }
 
     if (!_addTags || _selectedTags?.Any() != true)
@@ -359,6 +398,27 @@ public partial class Deploy
   {
     var currentUri = new Uri(NavMan.Uri);
     return new Uri($"{currentUri.Scheme}://{currentUri.Authority}");
+  }
+
+  private void OnInstallerKeyTypeChanged(InstallerKeyType keyType)
+  {
+    _installerKeyType = keyType;
+    if (keyType == InstallerKeyType.TimeBased)
+    {
+      var expiration = TimeProvider.GetLocalNow().AddHours(1);
+      _inputExpirationTime = expiration.TimeOfDay;
+      _inputExpirationDate = expiration.Date;
+    }
+  }
+
+  private void ResetToKeySelection()
+  {
+    _installerKeySecret = null;
+    _installerKeyId = null;
+    _keyExpiration = null;
+    _useExistingKey = false;
+    _selectedExistingKey = null;
+    _existingKeySecretInput = null;
   }
 
   private async Task ToggleKeyMode(bool useExisting)

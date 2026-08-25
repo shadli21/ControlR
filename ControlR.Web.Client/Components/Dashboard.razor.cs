@@ -6,10 +6,14 @@ using System.Runtime.Versioning;
 namespace ControlR.Web.Client.Components;
 
 [SupportedOSPlatform("browser")]
-public partial class Dashboard : IDisposable
+public partial class Dashboard : IAsyncDisposable
 {
+  // Must not exceed the server's per-call subscription cap (ViewerHub.MaxHeartbeatSubscriptionBatch).
+  private const int SubscriptionBatchSize = 100;
+
   private readonly ManualResetEventAsync _componentLoadedSignal = new(false);
   private readonly DisposableCollection _disposables = [];
+  private readonly SemaphoreSlim _heartbeatSyncLock = new(1, 1);
   private readonly Dictionary<string, SortDefinition<DeviceViewModel>> _sortDefinitions = new()
   {
     ["IsOnline"] = new SortDefinition<DeviceViewModel>(nameof(DeviceViewModel.Dto.IsOnline), true, 0, x => x.Dto.IsOnline),
@@ -17,58 +21,85 @@ public partial class Dashboard : IDisposable
   };
 
   private bool? _anyDevicesForUser;
+  private List<CustomerDto> _customers = [];
   private MudDataGrid<DeviceViewModel>? _dataGrid;
+  private FilterMatchMode _deviceGroupFilterMatchMode = FilterMatchMode.Any;
+  private List<DeviceGroupDto> _deviceGroups = [];
   private DeviceSearchFilterCountsDto _filterCounts = new();
-  private int _hiddenUntaggedDevices;
   private bool _hideOfflineDevices;
-  private bool _includeUntaggedDevices;
-
   private bool _loading = true;
   private bool _openDeviceInNewTab;
   private int _rowsPerPage = 25;
   private string? _searchText;
+  private HashSet<Guid> _selectedCustomerIds = [];
+  private HashSet<Guid> _selectedDeviceGroupIds = [];
   private ImmutableArray<TagViewModel> _selectedTags = [];
+  private bool _showOnlyUngrouped;
+  private bool _showOnlyUntagged;
+  private HashSet<Guid> _subscribedDeviceIds = [];
+  private FilterMatchMode _tagFilterMatchMode = FilterMatchMode.Any;
   private int _totalFilteredDevices;
 
   [Inject]
   public required IControlrApi ControlrApi { get; init; }
+
   [Inject]
   public required IDialogService DialogService { get; init; }
+
   [Inject]
   public required IJsInterop JsInterop { get; init; }
+
   [Inject]
   public required ILogger<Dashboard> Logger { get; init; }
+
   [Inject]
   public required IHubConnection<IViewerHub> MainHub { get; init; }
+
   [Inject]
   public required IMessenger Messenger { get; init; }
+
   [Inject]
   public required NavigationManager NavMan { get; init; }
+
   [Inject]
   public required IPersistentStateAccessor ServerSettings { get; init; }
+
   [Inject]
   public required ISnackbar Snackbar { get; init; }
+
+  [Inject]
+  public required ITagStore TagStore { get; init; }
+
   [Inject]
   public required IUserPreferencesProvider UserPreferences { get; init; }
-  [Inject]
-  public required IUserTagStore UserTagStore { get; init; }
+
   [Inject]
   public required IDeviceContentWindowStore WindowStore { get; init; }
 
-  private bool HasHiddenUntaggedDevices =>
-    !_includeUntaggedDevices && _hiddenUntaggedDevices > 0;
-  private bool HasScopeSelection =>
-    _selectedTags.Length > 0 || _includeUntaggedDevices;
-  private string HiddenUntaggedAlertText =>
-    _hiddenUntaggedDevices == 1
-      ? "1 untagged device is currently hidden by scope."
-      : $"{_hiddenUntaggedDevices} untagged devices are currently hidden by scope.";
   private bool ShouldBypassHideOfflineDevices =>
     !string.IsNullOrWhiteSpace(_searchText);
 
-  public void Dispose()
+  public async ValueTask DisposeAsync()
   {
+    await _heartbeatSyncLock.WaitAsync();
+    try
+    {
+      if (MainHub.IsConnected && _subscribedDeviceIds.Count > 0)
+      {
+        await MainHub.Server.UnsubscribeFromDeviceHeartbeats([.. _subscribedDeviceIds]);
+      }
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(ex, "Error unsubscribing from device heartbeats during disposal.");
+    }
+    finally
+    {
+      _heartbeatSyncLock.Release();
+    }
+
     _disposables.Dispose();
+    _heartbeatSyncLock.Dispose();
     GC.SuppressFinalize(this);
   }
 
@@ -81,21 +112,24 @@ public partial class Dashboard : IDisposable
       var preferences = await UserPreferences.GetPreferences();
       _hideOfflineDevices = preferences.HideOfflineDevices;
       _openDeviceInNewTab = preferences.OpenDeviceInNewTab;
+      _showOnlyUntagged = preferences.ShowOnlyUntaggedDevices;
+      _showOnlyUngrouped = preferences.ShowOnlyUngroupedDevices;
 
-      if (UserTagStore.Items.Count == 0)
+      if (TagStore.Items.Count == 0)
       {
-        await UserTagStore.Refresh();
+        await TagStore.Refresh();
       }
 
-      if (UserTagStore.Items.Count == 0)
+      var customersResult = await ControlrApi.Internal.Customers.GetAll();
+      if (customersResult.IsSuccess)
       {
-        _selectedTags = [];
-        _includeUntaggedDevices = true;
+        _customers = [.. customersResult.Value];
       }
-      else
+
+      var deviceGroupsResult = await ControlrApi.Internal.DeviceGroups.GetAll();
+      if (deviceGroupsResult.IsSuccess)
       {
-        _selectedTags = [.. UserTagStore.Items];
-        _includeUntaggedDevices = preferences.IncludeUntaggedDevices;
+        _deviceGroups = [.. deviceGroupsResult.Value];
       }
 
       _disposables.AddRange(
@@ -114,6 +148,46 @@ public partial class Dashboard : IDisposable
     }
   }
 
+  private string GetCustomerMultiSelectText(IReadOnlyList<string> customers)
+  {
+    if (customers.Count == 0)
+    {
+      return string.Empty;
+    }
+    var tagNoun = customers.Count > 1 ? "customers" : "customer";
+    return $"{customers.Count} {tagNoun} selected";
+  }
+
+  private string GetCustomerSelectText()
+  {
+    if (_selectedCustomerIds.Count == 0)
+    {
+      return string.Empty;
+    }
+    var tagNoun = _selectedCustomerIds.Count > 1 ? "customers" : "customer";
+    return $"{_selectedCustomerIds.Count} {tagNoun} selected";
+  }
+
+  private string GetDeviceGroupMultiSelectText(IReadOnlyList<string> deviceGroups)
+  {
+    if (deviceGroups.Count == 0)
+    {
+      return string.Empty;
+    }
+    var groupNoun = deviceGroups.Count > 1 ? "groups" : "group";
+    return $"{deviceGroups.Count} {groupNoun} selected";
+  }
+
+  private string GetDeviceGroupSelectText()
+  {
+    if (_selectedDeviceGroupIds.Count == 0)
+    {
+      return string.Empty;
+    }
+    var groupNoun = _selectedDeviceGroupIds.Count > 1 ? "groups" : "group";
+    return $"{_selectedDeviceGroupIds.Count} {groupNoun} selected";
+  }
+
   private async Task HandleDeviceDtoReceived(object subscriber, DtoReceivedMessage<DeviceResponseDto> message)
   {
     var viewModel = new DeviceViewModel(message.Dto);
@@ -128,6 +202,8 @@ public partial class Dashboard : IDisposable
   {
     if (message.NewState == HubConnectionState.Connected)
     {
+      // Server-side group memberships reset on (re)connect; re-subscribe during the refresh.
+      _subscribedDeviceIds = [];
       await RefreshDevices();
     }
   }
@@ -142,13 +218,6 @@ public partial class Dashboard : IDisposable
   {
     _hideOfflineDevices = isChecked;
     await UserPreferences.SetPreference(UserPreferenceNames.HideOfflineDevices, isChecked);
-    await ReloadGridData();
-  }
-
-  private async Task IncludeUntaggedDevicesChanged(bool isChecked)
-  {
-    _includeUntaggedDevices = isChecked;
-    await UserPreferences.SetPreference(UserPreferenceNames.IncludeUntaggedDevices, isChecked);
     await ReloadGridData();
   }
 
@@ -196,28 +265,22 @@ public partial class Dashboard : IDisposable
       await _componentLoadedSignal.Wait(cts.Token);
     }
 
-    if (!HasScopeSelection)
-    {
-      _filterCounts = new DeviceSearchFilterCountsDto();
-      _hiddenUntaggedDevices = 0;
-      _totalFilteredDevices = 0;
-      await InvokeAsync(StateHasChanged);
-
-      return new GridData<DeviceViewModel>
-      {
-        TotalItems = 0,
-        Items = []
-      };
-    }
-
-    var tagIds = _selectedTags.Select(t => t.Id).ToList();
+    var tagIds = _showOnlyUntagged ? null : _selectedTags.Select(t => t.Id).ToList();
+    IReadOnlyList<Guid>? groupIds = _showOnlyUngrouped
+      ? null
+      : _selectedDeviceGroupIds.Count > 0 ? [.. _selectedDeviceGroupIds] : null;
 
     var request = new DeviceSearchRequestDto
     {
       SearchText = _searchText,
       HideOfflineDevices = _hideOfflineDevices && !ShouldBypassHideOfflineDevices,
-      IncludeUntaggedDevices = _includeUntaggedDevices,
+      ShowOnlyUntaggedDevices = _showOnlyUntagged,
+      ShowOnlyUngroupedDevices = _showOnlyUngrouped,
       TagIds = tagIds,
+      CustomerIds = _selectedCustomerIds.Count > 0 ? [.. _selectedCustomerIds] : null,
+      DeviceGroupIds = groupIds,
+      DeviceGroupFilterMatchMode = _deviceGroupFilterMatchMode,
+      TagFilterMatchMode = _tagFilterMatchMode,
       Page = state.Page,
       PageSize = state.PageSize,
       SortDefinitions = [.. state.SortDefinitions
@@ -240,21 +303,21 @@ public partial class Dashboard : IDisposable
     if (!result.IsSuccess)
     {
       _filterCounts = new DeviceSearchFilterCountsDto();
-      _hiddenUntaggedDevices = 0;
       _totalFilteredDevices = 0;
       await InvokeAsync(StateHasChanged);
       Snackbar.Add("Failed to load devices", Severity.Error);
+      await SyncHeartbeatSubscriptions([]);
       return new GridData<DeviceViewModel> { TotalItems = 0, Items = [] };
     }
 
     _anyDevicesForUser = result.Value.AnyDevicesForUser;
     _filterCounts = result.Value.FilterCounts;
-    _hiddenUntaggedDevices = result.Value.HiddenUntaggedDevices;
     _totalFilteredDevices = result.Value.TotalItems;
     await InvokeAsync(StateHasChanged);
 
     if (result.Value.Items is null)
     {
+      await SyncHeartbeatSubscriptions([]);
       return new GridData<DeviceViewModel> { TotalItems = 0, Items = [] };
     }
 
@@ -266,11 +329,19 @@ public partial class Dashboard : IDisposable
         })
         .ToArray();
 
+    await SyncHeartbeatSubscriptions(viewModels.Select(viewModel => viewModel.Id));
+
     return new GridData<DeviceViewModel>
     {
       TotalItems = result.Value.TotalItems,
       Items = viewModels ?? []
     };
+  }
+
+  private async Task OnDeviceGroupFilterMatchModeChanged(FilterMatchMode mode)
+  {
+    _deviceGroupFilterMatchMode = mode;
+    await ReloadGridData();
   }
 
   private async Task OnSearch(string text)
@@ -279,9 +350,37 @@ public partial class Dashboard : IDisposable
     await ReloadGridData();
   }
 
+  private async Task OnSelectedCustomersChanged(IEnumerable<Guid> customerIds)
+  {
+    _selectedCustomerIds = [.. customerIds];
+    await ReloadGridData();
+  }
+
+  private async Task OnSelectedDeviceGroupsChanged(IEnumerable<Guid> deviceGroupIds)
+  {
+    _selectedDeviceGroupIds = [.. deviceGroupIds];
+    if (_showOnlyUngrouped && _selectedDeviceGroupIds.Count > 0)
+    {
+      _showOnlyUngrouped = false;
+      await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUngroupedDevices, false);
+    }
+    await ReloadGridData();
+  }
+
   private async Task OnSelectedTagsChanged(ImmutableArray<TagViewModel> tags)
   {
     _selectedTags = [.. tags];
+    if (_showOnlyUntagged && _selectedTags.Length > 0)
+    {
+      _showOnlyUntagged = false;
+      await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUntaggedDevices, false);
+    }
+    await ReloadGridData();
+  }
+
+  private async Task OnTagFilterMatchModeChanged(FilterMatchMode mode)
+  {
+    _tagFilterMatchMode = mode;
     await ReloadGridData();
   }
 
@@ -390,6 +489,28 @@ public partial class Dashboard : IDisposable
     }
   }
 
+  private async Task ShowOnlyUngroupedChanged(bool isChecked)
+  {
+    _showOnlyUngrouped = isChecked;
+    await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUngroupedDevices, isChecked);
+    if (isChecked)
+    {
+      _selectedDeviceGroupIds = [];
+    }
+    await ReloadGridData();
+  }
+
+  private async Task ShowOnlyUntaggedChanged(bool isChecked)
+  {
+    _showOnlyUntagged = isChecked;
+    await UserPreferences.SetPreference(UserPreferenceNames.ShowOnlyUntaggedDevices, isChecked);
+    if (isChecked)
+    {
+      _selectedTags = [];
+    }
+    await ReloadGridData();
+  }
+
   private async Task ShutdownDevice(DeviceViewModel device)
   {
     try
@@ -411,6 +532,50 @@ public partial class Dashboard : IDisposable
     catch (Exception ex)
     {
       Logger.LogError(ex, "Error while shutting down device.");
+    }
+  }
+
+  private async Task SyncHeartbeatSubscriptions(IEnumerable<Guid> visibleDeviceIds)
+  {
+    await _heartbeatSyncLock.WaitAsync();
+    try
+    {
+      if (!MainHub.IsConnected)
+      {
+        // Subscriptions are (re)established when the hub connects and triggers a grid refresh.
+        return;
+      }
+
+      var visible = visibleDeviceIds.ToHashSet();
+      var toSubscribe = visible.Except(_subscribedDeviceIds).ToArray();
+      var toUnsubscribe = _subscribedDeviceIds.Except(visible).ToArray();
+      var subscribed = new HashSet<Guid>(_subscribedDeviceIds);
+
+      foreach (var batch in toSubscribe.Chunk(SubscriptionBatchSize))
+      {
+        var result = await MainHub.Server.SubscribeToDeviceHeartbeats(batch);
+        if (result.IsSuccess)
+        {
+          subscribed.UnionWith(batch);
+        }
+        else
+        {
+          Logger.LogWarning("Failed to subscribe to device heartbeats: {Reason}", result.Reason);
+          Snackbar.Add($"Failed to subscribe to device heartbeats: {result.Reason}", Severity.Warning);
+        }
+      }
+
+      if (toUnsubscribe.Length > 0)
+      {
+        await MainHub.Server.UnsubscribeFromDeviceHeartbeats(toUnsubscribe);
+        subscribed.ExceptWith(toUnsubscribe);
+      }
+
+      _subscribedDeviceIds = subscribed;
+    }
+    finally
+    {
+      _heartbeatSyncLock.Release();
     }
   }
 
@@ -455,14 +620,21 @@ public partial class Dashboard : IDisposable
   {
     try
     {
-      if (device.Dto.MacAddresses.Length == 0)
+      if (device.Dto.MacAddresses.Count == 0)
       {
         Snackbar.Add("No MAC addresses on device", Severity.Warning);
         return;
       }
 
-      await MainHub.Server.SendWakeDevice(device.Id, device.Dto.MacAddresses);
-      Snackbar.Add("Wake command sent", Severity.Success);
+      var result = await MainHub.Server.SendWakeDevice(device.Id, device.Dto.MacAddresses.ToArray());
+      if (result.IsSuccess)
+      {
+        Snackbar.Add(result.Value, Severity.Success);
+      }
+      else
+      {
+        Snackbar.Add(result.Reason, Severity.Error);
+      }
     }
     catch (Exception ex)
     {

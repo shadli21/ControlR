@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Extensions.Database;
+using ControlR.Web.Server.Extensions.Dtos.Internal;
 using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,7 +38,7 @@ public class DevicesController(
 
     // Single-device operations use the resource policy directly.
     var authResult =
-      await authorizationService.AuthorizeAsync(User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+      await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
     if (!authResult.Succeeded)
     {
       return Forbid();
@@ -50,34 +52,46 @@ public class DevicesController(
   [HttpPost("delete-many")]
   public async Task<ActionResult<InternalDtos.DeleteManyDevicesResponseDto>> DeleteMany(
     [FromServices] AppDb appDb,
+    [FromServices] IAuthorizationService authorizationService,
     [FromBody] InternalDtos.DeleteDevicesRequestDto requestDto,
     CancellationToken cancellationToken)
   {
+    if (requestDto.DeviceIds.Count > DtoLimits.DeviceIdsMaxCount)
+    {
+      return BadRequest($"Too many device IDs. Maximum allowed is {DtoLimits.DeviceIdsMaxCount}.");
+    }
+
     if (!User.TryGetTenantId(out var tenantId))
     {
       return BadRequest("Tenant ID not found.");
     }
 
-    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId, cancellationToken);
-
-    // Authorized + existing devices (subset of input that user can delete).
-    var authorizedDeviceIds = await appDb.Devices
-      .ApplyAccessScope(tenantId, accessScope)
-      .Where(d => requestDto.DeviceIds.Contains(d.Id))
-      .Select(d => d.Id)
+    var candidateDevices = await appDb.Devices
+      .AsNoTracking()
+      .Include(x => x.DeviceGroupMembers)
+      .Where(d => d.TenantId == tenantId && requestDto.DeviceIds.Contains(d.Id))
       .ToListAsync(cancellationToken);
 
-    var authorizedIdSet = authorizedDeviceIds.ToHashSet();
+    var authorizedIdSet = new HashSet<Guid>();
+    foreach (var device in candidateDevices)
+    {
+      var authResult =
+        await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
+      if (authResult.Succeeded)
+      {
+        authorizedIdSet.Add(device.Id);
+      }
+    }
 
     var deletedCount = await appDb.Devices
       .Where(x => x.TenantId == tenantId && authorizedIdSet.Contains(x.Id))
       .ExecuteDeleteAsync(cancellationToken);
 
-    if (deletedCount == authorizedDeviceIds.Count)
+    if (deletedCount == authorizedIdSet.Count)
     {
       // All authorized devices were deleted.
       return new InternalDtos.DeleteManyDevicesResponseDto(
-        SuccessIds: [.. authorizedDeviceIds],
+        SuccessIds: [.. authorizedIdSet],
         FailureIds: [.. requestDto.DeviceIds.Except(authorizedIdSet)]);
     }
 
@@ -97,23 +111,15 @@ public class DevicesController(
     [FromServices] AppDb appDb,
     [FromServices] IAgentVersionProvider agentVersionProvider)
   {
-    IQueryable<Device> query = appDb.Devices.Include(x => x.Tags);
-
-    if (!User.TryGetTenantId(out var tenantId))
-    {
-      yield break;
-    }
-
-    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId);
-    query = query
-      .ApplyAccessScope(tenantId, accessScope)
-      .AsSplitQuery();
+    IQueryable<Device> query = await appDb.Devices
+      .Include(x => x.Tags)
+      .Include(x => x.Customer)
+      .AsSplitQuery()
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver);
 
     var (isSuccess, agentVersion) = await GetAgentVersion(agentVersionProvider);
 
-    var deviceStream = query.AsAsyncEnumerable();
-
-    await foreach (var device in deviceStream)
+    await foreach (var device in query.AsAsyncEnumerable())
     {
       var isOutdated = isSuccess && device.AgentVersion != agentVersion;
       yield return device.ToInternalResponseDto(isOutdated);
@@ -129,6 +135,7 @@ public class DevicesController(
   {
     var device = await appDb.Devices
       .AsNoTracking()
+      .Include(x => x.Customer)
       .FirstOrDefaultAsync(x => x.Id == deviceId);
       
     if (device is null)
@@ -137,7 +144,7 @@ public class DevicesController(
     }
 
     var authResult =
-      await authorizationService.AuthorizeAsync(User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+      await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
 
     if (!authResult.Succeeded)
     {
@@ -152,19 +159,10 @@ public class DevicesController(
   public async IAsyncEnumerable<InternalDtos.DeviceSummaryDto> GetDeviceSummaries(
     [FromServices] AppDb appDb)
   {
-    IQueryable<Device> query = appDb.Devices;
+    IQueryable<Device> query = await appDb.Devices
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver);
 
-    if (!User.TryGetTenantId(out var tenantId))
-    {
-      yield break;
-    }
-
-    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId);
-    query = query.ApplyAccessScope(tenantId, accessScope);
-
-    var deviceStream = query.AsAsyncEnumerable();
-
-    await foreach (var device in deviceStream)
+    await foreach (var device in query.AsAsyncEnumerable())
     {
       yield return device.ToInternalSummaryDto();
     }
@@ -177,37 +175,40 @@ public class DevicesController(
     [FromServices] IAgentVersionProvider agentVersionProvider,
     [FromServices] ILogger<DevicesController> logger)
   {
-    if (!User.TryGetTenantId(out var tenantId))
-    {
-      return BadRequest("Tenant ID not found.");
-    }
-
-    var accessScope = await _deviceAccessScopeResolver.Resolve(User, tenantId);
+    var authorizedQuery = await appDb.Devices
+      .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver);
 
     var isRelationalDatabase = appDb.Database.IsRelational();
-    var authorizedQuery = appDb.Devices.ApplyAccessScope(tenantId, accessScope!).AsQueryable();
-
     var anyDevices = await authorizedQuery.AnyAsync();
 
     var filteredQuery = authorizedQuery
       .FilterBySearchText(requestDto.SearchText, isRelationalDatabase)
       .FilterByOnlineOffline(requestDto.HideOfflineDevices)
-      .FilterByColumnFilters(requestDto.FilterDefinitions, isRelationalDatabase, logger);
+      .FilterByColumnFilters(requestDto.FilterDefinitions, isRelationalDatabase, logger)
+      .FilterByCustomerIds(requestDto.CustomerIds);
 
-    var hiddenUntaggedDevices = requestDto.IncludeUntaggedDevices
-      ? 0
-      : await filteredQuery.CountAsync(x => !x.Tags!.Any());
+    var scopedQuery = filteredQuery.FilterByTagsAndDeviceGroups(
+      requestDto.TagIds,
+      requestDto.TagFilterMatchMode,
+      requestDto.DeviceGroupIds,
+      requestDto.DeviceGroupFilterMatchMode,
+      requestDto.ShowOnlyUntaggedDevices,
+      requestDto.ShowOnlyUngroupedDevices);
 
-    var scopedQuery = filteredQuery.FilterByTagIds(requestDto.TagIds, requestDto.IncludeUntaggedDevices);
     var filterCounts = await GetFilterCounts(scopedQuery);
     var totalCount = await scopedQuery.CountAsync();
+
+    // Prevent int overflow in Skip, which would produce a negative SQL OFFSET.
+    var clampedPageSize = Math.Max(1, requestDto.PageSize);
+    var clampedPage = Math.Clamp(requestDto.Page, 0, int.MaxValue / clampedPageSize);
 
     var devices = await scopedQuery
       .ApplySorting(requestDto.SortDefinitions)
       .Include(x => x.Tags)
+      .Include(x => x.Customer)
       .AsSplitQuery()
-      .Skip(requestDto.Page * requestDto.PageSize)
-      .Take(requestDto.PageSize)
+      .Skip(clampedPage * clampedPageSize)
+      .Take(clampedPageSize)
       .ToListAsync();
 
 
@@ -224,7 +225,6 @@ public class DevicesController(
     {
       AnyDevicesForUser = anyDevices,
       FilterCounts = filterCounts,
-      HiddenUntaggedDevices = hiddenUntaggedDevices,
       Items = pagedDtos,
       TotalItems = totalCount
     };
@@ -260,7 +260,7 @@ public class DevicesController(
     }
 
     var authResult =
-      await authorizationService.AuthorizeAsync(User, device, DeviceAccessByDeviceResourcePolicy.PolicyName);
+      await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.AliasWrite);
     if (!authResult.Succeeded)
     {
       logger.LogWarning("User {UserName} denied access to update alias for device {DeviceId}.", User.Identity?.Name, deviceId);

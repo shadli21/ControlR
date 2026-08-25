@@ -1,0 +1,62 @@
+@attribute [Route(ClientRoutes.Customers)]
+@attribute [Authorize(Policy = PolicyNames.RequireCustomersRead)]
+
+<PageTitle>Customers</PageTitle>
+
+<PrimaryTitle>
+  Customers
+</PrimaryTitle>
+
+<GridToolbar @bind-SearchValue="_searchString" OnRefresh="Refresh">
+  <Actions>
+    @if (_canWrite)
+    {
+      <MudButton Variant="Variant.Outlined"
+                 Color="Color.Primary"
+                 StartIcon="@Icons.Material.Filled.Add"
+                 OnClick="CreateCustomer">
+        New Customer
+      </MudButton>
+    }
+  </Actions>
+</GridToolbar>
+
+<MudDataGrid T="CustomerDto"
+             Items="_customers"
+             Hover="true"
+             Loading="_loading"
+             QuickFilter="QuickFilter"
+             Breakpoint="Breakpoint.Sm">
+  <Columns>
+    <PropertyColumn Property="x => x.Name" Title="Name" />
+    <PropertyColumn Property="x => x.Description" Title="Description" />
+    <PropertyColumn Property="x => x.Notes" Title="Notes" />
+    <PropertyColumn Property="x => x.DeviceCount" Title="Devices" />
+    <TemplateColumn Title="ID" Sortable="false" Filterable="false">
+      <CellTemplate>
+        <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
+          <MudText Typo="Typo.body2">@(TruncateId(context.Item.Id))</MudText>
+          <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                         Size="Size.Small"
+                         OnClick="@(() => CopyId(context.Item.Id))" />
+        </MudStack>
+      </CellTemplate>
+    </TemplateColumn>
+    <PropertyColumn Property="x => x.CreatedAt" Title="Created" />
+    @if (_canWrite)
+    {
+      <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+        <CellTemplate>
+          <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopRight">
+            <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Info" OnClick="@(() => EditCustomer(context.Item))">Edit</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.AddToPhotos" IconColor="Color.Info" OnClick="@(() => AssignDevices(context.Item))">Assign Devices</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => DeleteCustomer(context.Item))">Delete</MudMenuItem>
+          </MudMenu>
+        </CellTemplate>
+      </TemplateColumn>
+    }
+  </Columns>
+  <PagerContent>
+    <MudDataGridPager T="CustomerDto" />
+  </PagerContent>
+</MudDataGrid>

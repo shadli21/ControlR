@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using ControlR.Web.Client.Authz;
+using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlR.Web.Server.Tests;
@@ -61,17 +63,21 @@ public class IdentityApiRegisterFilterTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-    // Verify the first user received the expected roles.
+    // Verify the first user received the expected presets.
     using var scope = testServer.Services.CreateScope();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+    await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
     var user = await userManager.FindByEmailAsync(request.Email);
     Assert.NotNull(user);
-    var roles = await userManager.GetRolesAsync(user);
-    Assert.Contains(RoleNames.ServerAdministrator, roles);
-    Assert.Contains(RoleNames.TenantAdministrator, roles);
-    Assert.Contains(RoleNames.DeviceSuperUser, roles);
-    Assert.Contains(RoleNames.AgentInstaller, roles);
-    Assert.Contains(RoleNames.InstallerKeyManager, roles);
+    var permissions = await appDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+    Assert.Contains(PermissionNames.ServerAdmin, permissions);
+    Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
+    Assert.Contains(PermissionNames.DeviceRead, permissions);
+    Assert.Contains(PermissionNames.AgentInstall, permissions);
+    Assert.Contains(PermissionNames.InstallerKeyRead, permissions);
   }
 
   [Fact]
@@ -148,14 +154,16 @@ public class IdentityApiRegisterFilterTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.OK, adminResponse.StatusCode);
 
-    // Verify the first user got ServerAdministrator.
+    // Verify the first user got the ServerAdministrator preset.
     using (var scope = testServer.Services.CreateScope())
     {
       var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+      await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
       var adminUser = await userManager.FindByEmailAsync(adminRequest.Email);
       Assert.NotNull(adminUser);
-      var adminRoles = await userManager.GetRolesAsync(adminUser);
-      Assert.Contains(RoleNames.ServerAdministrator, adminRoles);
+      var hasServerAdmin = await appDb.PermissionAssignments
+        .AnyAsync(x => x.PrincipalId == adminUser.Id && x.PermissionName == PermissionNames.ServerAdmin, TestContext.Current.CancellationToken);
+      Assert.True(hasServerAdmin);
     }
 
     // A second user should be blocked when public registration is disabled.
@@ -221,18 +229,22 @@ public class IdentityApiRegisterFilterTests(ITestOutputHelper testOutput)
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-    // Verify the non-first user does NOT get ServerAdministrator,
-    // but does get tenant-scoped roles.
+    // Verify the non-first user does NOT get the ServerAdministrator preset,
+    // but does get tenant-scoped presets.
     using var scope = testServer.Services.CreateScope();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+    await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
     var user = await userManager.FindByEmailAsync(request.Email);
     Assert.NotNull(user);
-    var roles = await userManager.GetRolesAsync(user);
-    Assert.DoesNotContain(RoleNames.ServerAdministrator, roles);
-    Assert.Contains(RoleNames.TenantAdministrator, roles);
-    Assert.Contains(RoleNames.DeviceSuperUser, roles);
-    Assert.Contains(RoleNames.AgentInstaller, roles);
-    Assert.Contains(RoleNames.InstallerKeyManager, roles);
+    var permissions = await appDb.PermissionAssignments
+      .Where(x => x.PrincipalId == user.Id)
+      .Select(x => x.PermissionName)
+      .ToListAsync(TestContext.Current.CancellationToken);
+    Assert.DoesNotContain(PermissionNames.ServerAdmin, permissions);
+    Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
+    Assert.Contains(PermissionNames.DeviceRead, permissions);
+    Assert.Contains(PermissionNames.AgentInstall, permissions);
+    Assert.Contains(PermissionNames.InstallerKeyRead, permissions);
   }
 
   [Fact]

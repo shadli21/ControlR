@@ -13,7 +13,7 @@ public class FilePermissionsEnforcer(
   : PeriodicBackgroundService(TimeSpan.FromMinutes(30), true, timeProvider, logger)
 {
 
-  protected override Task HandleElapsed()
+  protected override Task HandleElapsed(CancellationToken stoppingToken)
   {
     EnforceAccess();
     return Task.CompletedTask;
