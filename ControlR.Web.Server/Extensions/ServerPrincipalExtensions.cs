@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using ControlR.Libraries.Api.Contracts.Enums;
-using ControlR.Web.Client.Extensions;
 using ControlR.Web.Server.Authn;
 
 namespace ControlR.Web.Server.Extensions;
