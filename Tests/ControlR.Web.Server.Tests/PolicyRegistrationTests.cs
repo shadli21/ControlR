@@ -23,9 +23,7 @@ public class PolicyRegistrationTests
   {
     var referencedPolicies = ServerAssembly
       .GetTypes()
-      .SelectMany(type => type.GetCustomAttributes<AuthorizeAttribute>(inherit: true))
-      .Select(attr => attr.Policy)
-      .Where(policy => !string.IsNullOrWhiteSpace(policy))
+      .SelectMany(type => GetAuthorizePolicyNames(type))
       .ToHashSet();
 
     Assert.NotEmpty(referencedPolicies);
@@ -62,5 +60,20 @@ public class PolicyRegistrationTests
     Assert.True(
       missing.Count == 0,
       $"The following DeviceResourcePolicies constants are not registered in PolicyToPermission: {string.Join(", ", missing)}");
+  }
+
+  private static IEnumerable<string> GetAuthorizePolicyNames(Type type)
+  {
+    // Controller classes apply [Authorize(Policy=...)] at the class and/or action level.
+    // Both must be checked, or an unregistered policy on a method would slip through.
+    var typeAttributes = type.GetCustomAttributes<AuthorizeAttribute>(inherit: true)
+      .Select(attr => attr.Policy);
+    var methodAttributes = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
+      .SelectMany(method => method.GetCustomAttributes<AuthorizeAttribute>(inherit: true))
+      .Select(attr => attr.Policy);
+
+    return typeAttributes
+      .Concat(methodAttributes)
+      .Where(policy => !string.IsNullOrWhiteSpace(policy))!;
   }
 }
