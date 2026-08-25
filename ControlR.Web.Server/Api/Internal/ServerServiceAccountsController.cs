@@ -107,7 +107,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User ID not found.");
     }
 
-    var result = await _serviceAccountManager.RevokeCredential(serviceAccountId, credentialId, userId, cancellationToken);
+    var result = await _serviceAccountManager.RevokeCredentialForServer(serviceAccountId, credentialId, userId, cancellationToken);
 
     if (!result.IsSuccess)
     {

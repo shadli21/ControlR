@@ -267,7 +267,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
 
     var accountId = createResult.Value.Id;
     var credentialId = credResult.Value.Credential.Id;
-    await serviceAccountManager.RevokeCredential(
+    await serviceAccountManager.RevokeCredentialForServer(
       accountId,
       credentialId,
       Guid.NewGuid(),
@@ -364,7 +364,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
     Assert.True(primeResult.Succeeded);
 
     // Revoke the credential while the auth is still cached.
-    var revokeResult = await serviceAccountManager.RevokeCredential(
+    var revokeResult = await serviceAccountManager.RevokeCredentialForServer(
       createResult.Value.Id,
       credResult.Value.Credential.Id,
       Guid.NewGuid(),

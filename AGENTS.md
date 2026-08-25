@@ -60,7 +60,7 @@ DTOs live in `Dtos/ServerApi/` under `ControlR.Libraries.Api.Contracts.Dtos.Serv
 | Location | Contents | Lifecycle |
 |---|---|---|
 | `Dtos/ServerApi/Internal/` | Internal (BFF) only | Dynamic, changes freely |
-| `Dtos/ServerApi/V1/` | V1 (S2S) only | Stable contract |
+| `Dtos/ServerApi/V1/` | Versioned API contracts | Stable contract |
 
 **Rules:**
 - Every DTO belongs to exactly one route root's folder (`Internal/`, `V1/`, …). There is no shared root `Dtos/ServerApi/` folder for DTOs.
@@ -81,10 +81,12 @@ DTOs live in `Dtos/ServerApi/` under `ControlR.Libraries.Api.Contracts.Dtos.Serv
 | Root | URL prefix | Stability | Consumer |
 |---|---|---|---|
 | `Api/Internal` | `/api/internal/*` | Unversioned, volatile | Internal. BFF (Blazor UI) |
-| `Api/V1` | `/api/v1/*` | Stable contract | S2S automation |
+| `Api/V1` | `/api/v1/*` | Stable contract | Endpoint-specific authorization; may accept users, PATs, server service accounts, or tenant service accounts |
 | `Api/Agent` | `/api/agent/*`, | Unversioned, volatile | Internal. Public APIs for agent. |
 
 - Controllers live in `Api/{Root}/` with namespace `ControlR.Web.Server.Api.{Root}`.
+- Do not infer an endpoint's audience or resource scope from the `Api/V1` route root. V1 describes contract stability. Determine authorization and tenant/server scope from each controller's policy, resource authorization, explicit tenant checks, and manager method calls.
+- V1 controllers may support user, PAT, server service-account, and tenant service-account principals when their endpoint authorization permits them. A V1 controller that uses `ForServer` methods is server-scoped because of that endpoint's explicit contract, not because it is V1.
 - Controller class names carry **no** version or audience prefix. The namespace + `[ApiVersion]` attribute convey that.
   - ✅ `Api/V1/DevicesController.cs` — namespace `Api.V1`
   - ❌ `V1DevicesController.cs` — version noise in the class name

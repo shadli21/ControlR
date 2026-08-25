@@ -216,7 +216,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     Assert.True(addCredResult.IsSuccess);
     var secondApiKey = addCredResult.Value.PlainTextSecretKey;
 
-    await manager.RevokeCredential(accountId, credentialId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    await manager.RevokeCredentialForServer(accountId, credentialId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
     var shouldFail = await manager.ValidateCredential(apiKey, TestContext.Current.CancellationToken);
     Assert.False(shouldFail.IsSuccess);

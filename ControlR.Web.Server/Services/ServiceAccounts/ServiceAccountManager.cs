@@ -75,9 +75,9 @@ public interface IServiceAccountManager
   Task<HttpResult<ServiceAccountResult>> GetForTenant(Guid serviceAccountId, Guid tenantId, CancellationToken cancellationToken);
 
   /// <summary>
-  /// Revokes a credential by setting <see cref="ServiceAccountCredential.RevokedAt"/>.
+  /// Revokes a credential on a server-scoped service account.
   /// </summary>
-  Task<HttpResult> RevokeCredential(
+  Task<HttpResult> RevokeCredentialForServer(
     Guid serviceAccountId, Guid credentialId, Guid actorPrincipalId, CancellationToken cancellationToken);
 
   /// <summary>
@@ -568,7 +568,7 @@ public class ServiceAccountManager(
     return HttpResult.Ok(MapToResult(account));
   }
 
-  public async Task<HttpResult> RevokeCredential(
+  public async Task<HttpResult> RevokeCredentialForServer(
     Guid serviceAccountId,
     Guid credentialId,
     Guid actorPrincipalId,
@@ -576,7 +576,9 @@ public class ServiceAccountManager(
   {
     var credential = await appDb.ServiceAccountCredentials
       .FirstOrDefaultAsync(
-        x => x.Id == credentialId && x.ServiceAccountId == serviceAccountId,
+        x => x.Id == credentialId &&
+             x.ServiceAccountId == serviceAccountId &&
+             x.ServiceAccount!.Kind == ServiceAccountKind.Server,
         cancellationToken);
 
     if (credential is null)

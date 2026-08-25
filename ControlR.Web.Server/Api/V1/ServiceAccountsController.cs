@@ -134,7 +134,7 @@ public class ServiceAccountsController(
       return Unauthorized();
     }
 
-    var result = await _serviceAccountManager.RevokeCredential(serviceAccountId, credentialId, principalId, cancellationToken);
+    var result = await _serviceAccountManager.RevokeCredentialForServer(serviceAccountId, credentialId, principalId, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
