@@ -5,7 +5,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 var pgUser = builder.AddParameter("PgUser", true);
 var pgPassword = builder.AddParameter("PgPassword", true);
 var pgDataVolume = builder.AddParameter("PgDataVolume", false);
-var volumeName = await pgDataVolume.Resource.GetValueAsync(CancellationToken.None);
+var volumeName = await pgDataVolume.Resource.GetValueAsync(CancellationToken.None) ?? "controlr-data";
 
 var postgres = builder
     .AddPostgres(ServiceNames.Postgres, pgUser, pgPassword, port: 5432)
