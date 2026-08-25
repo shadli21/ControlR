@@ -9832,6 +9832,7 @@
         "type": "object",
         "properties": {
           "deviceIds": {
+            "maxItems": 1000,
             "type": "array",
             "items": {
               "type": "string",
@@ -9994,6 +9995,7 @@
         "type": "object",
         "properties": {
           "deviceIds": {
+            "maxItems": 1000,
             "type": "array",
             "items": {
               "type": "string",
@@ -10001,6 +10003,7 @@
             }
           },
           "removeDeviceIds": {
+            "maxItems": 1000,
             "type": "array",
             "items": {
               "type": "string",
@@ -12178,6 +12181,7 @@
         "type": "object",
         "properties": {
           "deviceIds": {
+            "maxItems": 1000,
             "type": "array",
             "items": {
               "type": "string",

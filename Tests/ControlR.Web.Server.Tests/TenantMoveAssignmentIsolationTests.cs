@@ -196,21 +196,23 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
     var user = await testApp.App.Services.CreateTestUser(tenantA.Id, $"mover-{Guid.NewGuid():N}@t.local");
     var deviceA = await testApp.App.Services.CreateTestDevice(tenantA.Id);
     await testApp.App.Services.CreateTestDevice(tenantB.Id);
-    var groupId = Guid.NewGuid();
+    var deviceGroupId = Guid.NewGuid();
+    var userGroupId = Guid.NewGuid();
 
     using (var scope = testApp.CreateScope())
     {
       await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      db.DeviceGroups.Add(new DeviceGroup { Id = groupId, Name = $"group-{groupId:N}", TenantId = tenantA.Id });
-      db.DeviceGroupMembers.Add(new DeviceGroupMember { DeviceId = deviceA.Id, DeviceGroupId = groupId });
-      db.UserGroupMembers.Add(new UserGroupMember { UserId = user.Id, UserGroupId = groupId });
+      db.DeviceGroups.Add(new DeviceGroup { Id = deviceGroupId, Name = $"group-{deviceGroupId:N}", TenantId = tenantA.Id });
+      db.DeviceGroupMembers.Add(new DeviceGroupMember { DeviceId = deviceA.Id, DeviceGroupId = deviceGroupId });
+      db.UserGroups.Add(new UserGroup { Id = userGroupId, Name = $"ugroup-{userGroupId:N}", TenantId = tenantA.Id });
+      db.UserGroupMembers.Add(new UserGroupMember { UserId = user.Id, UserGroupId = userGroupId });
 
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.UserGroup,
-        groupId,
+        userGroupId,
         PermissionNames.DeviceRead,
         PermissionScopeKind.DeviceGroup,
-        groupId,
+        deviceGroupId,
         tenantA.Id,
         "test",
         user.Id.ToString()));
@@ -228,6 +230,6 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    return (tenantA, tenantB, user, deviceA.Id, groupId);
+    return (tenantA, tenantB, user, deviceA.Id, deviceGroupId);
   }
 }
