@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+using ControlR.Libraries.Api.Contracts.Constants;
+
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 public record CreateDeviceGroupRequestDto(
@@ -40,8 +42,8 @@ public record DeviceGroupDetailDto(
 
 public record AddDeviceGroupMembersRequestDto(
   [property: Required]
-  IReadOnlyList<Guid> DeviceIds);
+  [property: MaxLength(DtoLimits.DeviceIdsMaxCount)] IReadOnlyList<Guid> DeviceIds);
 
 public record RemoveDeviceGroupMembersRequestDto(
   [property: Required]
-  IReadOnlyList<Guid> DeviceIds);
+  [property: MaxLength(DtoLimits.DeviceIdsMaxCount)] IReadOnlyList<Guid> DeviceIds);
