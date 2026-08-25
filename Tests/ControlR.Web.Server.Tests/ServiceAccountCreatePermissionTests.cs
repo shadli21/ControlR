@@ -101,7 +101,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     using var scope = testApp.CreateScope();
-    var (controller, tenant, user) = await scope.CreateControllerWithTestData<ServiceAccountsController>(
+    var (controller, tenant, user) = await scope.CreateControllerWithTestData<TenantServiceAccountsController>(
       userEmail: "tenant-rotate@t.local");
 
     await GrantTenantPermissions(scope.ServiceProvider, tenant.Id, user.Id,
@@ -157,7 +157,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
 
     // Create succeeds with only the write permission.
     var createResponse = await httpClient.PostAsJsonAsync(
-      HttpConstants.Internal.ServiceAccountsEndpoint,
+      HttpConstants.Internal.TenantServiceAccountsEndpoint,
       new InternalDtos.CreateTenantServiceAccountRequestDto("Cred SA", null),
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
@@ -169,7 +169,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
 
     // The credential endpoint requires the rotate policy, which this user lacks -> HTTP 403.
     var addCredResponse = await httpClient.PostAsJsonAsync(
-      $"{HttpConstants.Internal.ServiceAccountsEndpoint}/{account.Id}/credentials",
+      $"{HttpConstants.Internal.TenantServiceAccountsEndpoint}/{account.Id}/credentials",
       new InternalDtos.CreateTenantServiceAccountCredentialRequestDto("Attempted Key", null),
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.Forbidden, addCredResponse.StatusCode);

@@ -4,26 +4,26 @@ using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 namespace ControlR.ApiClient.Interfaces.Internal;
 
-public interface IServiceAccountsApi
+public interface ITenantServiceAccountsApi
 {
-  [ApiRoute($"{HttpConstants.Internal.ServiceAccountsEndpoint}/{{serviceAccountId}}/credentials", "POST")]
+  [ApiRoute($"{HttpConstants.Internal.TenantServiceAccountsEndpoint}/{{serviceAccountId}}/credentials", "POST")]
   Task<ApiResult<InternalDtos.CreateTenantServiceAccountCredentialResponseDto>> AddCredential(Guid serviceAccountId, InternalDtos.CreateTenantServiceAccountCredentialRequestDto request, CancellationToken cancellationToken = default);
 
-  [ApiRoute($"{HttpConstants.Internal.ServiceAccountsEndpoint}", "POST")]
+  [ApiRoute($"{HttpConstants.Internal.TenantServiceAccountsEndpoint}", "POST")]
   Task<ApiResult<InternalDtos.TenantServiceAccountDto>> Create(InternalDtos.CreateTenantServiceAccountRequestDto request, CancellationToken cancellationToken = default);
 
-  [ApiRoute($"{HttpConstants.Internal.ServiceAccountsEndpoint}/{{serviceAccountId}}", "DELETE")]
+  [ApiRoute($"{HttpConstants.Internal.TenantServiceAccountsEndpoint}/{{serviceAccountId}}", "DELETE")]
   Task<ApiResult> Delete(Guid serviceAccountId, CancellationToken cancellationToken = default);
 
-  [ApiRoute($"{HttpConstants.Internal.ServiceAccountsEndpoint}/{{serviceAccountId}}", "GET")]
+  [ApiRoute($"{HttpConstants.Internal.TenantServiceAccountsEndpoint}/{{serviceAccountId}}", "GET")]
   Task<ApiResult<InternalDtos.TenantServiceAccountDto>> Get(Guid serviceAccountId, CancellationToken cancellationToken = default);
 
-  [ApiRoute($"{HttpConstants.Internal.ServiceAccountsEndpoint}", "GET")]
+  [ApiRoute($"{HttpConstants.Internal.TenantServiceAccountsEndpoint}", "GET")]
   Task<ApiResult<InternalDtos.TenantServiceAccountDto[]>> GetAll(CancellationToken cancellationToken = default);
 
-  [ApiRoute($"{HttpConstants.Internal.ServiceAccountsEndpoint}/{{serviceAccountId}}/credentials/{{credentialId}}", "DELETE")]
+  [ApiRoute($"{HttpConstants.Internal.TenantServiceAccountsEndpoint}/{{serviceAccountId}}/credentials/{{credentialId}}", "DELETE")]
   Task<ApiResult> RevokeCredential(Guid serviceAccountId, Guid credentialId, CancellationToken cancellationToken = default);
 
-  [ApiRoute($"{HttpConstants.Internal.ServiceAccountsEndpoint}/{{serviceAccountId}}", "PUT")]
+  [ApiRoute($"{HttpConstants.Internal.TenantServiceAccountsEndpoint}/{{serviceAccountId}}", "PUT")]
   Task<ApiResult<InternalDtos.TenantServiceAccountDto>> Update(Guid serviceAccountId, InternalDtos.UpdateTenantServiceAccountRequestDto request, CancellationToken cancellationToken = default);
 }

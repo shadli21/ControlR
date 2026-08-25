@@ -7,11 +7,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.V1;
 
-[Route(HttpConstants.V1.ServiceAccountsEndpoint)]
+[Route(HttpConstants.V1.ServerServiceAccountsEndpoint)]
 [ApiController]
 [Authorize]
 [ApiVersion(ApiVersions.V1)]
-public class ServiceAccountsController(
+public class ServerServiceAccountsController(
   IServiceAccountManager serviceAccountManager) : ControllerBase
 {
   private readonly IServiceAccountManager _serviceAccountManager = serviceAccountManager;
@@ -71,12 +71,7 @@ public class ServiceAccountsController(
     CancellationToken cancellationToken)
   {
     var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
-    if (principalClaim is null)
-    {
-      return Unauthorized();
-    }
-
-    if (!Guid.TryParse(principalClaim.Value, out var principalId))
+    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
     {
       return Unauthorized();
     }

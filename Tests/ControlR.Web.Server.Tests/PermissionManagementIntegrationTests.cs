@@ -277,7 +277,7 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
 
     // Create a tenant service account and grant it device.read at tenant scope.
     var createAccountResponse = await client.PostAsJsonAsync(
-      HttpConstants.Internal.ServiceAccountsEndpoint,
+      HttpConstants.Internal.TenantServiceAccountsEndpoint,
       new InternalDtos.CreateTenantServiceAccountRequestDto("Effective Query SA", null),
       TestContext.Current.CancellationToken);
     var account = await createAccountResponse.Content.ReadFromJsonAsync<InternalDtos.TenantServiceAccountDto>(

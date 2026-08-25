@@ -118,7 +118,7 @@ public partial class PrincipalAutocomplete
           PermissionPrincipalKind.ServiceAccount);
     }
 
-    var tenantResult = await ControlrApi.Internal.ServiceAccounts.GetAll();
+    var tenantResult = await ControlrApi.Internal.TenantServiceAccounts.GetAll();
     if (!tenantResult.IsSuccess)
     {
       return null;
@@ -206,7 +206,7 @@ public partial class PrincipalAutocomplete
           PermissionPrincipalKind.ServiceAccount));
     }
 
-    var tenantResult = await ControlrApi.Internal.ServiceAccounts.GetAll(cancellationToken);
+    var tenantResult = await ControlrApi.Internal.TenantServiceAccounts.GetAll(cancellationToken);
     if (!tenantResult.IsSuccess)
     {
       return [];

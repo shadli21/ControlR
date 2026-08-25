@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlR.Web.Server.Tests.V1;
 
-public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
+public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
 {
   [Fact]
   public async Task AddCredential_DisabledAccount_Returns403()
@@ -38,7 +38,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     using (var scope = testApp.CreateScope())
     {
       var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-        ServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
+        ServerServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
 
       var result = await controller.AddCredential(
         accountId,
@@ -63,7 +63,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var accountId = saResult.Value.Id;
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.AddCredential(
       accountId,
@@ -81,7 +81,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     using var scope = testApp.CreateScope();
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.AddCredential(
       Guid.NewGuid(),
@@ -95,8 +95,8 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
   [Fact]
   public void Create_RequiresServerServiceAccountsWritePolicy()
   {
-    var attribute = typeof(ServiceAccountsController)
-      .GetMethod(nameof(ServiceAccountsController.Create))!
+    var attribute = typeof(ServerServiceAccountsController)
+      .GetMethod(nameof(ServerServiceAccountsController.Create))!
       .GetCustomAttribute<AuthorizeAttribute>();
     Assert.NotNull(attribute);
     Assert.Equal(PolicyNames.RequireServerServiceAccountsWrite, attribute.Policy);
@@ -109,7 +109,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     using var scope = testApp.CreateScope();
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.Create(
       new CreateServiceAccountRequestDto("", null),
@@ -126,7 +126,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     using var scope = testApp.CreateScope();
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.Create(
       new CreateServiceAccountRequestDto("New Test Account", "Description"),
@@ -135,7 +135,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
     var dto = Assert.IsType<ServiceAccountDto>(createdResult.Value);
     Assert.Equal("New Test Account", dto.Name);
-    Assert.Equal(nameof(ServiceAccountsController.Get), createdResult.ActionName);
+    Assert.Equal(nameof(ServerServiceAccountsController.Get), createdResult.ActionName);
     Assert.Equal(dto.Id, (Guid)createdResult.RouteValues!["serviceAccountId"]!);
   }
 
@@ -155,7 +155,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var accountId = saResult.Value.Id;
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.Delete(accountId, TestContext.Current.CancellationToken);
     Assert.IsType<NoContentResult>(result);
@@ -172,7 +172,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     using var scope = testApp.CreateScope();
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.Delete(Guid.NewGuid(), TestContext.Current.CancellationToken);
     var notFound = Assert.IsType<ObjectResult>(result);
@@ -203,7 +203,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var selfAccountId = saResult.Value.Id;
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
     // Override the principal with the same account that the controller will be trying to delete.
     var controllerPrincipal = TestPrincipalHelper.CreateServerServiceAccountPrincipal(saResult.Value, credResult.Value.Credential);
@@ -226,7 +226,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
     var manager = services.GetRequiredService<IServiceAccountManager>();
 
     // Create another account.
@@ -251,7 +251,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var accountId = saResult.Value.Id;
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.Get(accountId, TestContext.Current.CancellationToken);
     var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -268,7 +268,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     using var scope = testApp.CreateScope();
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.Get(Guid.NewGuid(), TestContext.Current.CancellationToken);
     var notFound = Assert.IsType<ObjectResult>(result.Result);
@@ -298,7 +298,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var credentialId = credResult.Value.Credential.Id;
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, accountName: "Controller SA", cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.RevokeCredential(accountId, credentialId, TestContext.Current.CancellationToken);
     Assert.IsType<NoContentResult>(result);
@@ -318,7 +318,7 @@ public class ServiceAccountsControllerTests(ITestOutputHelper testOutput)
     using var scope = testApp.CreateScope();
 
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
-      ServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
+      ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
     var saResult = await manager.CreateForServer("Revoke NonExistent SA", null, TestContext.Current.CancellationToken);

@@ -5,6 +5,7 @@ public interface IControlrV1Api
   IDevicesApi Devices { get; }
   IInstallerKeysApi InstallerKeys { get; }
   ILogonTokensApi LogonTokens { get; }
-  IServiceAccountsApi ServiceAccounts { get; }
+  IServerServiceAccountsApi ServerServiceAccounts { get; }
   ITenantsApi Tenants { get; }
+  ITenantServiceAccountsApi TenantServiceAccounts { get; }
 }

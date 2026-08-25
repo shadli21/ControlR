@@ -63,7 +63,7 @@ public partial class ServiceAccounts : ComponentBase
       return;
     }
 
-    var apiResult = await ControlrApi.Internal.ServiceAccounts.AddCredential(
+    var apiResult = await ControlrApi.Internal.TenantServiceAccounts.AddCredential(
       account.Id, new InternalDtos.CreateTenantServiceAccountCredentialRequestDto(dialogResult.Name, dialogResult.ExpiresAt));
 
     if (!apiResult.IsSuccess)
@@ -101,7 +101,7 @@ public partial class ServiceAccounts : ComponentBase
       return;
     }
 
-    var createResult = await ControlrApi.Internal.ServiceAccounts.Create(
+    var createResult = await ControlrApi.Internal.TenantServiceAccounts.Create(
       new InternalDtos.CreateTenantServiceAccountRequestDto(dialogResult.Name, dialogResult.Description));
 
     if (!createResult.IsSuccess)
@@ -114,7 +114,7 @@ public partial class ServiceAccounts : ComponentBase
 
     if (dialogResult.CredentialName is { } credentialName)
     {
-      var credResult = await ControlrApi.Internal.ServiceAccounts.AddCredential(
+      var credResult = await ControlrApi.Internal.TenantServiceAccounts.AddCredential(
         account.Id, new InternalDtos.CreateTenantServiceAccountCredentialRequestDto(credentialName, dialogResult.CredentialExpiresAt));
 
       if (!credResult.IsSuccess)
@@ -146,7 +146,7 @@ public partial class ServiceAccounts : ComponentBase
       return;
     }
 
-    var result = await ControlrApi.Internal.ServiceAccounts.Delete(account.Id);
+    var result = await ControlrApi.Internal.TenantServiceAccounts.Delete(account.Id);
     if (!result.IsSuccess)
     {
       Snackbar.Add(result.Reason, Severity.Error);
@@ -177,7 +177,7 @@ public partial class ServiceAccounts : ComponentBase
     var index = Array.FindIndex(_accounts, x => x.Id == account.Id);
     var currentEnabled = index >= 0 ? _accounts[index].IsEnabled : account.IsEnabled;
 
-    var updateResult = await ControlrApi.Internal.ServiceAccounts.Update(
+    var updateResult = await ControlrApi.Internal.TenantServiceAccounts.Update(
       account.Id, new InternalDtos.UpdateTenantServiceAccountRequestDto(editResult.Name, editResult.Description, currentEnabled));
 
     if (!updateResult.IsSuccess)
@@ -221,7 +221,7 @@ public partial class ServiceAccounts : ComponentBase
 
     try
     {
-      var result = await ControlrApi.Internal.ServiceAccounts.GetAll();
+      var result = await ControlrApi.Internal.TenantServiceAccounts.GetAll();
       if (result.IsSuccess)
       {
         _accounts = result.Value;
@@ -250,7 +250,7 @@ public partial class ServiceAccounts : ComponentBase
       return;
     }
 
-    var result = await ControlrApi.Internal.ServiceAccounts.RevokeCredential(serviceAccountId, credentialId);
+    var result = await ControlrApi.Internal.TenantServiceAccounts.RevokeCredential(serviceAccountId, credentialId);
     if (!result.IsSuccess)
     {
       Snackbar.Add(result.Reason, Severity.Error);
@@ -288,7 +288,7 @@ public partial class ServiceAccounts : ComponentBase
       if (index < 0) return;
 
       var latest = _accounts[index];
-      var result = await ControlrApi.Internal.ServiceAccounts.Update(latest.Id,
+      var result = await ControlrApi.Internal.TenantServiceAccounts.Update(latest.Id,
         new InternalDtos.UpdateTenantServiceAccountRequestDto(latest.Name, latest.Description, enabled));
 
       if (!result.IsSuccess)

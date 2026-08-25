@@ -19,7 +19,7 @@ public class InternalServiceAccountsControllerTests(ITestOutputHelper testOutput
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     using var scope = testApp.CreateScope();
-    var (controller, tenant, _) = await scope.CreateControllerWithTestData<ServiceAccountsController>(
+    var (controller, tenant, _) = await scope.CreateControllerWithTestData<TenantServiceAccountsController>(
       userEmail: "tenant-disabled-test@t.local",
       presets: PermissionPresets.TenantAdministrator);
 
@@ -45,7 +45,7 @@ public class InternalServiceAccountsControllerTests(ITestOutputHelper testOutput
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     using var scope = testApp.CreateScope();
-    var (controller, _, _) = await scope.CreateControllerWithTestData<ServiceAccountsController>(
+    var (controller, _, _) = await scope.CreateControllerWithTestData<TenantServiceAccountsController>(
       userEmail: "tenant-create-test@t.local",
       presets: PermissionPresets.TenantAdministrator);
 
@@ -66,7 +66,7 @@ public class InternalServiceAccountsControllerTests(ITestOutputHelper testOutput
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     using var scope = testApp.CreateScope();
-    var (controller, _, _) = await scope.CreateControllerWithTestData<ServiceAccountsController>(
+    var (controller, _, _) = await scope.CreateControllerWithTestData<TenantServiceAccountsController>(
       userEmail: "tenant-delete-a@t.local",
       presets: PermissionPresets.TenantAdministrator);
 
@@ -84,7 +84,7 @@ public class InternalServiceAccountsControllerTests(ITestOutputHelper testOutput
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     using var scope = testApp.CreateScope();
-    var (controller, tenantA, _) = await scope.CreateControllerWithTestData<ServiceAccountsController>(
+    var (controller, tenantA, _) = await scope.CreateControllerWithTestData<TenantServiceAccountsController>(
       userEmail: "tenant-getall-a@t.local",
       presets: PermissionPresets.TenantAdministrator);
 
@@ -108,7 +108,7 @@ public class InternalServiceAccountsControllerTests(ITestOutputHelper testOutput
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     using var scope = testApp.CreateScope();
-    var (controller, tenantA, _) = await scope.CreateControllerWithTestData<ServiceAccountsController>(
+    var (controller, tenantA, _) = await scope.CreateControllerWithTestData<TenantServiceAccountsController>(
       userEmail: "tenant-get-a@t.local",
       presets: PermissionPresets.TenantAdministrator);
 
@@ -127,7 +127,7 @@ public class InternalServiceAccountsControllerTests(ITestOutputHelper testOutput
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     using var scope = testApp.CreateScope();
-    var (controller, tenant, _) = await scope.CreateControllerWithTestData<ServiceAccountsController>(
+    var (controller, tenant, _) = await scope.CreateControllerWithTestData<TenantServiceAccountsController>(
       userEmail: "tenant-revoke@t.local",
       presets: PermissionPresets.TenantAdministrator);
 
@@ -149,7 +149,7 @@ public class InternalServiceAccountsControllerTests(ITestOutputHelper testOutput
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     using var scope = testApp.CreateScope();
-    var (controller, _, _) = await scope.CreateControllerWithTestData<ServiceAccountsController>(
+    var (controller, _, _) = await scope.CreateControllerWithTestData<TenantServiceAccountsController>(
       userEmail: "tenant-update-a@t.local",
       presets: PermissionPresets.TenantAdministrator);
 

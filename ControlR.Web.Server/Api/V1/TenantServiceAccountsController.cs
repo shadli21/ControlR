@@ -1,0 +1,228 @@
+using Asp.Versioning;
+using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.ServiceAccounts;
+using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Extensions.Dtos.V1;
+using Microsoft.AspNetCore.Mvc;
+
+namespace ControlR.Web.Server.Api.V1;
+
+[Route($"{HttpConstants.V1.TenantServiceAccountsEndpoint}/{{tenantId:guid}}")]
+[ApiController]
+[Authorize]
+[ApiVersion(ApiVersions.V1)]
+public class TenantServiceAccountsController(
+  IServiceAccountManager serviceAccountManager) : ControllerBase
+{
+  private readonly IServiceAccountManager _serviceAccountManager = serviceAccountManager;
+
+  [HttpPost("{serviceAccountId:guid}/credentials")]
+  [Authorize(Policy = PolicyNames.RequireServiceAccountRotateCredentials)]
+  [ProducesResponseType<CreateServiceAccountCredentialResponseDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status400BadRequest)]
+  [ProducesResponseType(StatusCodes.Status404NotFound)]
+  [ProducesResponseType(StatusCodes.Status409Conflict)]
+  public async Task<ActionResult<CreateServiceAccountCredentialResponseDto>> AddCredential(
+    Guid tenantId,
+    Guid serviceAccountId,
+    [FromBody] CreateServiceAccountCredentialRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryResolveTenantId(tenantId, out var resolvedTenantId))
+    {
+      return Forbid();
+    }
+
+    var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
+    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
+    {
+      return Unauthorized();
+    }
+
+    var result = await _serviceAccountManager.AddCredentialForTenant(
+      serviceAccountId, resolvedTenantId, request.Name, request.ExpiresAt, principalId, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToHttpResult().ToActionResult();
+    }
+
+    return Ok(result.Value.ToDto());
+  }
+
+  [HttpPost]
+  [Authorize(Policy = PolicyNames.RequireServiceAccountWrite)]
+  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status201Created)]
+  [ProducesResponseType(StatusCodes.Status400BadRequest)]
+  [ProducesResponseType(StatusCodes.Status403Forbidden)]
+  [ProducesResponseType(StatusCodes.Status409Conflict)]
+  public async Task<ActionResult<ServiceAccountDto>> Create(
+    Guid tenantId,
+    [FromBody] CreateServiceAccountRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryResolveTenantId(tenantId, out var resolvedTenantId))
+    {
+      return Forbid();
+    }
+
+    if (!User.TryGetPrincipalId(out var principalId))
+    {
+      return Unauthorized();
+    }
+
+    var result = await _serviceAccountManager.CreateForTenant(
+      request.Name, request.Description, resolvedTenantId, principalId, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToHttpResult().ToActionResult();
+    }
+
+    return CreatedAtAction(
+      nameof(Get),
+      new { tenantId = resolvedTenantId, serviceAccountId = result.Value.Id },
+      result.Value.ToDto());
+  }
+
+  [HttpDelete("{serviceAccountId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServiceAccountWrite)]
+  [ProducesResponseType(StatusCodes.Status204NoContent)]
+  [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+  [ProducesResponseType(StatusCodes.Status403Forbidden)]
+  [ProducesResponseType(StatusCodes.Status404NotFound)]
+  public async Task<IActionResult> Delete(
+    Guid tenantId,
+    Guid serviceAccountId,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryResolveTenantId(tenantId, out var resolvedTenantId))
+    {
+      return Forbid();
+    }
+
+    if (!User.TryGetPrincipalId(out var principalId))
+    {
+      return Unauthorized();
+    }
+
+    var result = await _serviceAccountManager.DeleteForTenant(serviceAccountId, resolvedTenantId, principalId, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToActionResult();
+    }
+
+    return NoContent();
+  }
+
+  [HttpGet("{serviceAccountId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServiceAccountRead)]
+  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status403Forbidden)]
+  [ProducesResponseType(StatusCodes.Status404NotFound)]
+  public async Task<ActionResult<ServiceAccountDto>> Get(
+    Guid tenantId,
+    Guid serviceAccountId,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryResolveTenantId(tenantId, out var resolvedTenantId))
+    {
+      return Forbid();
+    }
+
+    var result = await _serviceAccountManager.GetForTenant(serviceAccountId, resolvedTenantId, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToHttpResult().ToActionResult();
+    }
+
+    return Ok(result.Value.ToDto());
+  }
+
+  [HttpGet]
+  [Authorize(Policy = PolicyNames.RequireServiceAccountRead)]
+  [ProducesResponseType<ServiceAccountsResponseDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status403Forbidden)]
+  public async Task<ActionResult<ServiceAccountsResponseDto>> GetAll(
+    Guid tenantId,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryResolveTenantId(tenantId, out var resolvedTenantId))
+    {
+      return Forbid();
+    }
+
+    var accounts = await _serviceAccountManager.GetAllForTenant(resolvedTenantId, cancellationToken);
+    return Ok(new ServiceAccountsResponseDto
+    {
+      Items = accounts.Select(x => x.ToDto()).ToArray()
+    });
+  }
+
+  [HttpDelete("{serviceAccountId:guid}/credentials/{credentialId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServiceAccountRotateCredentials)]
+  [ProducesResponseType(StatusCodes.Status204NoContent)]
+  [ProducesResponseType(StatusCodes.Status403Forbidden)]
+  [ProducesResponseType(StatusCodes.Status404NotFound)]
+  public async Task<IActionResult> RevokeCredential(
+    Guid tenantId,
+    Guid serviceAccountId,
+    Guid credentialId,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryResolveTenantId(tenantId, out var resolvedTenantId))
+    {
+      return Forbid();
+    }
+
+    if (!User.TryGetPrincipalId(out var principalId))
+    {
+      return Unauthorized();
+    }
+
+    var result = await _serviceAccountManager.RevokeCredentialForTenant(
+      serviceAccountId, credentialId, resolvedTenantId, principalId, cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToActionResult();
+    }
+
+    return NoContent();
+  }
+
+  [HttpPut("{serviceAccountId:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServiceAccountWrite)]
+  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status400BadRequest)]
+  [ProducesResponseType(StatusCodes.Status403Forbidden)]
+  [ProducesResponseType(StatusCodes.Status404NotFound)]
+  public async Task<ActionResult<ServiceAccountDto>> Update(
+    Guid tenantId,
+    Guid serviceAccountId,
+    [FromBody] UpdateServiceAccountRequestDto request,
+    CancellationToken cancellationToken)
+  {
+    if (!User.TryResolveTenantId(tenantId, out var resolvedTenantId))
+    {
+      return Forbid();
+    }
+
+    if (!User.TryGetPrincipalId(out var principalId))
+    {
+      return Unauthorized();
+    }
+
+    var result = await _serviceAccountManager.UpdateForTenant(
+      serviceAccountId,
+      resolvedTenantId,
+      request.Name,
+      request.Description,
+      request.IsEnabled,
+      principalId,
+      cancellationToken);
+    if (!result.IsSuccess)
+    {
+      return result.ToHttpResult().ToActionResult();
+    }
+
+    return Ok(result.Value.ToDto());
+  }
+}

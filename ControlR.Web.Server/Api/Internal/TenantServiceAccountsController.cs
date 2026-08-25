@@ -2,11 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
 
-[Route(HttpConstants.Internal.ServiceAccountsEndpoint)]
+[Route(HttpConstants.Internal.TenantServiceAccountsEndpoint)]
 [ApiController]
 [Authorize]
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
-public class ServiceAccountsController(IServiceAccountManager serviceAccountManager) : ControllerBase
+public class TenantServiceAccountsController(IServiceAccountManager serviceAccountManager) : ControllerBase
 {
   private readonly IServiceAccountManager _serviceAccountManager = serviceAccountManager;
 

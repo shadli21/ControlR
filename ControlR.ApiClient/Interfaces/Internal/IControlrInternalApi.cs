@@ -23,9 +23,9 @@ public interface IControlrInternalApi
   IServerLogsApi ServerLogs { get; }
   IServerServiceAccountsApi ServerServiceAccounts { get; }
   IServerStatsApi ServerStats { get; }
-  IServiceAccountsApi ServiceAccounts { get; }
   ITagsApi Tags { get; }
   ITenantsApi Tenants { get; }
+  ITenantServiceAccountsApi TenantServiceAccounts { get; }
   ITenantSettingsApi TenantSettings { get; }
   ITestEmailApi TestEmail { get; }
   IUserGroupsApi UserGroups { get; }

@@ -1,5 +1,6 @@
 ## Breaking Changes
 
+- Service-account API routes and client accessors now explicitly distinguish tenant-scoped and server-scoped accounts. The V1 server routes use `/api/v1/server-service-accounts`, and the V1 tenant routes use `/api/v1/tenant-service-accounts/{tenantId}`. The internal routes use `/api/server-service-accounts` and `/api/tenant-service-accounts`.
 - Some of the DTOs used in the `/api/v1/*` endpoints have been changed.
   - There will be no more breaking changes to the `/api/v1/*` endpoints after this release.
 - Although roles were migrated to permission presets, user tags that mapped users to devices were removed.

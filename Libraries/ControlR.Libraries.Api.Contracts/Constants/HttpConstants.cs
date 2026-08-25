@@ -32,9 +32,9 @@ public static class HttpConstants
     public const string ServerLogsEndpoint = "/api/server-logs";
     public const string ServerServiceAccountsEndpoint = "/api/server-service-accounts";
     public const string ServerStatsEndpoint = "/api/server-stats";
-    public const string ServiceAccountsEndpoint = "/api/service-accounts";
     public const string TagsEndpoint = "/api/tags";
     public const string TenantsEndpoint = "/api/tenants";
+    public const string TenantServiceAccountsEndpoint = "/api/tenant-service-accounts";
     public const string TenantSettingsEndpoint = "/api/tenant-settings";
     public const string TestEmailEndpoint = "/api/test-email";
     public const string UserGroupsEndpoint = "/api/user-groups";
@@ -49,7 +49,8 @@ public static class HttpConstants
     public const string DevicesEndpoint = "/api/v1/devices";
     public const string InstallerKeysEndpoint = "/api/v1/installer-keys";
     public const string LogonTokensEndpoint = "/api/v1/logon-tokens";
-    public const string ServiceAccountsEndpoint = "/api/v1/service-accounts";
+    public const string ServerServiceAccountsEndpoint = "/api/v1/server-service-accounts";
     public const string TenantsEndpoint = "/api/v1/tenants";
+    public const string TenantServiceAccountsEndpoint = "/api/v1/tenant-service-accounts";
   }
 }
