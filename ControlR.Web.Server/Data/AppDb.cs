@@ -29,6 +29,9 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
     _userId = extension?.Options.UserId;
   }
 
+  internal Guid? TenantId => _tenantId;
+  internal Guid? UserId => _userId;
+
   public DbSet<AgentInstallerKey> AgentInstallerKeys { get; init; }
   public DbSet<AgentInstallerKeyUsage> AgentInstallerKeyUsages { get; init; }
   public DbSet<AuthorizationChangeLog> AuthorizationChangeLogs { get; init; }
