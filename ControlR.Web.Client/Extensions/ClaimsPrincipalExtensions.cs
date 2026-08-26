@@ -4,6 +4,24 @@ namespace ControlR.Web.Client.Extensions;
 
 public static class ClaimsPrincipalExtensions
 {
+
+  /// <summary>
+  /// Returns true when the server evaluated the named client policy against its canonical
+  /// (tenant/server) resource while producing the current auth snapshot and the decision was
+  /// allowed. Client policy grants are <see cref="PermissionPolicies.ClientPolicyClaimType"/>
+  /// claims whose value is the policy name. This deliberately does not match resource-scoped
+  /// permission names, which are never emitted as global claims.
+  /// </summary>
+  public static bool HasClientPolicy(this ClaimsPrincipal user, string policyName)
+  {
+    if (!user.IsAuthenticated())
+    {
+      return false;
+    }
+
+    return user.HasClaim(PermissionPolicies.ClientPolicyClaimType, policyName);
+  }
+
   public static bool IsAuthenticated(this ClaimsPrincipal user)
   {
     return user.Identity?.IsAuthenticated ?? false;

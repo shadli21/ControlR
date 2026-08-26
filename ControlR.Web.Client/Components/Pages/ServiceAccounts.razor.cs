@@ -84,7 +84,7 @@ public partial class ServiceAccounts : ComponentBase
 
   private async Task CreateAccount()
   {
-    var canIssueCredential = await HasPermission(PermissionNames.ServiceAccountRotateCredentials);
+    var canIssueCredential = await HasPolicy(PolicyNames.RequireServiceAccountRotateCredentials);
 
     var parameters = new DialogParameters<CreateServiceAccountDialog>
     {
@@ -208,10 +208,10 @@ public partial class ServiceAccounts : ComponentBase
       cred.RevokedAt is null && (cred.ExpiresAt is null || cred.ExpiresAt > TimeProvider.GetUtcNow()));
   }
 
-  private async Task<bool> HasPermission(string permissionName)
+  private async Task<bool> HasPolicy(string policyName)
   {
     var state = await AuthState.GetAuthenticationStateAsync();
-    return state.User.HasClaim(PermissionPolicies.PermissionClaimType, permissionName);
+    return state.User.HasClientPolicy(policyName);
   }
 
   private async Task Refresh()

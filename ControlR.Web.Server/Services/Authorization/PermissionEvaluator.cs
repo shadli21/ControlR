@@ -1,3 +1,4 @@
+using ControlR.Libraries.Api.Contracts.Authz;
 using ControlR.Web.Server.Authz.Permissions;
 
 namespace ControlR.Web.Server.Services.Authorization;
@@ -18,17 +19,19 @@ public interface IPermissionEvaluator
     IReadOnlyCollection<string> permissionNames,
     ResourceDescriptor resource,
     CancellationToken cancellationToken);
-  Task<IReadOnlySet<string>> GetPermissionHints(
+  Task<IReadOnlySet<string>> GetGrantedPolicies(
     PrincipalDescriptor principal,
     CancellationToken cancellationToken);
 }
 
 public sealed class PermissionEvaluator(
   IPermissionEvaluationContextLoader contextLoader,
-  IPermissionDecisionEvaluator decisionEvaluator) : IPermissionEvaluator
+  IPermissionDecisionEvaluator decisionEvaluator,
+  IResourceDescriptorFactory resourceDescriptorFactory) : IPermissionEvaluator
 {
   private readonly IPermissionEvaluationContextLoader _contextLoader = contextLoader;
   private readonly IPermissionDecisionEvaluator _decisionEvaluator = decisionEvaluator;
+  private readonly IResourceDescriptorFactory _resourceDescriptorFactory = resourceDescriptorFactory;
 
   public async Task<PermissionEvaluationResult> Evaluate(
     PrincipalDescriptor principal,
@@ -75,32 +78,93 @@ public sealed class PermissionEvaluator(
         StringComparer.Ordinal);
   }
 
-  public async Task<IReadOnlySet<string>> GetPermissionHints(
+  public async Task<IReadOnlySet<string>> GetGrantedPolicies(
     PrincipalDescriptor principal,
     CancellationToken cancellationToken)
   {
-    var context = await _contextLoader.Load(principal, cancellationToken);
-    if (context.ServerBypass)
+    var clientDefinitions = PermissionPolicies.ClientDefinitions;
+    if (clientDefinitions.Count == 0)
     {
-      return PermissionCatalog.All.Keys.ToHashSet(StringComparer.Ordinal);
+      return new HashSet<string>(StringComparer.Ordinal);
     }
 
-    var hints = new HashSet<string>(StringComparer.Ordinal);
-    foreach (var group in context.EffectiveRules.GroupBy(rule => rule.PermissionName))
-    {
-      if (group.Any(rule => rule.Effect == PermissionEffect.Deny))
-      {
-        continue;
-      }
+    var grantedPolicies = new HashSet<string>(StringComparer.Ordinal);
+    var tenantEntries = new List<KeyValuePair<string, PermissionPolicyDefinition>>();
+    var serverEntries = new List<KeyValuePair<string, PermissionPolicyDefinition>>();
 
-      if (group.Any(rule => rule.Effect == PermissionEffect.Allow) &&
-          PermissionCatalog.Exists(group.Key))
+    foreach (var entry in clientDefinitions)
+    {
+      switch (entry.Value.ResourceScopeKind)
       {
-        hints.Add(group.Key);
+        case PermissionScopeKind.Tenant:
+          tenantEntries.Add(entry);
+          break;
+        case PermissionScopeKind.Server:
+          serverEntries.Add(entry);
+          break;
+        default:
+          throw new InvalidOperationException(
+            $"Projected client policy '{entry.Key}' has an unsupported resource kind " +
+            $"'{entry.Value.ResourceScopeKind}'. Only tenant and server policies can be projected to the client.");
       }
     }
 
-    return hints;
+    if (serverEntries.Count > 0)
+    {
+      var serverResource = _resourceDescriptorFactory.CreateServer();
+      await AddGrantedPoliciesCore(
+        principal,
+        serverEntries,
+        serverResource,
+        grantedPolicies,
+        cancellationToken);
+    }
+
+    if (tenantEntries.Count > 0)
+    {
+      if (!principal.TenantId.HasValue)
+      {
+        throw new InvalidOperationException(
+          "Cannot evaluate tenant client policies for a principal without a tenant id.");
+      }
+
+      var tenantResource = _resourceDescriptorFactory.CreateTenant(principal.TenantId.Value);
+      await AddGrantedPoliciesCore(
+        principal,
+        tenantEntries,
+        tenantResource,
+        grantedPolicies,
+        cancellationToken);
+    }
+
+    return grantedPolicies;
+  }
+
+  private async Task AddGrantedPoliciesCore(
+    PrincipalDescriptor principal,
+    IReadOnlyCollection<KeyValuePair<string, PermissionPolicyDefinition>> entries,
+    ResourceDescriptor resource,
+    ISet<string> grantedPolicies,
+    CancellationToken cancellationToken)
+  {
+    var permissionNames = entries
+      .Select(entry => entry.Value.PermissionName)
+      .Distinct(StringComparer.Ordinal)
+      .ToArray();
+
+    if (permissionNames.Length == 0)
+    {
+      return;
+    }
+
+    var decisions = await EvaluateMany(principal, permissionNames, resource, cancellationToken);
+
+    foreach (var (policyName, definition) in entries)
+    {
+      if (decisions.TryGetValue(definition.PermissionName, out var decision) && decision.Allowed)
+      {
+        grantedPolicies.Add(policyName);
+      }
+    }
   }
 }
-          // Load device details in a single query.

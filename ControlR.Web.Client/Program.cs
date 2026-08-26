@@ -11,17 +11,7 @@ if (builder.HostEnvironment.IsDevelopment())
   builder.Logging.AddFilter("Microsoft.Extensions.Localization.ResourceManagerStringLocalizer", LogLevel.Warning);
 }
 
-builder.Services
-  .AddAuthorizationCore(options =>
-  {
-    foreach (var (policyName, definition) in PermissionPolicies.Definitions)
-    {
-      options.AddPolicy(policyName, policy => policy
-        .RequireAuthenticatedUser()
-        .RequireClaim(PermissionPolicies.PermissionClaimType, definition.PermissionName));
-    }
-  });
-
+builder.Services.AddControlrClientAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthenticationStateDeserialization();
 builder.Services.AddSingleton<AuthenticationStateProvider, PersistentAuthenticationStateProvider>();

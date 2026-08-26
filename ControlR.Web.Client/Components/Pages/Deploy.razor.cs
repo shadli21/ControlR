@@ -130,10 +130,8 @@ public partial class Deploy
       _tenantId = tenantId;
     }
 
-    _canAssignDeviceTags = state.User.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.DeviceTagsWrite);
-    _canReadCustomers = state.User.HasClaim(
-      PermissionPolicies.PermissionClaimType,
-      PermissionNames.TenantCustomersRead);
+    _canAssignDeviceTags = await GetTagCapability();
+    _canReadCustomers = state.User.HasClientPolicy(PolicyNames.RequireCustomersRead);
 
     var deploymentOptionsResult = await ControlrApi.Internal.DeploymentOptions.GetDeploymentOptions();
     if (!deploymentOptionsResult.IsSuccess)
@@ -400,6 +398,42 @@ public partial class Deploy
     return new Uri($"{currentUri.Scheme}://{currentUri.Authority}");
   }
 
+  private async Task<bool> GetTagCapability()
+  {
+    if (!_tenantId.HasValue)
+    {
+      return false;
+    }
+
+    Guid? deviceId = Guid.TryParse(_deviceId, out var parsedDeviceId)
+      ? parsedDeviceId
+      : null;
+
+    var request = new DeploymentTagCapabilityRequestDto(
+      deviceId,
+      _selectedCustomer?.Id);
+
+    var result = await ControlrApi.Internal.DeploymentOptions.GetTagCapability(request);
+    if (!result.IsSuccess)
+    {
+      return false;
+    }
+
+    return result.Value.Allowed;
+  }
+
+  private async Task OnCustomerChanged(CustomerDto? customer)
+  {
+    _selectedCustomer = customer;
+    await RefreshTagCapability();
+  }
+
+  private async Task OnDeviceIdChanged(string? deviceId)
+  {
+    _deviceId = deviceId;
+    await RefreshTagCapability();
+  }
+
   private void OnInstallerKeyTypeChanged(InstallerKeyType keyType)
   {
     _installerKeyType = keyType;
@@ -409,6 +443,40 @@ public partial class Deploy
       _inputExpirationTime = expiration.TimeOfDay;
       _inputExpirationDate = expiration.Date;
     }
+  }
+
+  private async Task RefreshTagCapability()
+  {
+    var allowed = await GetTagCapability();
+    if (_canAssignDeviceTags == allowed)
+    {
+      return;
+    }
+
+    _canAssignDeviceTags = allowed;
+    if (!allowed)
+    {
+      // The target can no longer be tagged; clear the tag selection and checkbox so stale
+      // selections cannot be submitted.
+      _addTags = false;
+      _selectedTags = null;
+    }
+    else if (_tags.Count == 0)
+    {
+      // The target became taggable (e.g. by narrowing to an allowed existing device); load the
+      // available tags now so the selector has options.
+      var result = await ControlrApi.Internal.Tags.GetAllTags();
+      if (result.IsSuccess)
+      {
+        _tags = result.Value;
+      }
+      else
+      {
+        Snackbar.Add("Failed to get tags", Severity.Error);
+      }
+    }
+
+    await InvokeAsync(StateHasChanged);
   }
 
   private void ResetToKeySelection()

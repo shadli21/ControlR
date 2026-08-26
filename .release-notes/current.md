@@ -33,4 +33,9 @@ None.
 
 ## Internal
 
-None.
+- Client authorization state now carries server-evaluated policy grants rather than
+  scope-agnostic permission-name hints. Only tenant/server-wide policies are projected to
+  the client; resource-specific authorization remains server-side and resource-bound.
+- Deploy tag selection now evaluates the intended deployment target (new device or a
+  predetermined existing device with the selected customer) before offering tag assignment,
+  instead of relying on a global permission claim.

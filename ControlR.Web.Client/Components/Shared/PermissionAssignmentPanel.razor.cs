@@ -72,8 +72,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
       _currentUserId = currentUserId;
     }
 
-    _hasTenantWritePermission = HasPermission(state.User, PermissionNames.TenantPermissionsWrite);
-    _hasWritePermission = _hasTenantWritePermission || HasPermission(state.User, PermissionNames.ServerPermissionsWrite);
+    _hasTenantWritePermission = HasPolicy(state.User, PolicyNames.RequirePermissionAssignmentsWrite);
+    _hasWritePermission = _hasTenantWritePermission || HasPolicy(state.User, PolicyNames.RequireServerPermissionsWrite);
 
     if (PermissionCatalogStore.Items.Count == 0)
     {
@@ -119,8 +119,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
     }
   }
 
-  private static bool HasPermission(ClaimsPrincipal user, string permissionName) =>
-    user.HasClaim(PermissionPolicies.PermissionClaimType, permissionName);
+  private static bool HasPolicy(ClaimsPrincipal user, string policyName) =>
+    user.HasClientPolicy(policyName);
 
   private async Task ApplyPresets()
   {

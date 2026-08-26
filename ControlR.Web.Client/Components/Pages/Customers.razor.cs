@@ -1,6 +1,3 @@
-using ControlR.Web.Client.Authz;
-using ControlR.Web.Client.Services;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using InternalDtos = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
@@ -43,9 +40,7 @@ public partial class Customers : ComponentBase
   protected override async Task OnInitializedAsync()
   {
     var state = await AuthState.GetAuthenticationStateAsync();
-    _canWrite = state.User.HasClaim(
-      PermissionPolicies.PermissionClaimType,
-      PermissionNames.TenantCustomersWrite);
+    _canWrite = state.User.HasClientPolicy(PolicyNames.RequireCustomersWrite);
     await Refresh();
   }
 

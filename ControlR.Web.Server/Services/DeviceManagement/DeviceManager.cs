@@ -38,6 +38,21 @@ public interface IDeviceManager
   Task<bool> CanAssignTagOnDevice(ServiceAccount serviceAccount, Device device);
 
   /// <summary>
+  /// Evaluates the device-scoped <c>DeviceTagsWrite</c> decision for a prospective deployment
+  /// target. If <paramref name="deviceId"/> identifies an existing device in the tenant, its
+  /// real group memberships and customer are used; otherwise it is treated as a new device
+  /// (optionally bound to <paramref name="customerId"/>) with no group memberships. This
+  /// mirrors the enforcement applied at agent registration so the deploy UI only offers tag
+  /// selection when the eventual install could succeed.
+  /// </summary>
+  Task<bool> CanAssignTagOnProspectiveDevice(
+    PrincipalDescriptor principal,
+    Guid? deviceId,
+    Guid? customerId,
+    Guid tenantId,
+    CancellationToken cancellationToken);
+
+  /// <summary>
   /// Determines whether the specified user is authorized to install an agent on the given device.
   /// </summary>
   /// <param name="user">The user attempting to install the agent.</param>
@@ -126,6 +141,54 @@ public class DeviceManager(
       AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
 
     return await CanAssignTagOnDevice(principal, device);
+  }
+
+  public async Task<bool> CanAssignTagOnProspectiveDevice(
+    PrincipalDescriptor principal,
+    Guid? deviceId,
+    Guid? customerId,
+    Guid tenantId,
+    CancellationToken cancellationToken)
+  {
+    // If the target ids resolve to an existing device or customer outside the caller's tenant,
+    // fail closed. This guards the capability lookup against cross-tenant disclosure.
+    Device? existingDevice = null;
+    if (deviceId.HasValue)
+    {
+      existingDevice = await _appDb.Devices
+        .IgnoreQueryFilters()
+        .AsNoTracking()
+        .FirstOrDefaultAsync(x => x.Id == deviceId.Value, cancellationToken);
+      if (existingDevice is not null && existingDevice.TenantId != tenantId)
+      {
+        return false;
+      }
+    }
+
+    if (customerId.HasValue)
+    {
+      var customerBelongsToTenant = await _appDb.Customers
+        .IgnoreQueryFilters()
+        .AsNoTracking()
+        .AnyAsync(x => x.Id == customerId.Value && x.TenantId == tenantId, cancellationToken);
+      if (!customerBelongsToTenant)
+      {
+        return false;
+      }
+    }
+
+    // For an existing target, the resource factory should reflect its real group memberships.
+    // For a new target, no memberships exist. Either way, pass a transient device; CreateDevice
+    // queries real memberships when the DeviceGroupMembers navigation is not populated.
+    var prospectiveDevice = new Device
+    {
+      Id = deviceId ?? Guid.Empty,
+      TenantId = tenantId,
+      CustomerId = customerId ?? existingDevice?.CustomerId,
+      DeviceGroupMembers = existingDevice is null ? [] : null
+    };
+
+    return await CanAssignTagOnDevice(principal, prospectiveDevice);
   }
 
   public async Task<bool> CanInstallAgentOnDevice(AppUser user, Device device)

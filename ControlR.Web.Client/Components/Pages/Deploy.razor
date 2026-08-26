@@ -197,7 +197,7 @@ else
         <MudText Typo="Typo.body1" GutterBottom>
           Optionally assign the device to a customer upon installation.
         </MudText>
-        <MudSelect T="CustomerDto" @bind-Value="_selectedCustomer" Label="Customer" Clearable
+        <MudSelect T="CustomerDto" Value="_selectedCustomer" ValueChanged="@OnCustomerChanged" Label="Customer" Clearable
           ToStringFunc="@(c => c?.Name ?? "")">
           @foreach (var customer in _customers)
           {
@@ -219,9 +219,15 @@ else
           If enabled, the device will be assigned the selected tags upon installation.
           Tags are used to link devices to users for access control.
         </MudText>
-        <MudCheckBox @bind-Value="_addTags" Label="Add device tags" />
+        <MudCheckBox @bind-Value="_addTags" Label="Add device tags" Disabled="!_canAssignDeviceTags" />
 
-        @if (_addTags && !_tags.Any())
+        @if (!_canAssignDeviceTags)
+        {
+          <MudAlert Severity="Severity.Info" Class="mt-2">
+            Tag assignment is not available for this deployment target.
+          </MudAlert>
+        }
+        else if (_addTags && !_tags.Any())
         {
           <MudAlert Severity="Severity.Warning" Class="mt-2">
             No tags are available. Tenant admins can create tags in the Permissions section.
@@ -254,6 +260,7 @@ else
           If you specify a device ID, it must be unique for each device/install.
         </MudAlert>
         <MudTextField @bind-Value="_deviceId" Class="mt-2" Label="Device ID (GUID)" Validation="@DeviceIdValidator"
+          OnBlur="@(() => OnDeviceIdChanged(_deviceId))"
           UserAttributes="InputAttributesHelper.SuppressAutofill" />
       </MudItem>
     </MudGrid>
