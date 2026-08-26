@@ -12,7 +12,6 @@ using ControlR.Web.Server.Services.Users;
 using ControlR.Web.Server.Services.Tenants;
 using ControlR.Web.Server.Services.LogonTokens;
 using ControlR.Web.Client.Services;
-using ControlR.Web.Client.Extensions;
 using Microsoft.AspNetCore.Http.Features;
 using ControlR.Web.Server.Services.AgentInstaller;
 using ControlR.Web.Server.Services.Authorization;
@@ -103,34 +102,7 @@ public static class WebApplicationBuilderExtensions
 
     if (appOptions.UseInMemoryDatabase)
     {
-      builder.Services.AddDbContextFactory<AppDb>((sp, options) =>
-      {
-        var dbName = string.IsNullOrWhiteSpace(appOptions.InMemoryDatabaseName)
-          ? Guid.NewGuid().ToString("N")
-          : appOptions.InMemoryDatabaseName;
-
-        options.UseInMemoryDatabase(dbName);
-        options.EnableDetailedErrors(appOptions.EnableDatabaseDetailedErrors);
-        options.AddInterceptors(new ServiceAccountInvariantInterceptor());
-
-        // Always attach the claims extension so every AppDb — whether seeding fixtures (no
-        // HttpContext) or serving an authenticated request — resolves to the same shared
-        // in-memory store and service provider, while each request still gets its own
-        // claims-filtered model. When no user is authenticated the extension carries no
-        // claims, keeping that context unfiltered (mirroring the production contract for
-        // server/service contexts).
-        var accessor = sp.GetRequiredService<IHttpContextAccessor>();
-        var claimsOptions = new ClaimsDbContextOptions();
-        if (accessor.HttpContext?.User is { Identity.IsAuthenticated: true } user &&
-            user.TryGetTenantId(out var tenantId) &&
-            user.TryGetUserId(out var userId))
-        {
-          claimsOptions = new ClaimsDbContextOptions { TenantId = tenantId, UserId = userId };
-        }
-
-        ((IDbContextOptionsBuilderInfrastructure)options).AddOrUpdateExtension(
-          new ClaimsDbContextOptionsExtension(claimsOptions));
-      }, lifetime: ServiceLifetime.Transient);
+      builder.AddControlrInMemoryDb(appOptions);
     }
     else
     {

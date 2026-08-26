@@ -1,12 +1,52 @@
 using Azure.Core;
 using Azure.Identity;
 using ControlR.Web.Server.Data.Configuration;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Npgsql;
 
 namespace ControlR.Web.Server.Startup;
 
-public static class PostgresRegistrationExtensions
+public static class DatabaseRegistrationExtensions
 {
+  public static void AddControlrInMemoryDb(
+    this IHostApplicationBuilder hostBuilder,
+    AppOptions appOptions)
+  {
+    hostBuilder.Services.AddDbContextFactory<AppDb>((sp, options) =>
+      {
+        var dbName = string.IsNullOrWhiteSpace(appOptions.InMemoryDatabaseName)
+          ? Guid.NewGuid().ToString("N")
+          : appOptions.InMemoryDatabaseName;
+
+        options.UseInMemoryDatabase(dbName);
+
+        options.EnableDetailedErrors(appOptions.EnableDatabaseDetailedErrors);
+        options.AddInterceptors(new ServiceAccountInvariantInterceptor());
+
+        // Always attach the claims extension so every AppDb shares the same in-memory store
+        // and service provider, while each request still gets its own claims-filtered model.
+        // When no user is authenticated, the extension carries no claims, keeping the context
+        // unfiltered like production server/service contexts.
+        var accessor = sp.GetRequiredService<IHttpContextAccessor>();
+        var claimsOptions = new ClaimsDbContextOptions();
+        if (accessor.HttpContext?.User is { Identity.IsAuthenticated: true } user &&
+            user.TryGetTenantId(out var tenantId) &&
+            user.TryGetUserId(out var userId))
+        {
+          claimsOptions = new ClaimsDbContextOptions { TenantId = tenantId, UserId = userId };
+        }
+
+        if (options is not IDbContextOptionsBuilderInfrastructure builderInfrastructure)
+        {
+          throw new ArgumentException(
+              $"Expected {nameof(options)} to be of type {nameof(IDbContextOptionsBuilderInfrastructure)}");
+        }
+
+        builderInfrastructure.AddOrUpdateExtension(new ClaimsDbContextOptionsExtension(claimsOptions));
+
+      }, lifetime: ServiceLifetime.Transient);
+  }
+
   public static void AddControlrPostgresDb(
     this IHostApplicationBuilder hostBuilder,
     AppOptions appOptions)
