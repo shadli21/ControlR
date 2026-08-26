@@ -1,5 +1,5 @@
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Services.DeviceManagement;
+using ControlR.Web.Server.Services.Authorization.Capabilities;
 using ControlR.Web.Server.Services.Settings;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,10 +11,10 @@ namespace ControlR.Web.Server.Api.Internal;
 [EndpointGroupName(OpenApiConstants.InternalGroupName)]
 public class DeploymentOptionsController(
   ITenantSettingsManager tenantSettingsManager,
-  IDeviceManager deviceManager,
+  IDeviceAuthorizationService deviceAuthorizationService,
   UserManager<AppUser> userManager) : ControllerBase
 {
-  private readonly IDeviceManager _deviceManager = deviceManager;
+  private readonly IDeviceAuthorizationService _deviceAuthorizationService = deviceAuthorizationService;
   private readonly ITenantSettingsManager _tenantSettingsManager = tenantSettingsManager;
   private readonly UserManager<AppUser> _userManager = userManager;
 
@@ -74,7 +74,7 @@ public class DeploymentOptionsController(
       user.TenantId,
       AuthMethod: "cookie");
 
-    var allowed = await _deviceManager.CanAssignTagOnProspectiveDevice(
+    var allowed = await _deviceAuthorizationService.CanAssignTagOnProspectiveDevice(
       principal,
       request.DeviceId,
       request.CustomerId,

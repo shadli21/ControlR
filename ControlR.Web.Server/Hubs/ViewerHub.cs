@@ -12,6 +12,7 @@ using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services.Authorization;
 using System.Diagnostics;
 using System.Security.Claims;
+using ControlR.Web.Server.Services.Authorization.Capabilities;
 
 namespace ControlR.Web.Server.Hubs;
 
