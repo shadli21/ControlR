@@ -29,9 +29,6 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
     _userId = extension?.Options.UserId;
   }
 
-  internal Guid? TenantId => _tenantId;
-  internal Guid? UserId => _userId;
-
   public DbSet<AgentInstallerKey> AgentInstallerKeys { get; init; }
   public DbSet<AgentInstallerKeyUsage> AgentInstallerKeyUsages { get; init; }
   public DbSet<AuthorizationChangeLog> AuthorizationChangeLogs { get; init; }
@@ -54,6 +51,9 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
   public DbSet<UserGroup> UserGroups { get; init; }
   public DbSet<UserPreference> UserPreferences { get; init; }
   public DbSet<UserStorageItem> UserStorageItems { get; init; }
+
+  internal Guid? TenantId => _tenantId;
+  internal Guid? UserId => _userId;
 
   protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
   {

@@ -1,9 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
+﻿using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ControlR.Web.Server.Data.Configuration;
 
+// Carries the caller's tenant and user id into AppDb so the per-entity HasQueryFilter
+// predicates in OnModelCreating can scope reads and writes to that user's own resources.
 public class ClaimsDbContextOptionsExtension(ClaimsDbContextOptions options) : IDbContextOptionsExtension
 {
   private readonly ClaimsDbContextOptions _options = options;
@@ -12,14 +13,11 @@ public class ClaimsDbContextOptionsExtension(ClaimsDbContextOptions options) : I
 
   public ClaimsDbContextOptions Options => _options;
 
+  // Key the model cache by this extension's tenant/user id so each claims variant gets
+  // its own model with the right filter predicates. EF registers this service as Singleton.
   public void ApplyServices(IServiceCollection services)
   {
-    // All claims variants share one internal EF service provider (see
-    // ExtensionInfo.ShouldUseSameServiceProvider), so the in-memory provider's store and the
-    // model cache live in a single provider. The model still varies per tenant/user because
-    // ClaimsModelCacheKeyFactory keys it by this extension's claims — this keeps each
-    // context's query filters correctly scoped even though they share a service provider.
-    services.Replace(ServiceDescriptor.Scoped<IModelCacheKeyFactory, ClaimsModelCacheKeyFactory>());
+    services.Replace(ServiceDescriptor.Singleton<IModelCacheKeyFactory, ClaimsModelCacheKeyFactory>());
   }
 
   public void Validate(IDbContextOptions options) { }
@@ -31,7 +29,6 @@ public class ClaimsDbContextOptionsExtension(ClaimsDbContextOptions options) : I
     private string? _logFragment;
 
     public override bool IsDatabaseProvider => false;
-
     public override string LogFragment
     {
       get
@@ -41,12 +38,10 @@ public class ClaimsDbContextOptionsExtension(ClaimsDbContextOptions options) : I
       }
     }
 
-    // The internal service provider is identical for every claims variant because this
-    // extension registers no provider-specific services. Returning a constant keeps a single
-    // shared provider (and therefore a single shared in-memory store + model cache). This is
-    // required for the in-memory test harness: EF Core's in-memory provider scopes its store
-    // to the internal service provider, so varying the provider by claims would isolate each
-    // tenant's contexts into separate stores that cannot see data seeded by another scope.
+    // Collapse every claims variant onto one shared internal service provider so EF does
+    // not build a new provider per tenant/user (ManyServiceProvidersCreatedWarning). Per-
+    // variant models are still distinct because ClaimsModelCacheKeyFactory keys the cache
+    // by claims.
     public override int GetServiceProviderHashCode() => 0;
 
     public override void PopulateDebugInfo(IDictionary<string, string> debugInfo)
@@ -61,28 +56,4 @@ public class ClaimsDbContextOptionsExtension(ClaimsDbContextOptions options) : I
       return other is ExtensionInfo;
     }
   }
-}
-
-/// <summary>
-/// Keys the EF model by the claims configured on the context so each tenant/user variant gets
-/// its own query-filtered model even though all variants share one service provider (and thus
-/// one in-memory store and model cache).
-/// </summary>
-internal sealed class ClaimsModelCacheKeyFactory : IModelCacheKeyFactory
-{
-  public object Create(DbContext context, bool designTime = false)
-  {
-    var appDb = context as AppDb;
-    return new ClaimsModelCacheKey(
-      context.GetType(),
-      designTime,
-      appDb?.TenantId,
-      appDb?.UserId);
-  }
-
-  private sealed record ClaimsModelCacheKey(
-    Type ContextType,
-    bool DesignTime,
-    Guid? TenantId,
-    Guid? UserId);
 }
