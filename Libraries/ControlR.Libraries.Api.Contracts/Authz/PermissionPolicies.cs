@@ -4,8 +4,8 @@ namespace ControlR.Libraries.Api.Contracts.Authz;
 
 /// <summary>
 /// Maps each permission-based policy to its permission and authorization resource scope. The
-/// server registers these against the permission evaluator. The Blazor client uses the permission
-/// name for claim checks because it cannot run the server-side evaluator.
+/// server registers these against the permission evaluator. Tenant- and server-scoped policies
+/// are also projected to the Blazor client as policy-grant claims for declarative UI authorization.
 /// </summary>
 public static class PermissionPolicies
 {
@@ -21,59 +21,59 @@ public static class PermissionPolicies
   private static IReadOnlyDictionary<string, PermissionPolicyDefinition>? _clientDefinitions;
 
   /// <summary>
-  /// The subset of <see cref="Definitions"/> that is projected to the client as
-  /// <see cref="ClientPolicyClaimType"/> grants. Only policies whose canonical resource kind
-  /// is <see cref="PermissionScopeKind.Tenant"/> or <see cref="PermissionScopeKind.Server"/>
-  /// may be projected; resource-specific access is never represented as a global claim. This
-  /// is kept as an explicit curated list so projection is a deliberate edit.
+  /// The subset of <see cref="Definitions"/> projected to the client as
+  /// <see cref="ClientPolicyClaimType"/> grants. A policy is projected when its canonical
+  /// resource kind is <see cref="PermissionScopeKind.Tenant"/> or
+  /// <see cref="PermissionScopeKind.Server"/>; resource-specific access is never represented
+  /// as a global claim.
   /// </summary>
   public static IReadOnlyDictionary<string, PermissionPolicyDefinition> ClientDefinitions
   {
     get
     {
       return _clientDefinitions ??= Definitions
-        .Where(entry => entry.Value.ProjectToClient)
+        .Where(entry => entry.Value.ResourceScopeKind is PermissionScopeKind.Tenant or PermissionScopeKind.Server)
         .ToFrozenDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
     }
   }
   public static IReadOnlyDictionary<string, PermissionPolicyDefinition> Definitions { get; } =
     new Dictionary<string, PermissionPolicyDefinition>
     {
-      [PolicyNames.RequireAgentInstall] = new(PermissionNames.AgentInstall, PermissionScopeKind.Tenant, ProjectToClient: true),
-      [PolicyNames.RequireAuthorizationLogsRead] = new(PermissionNames.TenantAuthorizationLogsRead, PermissionScopeKind.Tenant, ProjectToClient: true),
-      [PolicyNames.RequireCustomersRead] = new(PermissionNames.TenantCustomersRead, PermissionScopeKind.Tenant, ProjectToClient: true),
-      [PolicyNames.RequireCustomersWrite] = new(PermissionNames.TenantCustomersWrite, PermissionScopeKind.Tenant, ProjectToClient: true),
+      [PolicyNames.RequireAgentInstall] = new(PermissionNames.AgentInstall, PermissionScopeKind.Tenant),
+      [PolicyNames.RequireAuthorizationLogsRead] = new(PermissionNames.TenantAuthorizationLogsRead, PermissionScopeKind.Tenant),
+      [PolicyNames.RequireCustomersRead] = new(PermissionNames.TenantCustomersRead, PermissionScopeKind.Tenant),
+      [PolicyNames.RequireCustomersWrite] = new(PermissionNames.TenantCustomersWrite, PermissionScopeKind.Tenant),
       [PolicyNames.RequireDeviceGroupAssignDevices] = new(PermissionNames.DeviceGroupAssignDevices, PermissionScopeKind.DeviceGroup),
-      [PolicyNames.RequireDeviceGroupsRead] = new(PermissionNames.TenantDeviceGroupsRead, PermissionScopeKind.Tenant, ProjectToClient: true),
+      [PolicyNames.RequireDeviceGroupsRead] = new(PermissionNames.TenantDeviceGroupsRead, PermissionScopeKind.Tenant),
       [PolicyNames.RequireDeviceGroupsWrite] = new(PermissionNames.TenantDeviceGroupsWrite, PermissionScopeKind.Tenant),
-      [PolicyNames.RequireInstallerKeyRead] = new(PermissionNames.InstallerKeyRead, PermissionScopeKind.Tenant, ProjectToClient: true),
+      [PolicyNames.RequireInstallerKeyRead] = new(PermissionNames.InstallerKeyRead, PermissionScopeKind.Tenant),
       [PolicyNames.RequireInstallerKeyWrite] = new(PermissionNames.InstallerKeyWrite, PermissionScopeKind.Tenant),
-      [PolicyNames.RequirePermissionAssignmentsRead] = new(PermissionNames.TenantPermissionsRead, PermissionScopeKind.Tenant, ProjectToClient: true),
-      [PolicyNames.RequirePermissionAssignmentsWrite] = new(PermissionNames.TenantPermissionsWrite, PermissionScopeKind.Tenant, ProjectToClient: true),
+      [PolicyNames.RequirePermissionAssignmentsRead] = new(PermissionNames.TenantPermissionsRead, PermissionScopeKind.Tenant),
+      [PolicyNames.RequirePermissionAssignmentsWrite] = new(PermissionNames.TenantPermissionsWrite, PermissionScopeKind.Tenant),
       [PolicyNames.RequirePersonalAccessTokensOthersRead] = new(PermissionNames.PersonalAccessTokenOthersRead, PermissionScopeKind.Tenant),
       [PolicyNames.RequirePersonalAccessTokensOthersWrite] = new(PermissionNames.PersonalAccessTokenOthersWrite, PermissionScopeKind.Tenant),
-      [PolicyNames.RequireServerAdmin] = new(PermissionNames.ServerAdmin, PermissionScopeKind.Server, ProjectToClient: true),
+      [PolicyNames.RequireServerAdmin] = new(PermissionNames.ServerAdmin, PermissionScopeKind.Server),
       [PolicyNames.RequireServerAlertsWrite] = new(PermissionNames.ServerAlertsWrite, PermissionScopeKind.Server),
-      [PolicyNames.RequireServerAuthorizationLogsRead] = new(PermissionNames.ServerAuthorizationLogsRead, PermissionScopeKind.Server, ProjectToClient: true),
+      [PolicyNames.RequireServerAuthorizationLogsRead] = new(PermissionNames.ServerAuthorizationLogsRead, PermissionScopeKind.Server),
       [PolicyNames.RequireServerPermissionsRead] = new(PermissionNames.ServerPermissionsRead, PermissionScopeKind.Server),
-      [PolicyNames.RequireServerPermissionsWrite] = new(PermissionNames.ServerPermissionsWrite, PermissionScopeKind.Server, ProjectToClient: true),
+      [PolicyNames.RequireServerPermissionsWrite] = new(PermissionNames.ServerPermissionsWrite, PermissionScopeKind.Server),
       [PolicyNames.RequireServerTenantsRead] = new(PermissionNames.ServerTenantsRead, PermissionScopeKind.Server),
-      [PolicyNames.RequireServerServiceAccountsRead] = new(PermissionNames.ServerServiceAccountsRead, PermissionScopeKind.Server, ProjectToClient: true),
-      [PolicyNames.RequireServerServiceAccountsRotateCredentials] = new(PermissionNames.ServerServiceAccountsRotateCredentials, PermissionScopeKind.Server, ProjectToClient: true),
+      [PolicyNames.RequireServerServiceAccountsRead] = new(PermissionNames.ServerServiceAccountsRead, PermissionScopeKind.Server),
+      [PolicyNames.RequireServerServiceAccountsRotateCredentials] = new(PermissionNames.ServerServiceAccountsRotateCredentials, PermissionScopeKind.Server),
       [PolicyNames.RequireServerServiceAccountsWrite] = new(PermissionNames.ServerServiceAccountsWrite, PermissionScopeKind.Server),
-      [PolicyNames.RequireServerTelemetryRead] = new(PermissionNames.ServerTelemetryRead, PermissionScopeKind.Server, ProjectToClient: true),
-      [PolicyNames.RequireServiceAccountRead] = new(PermissionNames.ServiceAccountRead, PermissionScopeKind.Tenant, ProjectToClient: true),
-      [PolicyNames.RequireServiceAccountRotateCredentials] = new(PermissionNames.ServiceAccountRotateCredentials, PermissionScopeKind.Tenant, ProjectToClient: true),
+      [PolicyNames.RequireServerTelemetryRead] = new(PermissionNames.ServerTelemetryRead, PermissionScopeKind.Server),
+      [PolicyNames.RequireServiceAccountRead] = new(PermissionNames.ServiceAccountRead, PermissionScopeKind.Tenant),
+      [PolicyNames.RequireServiceAccountRotateCredentials] = new(PermissionNames.ServiceAccountRotateCredentials, PermissionScopeKind.Tenant),
       [PolicyNames.RequireServiceAccountWrite] = new(PermissionNames.ServiceAccountWrite, PermissionScopeKind.Tenant),
-      [PolicyNames.RequireTagsWrite] = new(PermissionNames.TenantTagsWrite, PermissionScopeKind.Tenant, ProjectToClient: true),
-      [PolicyNames.RequireTenantSettingsRead] = new(PermissionNames.TenantSettingsRead, PermissionScopeKind.Tenant, ProjectToClient: true),
-      [PolicyNames.RequireTenantSettingsWrite] = new(PermissionNames.TenantSettingsWrite, PermissionScopeKind.Tenant, ProjectToClient: true),
+      [PolicyNames.RequireTagsWrite] = new(PermissionNames.TenantTagsWrite, PermissionScopeKind.Tenant),
+      [PolicyNames.RequireTenantSettingsRead] = new(PermissionNames.TenantSettingsRead, PermissionScopeKind.Tenant),
+      [PolicyNames.RequireTenantSettingsWrite] = new(PermissionNames.TenantSettingsWrite, PermissionScopeKind.Tenant),
       [PolicyNames.RequireTenantUsersDelete] = new(PermissionNames.TenantUsersDelete, PermissionScopeKind.Tenant),
-      [PolicyNames.RequireTenantUsersWrite] = new(PermissionNames.TenantUsersWrite, PermissionScopeKind.Tenant, ProjectToClient: true),
+      [PolicyNames.RequireTenantUsersWrite] = new(PermissionNames.TenantUsersWrite, PermissionScopeKind.Tenant),
       [PolicyNames.RequireUserGroupAssignUsers] = new(PermissionNames.UserGroupAssignUsers, PermissionScopeKind.UserGroup),
-      [PolicyNames.RequireUserGroupsRead] = new(PermissionNames.TenantUserGroupsRead, PermissionScopeKind.Tenant, ProjectToClient: true),
+      [PolicyNames.RequireUserGroupsRead] = new(PermissionNames.TenantUserGroupsRead, PermissionScopeKind.Tenant),
       [PolicyNames.RequireUserGroupsWrite] = new(PermissionNames.TenantUserGroupsWrite, PermissionScopeKind.Tenant),
-      [PolicyNames.RequireUsersRead] = new(PermissionNames.TenantUsersRead, PermissionScopeKind.Tenant, ProjectToClient: true),
+      [PolicyNames.RequireUsersRead] = new(PermissionNames.TenantUsersRead, PermissionScopeKind.Tenant),
     };
   public static IReadOnlyDictionary<string, string> PolicyToPermission { get; } =
     Definitions.ToDictionary(x => x.Key, x => x.Value.PermissionName);

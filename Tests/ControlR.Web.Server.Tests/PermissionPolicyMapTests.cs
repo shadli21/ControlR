@@ -8,6 +8,22 @@ namespace ControlR.Web.Server.Tests;
 public class PermissionPolicyMapTests
 {
   [Fact]
+  public void ClientDefinitions_AreExactlyTheTenantAndServerScopedPolicies()
+  {
+    var expected = PermissionPolicies.Definitions
+      .Where(entry => entry.Value.ResourceScopeKind is PermissionScopeKind.Tenant or PermissionScopeKind.Server)
+      .Select(entry => entry.Key)
+      .OrderBy(name => name, StringComparer.Ordinal)
+      .ToArray();
+
+    var actual = PermissionPolicies.ClientDefinitions.Keys
+      .OrderBy(name => name, StringComparer.Ordinal)
+      .ToArray();
+
+    Assert.Equal(expected, actual);
+  }
+
+  [Fact]
   public void ClientDefinitions_EveryDeclaredPolicyNameIsProjected()
   {
     var clientGlobalPolicies = new[]
@@ -54,10 +70,6 @@ public class PermissionPolicyMapTests
         PermissionPolicies.Definitions.TryGetValue(policyName, out var fullDefinition),
         $"Client policy '{policyName}' is missing from Definitions.");
 
-      Assert.True(
-        definition.ProjectToClient,
-        $"Client policy '{policyName}' is not marked ProjectToClient.");
-
       Assert.Equal(
         fullDefinition.PermissionName,
         definition.PermissionName);
@@ -73,34 +85,6 @@ public class PermissionPolicyMapTests
         definition.ResourceScopeKind is PermissionScopeKind.Tenant or PermissionScopeKind.Server,
         $"Projected policy '{policyName}' has unsupported resource kind '{definition.ResourceScopeKind}'. " +
         "Resource-specific access must never be a global client claim.");
-    }
-  }
-
-  [Fact]
-  public void ClientDefinitions_ResourceSpecificPoliciesAreNotProjected()
-  {
-    var notProjected = new[]
-    {
-      PolicyNames.RequireDeviceGroupAssignDevices,
-      PolicyNames.RequireUserGroupAssignUsers,
-      PolicyNames.RequireDeviceGroupsWrite,
-      PolicyNames.RequireInstallerKeyWrite,
-      PolicyNames.RequirePersonalAccessTokensOthersRead,
-      PolicyNames.RequirePersonalAccessTokensOthersWrite,
-      PolicyNames.RequireServerAlertsWrite,
-      PolicyNames.RequireServerPermissionsRead,
-      PolicyNames.RequireServerServiceAccountsWrite,
-      PolicyNames.RequireServerTenantsRead,
-      PolicyNames.RequireServiceAccountWrite,
-      PolicyNames.RequireTenantUsersDelete,
-      PolicyNames.RequireUserGroupsWrite,
-    };
-
-    foreach (var policyName in notProjected)
-    {
-      Assert.False(
-        PermissionPolicies.ClientDefinitions.ContainsKey(policyName),
-        $"Policy '{policyName}' must not be projected to the client.");
     }
   }
 
