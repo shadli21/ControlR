@@ -118,12 +118,15 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider : Revalida
         user.Id,
         user.TenantId,
         principal.FindFirst(UserClaimTypes.AuthenticationMethod)?.Value ?? string.Empty);
+
       var grantedPolicies = await evaluator.GetGrantedPolicies(principalDescriptor, CancellationToken.None);
+
       var policyClaims = grantedPolicies.Select(policyName => new UserClaim
       {
         Type = PermissionPolicies.ClientPolicyClaimType,
         Value = policyName
       });
+      
       userInfo.Claims.AddRange(policyClaims);
     }
     else
