@@ -68,9 +68,7 @@
   protected override async Task OnInitializedAsync()
   {
     var state = await AuthState.GetAuthenticationStateAsync();
-    _canWrite = state.User.HasClaim(
-      PermissionPolicies.PermissionClaimType,
-      PermissionNames.TenantSettingsWrite);
+    _canWrite = state.User.HasClientPolicy(PolicyNames.RequireTenantSettingsWrite);
     var settings = await TenantSettingsProvider.GetSettings();
     _notifyUser = settings.NotifyUserOnSessionStart;
     _appendInstanceId = settings.AppendInstanceId ?? false;

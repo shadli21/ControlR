@@ -1,6 +1,7 @@
 using ControlR.Libraries.Shared.Services.Encryption;
 using ControlR.Web.Server.Extensions.Dtos.Internal;
 using ControlR.Web.Server.Services.AgentInstaller;
+using ControlR.Web.Server.Services.Authorization.Capabilities;
 using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 using CreateDeviceRequestDto = ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal.CreateDeviceRequestDto;
@@ -23,7 +24,8 @@ public class DevicesController : ControllerBase
     [FromServices] IDeviceManager deviceManager,
     [FromServices] IAgentVersionProvider agentVersionProvider,
     [FromServices] ILogger<DevicesController> logger,
-    [FromServices] IEd25519KeyProvider keyProvider)
+    [FromServices] IEd25519KeyProvider keyProvider,
+    [FromServices] IDeviceAuthorizationService deviceAuthorizationService)
   {
     using var logScope = logger.BeginScope(requestDto);
     var deviceDto = requestDto.Device;
@@ -78,7 +80,7 @@ public class DevicesController : ControllerBase
             return BadRequest();
           }
 
-          var authResult = await deviceManager.CanInstallAgentOnDevice(keyCreator, existingDevice);
+          var authResult = await deviceAuthorizationService.CanInstallAgentOnDevice(keyCreator, existingDevice);
 
           if (!authResult)
           {
@@ -96,7 +98,7 @@ public class DevicesController : ControllerBase
             return BadRequest();
           }
 
-          var accountAuthResult = await deviceManager.CanInstallAgentOnDevice(serviceAccount, existingDevice);
+          var accountAuthResult = await deviceAuthorizationService.CanInstallAgentOnDevice(serviceAccount, existingDevice);
 
           if (!accountAuthResult)
           {
@@ -153,8 +155,8 @@ public class DevicesController : ControllerBase
       var canAssignTags = installerKey.CreatorKind switch
       {
         InstallerKeyCreatorKind.ServerServiceAccount => true,
-        InstallerKeyCreatorKind.User => await CanAssignTagsForUser(installerKey.CreatorId, tagTarget, userManager, deviceManager),
-        InstallerKeyCreatorKind.TenantServiceAccount => await CanAssignTagsForServiceAccount(installerKey.CreatorId, tenantId, tagTarget, appDb, deviceManager),
+        InstallerKeyCreatorKind.User => await CanAssignTagsForUser(installerKey.CreatorId, tagTarget, userManager, deviceAuthorizationService),
+        InstallerKeyCreatorKind.TenantServiceAccount => await CanAssignTagsForServiceAccount(installerKey.CreatorId, tenantId, tagTarget, appDb, deviceAuthorizationService),
         _ => false,
       };
 
@@ -194,20 +196,20 @@ public class DevicesController : ControllerBase
     Guid tenantId,
     Device device,
     AppDb appDb,
-    IDeviceManager deviceManager)
+    IDeviceAuthorizationService deviceAuthorizationService)
   {
     var serviceAccount = await appDb.ServiceAccounts
       .FirstOrDefaultAsync(x => x.Id == creatorId && x.TenantId == tenantId && x.IsEnabled);
-    return serviceAccount is not null && await deviceManager.CanAssignTagOnDevice(serviceAccount, device);
+    return serviceAccount is not null && await deviceAuthorizationService.CanAssignTagOnDevice(serviceAccount, device);
   }
 
   private static async Task<bool> CanAssignTagsForUser(
     Guid creatorId,
     Device device,
     UserManager<AppUser> userManager,
-    IDeviceManager deviceManager)
+    IDeviceAuthorizationService deviceAuthorizationService)
   {
     var user = await userManager.FindByIdAsync($"{creatorId}");
-    return user is not null && await deviceManager.CanAssignTagOnDevice(user, device);
+    return user is not null && await deviceAuthorizationService.CanAssignTagOnDevice(user, device);
   }
 }

@@ -8,6 +8,87 @@ namespace ControlR.Web.Server.Tests;
 public class PermissionPolicyMapTests
 {
   [Fact]
+  public void ClientDefinitions_AreExactlyTheTenantAndServerScopedPolicies()
+  {
+    var expected = PermissionPolicies.Definitions
+      .Where(entry => entry.Value.ResourceScopeKind is PermissionScopeKind.Tenant or PermissionScopeKind.Server)
+      .Select(entry => entry.Key)
+      .OrderBy(name => name, StringComparer.Ordinal)
+      .ToArray();
+
+    var actual = PermissionPolicies.ClientDefinitions.Keys
+      .OrderBy(name => name, StringComparer.Ordinal)
+      .ToArray();
+
+    Assert.Equal(expected, actual);
+  }
+
+  [Fact]
+  public void ClientDefinitions_EveryDeclaredPolicyNameIsProjected()
+  {
+    var clientGlobalPolicies = new[]
+    {
+      PolicyNames.RequireAgentInstall,
+      PolicyNames.RequireAuthorizationLogsRead,
+      PolicyNames.RequireCustomersRead,
+      PolicyNames.RequireCustomersWrite,
+      PolicyNames.RequireDeviceGroupsRead,
+      PolicyNames.RequireInstallerKeyRead,
+      PolicyNames.RequirePermissionAssignmentsRead,
+      PolicyNames.RequirePermissionAssignmentsWrite,
+      PolicyNames.RequireServerAdmin,
+      PolicyNames.RequireServerAuthorizationLogsRead,
+      PolicyNames.RequireServerPermissionsWrite,
+      PolicyNames.RequireServerServiceAccountsRead,
+      PolicyNames.RequireServerServiceAccountsRotateCredentials,
+      PolicyNames.RequireServerTelemetryRead,
+      PolicyNames.RequireServiceAccountRead,
+      PolicyNames.RequireServiceAccountRotateCredentials,
+      PolicyNames.RequireTagsWrite,
+      PolicyNames.RequireTenantSettingsRead,
+      PolicyNames.RequireTenantSettingsWrite,
+      PolicyNames.RequireTenantUsersWrite,
+      PolicyNames.RequireUserGroupsRead,
+      PolicyNames.RequireUsersRead,
+    };
+
+    var missing = clientGlobalPolicies
+      .Where(policyName => !PermissionPolicies.ClientDefinitions.ContainsKey(policyName))
+      .ToArray();
+
+    Assert.True(
+      missing.Length == 0,
+      $"Global client policies missing from ClientDefinitions: {string.Join(", ", missing)}");
+  }
+
+  [Fact]
+  public void ClientDefinitions_EveryEntryExistsInFullMapAndIsProjected()
+  {
+    foreach (var (policyName, definition) in PermissionPolicies.ClientDefinitions)
+    {
+      Assert.True(
+        PermissionPolicies.Definitions.TryGetValue(policyName, out var fullDefinition),
+        $"Client policy '{policyName}' is missing from Definitions.");
+
+      Assert.Equal(
+        fullDefinition.PermissionName,
+        definition.PermissionName);
+    }
+  }
+
+  [Fact]
+  public void ClientDefinitions_ProjectedPoliciesAreTenantOrServerScoped()
+  {
+    foreach (var (policyName, definition) in PermissionPolicies.ClientDefinitions)
+    {
+      Assert.True(
+        definition.ResourceScopeKind is PermissionScopeKind.Tenant or PermissionScopeKind.Server,
+        $"Projected policy '{policyName}' has unsupported resource kind '{definition.ResourceScopeKind}'. " +
+        "Resource-specific access must never be a global client claim.");
+    }
+  }
+
+  [Fact]
   public void DeviceResourcePolicies_AllConstantsAreMapped()
   {
     var policyNames = GetPublicStringConstants(typeof(DeviceResourcePolicies));

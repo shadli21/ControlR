@@ -18,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using ControlR.Web.Server.Services.Authorization.Capabilities;
 
 namespace ControlR.Web.Server.Tests;
 

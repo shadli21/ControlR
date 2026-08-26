@@ -4,10 +4,6 @@ using System.Collections.Immutable;
 using System.Reflection;
 using System.Net.Sockets;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos;
-using ControlR.Web.Server.Authn;
-using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Data.Enums;
-using ControlR.Web.Server.Services.Authorization;
 
 namespace ControlR.Web.Server.Services.DeviceManagement;
 
@@ -25,33 +21,6 @@ public interface IDeviceManager
   /// <param name="customerId">Customer to assign; null = leave unchanged.</param>
   /// <returns>The added or updated <see cref="Device"/> entity.</returns>
   Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null, Guid? customerId = null);
-
-  /// <summary>
-  /// Determines whether the specified user is authorized to assign tags on the given device.
-  /// </summary>
-  Task<bool> CanAssignTagOnDevice(AppUser user, Device device);
-
-  /// <summary>
-  /// Determines whether the specified tenant-scoped service account is authorized to assign
-  /// tags on the given device.
-  /// </summary>
-  Task<bool> CanAssignTagOnDevice(ServiceAccount serviceAccount, Device device);
-
-  /// <summary>
-  /// Determines whether the specified user is authorized to install an agent on the given device.
-  /// </summary>
-  /// <param name="user">The user attempting to install the agent.</param>
-  /// <param name="device">The target device for the agent installation.</param>
-  /// <returns>
-  ///   <c>true</c> if the user belongs to the same tenant as the device and has the necessary permissions; otherwise, <c>false</c>.
-  /// </returns>
-  Task<bool> CanInstallAgentOnDevice(AppUser user, Device device);
-
-  /// <summary>
-  /// Determines whether the specified tenant-scoped service account is authorized to install
-  /// an agent on the given device.
-  /// </summary>
-  Task<bool> CanInstallAgentOnDevice(ServiceAccount serviceAccount, Device device);
 
   /// <summary>
   /// Marks a specific device as offline and updates its last seen timestamp.
@@ -80,8 +49,6 @@ public interface IDeviceManager
 
 public class DeviceManager(
   AppDb appDb,
-  IResourceDescriptorFactory resourceFactory,
-  IPermissionEvaluator permissionEvaluator,
   ILogger<DeviceManager> logger) : IDeviceManager
 {
   private const BindingFlags PropertiesBindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
@@ -90,8 +57,6 @@ public class DeviceManager(
 
   private readonly AppDb _appDb = appDb;
   private readonly ILogger<DeviceManager> _logger = logger;
-  private readonly IPermissionEvaluator _permissionEvaluator = permissionEvaluator;
-  private readonly IResourceDescriptorFactory _resourceFactory = resourceFactory;
 
   public async Task<Device> AddOrUpdate(DeviceUpdateRequestDto deviceDto, DeviceConnectionContext context, IReadOnlyList<Guid>? tagIds = null, string? publicKeyBase64 = null, Guid? customerId = null)
   {
@@ -108,42 +73,6 @@ public class DeviceManager(
     await UpdateDeviceEntity(entity, deviceDto, context, entityState, tagIds, publicKeyBase64, customerId);
 
     return entity;
-  }
-
-  public async Task<bool> CanAssignTagOnDevice(AppUser user, Device device)
-    => await CanAssignTagOnDevice(
-      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, AuthMethod: "cookie"),
-      device);
-
-  public async Task<bool> CanAssignTagOnDevice(ServiceAccount serviceAccount, Device device)
-  {
-    var principal = new PrincipalDescriptor(
-      serviceAccount.Kind == ServiceAccountKind.Server
-        ? PrincipalType.ServerServiceAccount
-        : PrincipalType.TenantServiceAccount,
-      serviceAccount.Id,
-      serviceAccount.TenantId,
-      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
-
-    return await CanAssignTagOnDevice(principal, device);
-  }
-
-  public async Task<bool> CanInstallAgentOnDevice(AppUser user, Device device)
-    => await CanInstallAgentOnDevice(
-      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, AuthMethod: "cookie"),
-      device);
-
-  public async Task<bool> CanInstallAgentOnDevice(ServiceAccount serviceAccount, Device device)
-  {
-    var principal = new PrincipalDescriptor(
-      serviceAccount.Kind == ServiceAccountKind.Server
-        ? PrincipalType.ServerServiceAccount
-        : PrincipalType.TenantServiceAccount,
-      serviceAccount.Id,
-      serviceAccount.TenantId,
-      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
-
-    return await CanInstallAgentOnDevice(principal, device);
   }
 
   public async Task<Result<Device>> MarkDeviceOffline(Guid deviceId, DateTimeOffset lastSeen)
@@ -243,28 +172,6 @@ public class DeviceManager(
         prop.CurrentValue = dtoValue;
       }
     }
-  }
-
-  private async Task<bool> CanAssignTagOnDevice(PrincipalDescriptor principal, Device device)
-    => await HasDevicePermission(principal, device, PermissionNames.DeviceTagsWrite);
-
-  /// <summary>
-  /// Evaluates <see cref="PermissionNames.AgentInstall"/> at device scope so device-scoped
-  /// denies on <paramref name="device"/> are honored regardless of broader tenant rights.
-  /// </summary>
-  private async Task<bool> CanInstallAgentOnDevice(PrincipalDescriptor principal, Device device)
-    => await HasDevicePermission(principal, device, PermissionNames.AgentInstall);
-
-  private async Task<bool> HasDevicePermission(PrincipalDescriptor principal, Device device, string permissionName)
-  {
-    var resource = await _resourceFactory.CreateDevice(device);
-
-    var result = await _permissionEvaluator.Evaluate(
-      principal,
-      permissionName,
-      resource,
-      CancellationToken.None);
-    return result.Allowed;
   }
 
   private async Task UpdateDeviceEntity(

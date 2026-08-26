@@ -1,7 +1,6 @@
-using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 
-namespace ControlR.Web.Server.Services.Authorization;
+namespace ControlR.Web.Server.Services.Authorization.Capabilities;
 
 public interface IDesktopSessionAccessAuthorizer
 {

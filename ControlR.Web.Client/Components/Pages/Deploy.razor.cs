@@ -5,6 +5,8 @@ namespace ControlR.Web.Client.Components.Pages;
 
 public partial class Deploy
 {
+  private readonly SemaphoreSlim _tagCapabilityLock = new(1, 1);
+
   private bool _addTags;
   private bool _appendInstanceId = true;
   private bool _canAssignDeviceTags;
@@ -24,7 +26,7 @@ public partial class Deploy
   private CustomerDto? _selectedCustomer;
   private AgentInstallerKeyDto? _selectedExistingKey;
   private IReadOnlyCollection<TagResponseDto>? _selectedTags;
-  private IReadOnlyList<TagResponseDto> _tags = [];
+  private TagResponseDto[] _tags = [];
   private Guid? _tenantId;
   private uint _totalUsesAllowed = 1;
   private bool _useExistingKey;
@@ -130,10 +132,8 @@ public partial class Deploy
       _tenantId = tenantId;
     }
 
-    _canAssignDeviceTags = state.User.HasClaim(PermissionPolicies.PermissionClaimType, PermissionNames.DeviceTagsWrite);
-    _canReadCustomers = state.User.HasClaim(
-      PermissionPolicies.PermissionClaimType,
-      PermissionNames.TenantCustomersRead);
+    _canAssignDeviceTags = await GetTagCapability();
+    _canReadCustomers = state.User.HasClientPolicy(PolicyNames.RequireCustomersRead);
 
     var deploymentOptionsResult = await ControlrApi.Internal.DeploymentOptions.GetDeploymentOptions();
     if (!deploymentOptionsResult.IsSuccess)
@@ -400,6 +400,42 @@ public partial class Deploy
     return new Uri($"{currentUri.Scheme}://{currentUri.Authority}");
   }
 
+  private async Task<bool> GetTagCapability()
+  {
+    if (!_tenantId.HasValue)
+    {
+      return false;
+    }
+
+    Guid? deviceId = Guid.TryParse(_deviceId, out var parsedDeviceId)
+      ? parsedDeviceId
+      : null;
+
+    var request = new DeploymentTagCapabilityRequestDto(
+      deviceId,
+      _selectedCustomer?.Id);
+
+    var result = await ControlrApi.Internal.DeploymentOptions.GetTagCapability(request);
+    if (!result.IsSuccess)
+    {
+      return false;
+    }
+
+    return result.Value.Allowed;
+  }
+
+  private async Task OnCustomerChanged(CustomerDto? customer)
+  {
+    _selectedCustomer = customer;
+    await RefreshTagCapability();
+  }
+
+  private async Task OnDeviceIdChanged(string? deviceId)
+  {
+    _deviceId = deviceId;
+    await RefreshTagCapability();
+  }
+
   private void OnInstallerKeyTypeChanged(InstallerKeyType keyType)
   {
     _installerKeyType = keyType;
@@ -408,6 +444,52 @@ public partial class Deploy
       var expiration = TimeProvider.GetLocalNow().AddHours(1);
       _inputExpirationTime = expiration.TimeOfDay;
       _inputExpirationDate = expiration.Date;
+    }
+  }
+
+  private async Task RefreshTagCapability()
+  {
+    await _tagCapabilityLock.WaitAsync();
+    try
+    {
+      var allowed = await GetTagCapability();
+      if (_canAssignDeviceTags == allowed)
+      {
+        return;
+      }
+
+      _canAssignDeviceTags = allowed;
+      if (!allowed)
+      {
+        // The target can no longer be tagged. Clear the tag selection and checkbox so stale
+        // selections cannot be submitted.
+        _addTags = false;
+        _selectedTags = null;
+      }
+      else if (_tags.Length == 0)
+      {
+        // The target became taggable (e.g. by narrowing to an allowed existing device). Load the
+        // available tags now so the selector has options.
+        var result = await ControlrApi.Internal.Tags.GetAllTags();
+        if (result.IsSuccess)
+        {
+          _tags = result.Value;
+        }
+        else
+        {
+          Snackbar.Add("Failed to get tags", Severity.Error);
+        }
+      }
+
+      await InvokeAsync(StateHasChanged);
+    }
+    catch (Exception ex)
+    {
+      Snackbar.Add($"Failed to refresh tag capability: {ex.Message}", Severity.Error);
+    }
+    finally
+    {
+      _tagCapabilityLock.Release();
     }
   }
 
@@ -429,7 +511,7 @@ public partial class Deploy
       var result = await ControlrApi.Internal.InstallerKeys.GetAllInstallerKeys();
       if (result.IsSuccess)
       {
-        _existingKeys = result.Value.OrderByDescending(x => x.CreatedAt);
+        _existingKeys = [.. result.Value.OrderByDescending(x => x.CreatedAt)];
       }
       else
       {

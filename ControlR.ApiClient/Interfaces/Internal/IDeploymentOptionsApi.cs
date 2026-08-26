@@ -9,4 +9,9 @@ public interface IDeploymentOptionsApi
   [ApiRoute(HttpConstants.Internal.DeploymentOptionsEndpoint, "GET")]
   Task<ApiResult<InternalDtos.DeploymentOptionsDto>> GetDeploymentOptions(
     CancellationToken cancellationToken = default);
+
+  [ApiRoute(HttpConstants.Internal.DeploymentOptionsEndpoint + "/tag-capability", "POST")]
+  Task<ApiResult<InternalDtos.DeploymentTagCapabilityResponseDto>> GetTagCapability(
+    InternalDtos.DeploymentTagCapabilityRequestDto request,
+    CancellationToken cancellationToken = default);
 }

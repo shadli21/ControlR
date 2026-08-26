@@ -187,26 +187,26 @@
 
 @code {
 
-  private static readonly string[] TenantAdminSectionPermissions =
+  private static readonly string[] TenantAdminSectionPolicies =
   [
-    PermissionNames.TenantPermissionsRead,
-    PermissionNames.TenantUsersRead,
-    PermissionNames.TenantUsersWrite,
-    PermissionNames.TenantUserGroupsRead,
-    PermissionNames.TenantDeviceGroupsRead,
-    PermissionNames.TenantCustomersRead,
-    PermissionNames.TenantTagsWrite,
-    PermissionNames.ServiceAccountRead,
-    PermissionNames.TenantSettingsRead,
-    PermissionNames.TenantAuthorizationLogsRead,
+    PolicyNames.RequirePermissionAssignmentsRead,
+    PolicyNames.RequireUsersRead,
+    PolicyNames.RequireTenantUsersWrite,
+    PolicyNames.RequireUserGroupsRead,
+    PolicyNames.RequireDeviceGroupsRead,
+    PolicyNames.RequireCustomersRead,
+    PolicyNames.RequireTagsWrite,
+    PolicyNames.RequireServiceAccountRead,
+    PolicyNames.RequireTenantSettingsRead,
+    PolicyNames.RequireAuthorizationLogsRead,
   ];
 
-  private static readonly string[] ServerAdminSectionPermissions =
+  private static readonly string[] ServerAdminSectionPolicies =
   [
-    PermissionNames.ServerServiceAccountsRead,
-    PermissionNames.ServerAdmin,
-    PermissionNames.ServerAuthorizationLogsRead,
-    PermissionNames.ServerTelemetryRead,
+    PolicyNames.RequireServerServiceAccountsRead,
+    PolicyNames.RequireServerAdmin,
+    PolicyNames.RequireServerAuthorizationLogsRead,
+    PolicyNames.RequireServerTelemetryRead,
   ];
 
   private string? _currentUrl;
@@ -277,14 +277,13 @@
 
   private void UpdateSectionVisibility(ClaimsPrincipal user)
   {
-    _canSeeTenantAdmin = HasAnyPermission(user, TenantAdminSectionPermissions);
-    _canSeeServerAdmin = HasAnyPermission(user, ServerAdminSectionPermissions);
-    _canSeeServerAuthorizationLogs = user.HasClaim(PermissionPolicies.PermissionClaimType,
-PermissionNames.ServerAuthorizationLogsRead);
+    _canSeeTenantAdmin = HasAnyPolicy(user, TenantAdminSectionPolicies);
+    _canSeeServerAdmin = HasAnyPolicy(user, ServerAdminSectionPolicies);
+    _canSeeServerAuthorizationLogs = user.HasClientPolicy(PolicyNames.RequireServerAuthorizationLogsRead);
   }
 
-  private static bool HasAnyPermission(ClaimsPrincipal user, string[] permissions)
+  private static bool HasAnyPolicy(ClaimsPrincipal user, string[] policies)
   {
-    return permissions.Any(permission => user.HasClaim(PermissionPolicies.PermissionClaimType, permission));
+    return policies.Any(policy => user.HasClientPolicy(policy));
   }
 }

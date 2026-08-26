@@ -1,8 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
+using ControlR.Libraries.Api.Contracts.Enums;
+using ControlR.Web.Server.Data;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlR.Web.Server.Tests;
@@ -39,6 +42,111 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(HttpStatusCode.OK, createKeyResponse.StatusCode);
     Assert.Equal(HttpStatusCode.Forbidden, customersResponse.StatusCode);
     Assert.Equal(HttpStatusCode.Forbidden, tenantSettingsResponse.StatusCode);
+  }
+
+  [Fact]
+  public async Task GetTagCapability_AgentInstallerWithoutTagPermission_DeniesNewDevice()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var tenant = await testServer.Services.CreateTestTenant();
+    await testServer.Services.CreateTestUser(
+      tenant.Id,
+      email: $"seed-{Guid.NewGuid():N}@t.local");
+    var installer = await testServer.Services.CreateTestUser(
+      tenant.Id,
+      $"installer-{Guid.NewGuid():N}@t.local",
+      PermissionPresets.AgentInstaller);
+    using var httpClient = await CreatePatClient(testServer, installer.Id);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Internal.DeploymentOptionsEndpoint + "/tag-capability",
+      new InternalDtos.DeploymentTagCapabilityRequestDto(null, null),
+      TestContext.Current.CancellationToken);
+    var result = await response.Content.ReadFromJsonAsync<InternalDtos.DeploymentTagCapabilityResponseDto>(
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    Assert.NotNull(result);
+    Assert.False(result.Allowed);
+  }
+
+  [Fact]
+  public async Task GetTagCapability_DeviceScopedGrant_AllowsPredeterminedTarget()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var tenant = await testServer.Services.CreateTestTenant();
+    var seed = await testServer.Services.CreateTestUser(
+      tenant.Id,
+      email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testServer.Services.CreateTestUser(
+      tenant.Id,
+      $"tags-{Guid.NewGuid():N}@t.local");
+    var device = await testServer.Services.CreateTestDevice(tenant.Id);
+
+    using (var scope = testServer.Services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<Data.AppDb>();
+      db.PermissionAssignments.AddRange(
+        CreateAssignment(user.Id, PermissionNames.AgentInstall, tenant.Id, PermissionScopeKind.Tenant, tenant.Id),
+        CreateAssignment(user.Id, PermissionNames.DeviceTagsWrite, tenant.Id, PermissionScopeKind.Device, device.Id));
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    using var httpClient = await CreatePatClient(testServer, user.Id);
+
+    var allowedResponse = await httpClient.PostAsJsonAsync(
+      HttpConstants.Internal.DeploymentOptionsEndpoint + "/tag-capability",
+      new InternalDtos.DeploymentTagCapabilityRequestDto(device.Id, null),
+      TestContext.Current.CancellationToken);
+    var allowed = await allowedResponse.Content.ReadFromJsonAsync<InternalDtos.DeploymentTagCapabilityResponseDto>(
+      TestContext.Current.CancellationToken);
+
+    var deniedResponse = await httpClient.PostAsJsonAsync(
+      HttpConstants.Internal.DeploymentOptionsEndpoint + "/tag-capability",
+      new InternalDtos.DeploymentTagCapabilityRequestDto(Guid.NewGuid(), null),
+      TestContext.Current.CancellationToken);
+    var denied = await deniedResponse.Content.ReadFromJsonAsync<InternalDtos.DeploymentTagCapabilityResponseDto>(
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, allowedResponse.StatusCode);
+    Assert.True(allowed!.Allowed);
+    Assert.Equal(HttpStatusCode.OK, deniedResponse.StatusCode);
+    Assert.False(denied!.Allowed);
+  }
+
+  [Fact]
+  public async Task GetTagCapability_TenantWideDeviceTagsWrite_AllowsNewDevice()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var tenant = await testServer.Services.CreateTestTenant();
+    await testServer.Services.CreateTestUser(
+      tenant.Id,
+      email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testServer.Services.CreateTestUser(
+      tenant.Id,
+      $"tags-{Guid.NewGuid():N}@t.local");
+
+    using (var scope = testServer.Services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<Data.AppDb>();
+      db.PermissionAssignments.AddRange(
+        CreateAssignment(user.Id, PermissionNames.AgentInstall, tenant.Id, PermissionScopeKind.Tenant, tenant.Id),
+        CreateAssignment(user.Id, PermissionNames.DeviceTagsWrite, tenant.Id, PermissionScopeKind.Tenant, tenant.Id));
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    using var httpClient = await CreatePatClient(testServer, user.Id);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Internal.DeploymentOptionsEndpoint + "/tag-capability",
+      new InternalDtos.DeploymentTagCapabilityRequestDto(null, null),
+      TestContext.Current.CancellationToken);
+    var result = await response.Content.ReadFromJsonAsync<InternalDtos.DeploymentTagCapabilityResponseDto>(
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    Assert.NotNull(result);
+    Assert.True(result.Allowed);
   }
 
   [Fact]
@@ -95,6 +203,26 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+  }
+
+  private static Data.Entities.PermissionAssignment CreateAssignment(
+    Guid principalId,
+    string permissionName,
+    Guid tenantId,
+    PermissionScopeKind scopeKind,
+    Guid? scopeId)
+  {
+    return new Data.Entities.PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = principalId,
+      PermissionName = permissionName,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = scopeKind,
+      ScopeId = scopeId,
+      OwningTenantId = tenantId,
+      IsEnabled = true
+    };
   }
 
   private static async Task<HttpClient> CreatePatClient(

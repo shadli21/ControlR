@@ -1,6 +1,6 @@
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Services.Authorization;
+using ControlR.Web.Server.Services.Authorization.Capabilities;
 
 namespace ControlR.Web.Server.Tests;
 

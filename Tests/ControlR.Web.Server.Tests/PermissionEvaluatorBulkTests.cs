@@ -12,7 +12,8 @@ public class PermissionEvaluatorBulkTests
     var contextLoader = new Mock<IPermissionEvaluationContextLoader>();
     var evaluator = new PermissionEvaluator(
       contextLoader.Object,
-      Mock.Of<IPermissionDecisionEvaluator>());
+      Mock.Of<IPermissionDecisionEvaluator>(),
+      Mock.Of<IResourceDescriptorFactory>());
     var principal = CreatePrincipal();
     var resource = new ResourceDescriptor(PermissionScopeKind.Server);
 
@@ -46,7 +47,7 @@ public class PermissionEvaluatorBulkTests
     decisionEvaluator
       .Setup(evaluator => evaluator.Evaluate(context, It.IsAny<string>(), It.IsAny<ResourceDescriptor>()))
       .Returns(PermissionEvaluationResult.Deny("denied"));
-    var evaluator = new PermissionEvaluator(contextLoader.Object, decisionEvaluator.Object);
+    var evaluator = new PermissionEvaluator(contextLoader.Object, decisionEvaluator.Object, Mock.Of<IResourceDescriptorFactory>());
     var requests = new[]
     {
       new PermissionEvaluationRequest(
@@ -81,7 +82,7 @@ public class PermissionEvaluatorBulkTests
     decisionEvaluator
       .Setup(evaluator => evaluator.Evaluate(context, It.IsAny<string>(), It.IsAny<ResourceDescriptor>()))
       .Returns(PermissionEvaluationResult.Deny("denied"));
-    var evaluator = new PermissionEvaluator(contextLoader.Object, decisionEvaluator.Object);
+    var evaluator = new PermissionEvaluator(contextLoader.Object, decisionEvaluator.Object, Mock.Of<IResourceDescriptorFactory>());
 
     var results = await evaluator.EvaluateMany(
       principal,

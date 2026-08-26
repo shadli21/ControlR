@@ -1,12 +1,10 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Asp.Versioning;
-using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Hubs.Clients;
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Extensions.Dtos.V1;
-using ControlR.Web.Server.Services.Authorization;
+using ControlR.Web.Server.Services.Authorization.Capabilities;
 using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
