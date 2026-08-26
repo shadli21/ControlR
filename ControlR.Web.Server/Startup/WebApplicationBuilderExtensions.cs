@@ -3,6 +3,7 @@ using ControlR.Libraries.DataRedaction;
 using ControlR.Libraries.Shared.Services.Buffers;
 using ControlR.Web.Server.Data.Configuration;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.FileProviders;
 using MudBlazor.Services;
 using ControlR.Web.Server.Components.Account;
@@ -101,16 +102,7 @@ public static class WebApplicationBuilderExtensions
 
     if (appOptions.UseInMemoryDatabase)
     {
-      builder.Services.AddDbContextFactory<AppDb>((_, options) =>
-      {
-        var dbName = string.IsNullOrWhiteSpace(appOptions.InMemoryDatabaseName)
-          ? Guid.NewGuid().ToString("N")
-          : appOptions.InMemoryDatabaseName;
-
-        options.UseInMemoryDatabase(dbName);
-        options.EnableDetailedErrors(appOptions.EnableDatabaseDetailedErrors);
-        options.AddInterceptors(new ServiceAccountInvariantInterceptor());
-      }, lifetime: ServiceLifetime.Transient);
+      builder.AddControlrInMemoryDb(appOptions);
     }
     else
     {

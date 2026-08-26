@@ -185,6 +185,12 @@ function Write-WhatIfDiff {
 
   if (-not $WhatIf) { return }
 
+  # Normalize line endings to LF on both sides so CRLF-vs-LF mismatches introduced by
+  # PowerShell cmdlets like ConvertTo-Json (which use [Environment]::NewLine) don't
+  # produce phantom diffs on Windows against LF-stored files.
+  $OldContent = ($OldContent -replace "`r`n", "`n") -replace "`r", "`n"
+  $NewContent = ($NewContent -replace "`r`n", "`n") -replace "`r", "`n"
+
   $oldLines = $OldContent -split "`n"
   $newLines = $NewContent -split "`n"
   $maxLen = [Math]::Max($oldLines.Length, $newLines.Length)
@@ -525,7 +531,7 @@ if (Test-Path -LiteralPath $infoPlistFile) {
   $infoPlistContent = Get-Content -LiteralPath $infoPlistFile -Raw -Encoding UTF8
   $infoOriginal = $infoPlistContent
 
-  $nl = [System.Environment]::NewLine
+  $nl = "`n"
 
   $infoPlistContent = $infoPlistContent -replace '<string>ControlR</string>', "<string>$BrandName</string>"
   $infoPlistContent = $infoPlistContent -replace '<key>CFBundleExecutable</key>\s*<string>.*?</string>', "<key>CFBundleExecutable</key>$nl    <string>$brandKey.DesktopClient</string>"

@@ -5,8 +5,23 @@ using Npgsql;
 
 namespace ControlR.Web.Server.Startup;
 
-public static class PostgresRegistrationExtensions
+public static class DatabaseRegistrationExtensions
 {
+  public static void AddControlrInMemoryDb(
+    this IHostApplicationBuilder hostBuilder,
+    AppOptions appOptions)
+  {
+    hostBuilder.Services.AddDbContextFactory<AppDb>((sp, options) =>
+      {
+        var dbName = string.IsNullOrWhiteSpace(appOptions.InMemoryDatabaseName)
+          ? Guid.NewGuid().ToString("N")
+          : appOptions.InMemoryDatabaseName;
+
+        options.UseInMemoryDatabase(dbName);
+        ConfigureDbContextOptions(sp, options, appOptions);
+      }, lifetime: ServiceLifetime.Transient);
+  }
+
   public static void AddControlrPostgresDb(
     this IHostApplicationBuilder hostBuilder,
     AppOptions appOptions)
@@ -121,9 +136,6 @@ public static class PostgresRegistrationExtensions
     options.AddInterceptors(new ServiceAccountInvariantInterceptor());
 
     var accessor = sp.GetRequiredService<IHttpContextAccessor>();
-    if (accessor.HttpContext?.User is { Identity.IsAuthenticated: true } user)
-    {
-      options.UseUserClaims(user);
-    }
+    options.UseUserClaims(accessor.HttpContext?.User);
   }
 }

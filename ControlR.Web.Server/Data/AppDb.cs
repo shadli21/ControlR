@@ -52,6 +52,9 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
   public DbSet<UserPreference> UserPreferences { get; init; }
   public DbSet<UserStorageItem> UserStorageItems { get; init; }
 
+  internal Guid? TenantId => _tenantId;
+  internal Guid? UserId => _userId;
+
   protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
   {
     base.ConfigureConventions(configurationBuilder);
