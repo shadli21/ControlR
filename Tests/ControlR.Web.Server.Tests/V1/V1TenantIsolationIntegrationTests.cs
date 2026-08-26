@@ -21,7 +21,7 @@ namespace ControlR.Web.Server.Tests.V1;
 public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
 {
   [Fact]
-  public async Task Devices_DeleteDevice_PatInTenantA_DeviceIdInTenantB_ReturnsForbidden()
+  public async Task Devices_DeleteDevice_PatInTenantA_DeviceIdInTenantB_ReturnsNotFound()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(testOutput);
     using var httpClient = testServer.Factory.CreateClient();
@@ -47,7 +47,9 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
       $"{HttpConstants.V1.DevicesEndpoint}/{deviceB.Id}",
       TestContext.Current.CancellationToken);
 
-    Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    // The tenant-A caller's query filter hides the tenant-B device, so it is
+    // indistinguishable from a device that doesn't exist (404), never reachable (403).
+    Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
     using var scope = testServer.Services.CreateScope();
     await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
@@ -55,11 +57,11 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
       .IgnoreQueryFilters()
       .AnyAsync(x => x.Id == deviceB.Id, TestContext.Current.CancellationToken);
 
-    Assert.True(deviceStillExists, "The cross-tenant device was deleted despite the Forbidden response.");
+    Assert.True(deviceStillExists, "The cross-tenant device was deleted despite the NotFound response.");
   }
 
   [Fact]
-  public async Task Devices_GetSingleDevice_PatInTenantA_AskingForDeviceInTenantB_ReturnsForbidden()
+  public async Task Devices_GetSingleDevice_PatInTenantA_AskingForDeviceInTenantB_ReturnsNotFound()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(testOutput);
     using var httpClient = testServer.Factory.CreateClient();
@@ -85,7 +87,9 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
       $"{HttpConstants.V1.DevicesEndpoint}/{deviceB.Id}",
       TestContext.Current.CancellationToken);
 
-    Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    // The tenant-A caller's query filter hides the tenant-B device, so it is
+    // indistinguishable from a device that doesn't exist (404).
+    Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
     var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
     Assert.DoesNotContain(deviceB.Id.ToString(), body);
