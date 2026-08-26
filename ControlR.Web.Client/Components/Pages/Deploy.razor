@@ -260,7 +260,7 @@ else
           If you specify a device ID, it must be unique for each device/install.
         </MudAlert>
         <MudTextField @bind-Value="_deviceId" Class="mt-2" Label="Device ID (GUID)" Validation="@DeviceIdValidator"
-          OnBlur="@(() => OnDeviceIdChanged(_deviceId))"
+          OnBlur="@(() => OnDeviceIdChanged(_deviceId))" DebounceInterval="500"
           UserAttributes="InputAttributesHelper.SuppressAutofill" />
       </MudItem>
     </MudGrid>

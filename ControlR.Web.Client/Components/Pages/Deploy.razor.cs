@@ -5,6 +5,8 @@ namespace ControlR.Web.Client.Components.Pages;
 
 public partial class Deploy
 {
+  private readonly SemaphoreSlim _tagCapabilityLock = new(1, 1);
+
   private bool _addTags;
   private bool _appendInstanceId = true;
   private bool _canAssignDeviceTags;
@@ -24,7 +26,7 @@ public partial class Deploy
   private CustomerDto? _selectedCustomer;
   private AgentInstallerKeyDto? _selectedExistingKey;
   private IReadOnlyCollection<TagResponseDto>? _selectedTags;
-  private IReadOnlyList<TagResponseDto> _tags = [];
+  private TagResponseDto[] _tags = [];
   private Guid? _tenantId;
   private uint _totalUsesAllowed = 1;
   private bool _useExistingKey;
@@ -447,36 +449,48 @@ public partial class Deploy
 
   private async Task RefreshTagCapability()
   {
-    var allowed = await GetTagCapability();
-    if (_canAssignDeviceTags == allowed)
+    await _tagCapabilityLock.WaitAsync();
+    try
     {
-      return;
-    }
-
-    _canAssignDeviceTags = allowed;
-    if (!allowed)
-    {
-      // The target can no longer be tagged; clear the tag selection and checkbox so stale
-      // selections cannot be submitted.
-      _addTags = false;
-      _selectedTags = null;
-    }
-    else if (_tags.Count == 0)
-    {
-      // The target became taggable (e.g. by narrowing to an allowed existing device); load the
-      // available tags now so the selector has options.
-      var result = await ControlrApi.Internal.Tags.GetAllTags();
-      if (result.IsSuccess)
+      var allowed = await GetTagCapability();
+      if (_canAssignDeviceTags == allowed)
       {
-        _tags = result.Value;
+        return;
       }
-      else
-      {
-        Snackbar.Add("Failed to get tags", Severity.Error);
-      }
-    }
 
-    await InvokeAsync(StateHasChanged);
+      _canAssignDeviceTags = allowed;
+      if (!allowed)
+      {
+        // The target can no longer be tagged. Clear the tag selection and checkbox so stale
+        // selections cannot be submitted.
+        _addTags = false;
+        _selectedTags = null;
+      }
+      else if (_tags.Length == 0)
+      {
+        // The target became taggable (e.g. by narrowing to an allowed existing device). Load the
+        // available tags now so the selector has options.
+        var result = await ControlrApi.Internal.Tags.GetAllTags();
+        if (result.IsSuccess)
+        {
+          _tags = result.Value;
+        }
+        else
+        {
+          Snackbar.Add("Failed to get tags", Severity.Error);
+        }
+      }
+
+      await InvokeAsync(StateHasChanged);
+    }
+    catch (Exception ex)
+    {
+      Snackbar.Add($"Failed to refresh tag capability: {ex.Message}", Severity.Error);
+    }
+    finally
+    {
+      _tagCapabilityLock.Release();
+    }
   }
 
   private void ResetToKeySelection()
@@ -497,7 +511,7 @@ public partial class Deploy
       var result = await ControlrApi.Internal.InstallerKeys.GetAllInstallerKeys();
       if (result.IsSuccess)
       {
-        _existingKeys = result.Value.OrderByDescending(x => x.CreatedAt);
+        _existingKeys = [.. result.Value.OrderByDescending(x => x.CreatedAt)];
       }
       else
       {
