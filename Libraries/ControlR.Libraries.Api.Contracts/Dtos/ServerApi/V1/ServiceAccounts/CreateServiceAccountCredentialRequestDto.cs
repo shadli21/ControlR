@@ -8,5 +8,4 @@ public record CreateServiceAccountCredentialRequestDto(
   [property: Required]
   [property: StringLength(DtoLimits.ServiceAccountNameMaxLength, MinimumLength = DtoLimits.ServiceAccountNameMinLength)]
   string Name,
-
   DateTimeOffset? ExpiresAt = null);

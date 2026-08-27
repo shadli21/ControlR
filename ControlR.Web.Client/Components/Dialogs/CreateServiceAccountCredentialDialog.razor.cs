@@ -14,6 +14,8 @@ public partial class CreateServiceAccountCredentialDialog : ComponentBase
 
   private void Save()
   {
-    MudDialog.Close(DialogResult.Ok(new CreateServiceAccountCredentialDialogResult(_name.Trim(), _expiresAt)));
+    var name = _name.Trim();
+    var result = new CreateServiceAccountCredentialDialogResult(name, _expiresAt);
+    MudDialog.Close(DialogResult.Ok(result));
   }
 }

@@ -31,9 +31,11 @@ public partial class CustomerDialog : ComponentBase
 
   private void Save()
   {
-    MudDialog.Close(DialogResult.Ok(new CustomerDialogResult(
-      _name.Trim(),
-      string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
-      string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim())));
+    var name = _name.Trim();
+    var description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
+    var notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim();
+
+    var result = new CustomerDialogResult(name, description, notes);
+    MudDialog.Close(DialogResult.Ok(result));
   }
 }

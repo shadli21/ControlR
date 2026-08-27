@@ -38,11 +38,19 @@ public partial class CreateServiceAccountDialog : ComponentBase
   {
     var issueCredential = CanIssueCredential && _createCredential;
 
-    MudDialog.Close(DialogResult.Ok(new CreateServiceAccountDialogResult(
-      _name.Trim(),
-      string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
-      issueCredential ? _credentialName.Trim() : null,
-      issueCredential ? _credentialExpiresAt : null,
-      IsServerAccount ? _accessMode : null)));
+    var name = _name.Trim();
+    var description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
+    var credentialName = issueCredential ? _credentialName.Trim() : null;
+    var credentialExpiresAt = issueCredential ? _credentialExpiresAt : null;
+    ServiceAccountAccessMode? accessMode = IsServerAccount ? _accessMode : null;
+
+    var result = new CreateServiceAccountDialogResult(
+      name,
+      description,
+      credentialName,
+      credentialExpiresAt,
+      accessMode);
+      
+    MudDialog.Close(DialogResult.Ok(result));
   }
 }

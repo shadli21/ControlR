@@ -26,8 +26,10 @@ public partial class EditGroupDialog : ComponentBase
 
   private void Save()
   {
-    MudDialog.Close(DialogResult.Ok(new EditGroupDialogResult(
-      _name.Trim(),
-      string.IsNullOrWhiteSpace(_description) ? null : _description.Trim())));
+    var name = _name.Trim();
+    var description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
+
+    var result = new EditGroupDialogResult(name, description);
+    MudDialog.Close(DialogResult.Ok(result));
   }
 }

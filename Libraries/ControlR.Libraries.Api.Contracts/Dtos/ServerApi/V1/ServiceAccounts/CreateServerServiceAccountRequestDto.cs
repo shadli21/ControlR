@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
 using ControlR.Libraries.Api.Contracts.Constants;
-using ControlR.Libraries.Api.Contracts.Enums;
 
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.ServiceAccounts;
 
@@ -15,4 +14,5 @@ public record CreateServerServiceAccountRequestDto(
   string Name,
   [property: StringLength(DtoLimits.ServiceAccountDescriptionMaxLength)]
   string? Description,
+  [property: Required]
   ServiceAccountAccessMode AccessMode);
