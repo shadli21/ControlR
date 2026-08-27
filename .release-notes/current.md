@@ -4,7 +4,7 @@
 - Some of the DTOs used in the `/api/v1/*` endpoints have been changed.
   - There will be no more breaking changes to the `/api/v1/*` endpoints after this release.
 - Personal access tokens and server service accounts now carry an explicit, persisted access mode instead of inferring their privilege from the presence or absence of assignment rows.
-  - Personal access tokens: `CreatePersonalAccessTokenRequestDto` now requires `PermissionMode` (`InheritOwner` or `Restricted`). A `Restricted` token requires at least one scope at creation; `InheritOwner` tokens must not carry scopes. A restricted token whose scopes are all removed denies everything instead of escalating to the owner's permissions.
+  - Personal access tokens: `CreatePersonalAccessTokenRequestDto` now requires `PermissionMode` (`InheritOwner` or `Restricted`). `InheritOwner` tokens must not carry scopes. A `Restricted` token may carry scopes, but one created or reduced to no scopes denies everything instead of escalating to the owner's permissions.
   - Server service accounts: creating one via `/api/v1/server-service-accounts` (new `CreateServerServiceAccountRequestDto`) or `/api/server-service-accounts` now requires `AccessMode` (`Restricted` or `Unrestricted`). `Unrestricted` is the server bypass formerly implied by having no assignments; a `Restricted` account with no assignments denies everything.
   - Existing rows are backfilled during migration to preserve prior behavior: PATs with enabled scope rows become `Restricted`, the rest `InheritOwner`; row-free server accounts become `Unrestricted`, the rest `Restricted`.
 - Although roles were migrated to permission presets, user tags that mapped users to devices were removed.
