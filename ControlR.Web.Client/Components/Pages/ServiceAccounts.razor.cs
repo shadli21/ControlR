@@ -131,6 +131,7 @@ public partial class ServiceAccounts : ComponentBase
       Snackbar.Add("Service account created without a credential", Severity.Success);
     }
 
+    await EditPermissions(account);
     await Refresh();
   }
 
@@ -274,7 +275,8 @@ public partial class ServiceAccounts : ComponentBase
 
     var options = SecretDisplayDialog.DefaultOptions;
 
-    await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
+    var dialogRef = await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
+    await dialogRef.Result;
   }
 
   private async Task ToggleEnabled(InternalDtos.TenantServiceAccountDto account, bool enabled)

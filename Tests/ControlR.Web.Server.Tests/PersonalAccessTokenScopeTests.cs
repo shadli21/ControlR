@@ -128,7 +128,7 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task CreateToken_RestrictedWithoutScopes_FailsAndCreatesNothing()
+  public async Task CreateToken_RestrictedWithoutScopes_SucceedsAndWritesNoScopeRows()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();
@@ -142,13 +142,22 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Empty Restricted PAT", PersonalAccessTokenPermissionMode.Restricted),
       user.Id);
 
-    Assert.False(result.IsSuccess);
+    Assert.True(result.IsSuccess);
 
     await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    var tokenCount = await db.PersonalAccessTokens
+    var tokenId = result.Value.PersonalAccessToken.Id;
+
+    var scopeRows = await db.PermissionAssignments
       .IgnoreQueryFilters()
-      .CountAsync(x => x.UserId == user.Id, TestContext.Current.CancellationToken);
-    Assert.Equal(0, tokenCount);
+      .CountAsync(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
+                       x.PrincipalId == tokenId,
+        TestContext.Current.CancellationToken);
+    Assert.Equal(0, scopeRows);
+
+    var token = await db.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .FirstAsync(x => x.Id == tokenId, TestContext.Current.CancellationToken);
+    Assert.Equal(PersonalAccessTokenPermissionMode.Restricted, token.PermissionMode);
   }
 
   [Fact]

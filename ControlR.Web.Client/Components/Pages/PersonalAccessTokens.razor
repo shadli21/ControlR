@@ -12,7 +12,7 @@
       <li>Authenticate requests by adding the token to the "<code>x-personal-token</code>" header.</li>
       <li>Prefer Restricted tokens scoped to only what they need (recommended).</li>
       <li><strong>Inherit Owner</strong>: The token can do everything your account can do.</li>
-      <li><strong>Restricted</strong>: The token can only do what its permission scopes allow. No scopes means no access.</li>
+      <li><strong>Restricted</strong>: The token can only do what its permission scopes allow.</li>
     </ul>
   </MudAlert>
 
@@ -35,48 +35,6 @@
             Create PAT
           </MudButton>
         </MudItem>
-        @if (_newTokenMode == PersonalAccessTokenPermissionMode.Restricted)
-        {
-          <MudItem xs="12">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd">
-              <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small"
-                         OnClick="AddInitialScope" Disabled="_isLoading">
-                Add Scope
-              </MudButton>
-            </MudStack>
-            @if (_initialScopes.Count == 0)
-            {
-              <MudText Typo="Typo.body2" Class="mt-2" Style="opacity: .7">
-                A restricted token needs at least one scope. Add one before creating the token.
-              </MudText>
-            }
-            else
-            {
-              <MudSimpleTable Dense="true" Class="mt-2">
-                <thead>
-                  <tr>
-                    <th>Permission</th>
-                    <th>Scope</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @foreach (var scope in _initialScopes)
-                  {
-                    <tr>
-                      <td>@scope.PermissionName</td>
-                      <td>@ScopeCellText(scope)</td>
-                      <td>
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                       OnClick="() => RemoveInitialScope(scope)" />
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </MudSimpleTable>
-            }
-          </MudItem>
-        }
       </MudGrid>
     </MudCardContent>
   </MudCard>

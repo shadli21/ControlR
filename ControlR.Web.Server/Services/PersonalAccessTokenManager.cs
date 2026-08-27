@@ -58,12 +58,6 @@ public class PersonalAccessTokenManager(
       var scopes = request.Scopes;
       var hasScopes = scopes is { Count: > 0 };
 
-      if (request.PermissionMode == PersonalAccessTokenPermissionMode.Restricted && !hasScopes)
-      {
-        return Result.Fail<InternalDtos.CreatePersonalAccessTokenResponseDto>(
-          "A restricted token requires at least one scope. A restricted token with no scopes can never be used.");
-      }
-
       if (request.PermissionMode == PersonalAccessTokenPermissionMode.InheritOwner && hasScopes)
       {
         return Result.Fail<InternalDtos.CreatePersonalAccessTokenResponseDto>(
