@@ -19,11 +19,11 @@ public partial class CreateServiceAccountDialog : ComponentBase
   [Parameter]
   public required bool CanIssueCredential { get; init; }
 
-  [CascadingParameter]
-  public required IMudDialogInstance MudDialog { get; init; }
-
   [Parameter]
   public bool IsServerAccount { get; init; }
+
+  [CascadingParameter]
+  public required IMudDialogInstance MudDialog { get; init; }
 
   [Parameter]
   public required string RotatePermissionLabel { get; init; }

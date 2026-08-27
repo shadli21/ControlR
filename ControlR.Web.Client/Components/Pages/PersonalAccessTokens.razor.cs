@@ -6,9 +6,10 @@ namespace ControlR.Web.Client.Components.Pages;
 public partial class PersonalAccessTokens
 {
   private readonly List<CredentialScopeDto> _initialScopes = [];
+
   private bool _isLoading = false;
-  private string _newTokenName = string.Empty;
   private PersonalAccessTokenPermissionMode _newTokenMode = PersonalAccessTokenPermissionMode.Restricted;
+  private string _newTokenName = string.Empty;
   private PersonalAccessTokenResponseDto[] _personalAccessTokens = [];
 
   [Inject]
@@ -28,6 +29,13 @@ public partial class PersonalAccessTokens
   protected override async Task OnInitializedAsync()
   {
     await LoadPersonalAccessTokens();
+  }
+
+  private static string ScopeCellText(CredentialScopeDto scope)
+  {
+    return scope.ScopeId is { } scopeId
+      ? $"{scope.ScopeKind}: {scopeId.ToString()[..8]}..."
+      : scope.ScopeKind.ToString();
   }
 
   private async Task AddInitialScope()
@@ -53,18 +61,6 @@ public partial class PersonalAccessTokens
     }
 
     _initialScopes.Add(dialogResult.Scope);
-  }
-
-  private void RemoveInitialScope(CredentialScopeDto scope)
-  {
-    _initialScopes.Remove(scope);
-  }
-
-  private static string ScopeCellText(CredentialScopeDto scope)
-  {
-    return scope.ScopeId is { } scopeId
-      ? $"{scope.ScopeKind}: {scopeId.ToString()[..8]}..."
-      : scope.ScopeKind.ToString();
   }
 
   private async Task CreatePersonalAccessToken()
@@ -208,6 +204,11 @@ public partial class PersonalAccessTokens
   {
     await LoadPersonalAccessTokens();
     Snackbar.Add("Personal access tokens refreshed", Severity.Success);
+  }
+
+  private void RemoveInitialScope(CredentialScopeDto scope)
+  {
+    _initialScopes.Remove(scope);
   }
 
   private async Task RenamePersonalAccessToken(PersonalAccessTokenResponseDto personalAccessToken)

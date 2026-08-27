@@ -852,6 +852,122 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task PatInheritOwner_NoRows_AllowsOwnerPermissions()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var (user, tenant, device, tokenId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.InheritOwner);
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id, tokenId, CredentialType.PersonalAccessToken);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.True(result.Allowed);
+  }
+
+  [Fact]
+  public async Task PatRestricted_AfterDeletingAllRows_DeniesInsteadOfEscalating()
+  {
+    // A restricted PAT whose rows are all removed (e.g., by scope trimming) must deny
+    // rather than fall back to the owner's full permissions.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var (user, tenant, device, tokenId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.Restricted);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
+      PrincipalId = tokenId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id, tokenId, CredentialType.PersonalAccessToken);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var before = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+    Assert.True(before.Allowed);
+
+    using (var scope = testApp.App.Services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      var rows = await db.PermissionAssignments
+        .IgnoreQueryFilters()
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken && x.PrincipalId == tokenId)
+        .ToListAsync(TestContext.Current.CancellationToken);
+      db.PermissionAssignments.RemoveRange(rows);
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var after = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+    Assert.False(after.Allowed);
+  }
+
+  [Fact]
+  public async Task PatRestricted_NoRows_DeniesAllIncludingOwnerPermissions()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var (user, tenant, device, tokenId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.Restricted);
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id, tokenId, CredentialType.PersonalAccessToken);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+  }
+
+  [Fact]
+  public async Task PatRestricted_WithRows_StillBoundedByOwnerPermissions()
+  {
+    // A restricted PAT is granted DeviceRead via its own scope row. It must be allowed for
+    // that permission but denied for one the owner holds and the PAT does not.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var (user, tenant, device, tokenId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.Restricted);
+
+    // Owner additionally holds DeviceDelete; the restricted PAT should not.
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceDelete,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
+      PrincipalId = tokenId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id, tokenId, CredentialType.PersonalAccessToken);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var read = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+    Assert.True(read.Allowed);
+
+    var delete = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
+    Assert.False(delete.Allowed);
+  }
+
+  [Fact]
   public async Task PatScopes_BoundedByUserGroupPermissions()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -1393,6 +1509,52 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task ServerServiceAccount_RestrictedAfterDeletingFinalAssignmentRow_DeniesInsteadOfEscalating()
+  {
+    // Deleting the final row of a restricted account must not escalate it to bypass.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var serviceAccountId = await SeedServerServiceAccount(testApp, ServiceAccountAccessMode.Restricted);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.ServiceAccount,
+      PrincipalId = serviceAccountId,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = new PrincipalDescriptor(
+      PrincipalType.ServerServiceAccount,
+      serviceAccountId,
+      TenantId: null,
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var before = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+    Assert.True(before.Allowed);
+
+    using (var scope = testApp.App.Services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      var rows = await db.PermissionAssignments
+        .IgnoreQueryFilters()
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.ServiceAccount && x.PrincipalId == serviceAccountId)
+        .ToListAsync(TestContext.Current.CancellationToken);
+      db.PermissionAssignments.RemoveRange(rows);
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var after = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+    Assert.False(after.Allowed);
+  }
+
+  [Fact]
   public async Task ServerServiceAccount_RestrictedWithAllAssignmentsDisabled_DeniesInsteadOfBypass()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -1461,26 +1623,6 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task ServerServiceAccount_UnrestrictedWithNoAssignments_Bypasses()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var serviceAccountId = await SeedServerServiceAccount(testApp, ServiceAccountAccessMode.Unrestricted);
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = new PrincipalDescriptor(
-      PrincipalType.ServerServiceAccount,
-      serviceAccountId,
-      TenantId: null,
-      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, Guid.NewGuid());
-
-    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
-
-    Assert.True(result.Allowed);
-    Assert.Equal("server-service-account-bypass", result.MatchedRuleSource);
-  }
-
-  [Fact]
   public async Task ServerServiceAccount_RestrictedWithNoAssignments_Denies()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -1500,60 +1642,10 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task TenantServiceAccount_UnrestrictedAccessMode_IgnoredAndNotBypassed()
+  public async Task ServerServiceAccount_UnrestrictedWithNoAssignments_Bypasses()
   {
-    // A persisted Unrestricted mode must not grant bypass to a tenant-scoped account.
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var accountId = Guid.NewGuid();
-
-    using (var scope = testApp.App.Services.CreateScope())
-    {
-      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      db.ServiceAccounts.Add(new ServiceAccount
-      {
-        Id = accountId,
-        Kind = ServiceAccountKind.Tenant,
-        TenantId = tenant.Id,
-        Name = $"tenant-sa-{accountId:N}",
-        IsEnabled = true,
-        AccessMode = ServiceAccountAccessMode.Unrestricted
-      });
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = new PrincipalDescriptor(
-      PrincipalType.TenantServiceAccount,
-      accountId,
-      TenantId: tenant.Id,
-      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, Guid.NewGuid());
-
-    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
-
-    Assert.False(result.Allowed);
-  }
-
-  [Fact]
-  public async Task ServerServiceAccount_RestrictedAfterDeletingFinalAssignmentRow_DeniesInsteadOfEscalating()
-  {
-    // Deleting the final row of a restricted account must not escalate it to bypass.
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
-    var serviceAccountId = await SeedServerServiceAccount(testApp, ServiceAccountAccessMode.Restricted);
-
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.ServiceAccount,
-      PrincipalId = serviceAccountId,
-      PermissionName = PermissionNames.DeviceRead,
-      Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.Device,
-      ScopeId = device.Id,
-      IsEnabled = true
-    });
+    var serviceAccountId = await SeedServerServiceAccount(testApp, ServiceAccountAccessMode.Unrestricted);
 
     var evaluator = GetEvaluator(testApp);
     var principal = new PrincipalDescriptor(
@@ -1561,24 +1653,12 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       serviceAccountId,
       TenantId: null,
       AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, Guid.NewGuid());
 
-    var before = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-    Assert.True(before.Allowed);
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
 
-    using (var scope = testApp.App.Services.CreateScope())
-    {
-      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      var rows = await db.PermissionAssignments
-        .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.ServiceAccount && x.PrincipalId == serviceAccountId)
-        .ToListAsync(TestContext.Current.CancellationToken);
-      db.PermissionAssignments.RemoveRange(rows);
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    var after = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-    Assert.False(after.Allowed);
+    Assert.True(result.Allowed);
+    Assert.Equal("server-service-account-bypass", result.MatchedRuleSource);
   }
 
   [Fact]
@@ -1677,6 +1757,42 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task TenantServiceAccount_UnrestrictedAccessMode_IgnoredAndNotBypassed()
+  {
+    // A persisted Unrestricted mode must not grant bypass to a tenant-scoped account.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var accountId = Guid.NewGuid();
+
+    using (var scope = testApp.App.Services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.ServiceAccounts.Add(new ServiceAccount
+      {
+        Id = accountId,
+        Kind = ServiceAccountKind.Tenant,
+        TenantId = tenant.Id,
+        Name = $"tenant-sa-{accountId:N}",
+        IsEnabled = true,
+        AccessMode = ServiceAccountAccessMode.Unrestricted
+      });
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = new PrincipalDescriptor(
+      PrincipalType.TenantServiceAccount,
+      accountId,
+      TenantId: tenant.Id,
+      AuthMethod: PrincipalClaimValues.ServiceAccountCredentialMethod);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, Guid.NewGuid());
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+  }
+
+  [Fact]
   public async Task TenantServiceAccount_WithAssignment_Allows()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -1770,120 +1886,12 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     return testApp.App.Services.GetRequiredService<IPermissionEvaluator>();
   }
 
-  [Fact]
-  public async Task PatRestricted_NoRows_DeniesAllIncludingOwnerPermissions()
+  private static async Task SeedAssignment(TestApp testApp, PermissionAssignment assignment)
   {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var (user, tenant, device, tokenId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.Restricted);
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id, tokenId, CredentialType.PersonalAccessToken);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
-
-    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-
-    Assert.False(result.Allowed);
-  }
-
-  [Fact]
-  public async Task PatInheritOwner_NoRows_AllowsOwnerPermissions()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var (user, tenant, device, tokenId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.InheritOwner);
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id, tokenId, CredentialType.PersonalAccessToken);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
-
-    var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-
-    Assert.True(result.Allowed);
-  }
-
-  [Fact]
-  public async Task PatRestricted_WithRows_StillBoundedByOwnerPermissions()
-  {
-    // A restricted PAT is granted DeviceRead via its own scope row. It must be allowed for
-    // that permission but denied for one the owner holds and the PAT does not.
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var (user, tenant, device, tokenId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.Restricted);
-
-    // Owner additionally holds DeviceDelete; the restricted PAT should not.
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.User,
-      PrincipalId = user.Id,
-      PermissionName = PermissionNames.DeviceDelete,
-      Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.Tenant,
-      ScopeId = tenant.Id,
-      OwningTenantId = tenant.Id,
-      IsEnabled = true
-    });
-
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
-      PrincipalId = tokenId,
-      PermissionName = PermissionNames.DeviceRead,
-      Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.Device,
-      ScopeId = device.Id,
-      OwningTenantId = tenant.Id,
-      IsEnabled = true
-    });
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id, tokenId, CredentialType.PersonalAccessToken);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
-
-    var read = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-    Assert.True(read.Allowed);
-
-    var delete = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
-    Assert.False(delete.Allowed);
-  }
-
-  [Fact]
-  public async Task PatRestricted_AfterDeletingAllRows_DeniesInsteadOfEscalating()
-  {
-    // A restricted PAT whose rows are all removed (e.g., by scope trimming) must deny
-    // rather than fall back to the owner's full permissions.
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var (user, tenant, device, tokenId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.Restricted);
-
-    await SeedAssignment(testApp, new PermissionAssignment
-    {
-      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
-      PrincipalId = tokenId,
-      PermissionName = PermissionNames.DeviceRead,
-      Effect = PermissionEffect.Allow,
-      ScopeKind = PermissionScopeKind.Device,
-      ScopeId = device.Id,
-      OwningTenantId = tenant.Id,
-      IsEnabled = true
-    });
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id, tokenId, CredentialType.PersonalAccessToken);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
-
-    var before = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-    Assert.True(before.Allowed);
-
-    using (var scope = testApp.App.Services.CreateScope())
-    {
-      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      var rows = await db.PermissionAssignments
-        .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken && x.PrincipalId == tokenId)
-        .ToListAsync(TestContext.Current.CancellationToken);
-      db.PermissionAssignments.RemoveRange(rows);
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    var after = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
-    Assert.False(after.Allowed);
+    using var scope = testApp.App.Services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    db.PermissionAssignments.Add(assignment);
+    await db.SaveChangesAsync();
   }
 
   /// <summary>
@@ -1962,14 +1970,6 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     });
     await db.SaveChangesAsync();
     return accountId;
-  }
-
-  private static async Task SeedAssignment(TestApp testApp, PermissionAssignment assignment)
-  {
-    using var scope = testApp.App.Services.CreateScope();
-    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    db.PermissionAssignments.Add(assignment);
-    await db.SaveChangesAsync();
   }
 
   private static async Task SeedUserGroup(TestApp testApp, Guid groupId, Guid tenantId, Guid userId)

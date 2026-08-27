@@ -99,6 +99,59 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task CreateToken_InheritOwnerWithScopes_FailsAndCreatesNothing()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testApp.App.Services.CreateTestUser(
+      tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local", PermissionPresets.DeviceSuperUser);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var result = await manager.CreateToken(
+      new InternalDtos.CreatePersonalAccessTokenRequestDto(
+        "Inherit-With-Scopes PAT",
+        PersonalAccessTokenPermissionMode.InheritOwner,
+        [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
+      user.Id);
+
+    Assert.False(result.IsSuccess);
+
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var tokenCount = await db.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .CountAsync(x => x.UserId == user.Id, TestContext.Current.CancellationToken);
+    Assert.Equal(0, tokenCount);
+  }
+
+  [Fact]
+  public async Task CreateToken_RestrictedWithoutScopes_FailsAndCreatesNothing()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local");
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var result = await manager.CreateToken(
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Empty Restricted PAT", PersonalAccessTokenPermissionMode.Restricted),
+      user.Id);
+
+    Assert.False(result.IsSuccess);
+
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var tokenCount = await db.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .CountAsync(x => x.UserId == user.Id, TestContext.Current.CancellationToken);
+    Assert.Equal(0, tokenCount);
+  }
+
+  [Fact]
   public async Task CreateToken_WithoutScopes_RemainsUserEquivalent()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -127,59 +180,6 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
       .IgnoreQueryFilters()
       .FirstAsync(x => x.Id == result.Value.PersonalAccessToken.Id, TestContext.Current.CancellationToken);
     Assert.Equal(PersonalAccessTokenPermissionMode.InheritOwner, token.PermissionMode);
-  }
-
-  [Fact]
-  public async Task CreateToken_RestrictedWithoutScopes_FailsAndCreatesNothing()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local");
-
-    using var scope = testApp.CreateScope();
-    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
-
-    var result = await manager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Empty Restricted PAT", PersonalAccessTokenPermissionMode.Restricted),
-      user.Id);
-
-    Assert.False(result.IsSuccess);
-
-    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    var tokenCount = await db.PersonalAccessTokens
-      .IgnoreQueryFilters()
-      .CountAsync(x => x.UserId == user.Id, TestContext.Current.CancellationToken);
-    Assert.Equal(0, tokenCount);
-  }
-
-  [Fact]
-  public async Task CreateToken_InheritOwnerWithScopes_FailsAndCreatesNothing()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
-    var user = await testApp.App.Services.CreateTestUser(
-      tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local", PermissionPresets.DeviceSuperUser);
-    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
-
-    using var scope = testApp.CreateScope();
-    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
-
-    var result = await manager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto(
-        "Inherit-With-Scopes PAT",
-        PersonalAccessTokenPermissionMode.InheritOwner,
-        [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
-      user.Id);
-
-    Assert.False(result.IsSuccess);
-
-    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    var tokenCount = await db.PersonalAccessTokens
-      .IgnoreQueryFilters()
-      .CountAsync(x => x.UserId == user.Id, TestContext.Current.CancellationToken);
-    Assert.Equal(0, tokenCount);
   }
 
   [Fact]

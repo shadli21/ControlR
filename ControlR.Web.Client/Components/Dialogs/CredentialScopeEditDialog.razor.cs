@@ -14,20 +14,20 @@ public sealed record CredentialScopeEditDialogResult(InternalDtos.CredentialScop
 /// </summary>
 public partial class CredentialScopeEditDialog : ComponentBase
 {
-  private InternalDtos.PermissionCatalogEntryDto? _selectedPermission;
-  private PermissionScopeKind _scopeKind = PermissionScopeKind.Tenant;
   private Guid? _scopeId;
+  private PermissionScopeKind _scopeKind = PermissionScopeKind.Tenant;
+  private InternalDtos.PermissionCatalogEntryDto? _selectedPermission;
 
   public static DialogOptions DefaultOptions => new()
   {
     BackdropClick = false
   };
 
-  [Inject]
-  public required IPermissionCatalogStore PermissionCatalogStore { get; init; }
-
   [CascadingParameter]
   public required IMudDialogInstance MudDialog { get; init; }
+
+  [Inject]
+  public required IPermissionCatalogStore PermissionCatalogStore { get; init; }
 
   [Inject]
   public required ISnackbar Snackbar { get; init; }
@@ -40,14 +40,14 @@ public partial class CredentialScopeEditDialog : ComponentBase
     }
   }
 
-  private static string PermissionLabel(InternalDtos.PermissionCatalogEntryDto? permission)
-  {
-    return permission is null ? string.Empty : $"{permission.DisplayName} ({permission.Name})";
-  }
-
   private static PermissionScopeKind BroadestLegalScope(InternalDtos.PermissionCatalogEntryDto? entry)
   {
     return PermissionScopeKinds.GetBroadestLegalScope(entry?.AllowedScopeKinds ?? []) ?? PermissionScopeKind.Tenant;
+  }
+
+  private static string PermissionLabel(InternalDtos.PermissionCatalogEntryDto? permission)
+  {
+    return permission is null ? string.Empty : $"{permission.DisplayName} ({permission.Name})";
   }
 
   private static string ScopeKindLabel(PermissionScopeKind scopeKind) => scopeKind switch
