@@ -231,7 +231,7 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Deployment Options Test PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Deployment Options Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       userId);
     Assert.True(patResult.IsSuccess);
 

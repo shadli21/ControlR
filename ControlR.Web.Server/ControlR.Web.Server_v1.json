@@ -1194,17 +1194,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateServiceAccountRequestDto"
+                "$ref": "#/components/schemas/CreateServerServiceAccountRequestDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateServiceAccountRequestDto"
+                "$ref": "#/components/schemas/CreateServerServiceAccountRequestDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateServiceAccountRequestDto"
+                "$ref": "#/components/schemas/CreateServerServiceAccountRequestDto"
               }
             }
           },
@@ -3293,6 +3293,32 @@
           }
         }
       },
+      "CreateServerServiceAccountRequestDto": {
+        "required": [
+          "name",
+          "description",
+          "accessMode"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "accessMode": {
+            "$ref": "#/components/schemas/ServiceAccountAccessMode"
+          }
+        }
+      },
       "CreateServiceAccountCredentialRequestDto": {
         "required": [
           "name"
@@ -3905,6 +3931,13 @@
           }
         }
       },
+      "ServiceAccountAccessMode": {
+        "enum": [
+          "Restricted",
+          "Unrestricted",
+          null
+        ]
+      },
       "ServiceAccountCredentialDto": {
         "required": [
           "id",
@@ -3957,6 +3990,7 @@
           "description",
           "kind",
           "isEnabled",
+          "accessMode",
           "createdAt",
           "credentials"
         ],
@@ -3980,6 +4014,16 @@
           },
           "isEnabled": {
             "type": "boolean"
+          },
+          "accessMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ServiceAccountAccessMode"
+              }
+            ]
           },
           "createdAt": {
             "type": "string",

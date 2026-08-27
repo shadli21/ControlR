@@ -24,7 +24,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
       await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
 
-      var saResult = await manager.CreateForServer("Disabled SA", null, TestContext.Current.CancellationToken);
+      var saResult = await manager.CreateForServer("Disabled SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
       Assert.True(saResult.IsSuccess);
       accountId = saResult.Value.Id;
 
@@ -58,7 +58,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
     var manager = services.GetRequiredService<IServiceAccountManager>();
 
-    var saResult = await manager.CreateForServer("Add Credential SA", null, TestContext.Current.CancellationToken);
+    var saResult = await manager.CreateForServer("Add Credential SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
     var accountId = saResult.Value.Id;
 
@@ -112,7 +112,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.Create(
-      new CreateServiceAccountRequestDto("", null),
+      new CreateServerServiceAccountRequestDto("", null, ServiceAccountAccessMode.Restricted),
       TestContext.Current.CancellationToken);
 
     var problem = Assert.IsType<ObjectResult>(result.Result);
@@ -129,12 +129,13 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
     var result = await controller.Create(
-      new CreateServiceAccountRequestDto("New Test Account", "Description"),
+      new CreateServerServiceAccountRequestDto("New Test Account", "Description", ServiceAccountAccessMode.Restricted),
       TestContext.Current.CancellationToken);
 
     var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
     var dto = Assert.IsType<ServiceAccountDto>(createdResult.Value);
     Assert.Equal("New Test Account", dto.Name);
+    Assert.Equal(ServiceAccountAccessMode.Restricted, dto.AccessMode);
     Assert.Equal(nameof(ServerServiceAccountsController.Get), createdResult.ActionName);
     Assert.Equal(dto.Id, (Guid)createdResult.RouteValues!["serviceAccountId"]!);
   }
@@ -150,7 +151,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var saResult = await manager.CreateForServer(
       "Delete Me",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
     var accountId = saResult.Value.Id;
 
@@ -190,7 +191,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var saResult = await manager.CreateForServer(
       "Self Delete Test",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await manager.AddCredentialForServer(
@@ -230,7 +231,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var manager = services.GetRequiredService<IServiceAccountManager>();
 
     // Create another account.
-    await manager.CreateForServer("Additional Account", null, TestContext.Current.CancellationToken);
+    await manager.CreateForServer("Additional Account", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
 
     var result = await controller.GetAll(TestContext.Current.CancellationToken);
     var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -246,7 +247,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
     var manager = services.GetRequiredService<IServiceAccountManager>();
 
-    var saResult = await manager.CreateForServer("Get Me", "Get description", TestContext.Current.CancellationToken);
+    var saResult = await manager.CreateForServer("Get Me", "Get description", ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
     var accountId = saResult.Value.Id;
 
@@ -283,7 +284,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
     var manager = services.GetRequiredService<IServiceAccountManager>();
 
-    var saResult = await manager.CreateForServer("Revoke Credential SA", null, TestContext.Current.CancellationToken);
+    var saResult = await manager.CreateForServer("Revoke Credential SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await manager.AddCredentialForServer(
@@ -321,7 +322,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
-    var saResult = await manager.CreateForServer("Revoke NonExistent SA", null, TestContext.Current.CancellationToken);
+    var saResult = await manager.CreateForServer("Revoke NonExistent SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
     var accountId = saResult.Value.Id;
 

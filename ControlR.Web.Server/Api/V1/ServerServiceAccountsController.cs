@@ -48,10 +48,10 @@ public class ServerServiceAccountsController(
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status409Conflict)]
   public async Task<ActionResult<ServiceAccountDto>> Create(
-    [FromBody] CreateServiceAccountRequestDto request,
+    [FromBody] CreateServerServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
-    var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, cancellationToken);
+    var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, request.AccessMode, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();

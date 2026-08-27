@@ -41,7 +41,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
       "A user with ServerServiceAccountsRotateCredentials must be allowed the server rotate permission.");
 
     var createResult = await controller.Create(
-      new InternalDtos.CreateServerServiceAccountRequestDto("Cred Server SA", null),
+      new InternalDtos.CreateServerServiceAccountRequestDto("Cred Server SA", null, ServiceAccountAccessMode.Unrestricted),
       TestContext.Current.CancellationToken);
 
     var createOk = Assert.IsType<OkObjectResult>(createResult.Result);
@@ -79,7 +79,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
     // Create succeeds with only the write permission.
     var createResponse = await httpClient.PostAsJsonAsync(
       HttpConstants.Internal.ServerServiceAccountsEndpoint,
-      new InternalDtos.CreateServerServiceAccountRequestDto("Forbidden Server SA", null),
+      new InternalDtos.CreateServerServiceAccountRequestDto("Forbidden Server SA", null, ServiceAccountAccessMode.Unrestricted),
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
 
@@ -179,7 +179,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Service Account Create Test PAT"), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Service Account Create Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     var client = testServer.Factory.CreateClient();

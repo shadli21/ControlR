@@ -41,7 +41,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromBody] InternalDtos.CreateServerServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
-    var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, cancellationToken);
+    var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, request.AccessMode, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -158,6 +158,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
       result.Name,
       result.Description,
       result.IsEnabled,
+      result.AccessMode ?? throw new InvalidOperationException("Server service account result is missing its access mode."),
       result.CreatedAt,
       [.. result.Credentials.Select(MapCredentialToDto)]);
   }

@@ -34,8 +34,10 @@ public interface IServiceAccountManager
 
   /// <summary>
   /// Creates a server service account with no credential; issue one via <see cref="AddCredentialForServer"/>.
+  /// The access mode is required explicitly and never inferred.
   /// </summary>
-  Task<HttpResult<ServiceAccountResult>> CreateForServer(string name, string? description, CancellationToken cancellationToken);
+  Task<HttpResult<ServiceAccountResult>> CreateForServer(
+    string name, string? description, ServiceAccountAccessMode accessMode, CancellationToken cancellationToken);
 
   /// <summary>
   /// Creates a tenant-scoped service account with no credential; issue one via <see cref="AddCredentialForTenant"/>.
@@ -306,7 +308,8 @@ public class ServiceAccountManager(
       TenantId = null,
       Name = name,
       Description = description,
-      IsEnabled = true
+      IsEnabled = true,
+      AccessMode = ServiceAccountAccessMode.Unrestricted
     };
 
     if (accountId.HasValue)
@@ -337,11 +340,17 @@ public class ServiceAccountManager(
   public async Task<HttpResult<ServiceAccountResult>> CreateForServer(
     string name,
     string? description,
+    ServiceAccountAccessMode accessMode,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
       return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.BadRequest, "Name is required.");
+    }
+
+    if (!Enum.IsDefined(accessMode))
+    {
+      return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.BadRequest, "AccessMode is not a valid value.");
     }
 
     var nameConflict = await appDb.ServiceAccounts
@@ -357,7 +366,8 @@ public class ServiceAccountManager(
       TenantId = null,
       Name = name,
       Description = description,
-      IsEnabled = true
+      IsEnabled = true,
+      AccessMode = accessMode
     };
 
     appDb.ServiceAccounts.Add(account);
@@ -874,6 +884,7 @@ public class ServiceAccountManager(
       account.Description,
       account.Kind,
       account.IsEnabled,
+      account.Kind == ServiceAccountKind.Server ? account.AccessMode : null,
       account.CreatedAt,
       account.Credentials
         .OrderBy(c => c.CreatedAt)

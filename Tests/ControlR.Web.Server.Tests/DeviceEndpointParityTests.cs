@@ -6,6 +6,7 @@ using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlR.Web.Server.Tests;
@@ -91,13 +92,17 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Explicit PAT parity"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Explicit PAT parity", PersonalAccessTokenPermissionMode.InheritOwner),
       user.Id);
     Assert.True(patResult.IsSuccess);
 
     using (var scope = testServer.Services.CreateScope())
     {
       await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      var patRow = await db.PersonalAccessTokens.SingleAsync(
+        token => token.Id == patResult.Value.PersonalAccessToken.Id,
+        TestContext.Current.CancellationToken);
+      patRow.PermissionMode = PersonalAccessTokenPermissionMode.Restricted;
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.PersonalAccessToken,
         patResult.Value.PersonalAccessToken.Id,
@@ -203,7 +208,7 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Device Endpoint Parity PAT"), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Device Endpoint Parity PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
     Assert.True(patResult.IsSuccess);
 
     var client = testServer.Factory.CreateClient();

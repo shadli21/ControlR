@@ -90,7 +90,8 @@ public partial class ServerServiceAccounts : ComponentBase
     var parameters = new DialogParameters<CreateServiceAccountDialog>
     {
       { x => x.CanIssueCredential, canIssueCredential },
-      { x => x.RotatePermissionLabel, "Rotate Server Service Account Credentials" }
+      { x => x.RotatePermissionLabel, "Rotate Server Service Account Credentials" },
+      { x => x.IsServerAccount, true }
     };
 
     var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
@@ -103,7 +104,10 @@ public partial class ServerServiceAccounts : ComponentBase
     }
 
     var createResult = await ControlrApi.Internal.ServerServiceAccounts.Create(
-      new InternalDtos.CreateServerServiceAccountRequestDto(dialogResult.Name, dialogResult.Description));
+      new InternalDtos.CreateServerServiceAccountRequestDto(
+        dialogResult.Name,
+        dialogResult.Description,
+        dialogResult.AccessMode ?? ServiceAccountAccessMode.Restricted));
 
     if (!createResult.IsSuccess)
     {

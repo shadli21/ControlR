@@ -23,7 +23,7 @@ internal partial class V1Api
   }
 
   async Task<ApiResult<ServiceAccountDto>> IServerServiceAccountsApi.Create(
-    CreateServiceAccountRequestDto request,
+    CreateServerServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
     return await _client.ExecuteApiCall(async () =>

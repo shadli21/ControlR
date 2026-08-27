@@ -5,8 +5,10 @@ namespace ControlR.Web.Client.Components.Pages;
 
 public partial class PersonalAccessTokens
 {
+  private readonly List<CredentialScopeDto> _initialScopes = [];
   private bool _isLoading = false;
   private string _newTokenName = string.Empty;
+  private PersonalAccessTokenPermissionMode _newTokenMode = PersonalAccessTokenPermissionMode.Restricted;
   private PersonalAccessTokenResponseDto[] _personalAccessTokens = [];
 
   [Inject]
@@ -18,20 +20,68 @@ public partial class PersonalAccessTokens
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
+  private bool CanCreatePersonalAccessToken =>
+    !string.IsNullOrWhiteSpace(_newTokenName) &&
+    !_isLoading &&
+    (_newTokenMode == PersonalAccessTokenPermissionMode.InheritOwner || _initialScopes.Count > 0);
+
   protected override async Task OnInitializedAsync()
   {
     await LoadPersonalAccessTokens();
   }
 
+  private async Task AddInitialScope()
+  {
+    var dialogRef = await DialogService.ShowAsync<CredentialScopeEditDialog>(
+      "Add Scope", CredentialScopeEditDialog.DefaultOptions);
+    var result = await dialogRef.Result;
+
+    if (result is null || result.Canceled || result.Data is not CredentialScopeEditDialogResult dialogResult)
+    {
+      return;
+    }
+
+    var duplicate = _initialScopes.Any(x =>
+      x.PermissionName == dialogResult.Scope.PermissionName &&
+      x.ScopeKind == dialogResult.Scope.ScopeKind &&
+      x.ScopeId == dialogResult.Scope.ScopeId);
+
+    if (duplicate)
+    {
+      Snackbar.Add("That scope is already on the list", Severity.Warning);
+      return;
+    }
+
+    _initialScopes.Add(dialogResult.Scope);
+  }
+
+  private void RemoveInitialScope(CredentialScopeDto scope)
+  {
+    _initialScopes.Remove(scope);
+  }
+
+  private static string ScopeCellText(CredentialScopeDto scope)
+  {
+    return scope.ScopeId is { } scopeId
+      ? $"{scope.ScopeKind}: {scopeId.ToString()[..8]}..."
+      : scope.ScopeKind.ToString();
+  }
+
   private async Task CreatePersonalAccessToken()
   {
-    if (string.IsNullOrWhiteSpace(_newTokenName))
+    if (!CanCreatePersonalAccessToken)
       return;
 
     _isLoading = true;
     try
     {
-      var request = new CreatePersonalAccessTokenRequestDto(_newTokenName.Trim());
+      var scopes = _newTokenMode == PersonalAccessTokenPermissionMode.Restricted
+        ? _initialScopes.AsReadOnly()
+        : null;
+      var request = new CreatePersonalAccessTokenRequestDto(
+        _newTokenName.Trim(),
+        _newTokenMode,
+        scopes is null ? null : [.. scopes]);
       var result = await ControlrApi.Internal.PersonalAccessTokens.CreatePersonalAccessToken(request);
 
       if (result.IsSuccess)
@@ -54,6 +104,7 @@ public partial class PersonalAccessTokens
 
         await LoadPersonalAccessTokens();
         _newTokenName = string.Empty;
+        _initialScopes.Clear();
         Snackbar.Add("Personal access token created successfully", Severity.Success);
 
         await ManagePermissions(createdToken);

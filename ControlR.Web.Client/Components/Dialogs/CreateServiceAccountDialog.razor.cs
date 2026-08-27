@@ -4,10 +4,12 @@ public sealed record CreateServiceAccountDialogResult(
   string Name,
   string? Description,
   string? CredentialName,
-  DateTimeOffset? CredentialExpiresAt);
+  DateTimeOffset? CredentialExpiresAt,
+  ServiceAccountAccessMode? AccessMode);
 
 public partial class CreateServiceAccountDialog : ComponentBase
 {
+  private ServiceAccountAccessMode _accessMode = ServiceAccountAccessMode.Restricted;
   private bool _createCredential = true;
   private DateTimeOffset? _credentialExpiresAt;
   private string _credentialName = "Initial Credential";
@@ -19,6 +21,9 @@ public partial class CreateServiceAccountDialog : ComponentBase
 
   [CascadingParameter]
   public required IMudDialogInstance MudDialog { get; init; }
+
+  [Parameter]
+  public bool IsServerAccount { get; init; }
 
   [Parameter]
   public required string RotatePermissionLabel { get; init; }
@@ -37,6 +42,7 @@ public partial class CreateServiceAccountDialog : ComponentBase
       _name.Trim(),
       string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
       issueCredential ? _credentialName.Trim() : null,
-      issueCredential ? _credentialExpiresAt : null)));
+      issueCredential ? _credentialExpiresAt : null,
+      IsServerAccount ? _accessMode : null)));
   }
 }

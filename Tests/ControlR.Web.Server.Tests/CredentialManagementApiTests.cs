@@ -95,7 +95,7 @@ public class CredentialManagementApiTests(ITestOutputHelper testOutput)
     var passwordManager = services.GetRequiredService<IPasswordManager>();
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
-    var patResult = await patManager.CreateToken(new InternalDtos.CreatePersonalAccessTokenRequestDto("Credential Test PAT"), user.Id);
+    var patResult = await patManager.CreateToken(new InternalDtos.CreatePersonalAccessTokenRequestDto("Credential Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
     var personalAccessToken = patResult.Value!.PlainTextToken;
 
     var resetResult = await passwordManager.AdminResetPassword(tenant.Id, user.Id);

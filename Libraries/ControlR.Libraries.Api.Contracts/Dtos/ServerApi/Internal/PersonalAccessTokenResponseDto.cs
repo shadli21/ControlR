@@ -1,4 +1,6 @@
 
+using ControlR.Libraries.Api.Contracts.Enums;
+
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 public record PersonalAccessTokenResponseDto(
@@ -6,4 +8,5 @@ public record PersonalAccessTokenResponseDto(
   string Name,
   DateTimeOffset CreatedAt,
   DateTimeOffset? LastUsed,
-  int PermissionCount);
+  int PermissionCount,
+  PersonalAccessTokenPermissionMode PermissionMode);

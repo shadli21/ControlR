@@ -93,7 +93,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
       otherUser.Id,
       services.GetRequiredService<IPersonalAccessTokenManager>(),
       services.GetRequiredService<AppDb>(),
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Should Fail"));
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Should Fail", PersonalAccessTokenPermissionMode.InheritOwner));
 
     Assert.IsType<NotFoundResult>(result.Result);
   }
@@ -181,7 +181,7 @@ public class UsersControllerTests(ITestOutputHelper testOutput)
       targetUser.Id,
       services.GetRequiredService<IPersonalAccessTokenManager>(),
       services.GetRequiredService<AppDb>(),
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Admin Created PAT"));
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Admin Created PAT", PersonalAccessTokenPermissionMode.InheritOwner));
 
     var createOk = Assert.IsType<OkObjectResult>(createResult.Result);
     var createDto = Assert.IsType<InternalDtos.CreatePersonalAccessTokenResponseDto>(createOk.Value);

@@ -18,6 +18,7 @@ internal static class ModelToV1DtoExtensions
       result.Description,
       result.Kind,
       result.IsEnabled,
+      result.AccessMode,
       result.CreatedAt,
       [.. result.Credentials.Select(c => c.ToDto())]);
   }

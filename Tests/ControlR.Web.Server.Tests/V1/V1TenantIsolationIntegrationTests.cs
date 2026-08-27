@@ -36,7 +36,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       userA.Id);
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
@@ -76,7 +76,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       userA.Id);
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
@@ -113,7 +113,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       userA.Id);
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
@@ -149,7 +149,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer(
       "V1 SA - Stream Both",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
@@ -197,7 +197,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer(
       "V1 Tenant Isolation - SA",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
@@ -238,7 +238,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       userA.Id);
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
@@ -274,7 +274,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       userA.Id);
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
@@ -308,7 +308,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     // Ensure the caller can create logon tokens in its own tenant.
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       userA.Id);
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
@@ -342,7 +342,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       userA.Id);
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
@@ -377,7 +377,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       userA.Id);
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
