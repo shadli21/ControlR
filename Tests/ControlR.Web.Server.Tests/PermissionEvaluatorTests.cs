@@ -2,7 +2,6 @@ using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
-using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -1013,6 +1012,38 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
 
     Assert.True(result.Allowed);
     Assert.Equal("PatGrant", result.MatchedRuleSource);
+  }
+
+  [Fact]
+  public async Task PatScopes_OwnerLacksPermission_BoundingGuardDenies()
+  {
+    // Exercise the owner-bounding guard. A restricted PAT with a scope row granting
+    // DeviceDelete, but the owner lacks any DeviceDelete assignment, must be denied by
+    // the bounding check (not merely because PAT rules are empty).
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var (user, tenant, device, patId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.Restricted);
+
+    // Seed a PAT scope row granting DeviceDelete. The user holds NO DeviceDelete.
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.PersonalAccessToken,
+      PrincipalId = patId,
+      PermissionName = PermissionNames.DeviceDelete,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id, patId, CredentialType.PersonalAccessToken);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var deleteResult = await evaluator.Evaluate(principal, PermissionNames.DeviceDelete, resource, TestContext.Current.CancellationToken);
+
+    Assert.False(deleteResult.Allowed,
+      "A PAT scope row granting a permission the owner lacks must be denied by the bounding guard.");
   }
 
   [Fact]
