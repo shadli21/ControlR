@@ -20,6 +20,10 @@ namespace ControlR.Web.Server.Tests;
 /// </summary>
 public class PrincipalAccessModeBackfillMigrationTests(ITestOutputHelper output)
 {
+  // The schema snapshot this backfill's assertions depend on. This must match the migration
+  // immediately before AddPrincipalAccessModes. The raw-SQL seeds target this interim column set.
+  // If that migration (ControlR.Web.Server.Data.Migrations.Permissions_Phase2) is ever squashed
+  // or renamed, keep this constant pointing at the same schema boundary.
   private const string PreAccessModesMigration = "20260813192551_Permissions_Phase2";
 
   [Fact]

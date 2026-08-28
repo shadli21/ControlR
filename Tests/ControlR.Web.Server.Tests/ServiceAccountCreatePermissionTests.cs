@@ -18,6 +18,39 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
   private readonly ITestOutputHelper _testOutput = testOutput;
 
   [Fact]
+  public async Task ServerCreate_WhenAccessModeOmitted_DefaultsToRestricted()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var tenant = await testServer.Services.CreateTestTenant();
+    await testServer.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testServer.Services.CreateTestUser(
+      tenant.Id, $"server-omit-mode-{Guid.NewGuid():N}@t.local");
+
+    await GrantServerPermissions(testServer.Services, user.Id,
+      PermissionNames.ServerServiceAccountsRead,
+      PermissionNames.ServerServiceAccountsWrite);
+
+    using var httpClient = await CreatePatClient(testServer, user.Id);
+
+    // Omitting accessMode must never grant Unrestricted. The non-nullable enum binds to
+    // its default (Restricted), so the created account must be Restricted, not a silent
+    // full-bypass escalation.
+    var createResponse = await httpClient.PostAsync(
+      HttpConstants.Internal.ServerServiceAccountsEndpoint,
+      new StringContent(
+        """{"name":"Omitted Mode Server SA","description":null}""",
+        System.Text.Encoding.UTF8,
+        "application/json"),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+
+    var account = await createResponse.Content.ReadFromJsonAsync<InternalDtos.ServerServiceAccountDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(account);
+    Assert.Equal(ServiceAccountAccessMode.Restricted, account.AccessMode);
+  }
+
+  [Fact]
   public async Task ServerCreate_WhenPermissionWriteUser_CreatesUnrestricted_Succeeds()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
@@ -35,7 +68,10 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
 
     var createResponse = await httpClient.PostAsJsonAsync(
       HttpConstants.Internal.ServerServiceAccountsEndpoint,
-      new InternalDtos.CreateServerServiceAccountRequestDto("Unrestricted Server SA", null, ServiceAccountAccessMode.Unrestricted),
+      new InternalDtos.CreateServerServiceAccountRequestDto(
+        "Unrestricted Server SA",
+        Description: null,
+        AccessMode: ServiceAccountAccessMode.Unrestricted),
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
 
@@ -69,7 +105,10 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
       "A user with ServerServiceAccountsRotateCredentials must be allowed the server rotate permission.");
 
     var createResult = await controller.Create(
-      new InternalDtos.CreateServerServiceAccountRequestDto("Cred Server SA", null, ServiceAccountAccessMode.Restricted),
+      new InternalDtos.CreateServerServiceAccountRequestDto(
+        "Cred Server SA",
+        Description: null,
+        AccessMode: ServiceAccountAccessMode.Restricted),
       evaluator,
       TestContext.Current.CancellationToken);
 
@@ -91,6 +130,45 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task ServerCreate_WhenWriteOnlyUser_CreatesRestrictedAccount_ButIsDeniedRotatePolicy()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var tenant = await testServer.Services.CreateTestTenant();
+    await testServer.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testServer.Services.CreateTestUser(
+      tenant.Id, $"server-write-only-{Guid.NewGuid():N}@t.local");
+
+    await GrantServerPermissions(testServer.Services, user.Id,
+      PermissionNames.ServerServiceAccountsRead,
+      PermissionNames.ServerServiceAccountsWrite);
+
+    using var httpClient = await CreatePatClient(testServer, user.Id);
+
+    // Creating a Restricted server account only requires the write permission, which
+    // this user holds, so it succeeds.
+    var createResponse = await httpClient.PostAsJsonAsync(
+      HttpConstants.Internal.ServerServiceAccountsEndpoint,
+      new InternalDtos.CreateServerServiceAccountRequestDto(
+        "Restricted Server SA",
+        Description: null,
+        AccessMode: ServiceAccountAccessMode.Restricted),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+
+    var account = await createResponse.Content.ReadFromJsonAsync<InternalDtos.ServerServiceAccountDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(account);
+    Assert.Equal(ServiceAccountAccessMode.Restricted, account.AccessMode);
+
+    // The credential endpoint requires the rotate policy, which this user lacks -> HTTP 403.
+    var addCredResponse = await httpClient.PostAsJsonAsync(
+      $"{HttpConstants.Internal.ServerServiceAccountsEndpoint}/{account.Id}/credentials",
+      new InternalDtos.CreateServerServiceAccountCredentialRequestDto("Attempted Key", null),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.Forbidden, addCredResponse.StatusCode);
+  }
+
+  [Fact]
   public async Task ServerCreate_WhenWriteOnlyUser_CreatesUnrestricted_IsDenied()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
@@ -109,7 +187,10 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
     // server account, which grants full server bypass.
     var createResponse = await httpClient.PostAsJsonAsync(
       HttpConstants.Internal.ServerServiceAccountsEndpoint,
-      new InternalDtos.CreateServerServiceAccountRequestDto("Forbidden Server SA", null, ServiceAccountAccessMode.Unrestricted),
+      new InternalDtos.CreateServerServiceAccountRequestDto(
+        "Forbidden Server SA",
+        Description: null,
+        AccessMode: ServiceAccountAccessMode.Unrestricted),
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.Forbidden, createResponse.StatusCode);
   }

@@ -1859,6 +1859,21 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     Assert.Equal("UserGroup", result.MatchedRuleSource);
   }
 
+  private static PersonalAccessToken CreatePersonalAccessToken(
+    Guid tokenId,
+    Guid userId,
+    PersonalAccessTokenPermissionMode permissionMode)
+  {
+    return new PersonalAccessToken
+    {
+      Id = tokenId,
+      Name = $"pat-{tokenId:N}",
+      HashedKey = "test-hashed-key",
+      UserId = userId,
+      PermissionMode = permissionMode
+    };
+  }
+
   private static PrincipalDescriptor CreateUserPrincipal(
     Guid userId,
     Guid tenantId,
@@ -1922,14 +1937,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
     using (var scope = testApp.App.Services.CreateScope())
     {
       await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      db.PersonalAccessTokens.Add(new PersonalAccessToken
-      {
-        Id = tokenId,
-        Name = $"pat-{tokenId:N}",
-        HashedKey = "test-hashed-key",
-        UserId = user.Id,
-        PermissionMode = permissionMode
-      });
+      db.PersonalAccessTokens.Add(CreatePersonalAccessToken(tokenId, user.Id, permissionMode));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
@@ -1944,14 +1952,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   {
     using var scope = testApp.App.Services.CreateScope();
     await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    db.PersonalAccessTokens.Add(new PersonalAccessToken
-    {
-      Id = tokenId,
-      Name = $"pat-{tokenId:N}",
-      HashedKey = "test-hashed-key",
-      UserId = userId,
-      PermissionMode = permissionMode
-    });
+    db.PersonalAccessTokens.Add(CreatePersonalAccessToken(tokenId, userId, permissionMode));
     await db.SaveChangesAsync();
   }
 

@@ -12,6 +12,7 @@ public record CreateServerServiceAccountRequestDto(
   [property: StringLength(500)]
   string? Description,
 
+  [property: Required]
   ServiceAccountAccessMode AccessMode);
 
 public record UpdateServerServiceAccountRequestDto(
