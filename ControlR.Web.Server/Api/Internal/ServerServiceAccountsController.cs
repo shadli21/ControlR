@@ -47,9 +47,10 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     if (request.AccessMode == ServiceAccountAccessMode.Unrestricted)
     {
       var caller = PrincipalDescriptorBuilder.FromClaims(User);
+
       if (caller is null)
       {
-        return BadRequest("Caller principal not found.");
+        return Unauthorized();
       }
 
       var decision = await permissionEvaluator.Evaluate(
@@ -57,6 +58,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
         PermissionNames.ServerPermissionsWrite,
         new ResourceDescriptor(PermissionScopeKind.Server),
         cancellationToken);
+        
       if (!decision.Allowed)
       {
         return Forbid();

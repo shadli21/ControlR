@@ -18,6 +18,34 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
   private readonly ITestOutputHelper _testOutput = testOutput;
 
   [Fact]
+  public async Task ServerCreate_WhenPermissionWriteUser_CreatesUnrestricted_Succeeds()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var tenant = await testServer.Services.CreateTestTenant();
+    await testServer.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testServer.Services.CreateTestUser(
+      tenant.Id, $"server-perm-write-{Guid.NewGuid():N}@t.local");
+
+    await GrantServerPermissions(testServer.Services, user.Id,
+      PermissionNames.ServerServiceAccountsRead,
+      PermissionNames.ServerServiceAccountsWrite,
+      PermissionNames.ServerPermissionsWrite);
+
+    using var httpClient = await CreatePatClient(testServer, user.Id);
+
+    var createResponse = await httpClient.PostAsJsonAsync(
+      HttpConstants.Internal.ServerServiceAccountsEndpoint,
+      new InternalDtos.CreateServerServiceAccountRequestDto("Unrestricted Server SA", null, ServiceAccountAccessMode.Unrestricted),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+
+    var account = await createResponse.Content.ReadFromJsonAsync<InternalDtos.ServerServiceAccountDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(account);
+    Assert.Equal(ServiceAccountAccessMode.Unrestricted, account.AccessMode);
+  }
+
+  [Fact]
   public async Task ServerCreate_WhenUserHasRotatePermission_CreatesAccountAndAddsCredential()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -84,34 +112,6 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
       new InternalDtos.CreateServerServiceAccountRequestDto("Forbidden Server SA", null, ServiceAccountAccessMode.Unrestricted),
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.Forbidden, createResponse.StatusCode);
-  }
-
-  [Fact]
-  public async Task ServerCreate_WhenPermissionWriteUser_CreatesUnrestricted_Succeeds()
-  {
-    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
-    var tenant = await testServer.Services.CreateTestTenant();
-    await testServer.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
-    var user = await testServer.Services.CreateTestUser(
-      tenant.Id, $"server-perm-write-{Guid.NewGuid():N}@t.local");
-
-    await GrantServerPermissions(testServer.Services, user.Id,
-      PermissionNames.ServerServiceAccountsRead,
-      PermissionNames.ServerServiceAccountsWrite,
-      PermissionNames.ServerPermissionsWrite);
-
-    using var httpClient = await CreatePatClient(testServer, user.Id);
-
-    var createResponse = await httpClient.PostAsJsonAsync(
-      HttpConstants.Internal.ServerServiceAccountsEndpoint,
-      new InternalDtos.CreateServerServiceAccountRequestDto("Unrestricted Server SA", null, ServiceAccountAccessMode.Unrestricted),
-      TestContext.Current.CancellationToken);
-    Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
-
-    var account = await createResponse.Content.ReadFromJsonAsync<InternalDtos.ServerServiceAccountDto>(
-      TestContext.Current.CancellationToken);
-    Assert.NotNull(account);
-    Assert.Equal(ServiceAccountAccessMode.Unrestricted, account.AccessMode);
   }
 
   [Fact]
