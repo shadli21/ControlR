@@ -5,7 +5,7 @@ public sealed record CreateServiceAccountDialogResult(
   string? Description,
   string? CredentialName,
   DateTimeOffset? CredentialExpiresAt,
-  ServiceAccountAccessMode? AccessMode);
+  ServiceAccountAccessMode AccessMode);
 
 public partial class CreateServiceAccountDialog : ComponentBase
 {
@@ -15,6 +15,9 @@ public partial class CreateServiceAccountDialog : ComponentBase
   private string _credentialName = "Initial Credential";
   private string _description = string.Empty;
   private string _name = string.Empty;
+
+  [Parameter]
+  public required bool CanGrantUnrestricted { get; init; }
 
   [Parameter]
   public required bool CanIssueCredential { get; init; }
@@ -30,26 +33,32 @@ public partial class CreateServiceAccountDialog : ComponentBase
 
   private bool CanSave =>
     !string.IsNullOrWhiteSpace(_name) &&
-    (!CanIssueCredential || !_createCredential || !string.IsNullOrWhiteSpace(_credentialName));
+    (!CanIssueCredential || !_createCredential || !string.IsNullOrWhiteSpace(_credentialName)) &&
+    (_accessMode != ServiceAccountAccessMode.Unrestricted || CanGrantUnrestricted);
 
   private void Cancel() => MudDialog.Cancel();
 
   private void Save()
   {
+    if (_accessMode == ServiceAccountAccessMode.Unrestricted && !CanGrantUnrestricted)
+    {
+      MudDialog.Close(DialogResult.Cancel());
+      return;
+    }
+
     var issueCredential = CanIssueCredential && _createCredential;
 
     var name = _name.Trim();
     var description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
     var credentialName = issueCredential ? _credentialName.Trim() : null;
     var credentialExpiresAt = issueCredential ? _credentialExpiresAt : null;
-    ServiceAccountAccessMode? accessMode = IsServerAccount ? _accessMode : null;
 
     var result = new CreateServiceAccountDialogResult(
       name,
       description,
       credentialName,
       credentialExpiresAt,
-      accessMode);
+      _accessMode);
       
     MudDialog.Close(DialogResult.Ok(result));
   }

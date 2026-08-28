@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using ControlR.Libraries.Api.Contracts.Enums;
 using ControlR.Web.Server.Data.Entities.Bases;
 
 namespace ControlR.Web.Server.Data.Entities;

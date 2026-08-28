@@ -2,7 +2,9 @@ using Asp.Versioning;
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.ServiceAccounts;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Extensions.Dtos.V1;
+using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.V1;
@@ -46,11 +48,32 @@ public class ServerServiceAccountsController(
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsWrite)]
   [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status201Created)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
+  [ProducesResponseType(StatusCodes.Status403Forbidden)]
   [ProducesResponseType(StatusCodes.Status409Conflict)]
   public async Task<ActionResult<ServiceAccountDto>> Create(
     [FromBody] CreateServerServiceAccountRequestDto request,
+    [FromServices] IPermissionEvaluator permissionEvaluator,
     CancellationToken cancellationToken)
   {
+    if (request.AccessMode == ServiceAccountAccessMode.Unrestricted)
+    {
+      var caller = PrincipalDescriptorBuilder.FromClaims(User);
+      if (caller is null)
+      {
+        return Unauthorized();
+      }
+
+      var decision = await permissionEvaluator.Evaluate(
+        caller,
+        PermissionNames.ServerPermissionsWrite,
+        new ResourceDescriptor(PermissionScopeKind.Server),
+        cancellationToken);
+      if (!decision.Allowed)
+      {
+        return Forbid();
+      }
+    }
+
     var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, request.AccessMode, cancellationToken);
     if (!result.IsSuccess)
     {

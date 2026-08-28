@@ -86,10 +86,12 @@ public partial class ServerServiceAccounts : ComponentBase
   private async Task CreateAccount()
   {
     var canIssueCredential = await HasPolicy(PolicyNames.RequireServerServiceAccountsRotateCredentials);
+    var canGrantUnrestricted = await HasPolicy(PolicyNames.RequireServerPermissionsWrite);
 
     var parameters = new DialogParameters<CreateServiceAccountDialog>
     {
       { x => x.CanIssueCredential, canIssueCredential },
+      { x => x.CanGrantUnrestricted, canGrantUnrestricted },
       { x => x.RotatePermissionLabel, "Rotate Server Service Account Credentials" },
       { x => x.IsServerAccount, true }
     };
@@ -107,7 +109,7 @@ public partial class ServerServiceAccounts : ComponentBase
       new InternalDtos.CreateServerServiceAccountRequestDto(
         dialogResult.Name,
         dialogResult.Description,
-        dialogResult.AccessMode ?? ServiceAccountAccessMode.Restricted));
+        dialogResult.AccessMode));
 
     if (!createResult.IsSuccess)
     {

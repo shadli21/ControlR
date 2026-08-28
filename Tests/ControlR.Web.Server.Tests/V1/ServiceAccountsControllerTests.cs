@@ -1,7 +1,7 @@
 using System.Reflection;
 using ControlR.Web.Server.Api.V1;
-using ControlR.Web.Server.Authz.Policies;
 using ControlR.Web.Server.Data;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Authorization;
@@ -111,8 +111,10 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
       ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
     var result = await controller.Create(
       new CreateServerServiceAccountRequestDto("", null, ServiceAccountAccessMode.Restricted),
+      evaluator,
       TestContext.Current.CancellationToken);
 
     var problem = Assert.IsType<ObjectResult>(result.Result);
@@ -128,8 +130,10 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
       ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
     var result = await controller.Create(
       new CreateServerServiceAccountRequestDto("New Test Account", "Description", ServiceAccountAccessMode.Restricted),
+      evaluator,
       TestContext.Current.CancellationToken);
 
     var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);

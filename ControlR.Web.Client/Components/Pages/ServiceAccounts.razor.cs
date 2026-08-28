@@ -89,6 +89,7 @@ public partial class ServiceAccounts : ComponentBase
     var parameters = new DialogParameters<CreateServiceAccountDialog>
     {
       { x => x.CanIssueCredential, canIssueCredential },
+      { x => x.CanGrantUnrestricted, false },
       { x => x.RotatePermissionLabel, "Rotate Service Account Credentials" }
     };
 

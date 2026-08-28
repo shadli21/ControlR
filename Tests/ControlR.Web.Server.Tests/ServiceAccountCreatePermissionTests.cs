@@ -41,7 +41,8 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
       "A user with ServerServiceAccountsRotateCredentials must be allowed the server rotate permission.");
 
     var createResult = await controller.Create(
-      new InternalDtos.CreateServerServiceAccountRequestDto("Cred Server SA", null, ServiceAccountAccessMode.Unrestricted),
+      new InternalDtos.CreateServerServiceAccountRequestDto("Cred Server SA", null, ServiceAccountAccessMode.Restricted),
+      evaluator,
       TestContext.Current.CancellationToken);
 
     var createOk = Assert.IsType<OkObjectResult>(createResult.Result);
@@ -62,7 +63,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task ServerCreate_WhenWriteOnlyUser_CreatesAccount_ButIsDeniedRotatePolicy()
+  public async Task ServerCreate_WhenWriteOnlyUser_CreatesUnrestricted_IsDenied()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
     var tenant = await testServer.Services.CreateTestTenant();
@@ -76,24 +77,41 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
 
     using var httpClient = await CreatePatClient(testServer, user.Id);
 
-    // Create succeeds with only the write permission.
+    // A write-only user (no ServerPermissionsWrite) cannot create an Unrestricted
+    // server account, which grants full server bypass.
     var createResponse = await httpClient.PostAsJsonAsync(
       HttpConstants.Internal.ServerServiceAccountsEndpoint,
       new InternalDtos.CreateServerServiceAccountRequestDto("Forbidden Server SA", null, ServiceAccountAccessMode.Unrestricted),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.Forbidden, createResponse.StatusCode);
+  }
+
+  [Fact]
+  public async Task ServerCreate_WhenPermissionWriteUser_CreatesUnrestricted_Succeeds()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    var tenant = await testServer.Services.CreateTestTenant();
+    await testServer.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testServer.Services.CreateTestUser(
+      tenant.Id, $"server-perm-write-{Guid.NewGuid():N}@t.local");
+
+    await GrantServerPermissions(testServer.Services, user.Id,
+      PermissionNames.ServerServiceAccountsRead,
+      PermissionNames.ServerServiceAccountsWrite,
+      PermissionNames.ServerPermissionsWrite);
+
+    using var httpClient = await CreatePatClient(testServer, user.Id);
+
+    var createResponse = await httpClient.PostAsJsonAsync(
+      HttpConstants.Internal.ServerServiceAccountsEndpoint,
+      new InternalDtos.CreateServerServiceAccountRequestDto("Unrestricted Server SA", null, ServiceAccountAccessMode.Unrestricted),
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
 
     var account = await createResponse.Content.ReadFromJsonAsync<InternalDtos.ServerServiceAccountDto>(
       TestContext.Current.CancellationToken);
     Assert.NotNull(account);
-    Assert.Empty(account.Credentials);
-
-    // The credential endpoint requires the rotate policy, which this user lacks -> HTTP 403.
-    var addCredResponse = await httpClient.PostAsJsonAsync(
-      $"{HttpConstants.Internal.ServerServiceAccountsEndpoint}/{account.Id}/credentials",
-      new InternalDtos.CreateServerServiceAccountCredentialRequestDto("Attempted Key", null),
-      TestContext.Current.CancellationToken);
-    Assert.Equal(HttpStatusCode.Forbidden, addCredResponse.StatusCode);
+    Assert.Equal(ServiceAccountAccessMode.Unrestricted, account.AccessMode);
   }
 
   [Fact]
