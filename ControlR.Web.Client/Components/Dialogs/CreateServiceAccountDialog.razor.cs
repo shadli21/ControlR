@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace ControlR.Web.Client.Components.Dialogs;
 
 public sealed record CreateServiceAccountDialogResult(
@@ -7,7 +5,6 @@ public sealed record CreateServiceAccountDialogResult(
   string? Description,
   string? CredentialName,
   DateTimeOffset? CredentialExpiresAt,
-  [property: Required]
   ServiceAccountAccessMode AccessMode);
 
 public partial class CreateServiceAccountDialog : ComponentBase
