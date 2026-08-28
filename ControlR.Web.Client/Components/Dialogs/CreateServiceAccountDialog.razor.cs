@@ -31,6 +31,9 @@ public partial class CreateServiceAccountDialog : ComponentBase
   [Parameter]
   public required string RotatePermissionLabel { get; init; }
 
+  [Inject]
+  public required ISnackbar Snackbar { get; init; }
+
   private bool CanSave =>
     !string.IsNullOrWhiteSpace(_name) &&
     (!CanIssueCredential || !_createCredential || !string.IsNullOrWhiteSpace(_credentialName)) &&
@@ -42,6 +45,7 @@ public partial class CreateServiceAccountDialog : ComponentBase
   {
     if (_accessMode == ServiceAccountAccessMode.Unrestricted && !CanGrantUnrestricted)
     {
+      Snackbar.Add("You do not have permission to grant unrestricted access.", Severity.Error);
       MudDialog.Close(DialogResult.Cancel());
       return;
     }
