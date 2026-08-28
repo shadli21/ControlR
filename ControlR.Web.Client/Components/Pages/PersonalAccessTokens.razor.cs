@@ -61,6 +61,7 @@ public partial class PersonalAccessTokens
 
         await LoadPersonalAccessTokens();
         _newTokenName = string.Empty;
+        _newTokenMode = PersonalAccessTokenPermissionMode.Restricted;
         Snackbar.Add("Personal access token created successfully", Severity.Success);
 
         if (_newTokenMode != PersonalAccessTokenPermissionMode.InheritOwner)

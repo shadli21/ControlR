@@ -13,8 +13,9 @@ public sealed record ServiceAccountResult(
   ServiceAccountKind Kind,
   bool IsEnabled,
   /// <summary>
-  /// The access mode for server-scoped accounts.
-  /// Ignored for tenant-scoped accounts.
+  /// The access mode. Always set (non-null) for server-scoped accounts.
+  /// <see cref="ServiceAccountAccessMode.Restricted"/> is the sentinel value used for
+  /// tenant-scoped accounts, which are not governed by the mode and never bypass.
   /// </summary>
   ServiceAccountAccessMode AccessMode,
   DateTimeOffset CreatedAt,

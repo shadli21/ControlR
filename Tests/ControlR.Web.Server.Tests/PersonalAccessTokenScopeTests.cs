@@ -99,6 +99,25 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task CreateTokenWithKey_InvalidPermissionMode_Fails()
+  {
+    // Bootstrap path's Enum.IsDefined guard should reject an invalid permission mode.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var invalidMode = (PersonalAccessTokenPermissionMode)999;
+    var result = await manager.CreateTokenWithKey(
+      Guid.NewGuid(), "x".PadLeft(32, 'a'), "Test Token", user.Id, invalidMode);
+
+    Assert.False(result.IsSuccess);
+    Assert.Contains("PermissionMode is not a valid value", result.Reason);
+  }
+
+  [Fact]
   public async Task CreateToken_InheritOwnerWithScopes_FailsAndCreatesNothing()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);

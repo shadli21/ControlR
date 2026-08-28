@@ -1,5 +1,4 @@
 using System.Net;
-using ControlR.Web.Client.Authz;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
@@ -295,6 +294,38 @@ public class BootstrapAdminUserTests(ITestOutputHelper output)
     var response = await client.GetAsync(HttpConstants.Internal.UsersEndpoint, TestContext.Current.CancellationToken);
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+  }
+
+  [Fact]
+  public async Task Bootstrap_WithPatSecret_PatHasInheritOwnerMode()
+  {
+    // Lock in the invariant: the bootstrap admin PAT must be InheritOwner,
+    // not silently default to Restricted (which would lose full-access bootstrapping).
+    var config = new Dictionary<string, string?>
+    {
+      ["Bootstrap:AdminEmail"] = AdminEmail,
+      ["Bootstrap:AdminPassword"] = AdminPassword,
+      ["Bootstrap:AdminPatTokenId"] = PatTokenId,
+      ["Bootstrap:AdminPatSecret"] = PatSecret,
+      ["AppOptions:DisableEmailSending"] = "true"
+    };
+
+    await using var testApp = await TestAppBuilder.CreateTestApp(output, extraConfiguration: config);
+    await testApp.App.BootstrapAdminUser();
+
+    using var scope = testApp.CreateScope();
+    await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
+
+    var user = await appDb.Users
+      .IgnoreQueryFilters()
+      .FirstOrDefaultAsync(u => u.Email == AdminEmail, TestContext.Current.CancellationToken);
+    Assert.NotNull(user);
+
+    var pat = await appDb.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .FirstOrDefaultAsync(t => t.Name == "Bootstrap Admin PAT" && t.UserId == user.Id, TestContext.Current.CancellationToken);
+    Assert.NotNull(pat);
+    Assert.Equal(PersonalAccessTokenPermissionMode.InheritOwner, pat!.PermissionMode);
   }
 
   [Fact]

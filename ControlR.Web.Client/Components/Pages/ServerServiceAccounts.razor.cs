@@ -200,6 +200,12 @@ public partial class ServerServiceAccounts : ComponentBase
 
   private async Task EditPermissions(InternalDtos.ServerServiceAccountDto account)
   {
+    if (account.AccessMode == ServiceAccountAccessMode.Unrestricted)
+    {
+      Snackbar.Add("Server account has unrestricted access. Permission assignment is not applicable.", Severity.Info);
+      return;
+    }
+
     var parameters = new DialogParameters<PermissionAssignmentPanelDialog>
     {
       { x => x.PrincipalKind, PermissionPrincipalKind.ServiceAccount },
@@ -207,8 +213,10 @@ public partial class ServerServiceAccounts : ComponentBase
       { x => x.AccountKind, ServiceAccountKind.Server }
     };
 
-    await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
+    var dialog = await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
       $"Permissions: {account.Name}", parameters, PermissionAssignmentPanelDialog.DefaultOptions);
+    await dialog.Result;
+    await Refresh();
   }
 
   private int GetActiveCount(IReadOnlyList<InternalDtos.ServerServiceAccountCredentialDto> credentials)

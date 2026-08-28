@@ -851,6 +851,42 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task PatInheritOwner_DeletedTokenRow_DeniedInsteadOfInheriting()
+  {
+    // A dangling credential (PersonalAccessToken row deleted) must NOT degrade to
+    // the InheritOwner path. The nullable projection in PermissionEvaluationContextLoader
+    // yields null when the token row is missing, so it should be denied rather than
+    // inheriting owner permissions.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var (user, tenant, device, tokenId) = await SeedPatScenario(testApp, PersonalAccessTokenPermissionMode.InheritOwner);
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id, tokenId, CredentialType.PersonalAccessToken);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    // Sanity: inherit-owner allows owner permissions while token row exists.
+    var before = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+    Assert.True(before.Allowed);
+
+    // Delete the token row itself.
+    using (var scope = testApp.App.Services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      var token = await db.PersonalAccessTokens
+        .IgnoreQueryFilters()
+        .FirstOrDefaultAsync(t => t.Id == tokenId, TestContext.Current.CancellationToken);
+      Assert.NotNull(token);
+      db.PersonalAccessTokens.Remove(token);
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // After deletion, the principal must NOT inherit owner permissions.
+    var after = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, resource, TestContext.Current.CancellationToken);
+    Assert.False(after.Allowed,
+      "A dangling credential (deleted token row) must not fall back to the InheritOwner path.");
+  }
+
+  [Fact]
   public async Task PatInheritOwner_NoRows_AllowsOwnerPermissions()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);

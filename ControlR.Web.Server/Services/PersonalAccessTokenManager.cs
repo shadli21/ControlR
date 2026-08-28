@@ -66,8 +66,10 @@ public class PersonalAccessTokenManager(
 
       Guid? ownerTenantId = null;
 
-      if (scopes is { Count: > 0 } requestScopes)
+      IReadOnlyList<InternalDtos.CredentialScopeDto>? requestScopes = null;
+      if (scopes is { Count: > 0 } scopeRows)
       {
+        requestScopes = scopeRows;
         var owner = await _appDb.Users
           .IgnoreQueryFilters()
           .AsNoTracking()
@@ -117,9 +119,9 @@ public class PersonalAccessTokenManager(
 
       var tenantId = hasScopes ? ownerTenantId : null;
 
-      if (hasScopes && tenantId is { } scopeTenantId)
+      if (hasScopes && tenantId is { } scopeTenantId && requestScopes is { } nonNullScopes)
       {
-        foreach (var scope in request.Scopes!)
+        foreach (var scope in nonNullScopes)
         {
           _appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
             PermissionPrincipalKind.PersonalAccessToken,
@@ -139,7 +141,7 @@ public class PersonalAccessTokenManager(
           AuthorizationChangeLogTargetTypes.PersonalAccessToken,
           personalAccessToken.Id,
           scopeTenantId,
-          after: new CredentialScopeSetSummary(request.Scopes!.Count)));
+          after: new CredentialScopeSetSummary(nonNullScopes.Count)));
 
         await _appDb.SaveChangesAsync();
       }
@@ -151,7 +153,7 @@ public class PersonalAccessTokenManager(
 
       var hexId = Convert.ToHexString(personalAccessToken.Id.ToByteArray());
       var combinedKey = $"{hexId}:{plainTextKey}";
-      var permissionCount = request.Scopes?.Select(x => x.PermissionName).Distinct().Count() ?? 0;
+      var permissionCount = requestScopes?.Select(x => x.PermissionName).Distinct().Count() ?? 0;
       var response = new InternalDtos.CreatePersonalAccessTokenResponseDto(MapToDto(personalAccessToken, permissionCount), combinedKey);
       return Result.Ok(response);
     }
