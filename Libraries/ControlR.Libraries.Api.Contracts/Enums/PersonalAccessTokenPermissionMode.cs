@@ -10,12 +10,12 @@ namespace ControlR.Libraries.Api.Contracts.Enums;
 public enum PersonalAccessTokenPermissionMode
 {
   /// <summary>
+  /// The token evaluates only its own scope rows. Zero rows deny everything.
+  /// </summary>
+  Restricted,
+
+  /// <summary>
   /// The token evaluates as its owning user. Scope rows are not meaningful.
   /// </summary>
   InheritOwner,
-
-  /// <summary>
-  /// The token evaluates only its own scope rows. Zero rows deny everything.
-  /// </summary>
-  Restricted
 }

@@ -10509,8 +10509,7 @@
       },
       "CreatePersonalAccessTokenRequestDto": {
         "required": [
-          "name",
-          "permissionMode"
+          "name"
         ],
         "type": "object",
         "properties": {
@@ -12185,8 +12184,8 @@
       },
       "PersonalAccessTokenPermissionMode": {
         "enum": [
-          "InheritOwner",
-          "Restricted"
+          "Restricted",
+          "InheritOwner"
         ]
       },
       "PersonalAccessTokenResponseDto": {
