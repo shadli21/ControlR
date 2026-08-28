@@ -1,6 +1,7 @@
 using System.Reflection;
 using ControlR.Web.Server.Api.V1;
 using ControlR.Web.Server.Data;
+using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Tests.Helpers;
@@ -93,6 +94,32 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task Create_PermissionWriteUserCreatesUnrestricted_Succeeds()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+
+    var (controller, _, user) = await scope.CreateControllerWithTestData<ServerServiceAccountsController>(
+      userEmail: "v1-perm-write@t.local");
+
+    await GrantServerPermissions(scope.ServiceProvider, user.Id,
+      PermissionNames.ServerServiceAccountsRead,
+      PermissionNames.ServerServiceAccountsWrite,
+      PermissionNames.ServerPermissionsWrite);
+
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+    var result = await controller.Create(
+      new CreateServerServiceAccountRequestDto("Unrestricted SA", null, ServiceAccountAccessMode.Unrestricted),
+      evaluator,
+      TestContext.Current.CancellationToken);
+
+    var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+    var dto = Assert.IsType<ServiceAccountDto>(createdResult.Value);
+    Assert.Equal(ServiceAccountAccessMode.Unrestricted, dto.AccessMode);
+    Assert.Equal(nameof(ServerServiceAccountsController.Get), createdResult.ActionName);
+  }
+
+  [Fact]
   public void Create_RequiresServerServiceAccountsWritePolicy()
   {
     var attribute = typeof(ServerServiceAccountsController)
@@ -142,6 +169,31 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(ServiceAccountAccessMode.Restricted, dto.AccessMode);
     Assert.Equal(nameof(ServerServiceAccountsController.Get), createdResult.ActionName);
     Assert.Equal(dto.Id, (Guid)createdResult.RouteValues!["serviceAccountId"]!);
+  }
+
+  [Fact]
+  public async Task Create_WriteOnlyUserCreatesUnrestricted_ReturnsForbidden()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+
+    // A write-only user holds the server service-account write policy but lacks the
+    // elevated ServerPermissionsWrite required to grant Unrestricted, so the
+    // imperative gate inside Create must deny with 403 Forbidden.
+    var (controller, _, user) = await scope.CreateControllerWithTestData<ServerServiceAccountsController>(
+      userEmail: "v1-write-only@t.local");
+
+    await GrantServerPermissions(scope.ServiceProvider, user.Id,
+      PermissionNames.ServerServiceAccountsRead,
+      PermissionNames.ServerServiceAccountsWrite);
+
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+    var result = await controller.Create(
+      new CreateServerServiceAccountRequestDto("Unrestricted SA", null, ServiceAccountAccessMode.Unrestricted),
+      evaluator,
+      TestContext.Current.CancellationToken);
+
+    Assert.IsType<ForbidResult>(result.Result);
   }
 
   [Fact]
@@ -333,5 +385,29 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var result = await controller.RevokeCredential(accountId, Guid.NewGuid(), TestContext.Current.CancellationToken);
     var notFound = Assert.IsType<ObjectResult>(result);
     Assert.Equal(404, notFound.StatusCode);
+  }
+
+  private static async Task GrantServerPermissions(
+    IServiceProvider services,
+    Guid userId,
+    params string[] permissionNames)
+  {
+    using var scope = services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+
+    foreach (var permissionName in permissionNames)
+    {
+      db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        userId,
+        permissionName,
+        PermissionScopeKind.Server,
+        scopeId: null,
+        owningTenantId: null,
+        AuthorizationChangeLogActorTypes.System,
+        userId.ToString()));
+    }
+
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
   }
 }
