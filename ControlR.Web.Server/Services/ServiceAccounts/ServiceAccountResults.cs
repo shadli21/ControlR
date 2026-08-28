@@ -13,10 +13,10 @@ public sealed record ServiceAccountResult(
   ServiceAccountKind Kind,
   bool IsEnabled,
   /// <summary>
-  /// The access mode for server-scoped accounts. Null for tenant-scoped accounts,
-  /// which are not governed by the mode and never bypass.
+  /// The access mode for server-scoped accounts.
+  /// Ignored for tenant-scoped accounts.
   /// </summary>
-  ServiceAccountAccessMode? AccessMode,
+  ServiceAccountAccessMode AccessMode,
   DateTimeOffset CreatedAt,
   IReadOnlyList<ServiceAccountCredentialResult> Credentials);
 

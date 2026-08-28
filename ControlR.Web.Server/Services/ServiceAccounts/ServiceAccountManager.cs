@@ -884,7 +884,7 @@ public class ServiceAccountManager(
       account.Description,
       account.Kind,
       account.IsEnabled,
-      account.Kind == ServiceAccountKind.Server ? account.AccessMode : null,
+      account.AccessMode,
       account.CreatedAt,
       account.Credentials
         .OrderBy(c => c.CreatedAt)

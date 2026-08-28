@@ -58,7 +58,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
         PermissionNames.ServerPermissionsWrite,
         new ResourceDescriptor(PermissionScopeKind.Server),
         cancellationToken);
-        
+
       if (!decision.Allowed)
       {
         return Forbid();
@@ -182,7 +182,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
       result.Name,
       result.Description,
       result.IsEnabled,
-      result.AccessMode ?? throw new InvalidOperationException("Server service account result is missing its access mode."),
+      result.AccessMode,
       result.CreatedAt,
       [.. result.Credentials.Select(MapCredentialToDto)]);
   }
