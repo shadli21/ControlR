@@ -68,6 +68,58 @@ on:
         default: ""
         type: string
 
+  workflow_call:
+    inputs:
+      use_self_hosted_runners:
+        description: "Use self-hosted runners"
+        required: false
+        default: true
+        type: boolean
+      use_local_storage:
+        description: "Use local storage for artifacts"
+        required: false
+        default: true
+        type: boolean
+      retention_days_artifacts:
+        description: "Retention days for artifacts"
+        required: false
+        default: 1
+        type: number
+      version:
+        description: "Version number"
+        required: true
+        type: string
+      server_runtime:
+        description: "Server target runtime/OS"
+        required: false
+        default: linux-x64
+        type: string
+      notarize_mac_bundle:
+        description: "Notarize macOS bundle"
+        required: false
+        default: true
+        type: boolean
+      build_nugets:
+        description: "Build NuGet packages"
+        required: false
+        default: true
+        type: boolean
+      prerelease:
+        description: "Is prerelease?"
+        required: false
+        default: false
+        type: boolean
+      run_tests:
+        description: "Run tests"
+        required: false
+        default: false
+        type: boolean
+      customization_config_url:
+        description: "URL to JSON customization config (empty for default branding)"
+        required: false
+        default: ""
+        type: string
+
 env:
   VERSION: ${{ inputs.version || vars.CURRENT_VERSION }}
   RETENTION_DAYS_ARTIFACTS: ${{ inputs.retention_days_artifacts || 1 }}

@@ -42,109 +42,27 @@ concurrency:
   group: acr-publish-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
   cancel-in-progress: false
 
-env:
-  BUILD_WORKFLOW: build.yml
-
 jobs:
-  dispatch-and-build:
+  build:
     name: Build
-    runs-on: ubuntu-latest
-    outputs:
-      run_id: ${{ steps.dispatch.outputs.run_id }}
-    steps:
-      - name: Dispatch build.yml
-        id: dispatch
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          REF_NAME: ${{ github.ref_name }}
-          CONFIG_URL: ${{ inputs.customization_config_url }}
-          VERSION: ${{ inputs.version }}
-        run: |
-          $headers = @{
-            Authorization = "Bearer $env:GH_TOKEN"
-            Accept        = "application/vnd.github+json"
-          }
-
-          $body = @{
-            ref                = "$env:REF_NAME"
-            return_run_details = $true
-            inputs             = @{
-              customization_config_url = "$env:CONFIG_URL"
-              version                  = "$env:VERSION"
-              use_self_hosted_runners  = "true"
-              use_local_storage        = "true"
-              retention_days_artifacts = "1"
-              build_nugets             = "false"
-              notarize_mac_bundle      = "false"
-              prerelease               = "false"
-              run_tests                = "false"
-            }
-          } | ConvertTo-Json -Depth 3
-
-          $uri = "https://api.github.com/repos/$env:REPO/actions/workflows/$env:BUILD_WORKFLOW/dispatches"
-          $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -Body $body -ContentType "application/json"
-
-          if (-not $response.workflow_run_id) {
-            Write-Error "Dispatch succeeded but did not return a workflow run ID."
-            exit 1
-          }
-
-          Write-Host "Dispatched $env:BUILD_WORKFLOW: run $($response.workflow_run_id)"
-          echo "run_id=$($response.workflow_run_id)" >> $env:GITHUB_OUTPUT
-
-      - name: Wait for build run
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ steps.dispatch.outputs.run_id }}
-        run: |
-          $headers = @{
-            Authorization = "Bearer $env:GH_TOKEN"
-            Accept        = "application/vnd.github+json"
-          }
-
-          $deadline = (Get-Date).AddHours(2)
-          $status = $null
-          $lastStatus = ""
-
-          while ((Get-Date) -lt $deadline) {
-            Start-Sleep -Seconds 30
-            try {
-              $status = Invoke-RestMethod -Uri "https://api.github.com/repos/$env:REPO/actions/runs/$env:RUN_ID" -Headers $headers
-            } catch {
-              Write-Host "Transient error polling run status, will retry: $($_.Exception.Message)"
-              continue
-            }
-            if ($status.status -ne $lastStatus) {
-              Write-Host "Run $env:RUN_ID status: $($status.status)"
-              $lastStatus = $status.status
-            }
-            if ($status.status -eq "completed") {
-              break
-            }
-          }
-
-          if (-not $status -or $status.status -ne "completed") {
-            Write-Error "Build run $env:RUN_ID did not complete within 2 hours."
-            exit 1
-          }
-
-          if ($status.conclusion -ne "success") {
-            Write-Error "Build run $env:RUN_ID failed with conclusion: $($status.conclusion)"
-            exit 1
-          }
-
-          Write-Host "Build run $env:RUN_ID completed successfully"
+    uses: ./.github/workflows/build.yml
+    with:
+      customization_config_url: ${{ inputs.customization_config_url }}
+      version: ${{ inputs.version }}
+      use_self_hosted_runners: true
+      use_local_storage: true
+      retention_days_artifacts: 1
+      build_nugets: false
+      notarize_mac_bundle: false
+      prerelease: false
+      run_tests: false
 
   publish-acr:
     name: Publish to ACR
-    needs: dispatch-and-build
+    needs: build
     uses: ./.github/workflows/publish-acr.yml
     with:
-      run_id: ${{ needs.dispatch-and-build.outputs.run_id }}
+      run_id: ${{ github.run_id }}
       sponsor_login: ${{ inputs.sponsor_login }}
       slot_number: ${{ inputs.slot_number }}
       image_reference: ${{ inputs.image_reference }}
