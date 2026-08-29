@@ -40,6 +40,7 @@ public class BootstrapServiceAccountTests(ITestOutputHelper testOutput)
     Assert.Equal(ServiceAccountKind.Server, account.Kind);
     Assert.Null(account.TenantId);
     Assert.True(account.IsEnabled);
+    Assert.Equal(ServiceAccountAccessMode.Unrestricted, account.AccessMode);
 
     Assert.NotEmpty(account.Credentials);
     Assert.Single(account.Credentials);

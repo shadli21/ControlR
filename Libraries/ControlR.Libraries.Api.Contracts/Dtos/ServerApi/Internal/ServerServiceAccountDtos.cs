@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+using ControlR.Libraries.Api.Contracts.Enums;
+
 namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 
 public record CreateServerServiceAccountRequestDto(
@@ -8,7 +10,10 @@ public record CreateServerServiceAccountRequestDto(
   string Name,
 
   [property: StringLength(500)]
-  string? Description);
+  string? Description,
+
+  [property: Required]
+  ServiceAccountAccessMode AccessMode);
 
 public record UpdateServerServiceAccountRequestDto(
   [property: Required]
@@ -40,6 +45,7 @@ public record ServerServiceAccountDto(
   string Name,
   string? Description,
   bool IsEnabled,
+  ServiceAccountAccessMode AccessMode,
   DateTimeOffset CreatedAt,
   IReadOnlyList<ServerServiceAccountCredentialDto> Credentials);
 

@@ -72,7 +72,7 @@ public class AuthIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var createResult = await patManager.CreateToken(
-      new CreatePersonalAccessTokenRequestDto("Test PAT"),
+      new CreatePersonalAccessTokenRequestDto("Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       user.Id);
     Assert.True(createResult.IsSuccess, $"PAT creation failed: {createResult.Reason}");
 
@@ -116,7 +116,7 @@ public class AuthIntegrationTests(ITestOutputHelper testOutput)
     var createResult = await serviceAccountManager.CreateForServer(
       "V1 Auth Test SA",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var credResult = await serviceAccountManager.AddCredentialForServer(

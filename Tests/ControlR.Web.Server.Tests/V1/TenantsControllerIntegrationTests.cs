@@ -22,7 +22,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer(
       "Integration Test SA - Bad Request",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
@@ -55,7 +55,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer(
       "Integration Test SA - Full Flow",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
@@ -108,7 +108,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Test PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       user.Id);
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
@@ -138,7 +138,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Server Admin PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Server Admin PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       user.Id);
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
@@ -169,7 +169,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer(
       "Integration Test SA - Tenant Create",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
@@ -208,7 +208,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer(
       "Integration Test SA - Not Found",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
@@ -240,7 +240,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer(
       "Integration Test SA - Tenant Get",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(

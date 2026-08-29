@@ -30,7 +30,7 @@ public class LogonTokenEndToEndTests(ITestOutputHelper testOutput)
 
     // Create a test user and issue a personal access token for that user
     var patManager = testServer.TestServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
-    var createPatRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key for Cross-Device Access");
+    var createPatRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key for Cross-Device Access", PersonalAccessTokenPermissionMode.InheritOwner);
     var createResult = await patManager.CreateToken(createPatRequest, user.Id);
 
     Assert.True(createResult.IsSuccess, $"PAT creation failed: {createResult.Reason}");
@@ -87,7 +87,7 @@ public class LogonTokenEndToEndTests(ITestOutputHelper testOutput)
 
     // Create a test user and issue a personal access token for that user
     var patManager = testServer.TestServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
-    var createPatRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key for Logon Token");
+    var createPatRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key for Logon Token", PersonalAccessTokenPermissionMode.InheritOwner);
     var createResult = await patManager.CreateToken(createPatRequest, user.Id);
 
     Assert.True(createResult.IsSuccess, $"PAT creation failed: {createResult.Reason}");

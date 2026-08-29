@@ -10,20 +10,20 @@ public interface IServerServiceAccountsApi
   Task<ApiResult<CreateServiceAccountCredentialResponseDto>> AddCredential(Guid serviceAccountId, CreateServiceAccountCredentialRequestDto request, CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.V1.ServerServiceAccountsEndpoint}", "POST")]
-  Task<ApiResult<ServiceAccountDto>> Create(CreateServiceAccountRequestDto request, CancellationToken cancellationToken = default);
+  Task<ApiResult<ServerServiceAccountDto>> Create(CreateServerServiceAccountRequestDto request, CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.V1.ServerServiceAccountsEndpoint}/{{serviceAccountId}}", "DELETE")]
   Task<ApiResult> Delete(Guid serviceAccountId, CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.V1.ServerServiceAccountsEndpoint}/{{serviceAccountId}}", "GET")]
-  Task<ApiResult<ServiceAccountDto>> Get(Guid serviceAccountId, CancellationToken cancellationToken = default);
+  Task<ApiResult<ServerServiceAccountDto>> Get(Guid serviceAccountId, CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.V1.ServerServiceAccountsEndpoint}", "GET")]
-  Task<ApiResult<ServiceAccountsResponseDto>> GetAll(CancellationToken cancellationToken = default);
+  Task<ApiResult<ServerServiceAccountsResponseDto>> GetAll(CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.V1.ServerServiceAccountsEndpoint}/{{serviceAccountId}}/credentials/{{credentialId}}", "DELETE")]
   Task<ApiResult> RevokeCredential(Guid serviceAccountId, Guid credentialId, CancellationToken cancellationToken = default);
 
   [ApiRoute($"{HttpConstants.V1.ServerServiceAccountsEndpoint}/{{serviceAccountId}}", "PUT")]
-  Task<ApiResult<ServiceAccountDto>> Update(Guid serviceAccountId, UpdateServiceAccountRequestDto request, CancellationToken cancellationToken = default);
+  Task<ApiResult<ServerServiceAccountDto>> Update(Guid serviceAccountId, UpdateServiceAccountRequestDto request, CancellationToken cancellationToken = default);
 }

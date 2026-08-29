@@ -10,13 +10,24 @@ namespace ControlR.Web.Server.Extensions.Dtos.V1;
 /// </summary>
 internal static class ModelToV1DtoExtensions
 {
-  public static ServiceAccountDto ToDto(this ServiceAccountResult result)
+  public static ServerServiceAccountDto ToServerServiceAccountDto(this ServiceAccountResult result)
   {
-    return new ServiceAccountDto(
+    return new ServerServiceAccountDto(
       result.Id,
       result.Name,
       result.Description,
-      result.Kind,
+      result.IsEnabled,
+      result.AccessMode,
+      result.CreatedAt,
+      [.. result.Credentials.Select(c => c.ToDto())]);
+  }
+
+  public static TenantServiceAccountDto ToTenantServiceAccountDto(this ServiceAccountResult result)
+  {
+    return new TenantServiceAccountDto(
+      result.Id,
+      result.Name,
+      result.Description,
       result.IsEnabled,
       result.CreatedAt,
       [.. result.Credentials.Select(c => c.ToDto())]);

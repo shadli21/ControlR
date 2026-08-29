@@ -45,7 +45,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       var createResult = await manager.CreateForServer(
         $"StateMatrix {Guid.NewGuid():N}",
         null,
-        TestContext.Current.CancellationToken);
+        ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
       Assert.True(createResult.IsSuccess);
       accountId = createResult.Value.Id;
 
@@ -112,7 +112,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       var createResult = await manager.CreateForServer(
         "Disabled Account SA",
         null,
-        TestContext.Current.CancellationToken);
+        ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
       Assert.True(createResult.IsSuccess);
       accountId = createResult.Value.Id;
 
@@ -178,7 +178,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       var createResult = await serviceAccountManager.CreateForServer(
         "Expired Credential SA",
         null,
-        TestContext.Current.CancellationToken);
+        ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
       Assert.True(createResult.IsSuccess);
 
       var credResult = await serviceAccountManager.AddCredentialForServer(
@@ -254,7 +254,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
     var createResult = await serviceAccountManager.CreateForServer(
       "Revocation Test SA",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var credResult = await serviceAccountManager.AddCredentialForServer(
@@ -293,7 +293,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
     var createResult = await serviceAccountManager.CreateForServer(
       "AuthHandlerTest SA",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var credResult = await serviceAccountManager.AddCredentialForServer(
@@ -344,7 +344,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
     var createResult = await serviceAccountManager.CreateForServer(
       "Revoke Cache SA",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var credResult = await serviceAccountManager.AddCredentialForServer(
@@ -389,7 +389,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
     var createResult = await serviceAccountManager.CreateForServer(
       "Disable Cache SA",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var credResult = await serviceAccountManager.AddCredentialForServer(

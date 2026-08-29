@@ -19,9 +19,11 @@ internal static class TestPrincipalHelper
   public static async Task<T> CreateControllerWithServerServiceAccountAsync<T>(
     IServiceScope scope,
     string? accountName = null,
+    ServiceAccountAccessMode accessMode = ServiceAccountAccessMode.Unrestricted,
     CancellationToken cancellationToken = default) where T : ControllerBase
   {
-    var (principal, _, _) = await CreateServerServiceAccountAsync(scope.ServiceProvider, accountName, cancellationToken);
+    var (principal, _, _) = await CreateServerServiceAccountAsync(
+      scope.ServiceProvider, accountName, accessMode, cancellationToken);
     var controller = scope.CreateController<T>();
     controller.ControllerContext.HttpContext.User = principal;
     return controller;
@@ -34,10 +36,11 @@ internal static class TestPrincipalHelper
   public static async Task<(ClaimsPrincipal Principal, ServiceAccountResult Account, string PlainTextSecretKey)> CreateServerServiceAccountAsync(
     IServiceProvider services,
     string? accountName = null,
+    ServiceAccountAccessMode accessMode = ServiceAccountAccessMode.Unrestricted,
     CancellationToken cancellationToken = default)
   {
     var manager = services.GetRequiredService<IServiceAccountManager>();
-    var account = await manager.CreateForServer(accountName ?? $"test-sa-{Guid.NewGuid():N}", null, cancellationToken);
+    var account = await manager.CreateForServer(accountName ?? $"test-sa-{Guid.NewGuid():N}", null, accessMode, cancellationToken);
 
     if (!account.IsSuccess)
     {

@@ -145,7 +145,8 @@ public static class HostExtensions
         options.AdminPatTokenId.Value,
         options.AdminPatSecret,
         "Bootstrap Admin PAT",
-        user.Id);
+        user.Id,
+        PersonalAccessTokenPermissionMode.InheritOwner);
 
       if (!patResult.IsSuccess)
       {

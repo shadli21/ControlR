@@ -86,11 +86,14 @@ public partial class ServerServiceAccounts : ComponentBase
   private async Task CreateAccount()
   {
     var canIssueCredential = await HasPolicy(PolicyNames.RequireServerServiceAccountsRotateCredentials);
+    var canGrantUnrestricted = await HasPolicy(PolicyNames.RequireServerPermissionsWrite);
 
     var parameters = new DialogParameters<CreateServiceAccountDialog>
     {
       { x => x.CanIssueCredential, canIssueCredential },
-      { x => x.RotatePermissionLabel, "Rotate Server Service Account Credentials" }
+      { x => x.CanGrantUnrestricted, canGrantUnrestricted },
+      { x => x.RotatePermissionLabel, "Rotate Server Service Account Credentials" },
+      { x => x.IsServerAccount, true }
     };
 
     var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
@@ -103,7 +106,10 @@ public partial class ServerServiceAccounts : ComponentBase
     }
 
     var createResult = await ControlrApi.Internal.ServerServiceAccounts.Create(
-      new InternalDtos.CreateServerServiceAccountRequestDto(dialogResult.Name, dialogResult.Description));
+      new InternalDtos.CreateServerServiceAccountRequestDto(
+        dialogResult.Name,
+        dialogResult.Description,
+        dialogResult.AccessMode));
 
     if (!createResult.IsSuccess)
     {
@@ -132,6 +138,7 @@ public partial class ServerServiceAccounts : ComponentBase
       Snackbar.Add("Server service account created without a credential", Severity.Success);
     }
 
+    await EditPermissions(account);
     await Refresh();
   }
 
@@ -193,6 +200,12 @@ public partial class ServerServiceAccounts : ComponentBase
 
   private async Task EditPermissions(InternalDtos.ServerServiceAccountDto account)
   {
+    if (account.AccessMode == ServiceAccountAccessMode.Unrestricted)
+    {
+      Snackbar.Add("Server account has unrestricted access. Permission assignment is not applicable.", Severity.Info);
+      return;
+    }
+
     var parameters = new DialogParameters<PermissionAssignmentPanelDialog>
     {
       { x => x.PrincipalKind, PermissionPrincipalKind.ServiceAccount },
@@ -200,8 +213,10 @@ public partial class ServerServiceAccounts : ComponentBase
       { x => x.AccountKind, ServiceAccountKind.Server }
     };
 
-    await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
+    var dialog = await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
       $"Permissions: {account.Name}", parameters, PermissionAssignmentPanelDialog.DefaultOptions);
+    await dialog.Result;
+    await Refresh();
   }
 
   private int GetActiveCount(IReadOnlyList<InternalDtos.ServerServiceAccountCredentialDto> credentials)
@@ -276,7 +291,8 @@ public partial class ServerServiceAccounts : ComponentBase
 
     var options = SecretDisplayDialog.DefaultOptions;
 
-    await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
+    var dialogRef = await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
+    await dialogRef.Result;
   }
 
   private async Task ToggleEnabled(InternalDtos.ServerServiceAccountDto account, bool enabled)

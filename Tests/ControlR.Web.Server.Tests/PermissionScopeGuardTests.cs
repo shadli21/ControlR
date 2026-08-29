@@ -301,7 +301,7 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Scope Guard Test PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Scope Guard Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       user.Id);
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 

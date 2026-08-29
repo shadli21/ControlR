@@ -89,6 +89,7 @@ public partial class ServiceAccounts : ComponentBase
     var parameters = new DialogParameters<CreateServiceAccountDialog>
     {
       { x => x.CanIssueCredential, canIssueCredential },
+      { x => x.CanGrantUnrestricted, false },
       { x => x.RotatePermissionLabel, "Rotate Service Account Credentials" }
     };
 
@@ -131,6 +132,7 @@ public partial class ServiceAccounts : ComponentBase
       Snackbar.Add("Service account created without a credential", Severity.Success);
     }
 
+    await EditPermissions(account);
     await Refresh();
   }
 
@@ -198,8 +200,10 @@ public partial class ServiceAccounts : ComponentBase
       { x => x.PrincipalId, account.Id }
     };
 
-    await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
+    var dialog = await DialogService.ShowAsync<PermissionAssignmentPanelDialog>(
       $"Permissions: {account.Name}", parameters, PermissionAssignmentPanelDialog.DefaultOptions);
+    await dialog.Result;
+    await Refresh();
   }
 
   private int GetActiveCount(IReadOnlyList<InternalDtos.TenantServiceAccountCredentialDto> credentials)
@@ -274,7 +278,8 @@ public partial class ServiceAccounts : ComponentBase
 
     var options = SecretDisplayDialog.DefaultOptions;
 
-    await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
+    var dialogRef = await DialogService.ShowAsync<SecretDisplayDialog>(title, parameters, options);
+    await dialogRef.Result;
   }
 
   private async Task ToggleEnabled(InternalDtos.TenantServiceAccountDto account, bool enabled)

@@ -6,6 +6,7 @@ namespace ControlR.Web.Client.Components.Pages;
 public partial class PersonalAccessTokens
 {
   private bool _isLoading = false;
+  private PersonalAccessTokenPermissionMode _newTokenMode = PersonalAccessTokenPermissionMode.Restricted;
   private string _newTokenName = string.Empty;
   private PersonalAccessTokenResponseDto[] _personalAccessTokens = [];
 
@@ -18,6 +19,10 @@ public partial class PersonalAccessTokens
   [Inject]
   public required ISnackbar Snackbar { get; init; }
 
+  private bool CanCreatePersonalAccessToken =>
+    !string.IsNullOrWhiteSpace(_newTokenName) &&
+    !_isLoading;
+
   protected override async Task OnInitializedAsync()
   {
     await LoadPersonalAccessTokens();
@@ -25,13 +30,15 @@ public partial class PersonalAccessTokens
 
   private async Task CreatePersonalAccessToken()
   {
-    if (string.IsNullOrWhiteSpace(_newTokenName))
+    if (!CanCreatePersonalAccessToken)
       return;
 
     _isLoading = true;
     try
     {
-      var request = new CreatePersonalAccessTokenRequestDto(_newTokenName.Trim());
+      var request = new CreatePersonalAccessTokenRequestDto(
+        _newTokenName.Trim(),
+        _newTokenMode);
       var result = await ControlrApi.Internal.PersonalAccessTokens.CreatePersonalAccessToken(request);
 
       if (result.IsSuccess)
@@ -53,10 +60,15 @@ public partial class PersonalAccessTokens
         await dialogRef.Result;
 
         await LoadPersonalAccessTokens();
+        var createdMode = _newTokenMode;
         _newTokenName = string.Empty;
+        _newTokenMode = PersonalAccessTokenPermissionMode.Restricted;
         Snackbar.Add("Personal access token created successfully", Severity.Success);
 
-        await ManagePermissions(createdToken);
+        if (createdMode != PersonalAccessTokenPermissionMode.InheritOwner)
+        {
+          await ManagePermissions(createdToken);
+        }
       }
       else
       {

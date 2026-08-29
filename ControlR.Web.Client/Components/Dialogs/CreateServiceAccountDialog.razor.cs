@@ -4,10 +4,12 @@ public sealed record CreateServiceAccountDialogResult(
   string Name,
   string? Description,
   string? CredentialName,
-  DateTimeOffset? CredentialExpiresAt);
+  DateTimeOffset? CredentialExpiresAt,
+  ServiceAccountAccessMode AccessMode);
 
 public partial class CreateServiceAccountDialog : ComponentBase
 {
+  private ServiceAccountAccessMode _accessMode = ServiceAccountAccessMode.Restricted;
   private bool _createCredential = true;
   private DateTimeOffset? _credentialExpiresAt;
   private string _credentialName = "Initial Credential";
@@ -15,7 +17,13 @@ public partial class CreateServiceAccountDialog : ComponentBase
   private string _name = string.Empty;
 
   [Parameter]
+  public required bool CanGrantUnrestricted { get; init; }
+
+  [Parameter]
   public required bool CanIssueCredential { get; init; }
+
+  [Parameter]
+  public bool IsServerAccount { get; init; }
 
   [CascadingParameter]
   public required IMudDialogInstance MudDialog { get; init; }
@@ -23,20 +31,39 @@ public partial class CreateServiceAccountDialog : ComponentBase
   [Parameter]
   public required string RotatePermissionLabel { get; init; }
 
+  [Inject]
+  public required ISnackbar Snackbar { get; init; }
+
   private bool CanSave =>
     !string.IsNullOrWhiteSpace(_name) &&
-    (!CanIssueCredential || !_createCredential || !string.IsNullOrWhiteSpace(_credentialName));
+    (!CanIssueCredential || !_createCredential || !string.IsNullOrWhiteSpace(_credentialName)) &&
+    (_accessMode != ServiceAccountAccessMode.Unrestricted || CanGrantUnrestricted);
 
   private void Cancel() => MudDialog.Cancel();
 
   private void Save()
   {
+    if (_accessMode == ServiceAccountAccessMode.Unrestricted && !CanGrantUnrestricted)
+    {
+      Snackbar.Add("You do not have permission to grant unrestricted access.", Severity.Error);
+      MudDialog.Close(DialogResult.Cancel());
+      return;
+    }
+
     var issueCredential = CanIssueCredential && _createCredential;
 
-    MudDialog.Close(DialogResult.Ok(new CreateServiceAccountDialogResult(
-      _name.Trim(),
-      string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
-      issueCredential ? _credentialName.Trim() : null,
-      issueCredential ? _credentialExpiresAt : null)));
+    var name = _name.Trim();
+    var description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
+    var credentialName = issueCredential ? _credentialName.Trim() : null;
+    var credentialExpiresAt = issueCredential ? _credentialExpiresAt : null;
+
+    var result = new CreateServiceAccountDialogResult(
+      name,
+      description,
+      credentialName,
+      credentialExpiresAt,
+      _accessMode);
+      
+    MudDialog.Close(DialogResult.Ok(result));
   }
 }

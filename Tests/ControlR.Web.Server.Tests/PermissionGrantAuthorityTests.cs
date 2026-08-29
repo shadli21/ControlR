@@ -145,7 +145,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
     using var setupScope = testApp.CreateScope();
     var accountManager = setupScope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
     var accountResult = await accountManager.CreateForServer(
-      $"server-sa-{Guid.NewGuid():N}", null, TestContext.Current.CancellationToken);
+      $"server-sa-{Guid.NewGuid():N}", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(accountResult.IsSuccess);
     var accountId = accountResult.Value.Id;
 
@@ -193,7 +193,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
     using var setupScope = testApp.CreateScope();
     var accountManager = setupScope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
     var accountResult = await accountManager.CreateForServer(
-      $"server-sa-{Guid.NewGuid():N}", null, TestContext.Current.CancellationToken);
+      $"server-sa-{Guid.NewGuid():N}", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(accountResult.IsSuccess);
     var accountId = accountResult.Value.Id;
 
@@ -484,7 +484,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Grant Authority Test PAT"), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Grant Authority Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,

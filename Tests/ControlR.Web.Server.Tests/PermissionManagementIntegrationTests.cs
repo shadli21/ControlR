@@ -817,7 +817,7 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Integration Test PAT"),
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Integration Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
       user.Id);
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
