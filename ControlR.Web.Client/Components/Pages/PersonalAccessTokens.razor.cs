@@ -60,11 +60,12 @@ public partial class PersonalAccessTokens
         await dialogRef.Result;
 
         await LoadPersonalAccessTokens();
+        var createdMode = _newTokenMode;
         _newTokenName = string.Empty;
         _newTokenMode = PersonalAccessTokenPermissionMode.Restricted;
         Snackbar.Add("Personal access token created successfully", Severity.Success);
 
-        if (_newTokenMode != PersonalAccessTokenPermissionMode.InheritOwner)
+        if (createdMode != PersonalAccessTokenPermissionMode.InheritOwner)
         {
           await ManagePermissions(createdToken);
         }

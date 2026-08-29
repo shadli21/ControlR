@@ -46,11 +46,11 @@ public class ServerServiceAccountsController(
 
   [HttpPost]
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsWrite)]
-  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status201Created)]
+  [ProducesResponseType<ServerServiceAccountDto>(StatusCodes.Status201Created)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status403Forbidden)]
   [ProducesResponseType(StatusCodes.Status409Conflict)]
-  public async Task<ActionResult<ServiceAccountDto>> Create(
+  public async Task<ActionResult<ServerServiceAccountDto>> Create(
     [FromBody] CreateServerServiceAccountRequestDto request,
     [FromServices] IPermissionEvaluator permissionEvaluator,
     CancellationToken cancellationToken)
@@ -80,7 +80,7 @@ public class ServerServiceAccountsController(
       return result.ToHttpResult().ToActionResult();
     }
 
-    return CreatedAtAction(nameof(Get), new { serviceAccountId = result.Value.Id }, result.Value.ToDto());
+    return CreatedAtAction(nameof(Get), new { serviceAccountId = result.Value.Id }, result.Value.ToServerServiceAccountDto());
   }
 
   [HttpDelete("{serviceAccountId:guid}")]
@@ -110,9 +110,9 @@ public class ServerServiceAccountsController(
 
   [HttpGet("{serviceAccountId:guid}")]
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsRead)]
-  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType<ServerServiceAccountDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
-  public async Task<ActionResult<ServiceAccountDto>> Get(
+  public async Task<ActionResult<ServerServiceAccountDto>> Get(
     Guid serviceAccountId,
     CancellationToken cancellationToken)
   {
@@ -122,18 +122,18 @@ public class ServerServiceAccountsController(
       return result.ToHttpResult().ToActionResult();
     }
 
-    return Ok(result.Value.ToDto());
+    return Ok(result.Value.ToServerServiceAccountDto());
   }
 
   [HttpGet]
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsRead)]
-  [ProducesResponseType<ServiceAccountsResponseDto>(StatusCodes.Status200OK)]
-  public async Task<ActionResult<ServiceAccountsResponseDto>> GetAll(CancellationToken cancellationToken)
+  [ProducesResponseType<ServerServiceAccountsResponseDto>(StatusCodes.Status200OK)]
+  public async Task<ActionResult<ServerServiceAccountsResponseDto>> GetAll(CancellationToken cancellationToken)
   {
     var accounts = await _serviceAccountManager.GetAllForServer(cancellationToken);
-    return Ok(new ServiceAccountsResponseDto
+    return Ok(new ServerServiceAccountsResponseDto
     {
-      Items = accounts.Select(x => x.ToDto()).ToArray()
+      Items = [.. accounts.Select(x => x.ToServerServiceAccountDto())]
     });
   }
 
@@ -163,10 +163,10 @@ public class ServerServiceAccountsController(
 
   [HttpPut("{serviceAccountId:guid}")]
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsWrite)]
-  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType<ServerServiceAccountDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
-  public async Task<ActionResult<ServiceAccountDto>> Update(
+  public async Task<ActionResult<ServerServiceAccountDto>> Update(
     Guid serviceAccountId,
     [FromBody] UpdateServiceAccountRequestDto request,
     CancellationToken cancellationToken)
@@ -184,6 +184,6 @@ public class ServerServiceAccountsController(
       return result.ToHttpResult().ToActionResult();
     }
 
-    return Ok(result.Value.ToDto());
+    return Ok(result.Value.ToServerServiceAccountDto());
   }
 }

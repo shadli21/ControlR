@@ -1216,17 +1216,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               }
             }
@@ -1337,17 +1337,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountsResponseDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountsResponseDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountsResponseDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountsResponseDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountsResponseDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountsResponseDto"
                 }
               }
             }
@@ -1522,17 +1522,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               }
             }
@@ -1632,17 +1632,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/ServerServiceAccountDto"
                 }
               }
             }
@@ -2386,17 +2386,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               }
             }
@@ -2516,17 +2516,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountsResponseDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountsResponseDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountsResponseDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountsResponseDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountsResponseDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountsResponseDto"
                 }
               }
             }
@@ -2739,17 +2739,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               }
             }
@@ -2878,17 +2878,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceAccountDto"
+                  "$ref": "#/components/schemas/TenantServiceAccountDto"
                 }
               }
             }
@@ -3951,11 +3951,64 @@
           }
         }
       },
+      "ServerServiceAccountDto": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "isEnabled",
+          "accessMode",
+          "createdAt",
+          "credentials"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "accessMode": {
+            "$ref": "#/components/schemas/ServiceAccountAccessMode"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "credentials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceAccountCredentialDto"
+            }
+          }
+        }
+      },
+      "ServerServiceAccountsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerServiceAccountDto"
+            }
+          }
+        }
+      },
       "ServiceAccountAccessMode": {
         "enum": [
           "Restricted",
-          "Unrestricted",
-          null
+          "Unrestricted"
         ]
       },
       "ServiceAccountCredentialDto": {
@@ -4003,14 +4056,15 @@
           }
         }
       },
-      "ServiceAccountDto": {
+      "SystemPlatform": {
+        "type": "integer"
+      },
+      "TenantServiceAccountDto": {
         "required": [
           "id",
           "name",
           "description",
-          "kind",
           "isEnabled",
-          "accessMode",
           "createdAt",
           "credentials"
         ],
@@ -4029,21 +4083,8 @@
               "string"
             ]
           },
-          "kind": {
-            "$ref": "#/components/schemas/ServiceAccountKind"
-          },
           "isEnabled": {
             "type": "boolean"
-          },
-          "accessMode": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ServiceAccountAccessMode"
-              }
-            ]
           },
           "createdAt": {
             "type": "string",
@@ -4057,25 +4098,16 @@
           }
         }
       },
-      "ServiceAccountKind": {
-        "enum": [
-          "Tenant",
-          "Server"
-        ]
-      },
-      "ServiceAccountsResponseDto": {
+      "TenantServiceAccountsResponseDto": {
         "type": "object",
         "properties": {
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ServiceAccountDto"
+              "$ref": "#/components/schemas/TenantServiceAccountDto"
             }
           }
         }
-      },
-      "SystemPlatform": {
-        "type": "integer"
       },
       "UpdateDeviceAliasRequestDto": {
         "required": [

@@ -114,7 +114,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-    var dto = Assert.IsType<ServiceAccountDto>(createdResult.Value);
+    var dto = Assert.IsType<ServerServiceAccountDto>(createdResult.Value);
     Assert.Equal(ServiceAccountAccessMode.Unrestricted, dto.AccessMode);
     Assert.Equal(nameof(ServerServiceAccountsController.Get), createdResult.ActionName);
   }
@@ -164,7 +164,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-    var dto = Assert.IsType<ServiceAccountDto>(createdResult.Value);
+    var dto = Assert.IsType<ServerServiceAccountDto>(createdResult.Value);
     Assert.Equal("New Test Account", dto.Name);
     Assert.Equal(ServiceAccountAccessMode.Restricted, dto.AccessMode);
     Assert.Equal(nameof(ServerServiceAccountsController.Get), createdResult.ActionName);
@@ -291,7 +291,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
 
     var result = await controller.GetAll(TestContext.Current.CancellationToken);
     var okResult = Assert.IsType<OkObjectResult>(result.Result);
-    var response = Assert.IsType<ServiceAccountsResponseDto>(okResult.Value);
+    var response = Assert.IsType<ServerServiceAccountsResponseDto>(okResult.Value);
     Assert.True(response.Items.Count >= 2, "Should have at least 2 accounts");
   }
 
@@ -312,7 +312,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
 
     var result = await controller.Get(accountId, TestContext.Current.CancellationToken);
     var okResult = Assert.IsType<OkObjectResult>(result.Result);
-    var dto = Assert.IsType<ServiceAccountDto>(okResult.Value);
+    var dto = Assert.IsType<ServerServiceAccountDto>(okResult.Value);
     Assert.Equal(accountId, dto.Id);
     Assert.Equal("Get Me", dto.Name);
     Assert.Equal("Get description", dto.Description);
