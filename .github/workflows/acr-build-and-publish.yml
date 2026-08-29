@@ -24,6 +24,14 @@ on:
         description: "Sponsor build slot number"
         required: true
         type: number
+      environment:
+        description: "Target environment (dev or prod)"
+        required: false
+        type: choice
+        default: "dev"
+        options:
+          - dev
+          - prod
 
 permissions:
   actions: write
@@ -140,6 +148,7 @@ jobs:
       sponsor_login: ${{ inputs.sponsor_login }}
       slot_number: ${{ inputs.slot_number }}
       image_reference: ${{ inputs.image_reference }}
+      environment: ${{ inputs.environment }}
       use_local_storage: true
       use_self_hosted_runners: true
     secrets: inherit

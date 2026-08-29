@@ -30,6 +30,14 @@ on:
         required: false
         type: boolean
         default: true
+      environment:
+        description: "Target environment (dev or prod)"
+        required: false
+        type: choice
+        default: "dev"
+        options:
+          - dev
+          - prod
   workflow_call:
     inputs:
       run_id:
@@ -58,6 +66,11 @@ on:
         required: false
         type: boolean
         default: true
+      environment:
+        description: "Target environment (dev or prod)"
+        required: false
+        type: string
+        default: "dev"
 
 permissions:
   actions: read
@@ -72,7 +85,7 @@ jobs:
   publish:
     name: Publish to ACR
     runs-on: ${{ inputs.use_self_hosted_runners && fromJson('["self-hosted","Linux"]') || fromJson('["ubuntu-latest"]') }}
-    environment: acr-publish
+    environment: ${{ inputs.environment == 'prod' && 'acr-publish-prod' || 'acr-publish-dev' }}
 
     env:
       ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
