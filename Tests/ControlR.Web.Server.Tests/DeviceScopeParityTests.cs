@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using ControlR.Libraries.Api.Contracts.Enums;
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Authorization.PermissionRules;
@@ -358,6 +360,121 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       new ParityDevice(deviceA.Id, null, []),
       new ParityDevice(deviceB.Id, null, [])
     ]);
+  }
+
+  [Fact]
+  public async Task Parity_RestrictedPatWithoutRows_EnumeratesNothing()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
+    var patId = Guid.NewGuid();
+
+    // The owner holds a tenant-wide grant, but the Restricted PAT has no rows of its own,
+    // so neither enumeration nor point evaluation may grant access.
+    await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      user.Id,
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Tenant,
+      tenant.Id,
+      tenant.Id,
+      "test",
+      user.Id.ToString()));
+
+    var (claims, principal) = CreateCredentialPrincipalPair(
+      user.Id, tenant.Id, patId, CredentialType.PersonalAccessToken);
+
+    await AssertResolverEvaluatorParity(testApp, tenant.Id, claims, principal,
+    [
+      new ParityDevice(deviceA.Id, null, [])
+    ]);
+  }
+
+  [Fact]
+  public async Task Parity_DisabledAllowAssignment_DoesNotGrant()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.DeviceRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Tenant,
+      ScopeId = tenant.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = false
+    });
+
+    var (claims, principal) = CreateUserPrincipalPair(user.Id, tenant.Id);
+
+    await AssertResolverEvaluatorParity(testApp, tenant.Id, claims, principal,
+    [
+      new ParityDevice(deviceA.Id, null, [])
+    ]);
+  }
+
+  [Fact]
+  public async Task Parity_UnrestrictedServerServiceAccount_EnumeratesAllDevices()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenantA = await testApp.App.Services.CreateTestTenant("Tenant A");
+    var tenantB = await testApp.App.Services.CreateTestTenant("Tenant B");
+    var deviceA = await testApp.App.Services.CreateTestDevice(tenantA.Id);
+    var deviceB = await testApp.App.Services.CreateTestDevice(tenantB.Id);
+    var serviceAccountId = Guid.NewGuid();
+
+    using (var setupScope = testApp.App.Services.CreateScope())
+    {
+      await using var setupDb = setupScope.ServiceProvider.GetRequiredService<AppDb>();
+      setupDb.ServiceAccounts.Add(new ServiceAccount
+      {
+        Id = serviceAccountId,
+        Name = "unrestricted-sa",
+        Kind = ServiceAccountKind.Server,
+        AccessMode = ServiceAccountAccessMode.Unrestricted,
+        IsEnabled = true
+      });
+      await setupDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var claims = new ClaimsPrincipal(new ClaimsIdentity(
+    [
+      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.ServerServiceAccount),
+      new Claim(PrincipalClaimTypes.PrincipalId, serviceAccountId.ToString())
+    ], "TestAuth"));
+    var principal = PrincipalDescriptorBuilder.FromClaims(claims)
+      ?? throw new InvalidOperationException("Failed to build principal descriptor from claims.");
+
+    using var scope = testApp.App.Services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var resolver = scope.ServiceProvider.GetRequiredService<IDeviceAccessScopeResolver>();
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+    var accessScope = await resolver.Resolve(claims, TestContext.Current.CancellationToken);
+    var listedIds = await db.Devices
+      .IgnoreQueryFilters()
+      .ApplyAccessScope(accessScope)
+      .Select(device => device.Id)
+      .ToListAsync(TestContext.Current.CancellationToken);
+
+    Assert.Contains(deviceA.Id, listedIds);
+    Assert.Contains(deviceB.Id, listedIds);
+    Assert.True((await evaluator.Evaluate(
+      principal,
+      PermissionNames.DeviceRead,
+      new ResourceDescriptor(PermissionScopeKind.Device, deviceA.Id, tenantA.Id),
+      TestContext.Current.CancellationToken)).Allowed);
+    Assert.True((await evaluator.Evaluate(
+      principal,
+      PermissionNames.DeviceRead,
+      new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenantB.Id),
+      TestContext.Current.CancellationToken)).Allowed);
   }
 
   private static async Task AssertResolverEvaluatorParity(

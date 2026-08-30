@@ -15,22 +15,7 @@ public static class DeviceAccessQueryExtensions
     }
 
     query = query
-      .Where(device =>
-        (!accessScope.TenantBoundaryId.HasValue ||
-         device.TenantId == accessScope.TenantBoundaryId.Value) &&
-        (accessScope.IncludesServerWide ||
-         accessScope.IncludedTenantIds.Contains(device.TenantId) ||
-         accessScope.IncludedDeviceIds.Contains(device.Id) ||
-         (device.CustomerId.HasValue &&
-          accessScope.IncludedCustomerIds.Contains(device.CustomerId.Value)) ||
-         device.DeviceGroupMembers!.Any(member =>
-           accessScope.IncludedDeviceGroupIds.Contains(member.DeviceGroupId))) &&
-        !accessScope.ExcludedTenantIds.Contains(device.TenantId) &&
-        !accessScope.ExcludedDeviceIds.Contains(device.Id) &&
-        !(device.CustomerId.HasValue &&
-          accessScope.ExcludedCustomerIds.Contains(device.CustomerId.Value)) &&
-        !device.DeviceGroupMembers!.Any(member =>
-          accessScope.ExcludedDeviceGroupIds.Contains(member.DeviceGroupId)))
+      .ApplyScope(accessScope)
       .OrderBy(device => device.CreatedAt);
 
     if (accessScope.RequiredOwnerScope is not { } ownerScope)
@@ -43,23 +28,28 @@ public static class DeviceAccessQueryExtensions
       return query.Take(0);
     }
 
-    return query.Where(device =>
-      (!ownerScope.TenantBoundaryId.HasValue ||
-       device.TenantId == ownerScope.TenantBoundaryId.Value) &&
-      (ownerScope.IncludesServerWide ||
-       ownerScope.IncludedTenantIds.Contains(device.TenantId) ||
-       ownerScope.IncludedDeviceIds.Contains(device.Id) ||
-       (device.CustomerId.HasValue &&
-        ownerScope.IncludedCustomerIds.Contains(device.CustomerId.Value)) ||
-       device.DeviceGroupMembers!.Any(member =>
-         ownerScope.IncludedDeviceGroupIds.Contains(member.DeviceGroupId))) &&
-      !ownerScope.ExcludedTenantIds.Contains(device.TenantId) &&
-      !ownerScope.ExcludedDeviceIds.Contains(device.Id) &&
-      !(device.CustomerId.HasValue &&
-        ownerScope.ExcludedCustomerIds.Contains(device.CustomerId.Value)) &&
-      !device.DeviceGroupMembers!.Any(member =>
-        ownerScope.ExcludedDeviceGroupIds.Contains(member.DeviceGroupId)));
+    return query.ApplyScope(ownerScope);
   }
+
+  private static IQueryable<Device> ApplyScope(
+    this IQueryable<Device> query,
+    DeviceAccessScope scope) =>
+    query.Where(device =>
+      (!scope.TenantBoundaryId.HasValue ||
+       device.TenantId == scope.TenantBoundaryId.Value) &&
+      (scope.IncludesServerWide ||
+       scope.IncludedTenantIds.Contains(device.TenantId) ||
+       scope.IncludedDeviceIds.Contains(device.Id) ||
+       (device.CustomerId.HasValue &&
+        scope.IncludedCustomerIds.Contains(device.CustomerId.Value)) ||
+       device.DeviceGroupMembers!.Any(member =>
+         scope.IncludedDeviceGroupIds.Contains(member.DeviceGroupId))) &&
+      !scope.ExcludedTenantIds.Contains(device.TenantId) &&
+      !scope.ExcludedDeviceIds.Contains(device.Id) &&
+      !(device.CustomerId.HasValue &&
+        scope.ExcludedCustomerIds.Contains(device.CustomerId.Value)) &&
+      !device.DeviceGroupMembers!.Any(member =>
+        scope.ExcludedDeviceGroupIds.Contains(member.DeviceGroupId)));
 
   public static IQueryable<Device> ApplyAccessScope(
     this IQueryable<Device> query,
