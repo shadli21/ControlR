@@ -1521,7 +1521,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       Effect = PermissionEffect.Allow,
       ScopeKind = PermissionScopeKind.Server,
       ScopeId = null,
-      OwningTenantId = tenant.Id,
+      OwningTenantId = null,
       IsEnabled = true
     });
 
