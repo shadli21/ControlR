@@ -1,7 +1,11 @@
 using System.Collections.Immutable;
+using ControlR.Libraries.Api.Contracts.Authz;
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Libraries.Api.Contracts.Enums;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Extensions.Dtos.Internal;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 
@@ -52,7 +56,7 @@ public class DevicesController(
   [HttpPost("delete-many")]
   public async Task<ActionResult<InternalDtos.DeleteManyDevicesResponseDto>> DeleteMany(
     [FromServices] AppDb appDb,
-    [FromServices] IAuthorizationService authorizationService,
+    [FromServices] IPermissionEvaluator permissionEvaluator,
     [FromBody] InternalDtos.DeleteDevicesRequestDto requestDto,
     CancellationToken cancellationToken)
   {
@@ -72,14 +76,31 @@ public class DevicesController(
       .Where(d => d.TenantId == tenantId && requestDto.DeviceIds.Contains(d.Id))
       .ToListAsync(cancellationToken);
 
-    var authorizedIdSet = new HashSet<Guid>();
-    foreach (var device in candidateDevices)
+    var principal = PrincipalDescriptorBuilder.FromClaims(User);
+    if (principal is null)
     {
-      var authResult =
-        await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
-      if (authResult.Succeeded)
+      return Forbid();
+    }
+
+    var requests = candidateDevices
+      .Select(device => new PermissionEvaluationRequest(
+        PermissionNames.DeviceDelete,
+        new ResourceDescriptor(
+          PermissionScopeKind.Device,
+          device.Id,
+          device.TenantId,
+          device.CustomerId,
+          [.. device.DeviceGroupMembers!.Select(member => member.DeviceGroupId)])))
+      .ToList();
+
+    var decisions = await permissionEvaluator.EvaluateBatch(principal, requests, cancellationToken);
+
+    var authorizedIdSet = new HashSet<Guid>();
+    for (var i = 0; i < candidateDevices.Count; i++)
+    {
+      if (decisions[i].Allowed)
       {
-        authorizedIdSet.Add(device.Id);
+        authorizedIdSet.Add(candidateDevices[i].Id);
       }
     }
 
