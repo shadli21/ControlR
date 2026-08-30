@@ -247,6 +247,25 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task EffectivePermission_Query_UnsupportedPrincipalKind_ReturnsBadRequest()
+  {
+    var (testServer, client, tenantId, _) = await CreateAuthenticatedServer();
+    using var _ = testServer;
+
+    var queryResponse = await client.PostAsJsonAsync(
+      $"{HttpConstants.Internal.EffectivePermissionsEndpoint}/query",
+      new InternalDtos.EffectivePermissionQueryRequestDto(
+        PermissionPrincipalKind.PersonalAccessToken,
+        Guid.NewGuid(),
+        PermissionNames.DeviceRead,
+        PermissionScopeKind.Tenant,
+        tenantId),
+      TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.BadRequest, queryResponse.StatusCode);
+  }
+
+  [Fact]
   public async Task EffectivePermission_Query_ReturnsAllowedForTenantAdmin()
   {
     var (testServer, client, tenantId, userId) = await CreateAuthenticatedServer();

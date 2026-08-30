@@ -35,24 +35,39 @@ public class PermissionRequirementHandler(
 
     var cancellationToken = _httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
 
-    var resourceDescriptor = await ResolveResource(requirement.Resource, resource, principal, cancellationToken);
-
-    var result = await _evaluator.Evaluate(
-      principal, requirement.PermissionName, resourceDescriptor, cancellationToken);
-
-    if (result.Allowed)
+    try
     {
-      context.Succeed(requirement);
-      return;
-    }
+      var resourceDescriptor = await ResolveResource(requirement.Resource, resource, principal, cancellationToken);
+      if (resourceDescriptor is null)
+      {
+        _logger.LogWarning(
+          "Could not resolve resource for {Permission}. Denying.", requirement.PermissionName);
+        context.Fail(new AuthorizationFailureReason(this, "Could not resolve the authorization resource."));
+        return;
+      }
 
-    _logger.LogDebug(
-      "Permission denied: {Permission} on {Resource} for principal {PrincipalId}. Reason: {Reason}",
-      requirement.PermissionName, resourceDescriptor, principal.PrincipalId, result.DenialReason);
-    context.Fail(new AuthorizationFailureReason(this, result.DenialReason ?? "Permission denied."));
+      var result = await _evaluator.Evaluate(
+        principal, requirement.PermissionName, resourceDescriptor, cancellationToken);
+
+      if (result.Allowed)
+      {
+        context.Succeed(requirement);
+        return;
+      }
+
+      _logger.LogDebug(
+        "Permission denied: {Permission} on {Resource} for principal {PrincipalId}. Reason: {Reason}",
+        requirement.PermissionName, resourceDescriptor, principal.PrincipalId, result.DenialReason);
+      context.Fail(new AuthorizationFailureReason(this, result.DenialReason ?? "Permission denied."));
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Authorization evaluation failed for {Permission}. Denying.", requirement.PermissionName);
+      context.Fail(new AuthorizationFailureReason(this, "Authorization evaluation failed."));
+    }
   }
 
-  private async Task<ResourceDescriptor> ResolveResource(
+  private async Task<ResourceDescriptor?> ResolveResource(
     ResourceDescriptor requirementResource,
     object resource,
     PrincipalDescriptor principal,
@@ -73,6 +88,23 @@ public class PermissionRequirementHandler(
         principal.TenantId.HasValue)
     {
       return _resourceFactory.CreateTenant(principal.TenantId.Value);
+    }
+
+    // Resolve non-Device scope kinds through the factory so the evaluator sees a fully
+    // populated descriptor (with Id/TenantId) instead of a bare kind-only descriptor that
+    // matches nothing. Returns null (fail closed) when the scope cannot be resolved.
+    if (requirementResource.Kind is PermissionScopeKind.DeviceGroup or
+        PermissionScopeKind.CustomerTenant or
+        PermissionScopeKind.UserGroup or
+        PermissionScopeKind.Device)
+    {
+      if (principal.TenantId is not { } tenantId)
+      {
+        return null;
+      }
+
+      return await _resourceFactory.CreateScope(
+        requirementResource.Kind, requirementResource.Id, tenantId, cancellationToken);
     }
 
     return requirementResource;
