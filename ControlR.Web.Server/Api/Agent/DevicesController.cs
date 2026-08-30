@@ -108,8 +108,11 @@ public class DevicesController : ControllerBase
           break;
 
         case InstallerKeyCreatorKind.ServerServiceAccount:
-          // Server service accounts are trusted server-wide principals with no tenant device
-          // boundary to enforce; the key itself authorizes provisioning.
+          if (!await ValidateServerSa(installerKey.CreatorId, appDb))
+          {
+            logger.LogWarning("Server service account not found or disabled.");
+            return Forbid();
+          }
           break;
 
         default:
@@ -154,7 +157,7 @@ public class DevicesController : ControllerBase
 
       var canAssignTags = installerKey.CreatorKind switch
       {
-        InstallerKeyCreatorKind.ServerServiceAccount => true,
+        InstallerKeyCreatorKind.ServerServiceAccount => await ValidateServerSa(installerKey.CreatorId, appDb),
         InstallerKeyCreatorKind.User => await CanAssignTagsForUser(installerKey.CreatorId, tagTarget, userManager, deviceAuthorizationService),
         InstallerKeyCreatorKind.TenantServiceAccount => await CanAssignTagsForServiceAccount(installerKey.CreatorId, tenantId, tagTarget, appDb, deviceAuthorizationService),
         _ => false,
@@ -189,6 +192,14 @@ public class DevicesController : ControllerBase
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(entity.AgentVersion);
     return entity.ToInternalResponseDto(isOutdated);
+  }
+
+  private static async Task<bool> ValidateServerSa(Guid creatorId, AppDb appDb)
+  {
+    var serviceAccount = await appDb.ServiceAccounts
+      .IgnoreQueryFilters()
+      .FirstOrDefaultAsync(x => x.Id == creatorId && x.IsEnabled);
+    return serviceAccount is not null;
   }
 
   private static async Task<bool> CanAssignTagsForServiceAccount(
