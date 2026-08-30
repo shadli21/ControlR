@@ -188,6 +188,11 @@ public class PersonalAccessTokenManager(
 
     try
     {
+      if (await _appDb.PersonalAccessTokens.IgnoreQueryFilters().AnyAsync(x => x.Id == tokenId))
+      {
+        return Result.Fail<InternalDtos.PersonalAccessTokenResponseDto>("A personal access token with this ID already exists.");
+      }
+
       var hashedKey = _passwordHasher.HashPassword(string.Empty, secret);
       var personalAccessToken = new PersonalAccessToken
       {
@@ -222,8 +227,27 @@ public class PersonalAccessTokenManager(
         return Result.Fail("Personal access token not found.");
       }
 
+      // Remove the token's assignment rows in the same unit of work as the token row.
+      // PermissionAssignment is a polymorphic principal with no FK cascade, so a new PAT
+      // reusing the same ID would otherwise inherit the deleted token's scopes.
+      await using var transaction = _appDb.Database.IsRelational()
+        ? await _appDb.Database.BeginTransactionAsync()
+        : null;
+
+      var assignments = await _appDb.PermissionAssignments
+        .IgnoreQueryFilters()
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
+                    x.PrincipalId == id)
+        .ToListAsync();
+
+      _appDb.PermissionAssignments.RemoveRange(assignments);
       _appDb.PersonalAccessTokens.Remove(personalAccessToken);
       await _appDb.SaveChangesAsync();
+
+      if (transaction is not null)
+      {
+        await transaction.CommitAsync();
+      }
 
       return Result.Ok();
     }

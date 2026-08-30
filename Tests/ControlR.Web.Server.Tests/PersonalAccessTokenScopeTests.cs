@@ -323,4 +323,76 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
       .CountAsync(x => x.TargetId == tokenId, TestContext.Current.CancellationToken);
     Assert.Equal(1, changeLogCount);
   }
+
+  [Fact]
+  public async Task Delete_RemovesAssignmentRows()
+  {
+    // Regression: PermissionAssignment is a polymorphic principal with no FK cascade, so
+    // deleting a PAT must also remove its assignment rows or a new PAT reusing the same ID
+    // would inherit the deleted token's scopes.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testApp.App.Services.CreateTestUser(
+      tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local", PermissionPresets.DeviceSuperUser);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    using var scope = testApp.CreateScope();
+    var patManager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var createResult = await patManager.CreateToken(
+      new InternalDtos.CreatePersonalAccessTokenRequestDto(
+        "Scoped PAT", PersonalAccessTokenPermissionMode.Restricted,
+        Scopes: [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
+      user.Id);
+    Assert.True(createResult.IsSuccess, $"Scoped PAT creation failed: {createResult.Reason}");
+    var tokenId = createResult.Value.PersonalAccessToken.Id;
+
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var beforeCount = await db.PermissionAssignments
+      .IgnoreQueryFilters()
+      .CountAsync(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken && x.PrincipalId == tokenId,
+        TestContext.Current.CancellationToken);
+    Assert.Equal(1, beforeCount);
+
+    var deleteResult = await patManager.Delete(tokenId, user.Id);
+    Assert.True(deleteResult.IsSuccess, $"Delete failed: {deleteResult.Reason}");
+
+    var afterCount = await db.PermissionAssignments
+      .IgnoreQueryFilters()
+      .CountAsync(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken && x.PrincipalId == tokenId,
+        TestContext.Current.CancellationToken);
+    Assert.Equal(0, afterCount);
+
+    var tokenExists = await db.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .AnyAsync(x => x.Id == tokenId, TestContext.Current.CancellationToken);
+    Assert.False(tokenExists);
+  }
+
+  [Fact]
+  public async Task CreateTokenWithKey_RejectsExistingId()
+  {
+    // Bootstrap path must not silently overwrite an existing token (and its scopes) when the
+    // caller supplies a token ID that is already in use.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local");
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var tokenId = Guid.NewGuid();
+    var secret = "x".PadLeft(32, 'a');
+
+    var first = await manager.CreateTokenWithKey(
+      tokenId, secret, "First Token", user.Id, PersonalAccessTokenPermissionMode.Restricted);
+    Assert.True(first.IsSuccess, $"First creation failed: {first.Reason}");
+
+    var second = await manager.CreateTokenWithKey(
+      tokenId, secret, "Second Token", user.Id, PersonalAccessTokenPermissionMode.Restricted);
+    Assert.False(second.IsSuccess);
+    Assert.Contains("already exists", second.Reason);
+  }
 }
