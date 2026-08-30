@@ -218,7 +218,7 @@ public class PermissionAssignmentManager(
       request.ScopeKind,
       normalizedScopeId,
       tenantId,
-      AuthorizationChangeLogActorTypes.User,
+      actor.PrincipalType.ToAuthorizationChangeLogActorType(),
       actor.PrincipalId.ToString(),
       request.Effect,
       request.Notes,
@@ -246,7 +246,7 @@ public class PermissionAssignmentManager(
 
         _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
           AuthorizationChangeLogActions.PermissionAssignmentCreated,
-          AuthorizationChangeLogActorTypes.User,
+          actor.PrincipalType.ToAuthorizationChangeLogActorType(),
           actor.PrincipalId,
           AuthorizationChangeLogTargetTypes.PermissionAssignment,
           assignment.Id,
@@ -372,7 +372,7 @@ public class PermissionAssignmentManager(
         request.ScopeKind,
         NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
         tenantId,
-        AuthorizationChangeLogActorTypes.User,
+        actor.PrincipalType.ToAuthorizationChangeLogActorType(),
         actor.PrincipalId.ToString(),
         request.Effect,
         request.Notes,
@@ -406,7 +406,7 @@ public class PermissionAssignmentManager(
           var assignment = created[i];
           _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
             AuthorizationChangeLogActions.PermissionAssignmentCreated,
-            AuthorizationChangeLogActorTypes.User,
+            actor.PrincipalType.ToAuthorizationChangeLogActorType(),
             actor.PrincipalId,
             AuthorizationChangeLogTargetTypes.PermissionAssignment,
             assignment.Id,
@@ -481,7 +481,7 @@ public class PermissionAssignmentManager(
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-      AuthorizationChangeLogActorTypes.User,
+      actor.PrincipalType.ToAuthorizationChangeLogActorType(),
       actor.PrincipalId,
       AuthorizationChangeLogTargetTypes.PermissionAssignment,
       assignmentId,
@@ -547,7 +547,7 @@ public class PermissionAssignmentManager(
     {
       _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-        AuthorizationChangeLogActorTypes.User,
+        actor.PrincipalType.ToAuthorizationChangeLogActorType(),
         actor.PrincipalId,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
         assignment.Id,
@@ -632,7 +632,7 @@ public class PermissionAssignmentManager(
           request.ScopeKind,
           NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
           tenantId,
-          AuthorizationChangeLogActorTypes.User,
+          actor.PrincipalType.ToAuthorizationChangeLogActorType(),
           actor.PrincipalId.ToString(),
           request.Effect,
           request.Notes,
@@ -694,7 +694,7 @@ public class PermissionAssignmentManager(
           {
             _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
               AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-              AuthorizationChangeLogActorTypes.User,
+              actor.PrincipalType.ToAuthorizationChangeLogActorType(),
               actor.PrincipalId,
               AuthorizationChangeLogTargetTypes.PermissionAssignment,
               existingAssignment.Id,
@@ -715,7 +715,7 @@ public class PermissionAssignmentManager(
               request.ScopeKind,
               NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
               tenantId,
-              AuthorizationChangeLogActorTypes.User,
+              actor.PrincipalType.ToAuthorizationChangeLogActorType(),
               actor.PrincipalId.ToString(),
               request.Effect,
               null,
@@ -733,7 +733,7 @@ public class PermissionAssignmentManager(
             var request = assignments[i];
             _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
               AuthorizationChangeLogActions.PermissionAssignmentCreated,
-              AuthorizationChangeLogActorTypes.User,
+              actor.PrincipalType.ToAuthorizationChangeLogActorType(),
               actor.PrincipalId,
               AuthorizationChangeLogTargetTypes.PermissionAssignment,
               assignment.Id,
@@ -825,7 +825,7 @@ public class PermissionAssignmentManager(
         request.ScopeKind,
         NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
         tenantId,
-        assignment.CreatedByPrincipalType ?? AuthorizationChangeLogActorTypes.User,
+        assignment.CreatedByPrincipalType ?? actor.PrincipalType.ToAuthorizationChangeLogActorType(),
         assignment.CreatedByPrincipalId,
         request.Effect,
         request.Notes,
@@ -857,7 +857,7 @@ public class PermissionAssignmentManager(
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentUpdated,
-      AuthorizationChangeLogActorTypes.User,
+      actor.PrincipalType.ToAuthorizationChangeLogActorType(),
       actor.PrincipalId,
       AuthorizationChangeLogTargetTypes.PermissionAssignment,
       assignment.Id,

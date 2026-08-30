@@ -4,6 +4,7 @@ using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services;
+using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Services.Tenants;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -821,6 +822,117 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
       "test",
       userId.ToString()));
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+  }
+
+  [Fact]
+  public async Task PermissionAssignment_Create_ByUser_RecordsUserActor()
+  {
+    var (testServer, client, tenantId, _) = await CreateAuthenticatedServer();
+    using var _ = testServer;
+
+    var targetUser = await testServer.Services.CreateTestUser(
+      tenantId, $"target-{Guid.NewGuid():N}@t.local");
+
+    var createResponse = await client.PostAsJsonAsync(
+      HttpConstants.Internal.PermissionAssignmentsEndpoint,
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.User,
+        targetUser.Id,
+        PermissionNames.DeviceRead,
+        PermissionEffect.Allow,
+        PermissionScopeKind.Tenant,
+        tenantId,
+        null),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+    var created = await createResponse.Content.ReadFromJsonAsync<InternalDtos.PermissionAssignmentDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(created);
+
+    using (var scope = testServer.Services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      var log = await db.AuthorizationChangeLogs
+        .IgnoreQueryFilters()
+        .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.PermissionAssignmentCreated &&
+                          x.TargetId == created.Id, TestContext.Current.CancellationToken);
+      Assert.Equal(AuthorizationChangeLogActorTypes.User, log.ActorPrincipalType);
+
+      var assignment = await db.PermissionAssignments
+        .IgnoreQueryFilters()
+        .SingleAsync(x => x.Id == created.Id, TestContext.Current.CancellationToken);
+      Assert.Equal(AuthorizationChangeLogActorTypes.User, assignment.CreatedByPrincipalType);
+    }
+  }
+
+  [Fact]
+  public async Task PermissionAssignment_Create_ByServiceAccount_RecordsServiceAccountActor()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var targetUser = await services.CreateTestUser(tenant.Id, $"target-{Guid.NewGuid():N}@t.local");
+
+    var saManager = services.GetRequiredService<IServiceAccountManager>();
+    var saResult = await saManager.CreateForTenant(
+      $"actor-sa-{Guid.NewGuid():N}", null, tenant.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(saResult.IsSuccess, saResult.Reason);
+    var credResult = await saManager.AddCredentialForTenant(
+      saResult.Value.Id, tenant.Id, "Actor Cred", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess, credResult.Reason);
+
+    // Grant the service account tenant.permissions.write so it can create assignments.
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.ServiceAccount,
+        saResult.Value.Id,
+        PermissionNames.TenantPermissionsWrite,
+        PermissionScopeKind.Tenant,
+        tenant.Id,
+        tenant.Id,
+        AuthorizationChangeLogActorTypes.System,
+        saResult.Value.Id.ToString()));
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    httpClient.DefaultRequestHeaders.Add(
+      ServiceAccountCredentialAuthenticationSchemeOptions.DefaultHeaderName,
+      credResult.Value.PlainTextSecretKey);
+
+    var createResponse = await httpClient.PostAsJsonAsync(
+      HttpConstants.Internal.PermissionAssignmentsEndpoint,
+      new InternalDtos.CreatePermissionAssignmentRequestDto(
+        PermissionPrincipalKind.User,
+        targetUser.Id,
+        PermissionNames.DeviceRead,
+        PermissionEffect.Allow,
+        PermissionScopeKind.Tenant,
+        tenant.Id,
+        null),
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+    var created = await createResponse.Content.ReadFromJsonAsync<InternalDtos.PermissionAssignmentDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(created);
+
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      var log = await db.AuthorizationChangeLogs
+        .IgnoreQueryFilters()
+        .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.PermissionAssignmentCreated &&
+                          x.TargetId == created.Id, TestContext.Current.CancellationToken);
+      Assert.Equal(AuthorizationChangeLogActorTypes.ServiceAccount, log.ActorPrincipalType);
+
+      var assignment = await db.PermissionAssignments
+        .IgnoreQueryFilters()
+        .SingleAsync(x => x.Id == created.Id, TestContext.Current.CancellationToken);
+      Assert.Equal(AuthorizationChangeLogActorTypes.ServiceAccount, assignment.CreatedByPrincipalType);
+    }
   }
 
   private async Task<(TestWebServer server, HttpClient client, Guid tenantId, Guid userId)> CreateAuthenticatedServer()
