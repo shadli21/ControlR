@@ -86,7 +86,7 @@ public partial class PermissionAssignmentDialog : ComponentBase
 
   private static PermissionScopeKind BroadestLegalScope(InternalDtos.PermissionCatalogEntryDto? entry)
   {
-    return PermissionScopeKinds.GetBroadestLegalScope(entry?.AllowedScopeKinds ?? []) ?? PermissionScopeKind.Tenant;
+    return PermissionScopeKinds.GetBroadestTenantLegalScope(entry?.AllowedScopeKinds ?? []) ?? PermissionScopeKind.Tenant;
   }
 
   private static string ScopeKindLabel(PermissionScopeKind scopeKind) => scopeKind switch

@@ -161,7 +161,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
   private PermissionScopeKind BroadestLegalScope(string permissionName)
   {
     var entry = PermissionCatalogStore.Items.FirstOrDefault(p => p.Name == permissionName);
-    return PermissionScopeKinds.GetBroadestLegalScope(entry?.AllowedScopeKinds ?? []) ?? PermissionScopeKind.Tenant;
+    return PermissionScopeKinds.GetBroadestTenantLegalScope(entry?.AllowedScopeKinds ?? []) ?? PermissionScopeKind.Tenant;
   }
 
   private async Task CreateAssignment()

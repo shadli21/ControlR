@@ -269,6 +269,35 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public void PermissionScopeKinds_GetBroadestTenantLegalScope_ExcludesServer()
+  {
+    // Device permissions (Option A) now include Server in their allowed scope kinds. The
+    // tenant-bound variant must resolve to the broadest non-Server kind so tenant-facing UI
+    // defaults and preset seeding never pre-select a cross-tenant server grant.
+    var deviceKinds = new[]
+    {
+      PermissionScopeKind.Device,
+      PermissionScopeKind.DeviceGroup,
+      PermissionScopeKind.CustomerTenant,
+      PermissionScopeKind.Tenant,
+      PermissionScopeKind.Server
+    };
+    Assert.Equal(PermissionScopeKind.Tenant, PermissionScopeKinds.GetBroadestTenantLegalScope(deviceKinds));
+    Assert.Equal(PermissionScopeKind.Server, PermissionScopeKinds.GetBroadestLegalScope(deviceKinds));
+
+    // Server-only permissions fall back to the overall broadest legal scope.
+    var serverOnly = new[] { PermissionScopeKind.Server };
+    Assert.Equal(PermissionScopeKind.Server, PermissionScopeKinds.GetBroadestTenantLegalScope(serverOnly));
+
+    // Tenant-only permissions are unchanged.
+    var tenantOnly = new[] { PermissionScopeKind.Tenant };
+    Assert.Equal(PermissionScopeKind.Tenant, PermissionScopeKinds.GetBroadestTenantLegalScope(tenantOnly));
+
+    // Empty set resolves to null.
+    Assert.Null(PermissionScopeKinds.GetBroadestTenantLegalScope(Array.Empty<PermissionScopeKind>()));
+  }
+
+  [Fact]
   public void Presets_AllPermissionsResolveToBroadestSeedableScope()
   {
     // Presets must be seedable without a concrete resource target, so every preset permission

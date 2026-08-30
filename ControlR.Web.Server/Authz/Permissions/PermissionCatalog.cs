@@ -47,13 +47,7 @@ public static class PermissionCatalog
       return null;
     }
 
-    var tenantKinds = kinds.Value.Where(static kind => kind != PermissionScopeKind.Server).ToImmutableArray();
-    if (tenantKinds.IsDefaultOrEmpty)
-    {
-      return GetBroadestLegalScope(permissionName);
-    }
-
-    return PermissionScopeKinds.GetBroadestLegalScope(tenantKinds);
+    return PermissionScopeKinds.GetBroadestTenantLegalScope(kinds.Value);
   }
 
   private static ImmutableArray<PermissionScopeKind>? AllowedKinds(string permissionName) =>
