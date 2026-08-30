@@ -152,13 +152,7 @@ public sealed class PermissionEvaluationContextLoader(
         ? principal.TenantId
         : null;
 
-    var rules = assignments
-      .Where(assignment => IsOwnedByPrincipalTenant(assignment, tenantFilter))
-      .Select(assignment => PermissionRule.Create(
-        assignment,
-        RuleSource.Direct,
-        SourcePriority.Direct))
-      .ToList();
+    var rules = PermissionRuleFactory.CreateDirectRules(assignments, tenantFilter).ToList();
 
     if (principal.PrincipalType != PrincipalType.User)
     {
@@ -185,12 +179,7 @@ public sealed class PermissionEvaluationContextLoader(
                            assignment.IsEnabled)
       .ToListAsync(cancellationToken);
 
-    rules.AddRange(groupAssignments
-      .Where(assignment => IsOwnedByPrincipalTenant(assignment, tenantFilter))
-      .Select(assignment => PermissionRule.Create(
-        assignment,
-        RuleSource.UserGroup,
-        SourcePriority.UserGroup)));
+    rules.AddRange(PermissionRuleFactory.CreateGroupRules(groupAssignments, tenantFilter));
 
     return rules;
   }

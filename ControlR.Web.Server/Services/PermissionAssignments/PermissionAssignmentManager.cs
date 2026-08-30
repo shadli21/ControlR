@@ -876,20 +876,8 @@ public class PermissionAssignmentManager(
     IReadOnlyCollection<PermissionAssignment> groupAssignments,
     Guid tenantId) =>
     [
-      .. directAssignments
-        .Where(row => row.IsEnabled &&
-                      (row.OwningTenantId is null || row.OwningTenantId == tenantId))
-        .Select(row => PermissionRule.Create(
-          row,
-          RuleSource.Direct,
-          SourcePriority.Direct)),
-      .. groupAssignments
-        .Where(row => row.IsEnabled &&
-                      (row.OwningTenantId is null || row.OwningTenantId == tenantId))
-        .Select(row => PermissionRule.Create(
-          row,
-          RuleSource.UserGroup,
-          SourcePriority.UserGroup))
+      .. PermissionRuleFactory.CreateDirectRules(directAssignments, tenantId),
+      .. PermissionRuleFactory.CreateGroupRules(groupAssignments, tenantId)
     ];
 
   private static bool IsSelf(PermissionAssignment assignment, Guid actorPrincipalId) =>
