@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
 
@@ -112,18 +113,21 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
 
     _appDb.DeviceGroups.Add(group);
 
-    await _appDb.SaveChangesAsync(cancellationToken);
+    await _appDb.ExecuteInTransaction(async () =>
+    {
+      await _appDb.SaveChangesAsync(cancellationToken);
 
-    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
-      AuthorizationChangeLogActions.DeviceGroupCreated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
-      AuthorizationChangeLogTargetTypes.DeviceGroup,
-      group.Id,
-      tenantId,
-      after: new DeviceGroupSnapshot(name, description)));
+      _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+        AuthorizationChangeLogActions.DeviceGroupCreated,
+        AuthorizationChangeLogActorTypes.User,
+        actorPrincipalId,
+        AuthorizationChangeLogTargetTypes.DeviceGroup,
+        group.Id,
+        tenantId,
+        after: new DeviceGroupSnapshot(name, description)));
 
-    await _appDb.SaveChangesAsync(cancellationToken);
+      await _appDb.SaveChangesAsync(cancellationToken);
+    }, cancellationToken);
 
     return HttpResult.Ok(MapToDetailDto(group));
   }

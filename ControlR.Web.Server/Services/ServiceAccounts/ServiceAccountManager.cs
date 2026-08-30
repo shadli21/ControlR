@@ -37,7 +37,8 @@ public interface IServiceAccountManager
   /// The access mode is required explicitly and never inferred.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> CreateForServer(
-    string name, string? description, ServiceAccountAccessMode accessMode, CancellationToken cancellationToken);
+    string name, string? description, ServiceAccountAccessMode accessMode,
+    CancellationToken cancellationToken = default, Guid? actorPrincipalId = null);
 
   /// <summary>
   /// Creates a tenant-scoped service account with no credential; issue one via <see cref="AddCredentialForTenant"/>.
@@ -341,7 +342,8 @@ public class ServiceAccountManager(
     string name,
     string? description,
     ServiceAccountAccessMode accessMode,
-    CancellationToken cancellationToken)
+    CancellationToken cancellationToken = default,
+    Guid? actorPrincipalId = null)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
@@ -380,6 +382,17 @@ public class ServiceAccountManager(
     {
       return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
     }
+
+    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+      AuthorizationChangeLogActions.ServiceAccountCreated,
+      AuthorizationChangeLogActorTypes.User,
+      actorPrincipalId,
+      AuthorizationChangeLogTargetTypes.ServiceAccount,
+      account.Id,
+      null,
+      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Server, description, true)));
+
+    await appDb.SaveChangesAsync(cancellationToken);
 
     return HttpResult.Ok(MapToResult(account));
   }

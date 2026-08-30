@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
 
@@ -118,7 +119,14 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
 
     _appDb.Customers.Add(customer);
 
-    await _appDb.SaveChangesAsync(cancellationToken);
+    var saveResult = await _appDb.SaveChangesOrConfirmConflictAsync<Customer>(
+      x => x.TenantId == tenantId && x.Name == name,
+      cancellationToken);
+
+    if (saveResult == SaveChangesResult.ConflictDetected)
+    {
+      return HttpResult.Fail<InternalDtos.CustomerDto>(HttpResultErrorCode.Conflict, "A customer with that name already exists.");
+    }
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerCreated,

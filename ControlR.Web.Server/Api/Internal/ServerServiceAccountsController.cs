@@ -44,10 +44,9 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromServices] IPermissionEvaluator permissionEvaluator,
     CancellationToken cancellationToken)
   {
+    var caller = PrincipalDescriptorBuilder.FromClaims(User);
     if (request.AccessMode == ServiceAccountAccessMode.Unrestricted)
     {
-      var caller = PrincipalDescriptorBuilder.FromClaims(User);
-
       if (caller is null)
       {
         return Unauthorized();
@@ -65,7 +64,9 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
       }
     }
 
-    var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, request.AccessMode, cancellationToken);
+    var result = await _serviceAccountManager.CreateForServer(
+      request.Name, request.Description, request.AccessMode, cancellationToken,
+      actorPrincipalId: caller?.PrincipalId);
 
     if (!result.IsSuccess)
     {
