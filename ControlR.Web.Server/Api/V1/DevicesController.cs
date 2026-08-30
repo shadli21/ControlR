@@ -37,13 +37,13 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
 
     if (!User.CanAccessTenant(device.TenantId))
     {
-      return Forbid();
+      return NotFound();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     appDb.Devices.Remove(device);
@@ -146,13 +146,13 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
 
     if (!User.CanAccessTenant(device.TenantId))
     {
-      return Forbid();
+      return NotFound();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     if (!device.IsOnline || string.IsNullOrWhiteSpace(device.ConnectionId))
@@ -207,13 +207,13 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
 
     if (!User.CanAccessTenant(device.TenantId))
     {
-      return Forbid();
+      return NotFound();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion, cancellationToken);
@@ -321,13 +321,13 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
 
     if (!User.CanAccessTenant(device.TenantId))
     {
-      return Forbid();
+      return NotFound();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.AliasWrite);
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     device.Alias = requestDto.Alias ?? string.Empty;

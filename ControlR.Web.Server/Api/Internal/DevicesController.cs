@@ -41,7 +41,7 @@ public class DevicesController(
       await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     appDb.Devices.Remove(device);
@@ -148,7 +148,7 @@ public class DevicesController(
 
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion);
@@ -264,7 +264,7 @@ public class DevicesController(
     if (!authResult.Succeeded)
     {
       logger.LogWarning("User {UserName} denied access to update alias for device {DeviceId}.", User.Identity?.Name, deviceId);
-      return Forbid();
+      return NotFound();
     }
 
     device.Alias = requestDto.Alias ?? string.Empty;

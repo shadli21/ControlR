@@ -50,10 +50,12 @@ public class LogonTokenDeviceScopeTests(ITestOutputHelper testOutput)
     var primaryDeviceApi = await httpClient.GetAsync($"{HttpConstants.Internal.DevicesEndpoint}/{primaryDeviceId}", TestContext.Current.CancellationToken);
     Assert.True(primaryDeviceApi.IsSuccessStatusCode, $"Expected success for primary device, got {primaryDeviceApi.StatusCode}");
 
-    // Attempt to access other device API (should be forbidden due to DeviceSessionScope restriction)
+    // Attempt to access other device API (should be hidden as not found due to DeviceSessionScope restriction)
     var otherDeviceApi = await httpClient.GetAsync($"{HttpConstants.Internal.DevicesEndpoint}/{otherDeviceId}", TestContext.Current.CancellationToken);
     Assert.True(
-      otherDeviceApi.StatusCode == HttpStatusCode.Forbidden || otherDeviceApi.StatusCode == HttpStatusCode.Unauthorized,
-      $"Expected Forbidden/Unauthorized for other device, got {otherDeviceApi.StatusCode}");
+      otherDeviceApi.StatusCode == HttpStatusCode.NotFound ||
+      otherDeviceApi.StatusCode == HttpStatusCode.Forbidden ||
+      otherDeviceApi.StatusCode == HttpStatusCode.Unauthorized,
+      $"Expected NotFound/Forbidden/Unauthorized for other device, got {otherDeviceApi.StatusCode}");
   }
 }

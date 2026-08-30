@@ -136,7 +136,7 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
       $"{HttpConstants.Internal.DevicesEndpoint}/{deviceB.Id}",
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.OK, deviceAResponse.StatusCode);
-    Assert.Equal(HttpStatusCode.Forbidden, deviceBResponse.StatusCode);
+    Assert.Equal(HttpStatusCode.NotFound, deviceBResponse.StatusCode);
   }
 
   private static PermissionAssignment CreateGrant(
