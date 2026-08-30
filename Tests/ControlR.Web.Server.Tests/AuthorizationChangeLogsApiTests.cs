@@ -122,6 +122,40 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
     Assert.NotEmpty(partialResult.Items);
   }
 
+  [Fact]
+  public async Task Get_WithSearchText_PartialGuid_MatchesCaseInsensitively()
+  {
+    // Real Postgres exercises the Npgsql ILIKE translation of Guid?.Value.ToString().
+    using var testServer = await TestWebServerBuilder.CreateTestServer(
+      _testOutput, useInMemoryDatabase: false);
+    var (tenantA, _, serverAdmin, _) = await SetupTenantsWithEntries(testServer);
+
+    using var httpClient = await CreatePatClient(testServer, serverAdmin.Id);
+
+    var allResponse = await httpClient.GetAsync(
+      HttpConstants.Internal.AuthorizationChangeLogsEndpoint, TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, allResponse.StatusCode);
+    var allResult = await allResponse.Content.ReadFromJsonAsync<InternalDtos.AuthorizationChangeLogSearchResponseDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(allResult);
+    Assert.NotEmpty(allResult.Items);
+
+    var targetId = allResult.Items.First().TargetId;
+    Assert.NotNull(targetId);
+
+    // Uppercase partial GUID must still match (case-insensitive ILIKE).
+    var partialUpper = targetId.Value.ToString("D")[..8].ToUpperInvariant();
+    var response = await httpClient.GetAsync(
+      $"{HttpConstants.Internal.AuthorizationChangeLogsEndpoint}?searchText={partialUpper}",
+      TestContext.Current.CancellationToken);
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    var result = await response.Content.ReadFromJsonAsync<InternalDtos.AuthorizationChangeLogSearchResponseDto>(
+      TestContext.Current.CancellationToken);
+    Assert.NotNull(result);
+    Assert.NotEmpty(result.Items);
+    Assert.Contains(result.Items, x => x.TargetId == targetId);
+  }
+
   private async Task<HttpClient> CreatePatClient(TestWebServer testServer, Guid userId)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();

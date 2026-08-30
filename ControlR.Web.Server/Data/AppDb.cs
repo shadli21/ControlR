@@ -98,6 +98,14 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
     builder
       .Entity<AuthorizationChangeLog>()
       .HasIndex(x => x.CreatedAt);
+
+    builder
+      .Entity<AuthorizationChangeLog>()
+      .HasIndex(x => x.ActorPrincipalId);
+
+    builder
+      .Entity<AuthorizationChangeLog>()
+      .HasIndex(x => x.TargetId);
   }
 
   private static void ConfigurePermissionAssignments(ModelBuilder builder)

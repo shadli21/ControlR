@@ -2,6 +2,7 @@ using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ControlR.Web.Server.Api.Internal;
 
@@ -108,10 +109,16 @@ public class AuthorizationChangeLogsController : ControllerBase
       }
       else
       {
-        // Partial ID query: match against the canonical text form of the UUID.
+        // Partial ID query: match against the canonical text form of the UUID,
+        // case-insensitively (ILIKE). Escape LIKE wildcards so user input such as '%' or '_'
+        // is matched literally instead of acting as a wildcard.
+        var escaped = trimmed
+          .Replace("\\", "\\\\")
+          .Replace("%", "\\%")
+          .Replace("_", "\\_");
         query = query.Where(x =>
-          (x.ActorPrincipalId != null && x.ActorPrincipalId.Value.ToString().Contains(trimmed)) ||
-          (x.TargetId != null && x.TargetId.Value.ToString().Contains(trimmed)));
+          (x.ActorPrincipalId != null && EF.Functions.ILike(x.ActorPrincipalId.Value.ToString(), $"%{escaped}%")) ||
+          (x.TargetId != null && EF.Functions.ILike(x.TargetId.Value.ToString(), $"%{escaped}%")));
       }
     }
 
