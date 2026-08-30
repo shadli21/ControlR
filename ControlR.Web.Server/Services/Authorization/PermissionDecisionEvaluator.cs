@@ -84,8 +84,16 @@ public sealed class PermissionDecisionEvaluator : IPermissionDecisionEvaluator
       return PermissionEvaluationResult.Deny($"Unknown permission '{permissionName}'.");
     }
 
+    var metadata = PermissionCatalog.Get(permissionName);
+
+    // Scope-legality applies to ALLOW rules only: an allow at a scope the permission does not
+    // permit must not grant access (fail closed, drop it). DENY rules are always kept, since a
+    // deny at any scope is a security restriction that must be honored (dropping it would fail
+    // open). See scope-legality PRD.
     var matchingRules = rules
       .Where(rule => rule.PermissionName == permissionName &&
+                     (rule.Effect == PermissionEffect.Deny ||
+                      metadata is null || metadata.AllowedScopeKinds.Contains(rule.ScopeKind)) &&
                      PermissionScopeMatcher.Matches(rule, resource))
       .ToList();
 

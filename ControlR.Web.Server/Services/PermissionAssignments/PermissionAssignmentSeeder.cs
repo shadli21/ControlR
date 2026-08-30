@@ -62,7 +62,7 @@ public class PermissionAssignmentSeeder(
           continue;
         }
 
-        var scopeKind = PermissionCatalog.GetBroadestLegalScope(permission) ?? PermissionScopeKind.Tenant;
+        var scopeKind = PermissionCatalog.GetBroadestTenantLegalScope(permission) ?? PermissionScopeKind.Tenant;
         var scopeId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
 
         if (existing.Contains(new AssignmentKey(permission, scopeKind, scopeId, PermissionEffect.Allow)))

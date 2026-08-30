@@ -62,10 +62,14 @@ public class UsersController : ControllerBase
 
       var requiresServerAdmin = presetNames.Contains(PermissionPresets.ServerAdministrator);
       var requiresTenantAdmin = presetNames.Contains(PermissionPresets.TenantAdministrator);
+      // Presets seed device permissions at the broadest tenant-legal scope (Tenant), so a preset
+      // that grants device permissions still creates tenant-scoped grants and requires tenant
+      // permission management. Use GetBroadestTenantLegalScope to match the actual seeding scope,
+      // not GetBroadestLegalScope (which returns Server for device permissions).
       var requiresTenantPermissionManagement = presetNames
         .SelectMany(PermissionPresets.GetPermissions)
         .Any(permissionName =>
-          PermissionCatalog.GetBroadestLegalScope(permissionName) == PermissionScopeKind.Tenant);
+          PermissionCatalog.GetBroadestTenantLegalScope(permissionName) == PermissionScopeKind.Tenant);
 
       if (requiresServerAdmin || requiresTenantPermissionManagement)
       {

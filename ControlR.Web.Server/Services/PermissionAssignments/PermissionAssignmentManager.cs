@@ -100,7 +100,7 @@ public class PermissionAssignmentManager(
         request.PrincipalId,
         permissionName,
         PermissionEffect.Allow,
-        PermissionCatalog.GetBroadestLegalScope(permissionName) ?? PermissionScopeKind.Tenant,
+        PermissionCatalog.GetBroadestTenantLegalScope(permissionName) ?? PermissionScopeKind.Tenant,
         null,
         null))
       .ToList();
@@ -1148,6 +1148,11 @@ public class PermissionAssignmentManager(
     if (scopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant or PermissionScopeKind.UserGroup && !scopeId.HasValue)
     {
       return (HttpResultErrorCode.BadRequest, $"ScopeId is required for scope kind: {scopeKind}");
+    }
+
+    if (scopeKind == PermissionScopeKind.Server && scopeId.HasValue)
+    {
+      return (HttpResultErrorCode.BadRequest, $"ScopeId must be null for {scopeKind} scope.");
     }
 
     if (scopeKind == PermissionScopeKind.Device && !await _appDb.Devices.AnyAsync(x => x.Id == scopeId && x.TenantId == tenantId, cancellationToken))
