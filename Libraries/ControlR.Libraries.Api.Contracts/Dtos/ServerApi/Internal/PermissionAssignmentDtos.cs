@@ -74,6 +74,7 @@ public record ReplacePermissionAssignmentsRequestDto(
 
   [property: Required]
   [property: MinLength(1)]
+  [property: MaxLength(DtoLimits.PermissionAssignmentIdsMaxCount)]
   IReadOnlyList<CreatePermissionAssignmentRequestDto> Assignments);
 
 public record EffectivePermissionQueryRequestDto(

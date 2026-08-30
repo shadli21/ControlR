@@ -12368,6 +12368,7 @@
             "format": "uuid"
           },
           "assignments": {
+            "maxItems": 1000,
             "minItems": 1,
             "type": "array",
             "items": {

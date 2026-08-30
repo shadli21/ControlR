@@ -140,4 +140,16 @@ public class V1DtoLimitsTests
     Assert.False(attribute.IsValid(values));
     Assert.True(attribute.IsValid(values.Take(DtoLimits.PermissionsMaxLength).ToList()));
   }
+
+  [Fact]
+  public void ReplacePermissionAssignmentsRequestDto_Assignments_HasMaxLength()
+  {
+    var property = typeof(InternalDtos.ReplacePermissionAssignmentsRequestDto)
+      .GetProperty(nameof(InternalDtos.ReplacePermissionAssignmentsRequestDto.Assignments));
+    Assert.NotNull(property);
+
+    var attribute = property!.GetCustomAttribute<MaxLengthAttribute>();
+    Assert.NotNull(attribute);
+    Assert.Equal(DtoLimits.PermissionAssignmentIdsMaxCount, attribute!.Length);
+  }
 }
