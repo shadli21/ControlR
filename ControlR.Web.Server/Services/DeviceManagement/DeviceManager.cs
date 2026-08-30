@@ -213,6 +213,18 @@ public class DeviceManager(
 
     if (customerId is not null)
     {
+      var customerTenantId = await _appDb.Customers
+        .IgnoreQueryFilters()
+        .Where(x => x.Id == customerId.Value)
+        .Select(x => (Guid?)x.TenantId)
+        .FirstOrDefaultAsync();
+
+      if (customerTenantId is null || customerTenantId != entity.TenantId)
+      {
+        throw new InvalidOperationException(
+          $"Customer {customerId} does not belong to the device's tenant {entity.TenantId}.");
+      }
+
       entity.CustomerId = customerId;
     }
 

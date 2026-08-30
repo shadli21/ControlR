@@ -43,11 +43,12 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
 
     if (deviceIds.Count > 0)
     {
+      var distinctDeviceIds = deviceIds.Distinct().ToList();
       var devices = await _appDb.Devices
-        .Where(x => x.TenantId == tenantId && deviceIds.Contains(x.Id))
+        .Where(x => x.TenantId == tenantId && distinctDeviceIds.Contains(x.Id))
         .ToListAsync(cancellationToken);
 
-      if (devices.Count != deviceIds.Count)
+      if (devices.Count != distinctDeviceIds.Count)
       {
         return HttpResult.Fail(HttpResultErrorCode.BadRequest, "One or more devices were not found in this tenant.");
       }
