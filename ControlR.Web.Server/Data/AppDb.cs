@@ -157,6 +157,30 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
       })
       .IsUnique()
       .AreNullsDistinct(false);
+
+    // Persistence invariants (P2-3). ScopeKind is stored as its string name (HasConversion<string>()).
+    // These constraints reject invalid scope/ownership combinations at the DB boundary, so a row
+    // that bypasses the manager cannot be persisted in a state the evaluator would misauthorize.
+    // ScopeKind: 'Server' = server scope (null ScopeId/OwningTenantId); 'Tenant' = tenant; the
+    // remainder are resource scopes (Device/DeviceGroup/CustomerTenant/UserGroup) which require
+    // a concrete ScopeId. 'Unknown' (sentinel, never persisted) is excluded from these checks.
+    builder
+      .Entity<PermissionAssignment>()
+      .HasCheckConstraint(
+        "CA_PermissionAssignments_Server_NullScope",
+        "\"ScopeKind\" <> 'Server' OR (\"ScopeId\" IS NULL AND \"OwningTenantId\" IS NULL)");
+
+    builder
+      .Entity<PermissionAssignment>()
+      .HasCheckConstraint(
+        "CA_PermissionAssignments_NonServer_OwningTenant",
+        "\"ScopeKind\" IN ('Unknown', 'Server') OR \"OwningTenantId\" IS NOT NULL");
+
+    builder
+      .Entity<PermissionAssignment>()
+      .HasCheckConstraint(
+        "CA_PermissionAssignments_ScopeKind_ScopeId",
+        "\"ScopeKind\" NOT IN ('Tenant', 'Device', 'DeviceGroup', 'CustomerTenant', 'UserGroup') OR \"ScopeId\" IS NOT NULL");
   }
 
   private static void ConfigureServerAlert(ModelBuilder builder)
