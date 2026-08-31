@@ -217,9 +217,10 @@ public class DeviceManager(
         .IgnoreQueryFilters()
         .Where(x => x.Id == customerId.Value)
         .Select(x => (Guid?)x.TenantId)
-        .FirstOrDefaultAsync();
+        .FirstOrDefaultAsync() ?? 
+          throw new InvalidOperationException($"Customer {customerId} does not exist.");
 
-      if (customerTenantId is null || customerTenantId != entity.TenantId)
+      if (customerTenantId != entity.TenantId)
       {
         throw new InvalidOperationException(
           $"Customer {customerId} does not belong to the device's tenant {entity.TenantId}.");

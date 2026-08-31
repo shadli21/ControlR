@@ -66,7 +66,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
 
     var result = await _serviceAccountManager.CreateForServer(
       request.Name, request.Description, request.AccessMode, cancellationToken,
-      actorPrincipalId: caller?.PrincipalId);
+      actor: caller);
 
     if (!result.IsSuccess)
     {

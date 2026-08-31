@@ -1,4 +1,5 @@
 using ControlR.Libraries.Shared.Helpers;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
 using Microsoft.Extensions.Caching.Memory;
@@ -34,11 +35,13 @@ public interface IServiceAccountManager
 
   /// <summary>
   /// Creates a server service account with no credential; issue one via <see cref="AddCredentialForServer"/>.
-  /// The access mode is required explicitly and never inferred.
+  /// The access mode is required explicitly and never inferred. The <paramref name="actor"/>, when
+  /// supplied, is recorded on the audit entry with its own principal type so that a service-account
+  /// caller is not attributed as a human user.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> CreateForServer(
     string name, string? description, ServiceAccountAccessMode accessMode,
-    CancellationToken cancellationToken = default, Guid? actorPrincipalId = null);
+    CancellationToken cancellationToken = default, PrincipalDescriptor? actor = null);
 
   /// <summary>
   /// Creates a tenant-scoped service account with no credential; issue one via <see cref="AddCredentialForTenant"/>.
@@ -343,7 +346,7 @@ public class ServiceAccountManager(
     string? description,
     ServiceAccountAccessMode accessMode,
     CancellationToken cancellationToken = default,
-    Guid? actorPrincipalId = null)
+    PrincipalDescriptor? actor = null)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
@@ -385,8 +388,8 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCreated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor?.PrincipalType.ToAuthorizationChangeLogActorType() ?? AuthorizationChangeLogActorTypes.System,
+      actor?.PrincipalId,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       account.Id,
       null,

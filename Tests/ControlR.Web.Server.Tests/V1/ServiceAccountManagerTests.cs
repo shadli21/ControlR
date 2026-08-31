@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Primitives;
@@ -95,6 +95,82 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
 
     Assert.False(addCredResult.IsSuccess);
     Assert.Equal(HttpResultErrorCode.BadRequest, addCredResult.ErrorCode);
+  }
+
+  [Fact]
+  public async Task CreateForServer_WhenActorIsServiceAccount_RecordsServiceAccountActor()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var actorId = Guid.NewGuid();
+    var createResult = await manager.CreateForServer(
+      "Created By Service Account", null, ServiceAccountAccessMode.Unrestricted,
+      TestContext.Current.CancellationToken,
+      new PrincipalDescriptor(PrincipalType.ServerServiceAccount, actorId, null, "test"));
+    Assert.True(createResult.IsSuccess, createResult.Reason);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var db = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+    var log = await db.AuthorizationChangeLogs
+      .IgnoreQueryFilters()
+      .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountCreated &&
+                        x.TargetId == createResult.Value.Id,
+        TestContext.Current.CancellationToken);
+
+    Assert.Equal(AuthorizationChangeLogActorTypes.ServiceAccount, log.ActorPrincipalType);
+    Assert.Equal(actorId, log.ActorPrincipalId);
+  }
+
+  [Fact]
+  public async Task CreateForServer_WhenActorIsUser_RecordsUserActor()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var actorId = Guid.NewGuid();
+    var createResult = await manager.CreateForServer(
+      "Created By User", null, ServiceAccountAccessMode.Unrestricted,
+      TestContext.Current.CancellationToken,
+      new PrincipalDescriptor(PrincipalType.User, actorId, null, "test"));
+    Assert.True(createResult.IsSuccess, createResult.Reason);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var db = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+    var log = await db.AuthorizationChangeLogs
+      .IgnoreQueryFilters()
+      .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountCreated &&
+                        x.TargetId == createResult.Value.Id,
+        TestContext.Current.CancellationToken);
+
+    Assert.Equal(AuthorizationChangeLogActorTypes.User, log.ActorPrincipalType);
+    Assert.Equal(actorId, log.ActorPrincipalId);
+  }
+
+  [Fact]
+  public async Task CreateForServer_WhenNoActorSupplied_RecordsSystemActor()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var createResult = await manager.CreateForServer(
+      "Created Without Actor", null, ServiceAccountAccessMode.Unrestricted,
+      TestContext.Current.CancellationToken);
+    Assert.True(createResult.IsSuccess, createResult.Reason);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var db = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+    var log = await db.AuthorizationChangeLogs
+      .IgnoreQueryFilters()
+      .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountCreated &&
+                        x.TargetId == createResult.Value.Id,
+        TestContext.Current.CancellationToken);
+
+    Assert.Equal(AuthorizationChangeLogActorTypes.System, log.ActorPrincipalType);
+    Assert.Null(log.ActorPrincipalId);
   }
 
   [Fact]
