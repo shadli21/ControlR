@@ -12,6 +12,10 @@ on:
         description: "Version/ref to build"
         required: true
         type: string
+      source_ref:
+        description: "Git ref (tag) to build from"
+        required: true
+        type: string
       image_reference:
         description: "Full ACR image reference (e.g., myregistry.azurecr.io/sponsor/controlr:sponsor-slot1)"
         required: true
@@ -49,6 +53,8 @@ jobs:
     with:
       customization_config_url: ${{ inputs.customization_config_url }}
       version: ${{ inputs.version }}
+      ref: ${{ inputs.source_ref }}
+      skip_version_increment: true
       use_self_hosted_runners: true
       use_local_storage: true
       retention_days_artifacts: 1

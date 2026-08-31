@@ -68,6 +68,18 @@ on:
         default: ""
         type: string
 
+      ref:
+        description: "Git ref (branch or tag) to build. Defaults to the default branch."
+        required: false
+        default: ""
+        type: string
+
+      skip_version_increment:
+        description: "Use the supplied version as-is without incrementing CURRENT_VERSION"
+        required: false
+        default: false
+        type: boolean
+
   workflow_call:
     inputs:
       use_self_hosted_runners:
@@ -119,6 +131,16 @@ on:
         required: false
         default: ""
         type: string
+      ref:
+        description: "Git ref (branch or tag) to build. Defaults to the default branch."
+        required: false
+        default: ""
+        type: string
+      skip_version_increment:
+        description: "Use the supplied version as-is without incrementing CURRENT_VERSION"
+        required: false
+        default: false
+        type: boolean
 
 env:
   VERSION: ${{ inputs.version || vars.CURRENT_VERSION }}
@@ -141,6 +163,7 @@ jobs:
         with:
           clean: true
           fetch-depth: 0
+          ref: ${{ inputs.ref || '' }}
 
       - name: Validate local storage configuration
         uses: ./.github/actions/validate-local-storage
@@ -172,17 +195,24 @@ jobs:
           }
             
           Write-Host "Resolved current version: $CurrentVersion"
-          $NextVersion = "$($CurrentVersion.Major).$($CurrentVersion.Minor).$($CurrentVersion.Build + 1).0"
-          Write-Host "Next version will be: $NextVersion"
-          # Persist next version to GH Variables for future runs
-          if ($IsLinux) {
-            /usr/bin/gh variable set CURRENT_VERSION --body $NextVersion
-          }
-          elseif ($IsMacOS) {
-            /opt/homebrew/bin/gh variable set CURRENT_VERSION --body $NextVersion
+
+          if ("${{ inputs.skip_version_increment }}" -eq "true") {
+            Write-Host "skip_version_increment is set. Using version as-is without bumping CURRENT_VERSION."
+            $NextVersion = $null
           }
           else {
-            gh variable set CURRENT_VERSION --body $NextVersion
+            $NextVersion = "$($CurrentVersion.Major).$($CurrentVersion.Minor).$($CurrentVersion.Build + 1).0"
+            Write-Host "Next version will be: $NextVersion"
+            # Persist next version to GH Variables for future runs
+            if ($IsLinux) {
+              /usr/bin/gh variable set CURRENT_VERSION --body $NextVersion
+            }
+            elseif ($IsMacOS) {
+              /opt/homebrew/bin/gh variable set CURRENT_VERSION --body $NextVersion
+            }
+            else {
+              gh variable set CURRENT_VERSION --body $NextVersion
+            }
           }
           # Expose the current version as a step output for this run
           echo "version=$CurrentVersion" >> $env:GITHUB_OUTPUT
@@ -227,6 +257,7 @@ jobs:
         with:
           clean: true
           fetch-depth: 0
+          ref: ${{ inputs.ref || '' }}
 
       - name: Setup .NET
         if: inputs.use_self_hosted_runners == false
@@ -524,6 +555,7 @@ jobs:
           clean: true
           fetch-depth: 0
           submodules: recursive
+          ref: ${{ inputs.ref || '' }}
 
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
@@ -682,6 +714,7 @@ jobs:
           clean: true
           fetch-depth: 0
           submodules: recursive
+          ref: ${{ inputs.ref || '' }}
 
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
@@ -772,6 +805,7 @@ jobs:
           clean: true
           fetch-depth: 0
           submodules: recursive
+          ref: ${{ inputs.ref || '' }}
 
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
