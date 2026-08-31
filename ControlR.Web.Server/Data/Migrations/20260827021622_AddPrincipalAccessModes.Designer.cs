@@ -693,15 +693,15 @@ namespace ControlR.Web.Server.Data.Migrations
 
             b.HasData(
                       new
-                  {
-                    Id = new Guid("00000000-0000-0000-0000-000000000001"),
-                    CreatedAt = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                    IsDismissable = true,
-                    IsEnabled = false,
-                    IsSticky = false,
-                    Message = "",
-                    Severity = 0
-                  });
+                      {
+                        Id = new Guid("00000000-0000-0000-0000-000000000001"),
+                        CreatedAt = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                        IsDismissable = true,
+                        IsEnabled = false,
+                        IsSticky = false,
+                        Message = "",
+                        Severity = 0
+                      });
           });
 
       modelBuilder.Entity("ControlR.Web.Server.Data.Entities.ServiceAccount", b =>
@@ -757,8 +757,8 @@ namespace ControlR.Web.Server.Data.Migrations
 
             b.ToTable("ServiceAccounts", t =>
                       {
-                    t.HasCheckConstraint("CK_ServiceAccounts_Kind_TenantId", "(\"Kind\" = 'Server' AND \"TenantId\" IS NULL) OR (\"Kind\" = 'Tenant' AND \"TenantId\" IS NOT NULL)");
-                  });
+                        t.HasCheckConstraint("CK_ServiceAccounts_Kind_TenantId", "(\"Kind\" = 'Server' AND \"TenantId\" IS NULL) OR (\"Kind\" = 'Tenant' AND \"TenantId\" IS NOT NULL)");
+                      });
           });
 
       modelBuilder.Entity("ControlR.Web.Server.Data.Entities.ServiceAccountCredential", b =>
@@ -1238,40 +1238,40 @@ namespace ControlR.Web.Server.Data.Migrations
 
             b.OwnsMany("ControlR.Libraries.Api.Contracts.Dtos.Devices.Drive", "Drives", b1 =>
                       {
-                    b1.Property<Guid>("DeviceId");
+                        b1.Property<Guid>("DeviceId");
 
-                    b1.Property<int>("__synthesizedOrdinal")
-                              .ValueGeneratedOnAdd();
+                        b1.Property<int>("__synthesizedOrdinal")
+                                  .ValueGeneratedOnAdd();
 
-                    b1.Property<string>("DriveFormat")
-                              .IsRequired();
+                        b1.Property<string>("DriveFormat")
+                                  .IsRequired();
 
-                    b1.Property<int>("DriveType");
+                        b1.Property<int>("DriveType");
 
-                    b1.Property<double>("FreeSpace");
+                        b1.Property<double>("FreeSpace");
 
-                    b1.Property<string>("Name")
-                              .IsRequired();
+                        b1.Property<string>("Name")
+                                  .IsRequired();
 
-                    b1.Property<string>("RootDirectory")
-                              .IsRequired();
+                        b1.Property<string>("RootDirectory")
+                                  .IsRequired();
 
-                    b1.Property<double>("TotalSize");
+                        b1.Property<double>("TotalSize");
 
-                    b1.Property<string>("VolumeLabel")
-                              .IsRequired();
+                        b1.Property<string>("VolumeLabel")
+                                  .IsRequired();
 
-                    b1.HasKey("DeviceId", "__synthesizedOrdinal");
+                        b1.HasKey("DeviceId", "__synthesizedOrdinal");
 
-                    b1.ToTable("Devices");
+                        b1.ToTable("Devices");
 
-                    b1
-                              .ToJson("Drives")
-                              .HasColumnType("jsonb");
+                        b1
+                                  .ToJson("Drives")
+                                  .HasColumnType("jsonb");
 
-                    b1.WithOwner()
-                              .HasForeignKey("DeviceId");
-                  });
+                        b1.WithOwner()
+                                  .HasForeignKey("DeviceId");
+                      });
 
             b.Navigation("Customer");
 
@@ -1497,42 +1497,42 @@ namespace ControlR.Web.Server.Data.Migrations
 
             b.OwnsOne("Microsoft.AspNetCore.Identity.IdentityPasskeyData", "Data", b1 =>
                       {
-                    b1.Property<byte[]>("IdentityUserPasskeyCredentialId");
+                        b1.Property<byte[]>("IdentityUserPasskeyCredentialId");
 
-                    b1.Property<byte[]>("AttestationObject")
-                              .IsRequired();
+                        b1.Property<byte[]>("AttestationObject")
+                                  .IsRequired();
 
-                    b1.Property<byte[]>("ClientDataJson")
-                              .IsRequired();
+                        b1.Property<byte[]>("ClientDataJson")
+                                  .IsRequired();
 
-                    b1.Property<DateTimeOffset>("CreatedAt");
+                        b1.Property<DateTimeOffset>("CreatedAt");
 
-                    b1.Property<bool>("IsBackedUp");
+                        b1.Property<bool>("IsBackedUp");
 
-                    b1.Property<bool>("IsBackupEligible");
+                        b1.Property<bool>("IsBackupEligible");
 
-                    b1.Property<bool>("IsUserVerified");
+                        b1.Property<bool>("IsUserVerified");
 
-                    b1.Property<string>("Name");
+                        b1.Property<string>("Name");
 
-                    b1.Property<byte[]>("PublicKey")
-                              .IsRequired();
+                        b1.Property<byte[]>("PublicKey")
+                                  .IsRequired();
 
-                    b1.Property<long>("SignCount");
+                        b1.Property<long>("SignCount");
 
-                    b1.PrimitiveCollection<string>("Transports");
+                        b1.PrimitiveCollection<string>("Transports");
 
-                    b1.HasKey("IdentityUserPasskeyCredentialId");
+                        b1.HasKey("IdentityUserPasskeyCredentialId");
 
-                    b1.ToTable("AspNetUserPasskeys");
+                        b1.ToTable("AspNetUserPasskeys");
 
-                    b1
-                              .ToJson("Data")
-                              .HasColumnType("jsonb");
+                        b1
+                                  .ToJson("Data")
+                                  .HasColumnType("jsonb");
 
-                    b1.WithOwner()
-                              .HasForeignKey("IdentityUserPasskeyCredentialId");
-                  });
+                        b1.WithOwner()
+                                  .HasForeignKey("IdentityUserPasskeyCredentialId");
+                      });
 
             b.Navigation("Data")
                       .IsRequired();
