@@ -143,23 +143,6 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public void PresetSeedableScope_NeverSeedsDevicePermissionsAtServerScope()
-  {
-    // Device permissions must seed (via presets) at tenant scope, never at server scope,
-    // so preset grants never grant cross-tenant device access.
-    foreach (var permission in PermissionPresets.GetPermissions(PermissionPresets.DeviceSuperUser))
-    {
-      if (PermissionCatalog.Get(permission)?.AllowedScopeKinds.Contains(PermissionScopeKind.Device) != true)
-      {
-        continue;
-      }
-
-      var seedScope = PermissionCatalog.GetBroadestTenantLegalScope(permission) ?? PermissionScopeKind.Tenant;
-      Assert.NotEqual(PermissionScopeKind.Server, seedScope);
-    }
-  }
-
-  [Fact]
   public void DeviceResourcePolicies_AllPermissionsExistInCatalog()
   {
     foreach (var (policyName, permissionName) in DeviceResourcePolicies.PolicyToPermission)
@@ -246,29 +229,6 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public void PermissionScopeKind_AllValuesAreHandledByScopeBreadth()
-  {
-    var expectedKinds = Enum.GetValues<PermissionScopeKind>()
-      .Except([PermissionScopeKind.Unknown, PermissionScopeKind.Server, PermissionScopeKind.Tenant,
-        PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup,
-        PermissionScopeKind.CustomerTenant, PermissionScopeKind.UserGroup])
-      .ToArray();
-
-    Assert.Empty(expectedKinds);
-
-    foreach (var scopeKind in Enum.GetValues<PermissionScopeKind>())
-    {
-      if (scopeKind == PermissionScopeKind.Unknown)
-      {
-        continue;
-      }
-
-      var result = PermissionScopeKinds.GetBroadestLegalScope([scopeKind]);
-      Assert.Equal(scopeKind, result);
-    }
-  }
-
-  [Fact]
   public void PermissionScopeKinds_GetBroadestTenantLegalScope_ExcludesServer()
   {
     // Device permissions (Option A) now include Server in their allowed scope kinds. The
@@ -295,6 +255,46 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
 
     // Empty set resolves to null.
     Assert.Null(PermissionScopeKinds.GetBroadestTenantLegalScope(Array.Empty<PermissionScopeKind>()));
+  }
+
+  [Fact]
+  public void PermissionScopeKind_AllValuesAreHandledByScopeBreadth()
+  {
+    var expectedKinds = Enum.GetValues<PermissionScopeKind>()
+      .Except([PermissionScopeKind.Unknown, PermissionScopeKind.Server, PermissionScopeKind.Tenant,
+        PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup,
+        PermissionScopeKind.CustomerTenant, PermissionScopeKind.UserGroup])
+      .ToArray();
+
+    Assert.Empty(expectedKinds);
+
+    foreach (var scopeKind in Enum.GetValues<PermissionScopeKind>())
+    {
+      if (scopeKind == PermissionScopeKind.Unknown)
+      {
+        continue;
+      }
+
+      var result = PermissionScopeKinds.GetBroadestLegalScope([scopeKind]);
+      Assert.Equal(scopeKind, result);
+    }
+  }
+
+  [Fact]
+  public void PresetSeedableScope_NeverSeedsDevicePermissionsAtServerScope()
+  {
+    // Device permissions must seed (via presets) at tenant scope, never at server scope,
+    // so preset grants never grant cross-tenant device access.
+    foreach (var permission in PermissionPresets.GetPermissions(PermissionPresets.DeviceSuperUser))
+    {
+      if (PermissionCatalog.Get(permission)?.AllowedScopeKinds.Contains(PermissionScopeKind.Device) != true)
+      {
+        continue;
+      }
+
+      var seedScope = PermissionCatalog.GetBroadestTenantLegalScope(permission) ?? PermissionScopeKind.Tenant;
+      Assert.NotEqual(PermissionScopeKind.Server, seedScope);
+    }
   }
 
   [Fact]

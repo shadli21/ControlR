@@ -94,6 +94,33 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
   }
 
   [Fact]
+  public async Task HandleAuthenticateAsync_MalformedTokenPrefixes_CollapseToSingleCacheKey()
+  {
+    // Distinct malformed prefixes must all collapse to the single fixed "invalid" token key,
+    // so an attacker cannot plant unbounded cache entries.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
+    using var scope = testApp.CreateScope();
+    var services = scope.ServiceProvider;
+    var memoryCache = services.GetRequiredService<IMemoryCache>();
+
+    var malformedTokens = new[] { ":foo", "bar:secret", "baz:secret", "qux:secret" };
+
+    for (var i = 0; i < malformedTokens.Length; i++)
+    {
+      var context = CreateHttpContext(malformedTokens[i]);
+      // Distinct IP per attempt so the IP-axis throttle does not fire.
+      context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse($"10.0.0.{i + 1}");
+      var handler = await CreateHandler(services, context);
+      var result = await handler.AuthenticateAsync();
+      Assert.False(result.Succeeded);
+    }
+
+    var fixedKey = CacheKeys.GetPersonalAccessTokenAuthFailureByToken("invalid");
+    Assert.True(memoryCache.TryGetValue<int>(fixedKey, out var failures));
+    Assert.Equal(malformedTokens.Length, failures);
+  }
+
+  [Fact]
   public async Task HandleAuthenticateAsync_ShouldCreateCorrectIdentity()
   {
     // Arrange
@@ -272,33 +299,6 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     Assert.Equal(
       "Too many failed token attempts from this source. Try again later.",
       throttledResult.Failure.Message);
-  }
-
-  [Fact]
-  public async Task HandleAuthenticateAsync_MalformedTokenPrefixes_CollapseToSingleCacheKey()
-  {
-    // Distinct malformed prefixes must all collapse to the single fixed "invalid" token key,
-    // so an attacker cannot plant unbounded cache entries.
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
-    using var scope = testApp.CreateScope();
-    var services = scope.ServiceProvider;
-    var memoryCache = services.GetRequiredService<IMemoryCache>();
-
-    var malformedTokens = new[] { ":foo", "bar:secret", "baz:secret", "qux:secret" };
-
-    for (var i = 0; i < malformedTokens.Length; i++)
-    {
-      var context = CreateHttpContext(malformedTokens[i]);
-      // Distinct IP per attempt so the IP-axis throttle does not fire.
-      context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse($"10.0.0.{i + 1}");
-      var handler = await CreateHandler(services, context);
-      var result = await handler.AuthenticateAsync();
-      Assert.False(result.Succeeded);
-    }
-
-    var fixedKey = CacheKeys.GetPersonalAccessTokenAuthFailureByToken("invalid");
-    Assert.True(memoryCache.TryGetValue<int>(fixedKey, out var failures));
-    Assert.Equal(malformedTokens.Length, failures);
   }
 
   [Fact]

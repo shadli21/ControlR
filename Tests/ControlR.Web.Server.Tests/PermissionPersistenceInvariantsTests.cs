@@ -22,10 +22,8 @@ public class PermissionPersistenceInvariantsTests(ITestOutputHelper testOutput)
 {
   private readonly ITestOutputHelper _testOutput = testOutput;
 
-  // ---------- DB boundary: check constraints reject invalid persisted rows ----------
-
   [Fact]
-  public async Task DbBoundary_ServerScopeWithScopeId_Rejected()
+  public async Task DbBoundary_DeviceScopeWithoutScopeId_Rejected()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput, useInMemoryDatabase: false);
     using var scope = testApp.CreateScope();
@@ -35,12 +33,12 @@ public class PermissionPersistenceInvariantsTests(ITestOutputHelper testOutput)
 
     var ex = await Assert.ThrowsAsync<PostgresException>(
       () => InsertRaw(appDb,
-        scopeKind: PermissionScopeKind.Server,
-        scopeId: tenant.Id,
-        owningTenantId: null,
+        scopeKind: PermissionScopeKind.Device,
+        scopeId: null,
+        owningTenantId: tenant.Id,
         cancellationToken: TestContext.Current.CancellationToken));
 
-    Assert.Contains("CA_PermissionAssignments_Server_NullScope", ex.Message);
+    Assert.Contains("CA_PermissionAssignments_ScopeKind_ScopeId", ex.Message);
   }
 
   [Fact]
@@ -57,6 +55,27 @@ public class PermissionPersistenceInvariantsTests(ITestOutputHelper testOutput)
         scopeKind: PermissionScopeKind.Server,
         scopeId: null,
         owningTenantId: tenant.Id,
+        cancellationToken: TestContext.Current.CancellationToken));
+
+    Assert.Contains("CA_PermissionAssignments_Server_NullScope", ex.Message);
+  }
+
+  // ---------- DB boundary: check constraints reject invalid persisted rows ----------
+
+  [Fact]
+  public async Task DbBoundary_ServerScopeWithScopeId_Rejected()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput, useInMemoryDatabase: false);
+    using var scope = testApp.CreateScope();
+    var services = scope.ServiceProvider;
+    await using var appDb = services.GetRequiredService<AppDb>();
+    var tenant = await services.CreateTestTenant();
+
+    var ex = await Assert.ThrowsAsync<PostgresException>(
+      () => InsertRaw(appDb,
+        scopeKind: PermissionScopeKind.Server,
+        scopeId: tenant.Id,
+        owningTenantId: null,
         cancellationToken: TestContext.Current.CancellationToken));
 
     Assert.Contains("CA_PermissionAssignments_Server_NullScope", ex.Message);
@@ -93,25 +112,6 @@ public class PermissionPersistenceInvariantsTests(ITestOutputHelper testOutput)
     var ex = await Assert.ThrowsAsync<PostgresException>(
       () => InsertRaw(appDb,
         scopeKind: PermissionScopeKind.Tenant,
-        scopeId: null,
-        owningTenantId: tenant.Id,
-        cancellationToken: TestContext.Current.CancellationToken));
-
-    Assert.Contains("CA_PermissionAssignments_ScopeKind_ScopeId", ex.Message);
-  }
-
-  [Fact]
-  public async Task DbBoundary_DeviceScopeWithoutScopeId_Rejected()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput, useInMemoryDatabase: false);
-    using var scope = testApp.CreateScope();
-    var services = scope.ServiceProvider;
-    await using var appDb = services.GetRequiredService<AppDb>();
-    var tenant = await services.CreateTestTenant();
-
-    var ex = await Assert.ThrowsAsync<PostgresException>(
-      () => InsertRaw(appDb,
-        scopeKind: PermissionScopeKind.Device,
         scopeId: null,
         owningTenantId: tenant.Id,
         cancellationToken: TestContext.Current.CancellationToken));
@@ -167,26 +167,6 @@ public class PermissionPersistenceInvariantsTests(ITestOutputHelper testOutput)
                        x.ScopeId == tenant.Id && x.OwningTenantId == tenant.Id,
       TestContext.Current.CancellationToken);
     Assert.True(count >= 1);
-  }
-
-  // ---------- Evaluator fails closed on unknown / illegal rules ----------
-
-  [Fact]
-  public async Task Evaluator_UnknownPermission_FailsClosed()
-  {
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
-
-    var evaluator = GetEvaluator(testApp);
-    var principal = CreateUserPrincipal(user.Id, tenant.Id);
-    var resource = new ResourceDescriptor(PermissionScopeKind.Tenant, tenant.Id, tenant.Id);
-
-    var result = await evaluator.Evaluate(
-      principal, "TotallyUnknownPermission", resource, TestContext.Current.CancellationToken);
-
-    Assert.False(result.Allowed);
-    Assert.Contains("Unknown permission", result.DenialReason);
   }
 
   [Fact]
@@ -269,6 +249,40 @@ public class PermissionPersistenceInvariantsTests(ITestOutputHelper testOutput)
     Assert.Contains("deny", result.DenialReason, StringComparison.OrdinalIgnoreCase);
   }
 
+  // ---------- Evaluator fails closed on unknown / illegal rules ----------
+
+  [Fact]
+  public async Task Evaluator_UnknownPermission_FailsClosed()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var resource = new ResourceDescriptor(PermissionScopeKind.Tenant, tenant.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(
+      principal, "TotallyUnknownPermission", resource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+    Assert.Contains("Unknown permission", result.DenialReason);
+  }
+
+  private static PrincipalDescriptor CreateUserPrincipal(Guid userId, Guid tenantId)
+  {
+    return new PrincipalDescriptor(
+      PrincipalType.User,
+      userId,
+      tenantId,
+      AuthMethod: "cookie");
+  }
+
+  private static IPermissionEvaluator GetEvaluator(TestApp testApp)
+  {
+    return testApp.App.Services.GetRequiredService<IPermissionEvaluator>();
+  }
+
   // ---------- helpers ----------
 
   private static async Task InsertRaw(
@@ -303,20 +317,6 @@ public class PermissionPersistenceInvariantsTests(ITestOutputHelper testOutput)
     cmd.Parameters.Add(new NpgsqlParameter("@scopeId", (object?)scopeId ?? DBNull.Value));
     cmd.Parameters.Add(new NpgsqlParameter("@owningTenantId", (object?)owningTenantId ?? DBNull.Value));
     await cmd.ExecuteNonQueryAsync(cancellationToken);
-  }
-
-  private static IPermissionEvaluator GetEvaluator(TestApp testApp)
-  {
-    return testApp.App.Services.GetRequiredService<IPermissionEvaluator>();
-  }
-
-  private static PrincipalDescriptor CreateUserPrincipal(Guid userId, Guid tenantId)
-  {
-    return new PrincipalDescriptor(
-      PrincipalType.User,
-      userId,
-      tenantId,
-      AuthMethod: "cookie");
   }
 
   private static async Task SeedAssignment(TestApp testApp, PermissionAssignment assignment)

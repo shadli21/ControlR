@@ -31,6 +31,24 @@ public static class DeviceAccessQueryExtensions
     return query.ApplyScope(ownerScope);
   }
 
+  public static IQueryable<Device> ApplyAccessScope(
+    this IQueryable<Device> query,
+    Guid tenantId,
+    DeviceAccessScope accessScope) =>
+    query
+      .Where(device => device.TenantId == tenantId)
+      .ApplyAccessScope(accessScope);
+
+  public static async Task<IQueryable<Device>> ApplyDeviceAccessScope(
+    this IQueryable<Device> query,
+    ClaimsPrincipal user,
+    IDeviceAccessScopeResolver scopeResolver,
+    CancellationToken cancellationToken = default)
+  {
+    var accessScope = await scopeResolver.Resolve(user, cancellationToken);
+    return query.ApplyAccessScope(accessScope);
+  }
+
   private static IQueryable<Device> ApplyScope(
     this IQueryable<Device> query,
     DeviceAccessScope scope) =>
@@ -50,22 +68,4 @@ public static class DeviceAccessQueryExtensions
         scope.ExcludedCustomerIds.Contains(device.CustomerId.Value)) &&
       !device.DeviceGroupMembers!.Any(member =>
         scope.ExcludedDeviceGroupIds.Contains(member.DeviceGroupId)));
-
-  public static IQueryable<Device> ApplyAccessScope(
-    this IQueryable<Device> query,
-    Guid tenantId,
-    DeviceAccessScope accessScope) =>
-    query
-      .Where(device => device.TenantId == tenantId)
-      .ApplyAccessScope(accessScope);
-
-  public static async Task<IQueryable<Device>> ApplyDeviceAccessScope(
-    this IQueryable<Device> query,
-    ClaimsPrincipal user,
-    IDeviceAccessScopeResolver scopeResolver,
-    CancellationToken cancellationToken = default)
-  {
-    var accessScope = await scopeResolver.Resolve(user, cancellationToken);
-    return query.ApplyAccessScope(accessScope);
-  }
 }

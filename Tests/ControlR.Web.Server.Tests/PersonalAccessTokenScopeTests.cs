@@ -118,6 +118,32 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task CreateTokenWithKey_RejectsExistingId()
+  {
+    // Bootstrap path must not silently overwrite an existing token (and its scopes) when the
+    // caller supplies a token ID that is already in use.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local");
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var tokenId = Guid.NewGuid();
+    var secret = "x".PadLeft(32, 'a');
+
+    var first = await manager.CreateTokenWithKey(
+      tokenId, secret, "First Token", user.Id, PersonalAccessTokenPermissionMode.Restricted);
+    Assert.True(first.IsSuccess, $"First creation failed: {first.Reason}");
+
+    var second = await manager.CreateTokenWithKey(
+      tokenId, secret, "Second Token", user.Id, PersonalAccessTokenPermissionMode.Restricted);
+    Assert.False(second.IsSuccess);
+    Assert.Contains("already exists", second.Reason);
+  }
+
+  [Fact]
   public async Task CreateToken_InheritOwnerWithScopes_FailsAndCreatesNothing()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -368,31 +394,5 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
       .IgnoreQueryFilters()
       .AnyAsync(x => x.Id == tokenId, TestContext.Current.CancellationToken);
     Assert.False(tokenExists);
-  }
-
-  [Fact]
-  public async Task CreateTokenWithKey_RejectsExistingId()
-  {
-    // Bootstrap path must not silently overwrite an existing token (and its scopes) when the
-    // caller supplies a token ID that is already in use.
-    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
-    var tenant = await testApp.App.Services.CreateTestTenant();
-    await testApp.App.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
-    var user = await testApp.App.Services.CreateTestUser(tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local");
-
-    using var scope = testApp.CreateScope();
-    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
-
-    var tokenId = Guid.NewGuid();
-    var secret = "x".PadLeft(32, 'a');
-
-    var first = await manager.CreateTokenWithKey(
-      tokenId, secret, "First Token", user.Id, PersonalAccessTokenPermissionMode.Restricted);
-    Assert.True(first.IsSuccess, $"First creation failed: {first.Reason}");
-
-    var second = await manager.CreateTokenWithKey(
-      tokenId, secret, "Second Token", user.Id, PersonalAccessTokenPermissionMode.Restricted);
-    Assert.False(second.IsSuccess);
-    Assert.Contains("already exists", second.Reason);
   }
 }

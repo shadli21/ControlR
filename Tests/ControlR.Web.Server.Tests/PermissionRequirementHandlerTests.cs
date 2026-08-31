@@ -11,6 +11,40 @@ namespace ControlR.Web.Server.Tests;
 
 public class PermissionRequirementHandlerTests
 {
+  [Fact]
+  public async Task HandleRequirementAsync_EvaluatorThrows_FailsClosed()
+  {
+    var tenantId = Guid.NewGuid();
+    var principalId = Guid.NewGuid();
+    var evaluator = new Mock<IPermissionEvaluator>();
+    evaluator
+      .Setup(x => x.Evaluate(
+        It.IsAny<PrincipalDescriptor>(),
+        It.IsAny<string>(),
+        It.IsAny<ResourceDescriptor>(),
+        It.IsAny<CancellationToken>()))
+      .ThrowsAsync(new InvalidOperationException("boom"));
+    var handler = new PermissionRequirementHandler(
+      evaluator.Object,
+      Mock.Of<IResourceDescriptorFactory>(),
+      Mock.Of<IHttpContextAccessor>(),
+      NullLogger<PermissionRequirementHandler>.Instance);
+    var principal = new ClaimsPrincipal(new ClaimsIdentity(
+    [
+      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
+      new Claim(PrincipalClaimTypes.PrincipalId, principalId.ToString()),
+      new Claim(UserClaimTypes.TenantId, tenantId.ToString())
+    ], "TestAuth"));
+    var requirement = new PermissionRequirement(
+      PermissionNames.DeviceRead,
+      new ResourceDescriptor(PermissionScopeKind.Tenant, TenantId: tenantId));
+    var context = new AuthorizationHandlerContext([requirement], principal, resource: requirement);
+
+    await handler.HandleAsync(context);
+
+    Assert.True(context.HasFailed);
+  }
+
   [Theory]
   [InlineData(PermissionNames.DeviceGroupAssignDevices, PermissionScopeKind.DeviceGroup)]
   [InlineData(PermissionNames.UserGroupAssignUsers, PermissionScopeKind.UserGroup)]
@@ -117,40 +151,6 @@ public class PermissionRequirementHandlerTests
     evaluator.Verify(
       x => x.Evaluate(It.IsAny<PrincipalDescriptor>(), It.IsAny<string>(), It.IsAny<ResourceDescriptor>(), It.IsAny<CancellationToken>()),
       Times.Never);
-  }
-
-  [Fact]
-  public async Task HandleRequirementAsync_EvaluatorThrows_FailsClosed()
-  {
-    var tenantId = Guid.NewGuid();
-    var principalId = Guid.NewGuid();
-    var evaluator = new Mock<IPermissionEvaluator>();
-    evaluator
-      .Setup(x => x.Evaluate(
-        It.IsAny<PrincipalDescriptor>(),
-        It.IsAny<string>(),
-        It.IsAny<ResourceDescriptor>(),
-        It.IsAny<CancellationToken>()))
-      .ThrowsAsync(new InvalidOperationException("boom"));
-    var handler = new PermissionRequirementHandler(
-      evaluator.Object,
-      Mock.Of<IResourceDescriptorFactory>(),
-      Mock.Of<IHttpContextAccessor>(),
-      NullLogger<PermissionRequirementHandler>.Instance);
-    var principal = new ClaimsPrincipal(new ClaimsIdentity(
-    [
-      new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.User),
-      new Claim(PrincipalClaimTypes.PrincipalId, principalId.ToString()),
-      new Claim(UserClaimTypes.TenantId, tenantId.ToString())
-    ], "TestAuth"));
-    var requirement = new PermissionRequirement(
-      PermissionNames.DeviceRead,
-      new ResourceDescriptor(PermissionScopeKind.Tenant, TenantId: tenantId));
-    var context = new AuthorizationHandlerContext([requirement], principal, resource: requirement);
-
-    await handler.HandleAsync(context);
-
-    Assert.True(context.HasFailed);
   }
 
   [Fact]

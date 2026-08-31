@@ -10,7 +10,9 @@ Cross-platform remote access and control. .NET 10 backend (ASP.NET Core), Blazor
 
 - Build: `dotnet build ControlR.slnx --verbosity quiet` (no output = success)
 - Run: Use IDE launch profiles — "Full Stack" in VS/Rider; "Full Stack (Debug)" or "Full Stack (Hot Reload)" in VS Code.
-- Don't attempt to fix warning `BB0001: Member '{member_name}' is not in the correct order`.
+- Fix `BB0001: Member '{member_name}' is not in the correct order` from the solution root:
+  - `dotnet format analyzers --diagnostics "BB0001" --severity hidden`
+  - Note: The command requires `--severity hidden` because BB0001 is emitted with a `hidden` severity by default.
 
 ## Context Scope
 

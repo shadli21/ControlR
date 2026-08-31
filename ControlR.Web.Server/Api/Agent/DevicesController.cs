@@ -194,14 +194,6 @@ public class DevicesController : ControllerBase
     return entity.ToInternalResponseDto(isOutdated);
   }
 
-  private static async Task<bool> ValidateServerSa(Guid creatorId, AppDb appDb)
-  {
-    var serviceAccount = await appDb.ServiceAccounts
-      .IgnoreQueryFilters()
-      .FirstOrDefaultAsync(x => x.Id == creatorId && x.IsEnabled);
-    return serviceAccount is not null;
-  }
-
   private static async Task<bool> CanAssignTagsForServiceAccount(
     Guid creatorId,
     Guid tenantId,
@@ -222,5 +214,13 @@ public class DevicesController : ControllerBase
   {
     var user = await userManager.FindByIdAsync($"{creatorId}");
     return user is not null && await deviceAuthorizationService.CanAssignTagOnDevice(user, device);
+  }
+
+  private static async Task<bool> ValidateServerSa(Guid creatorId, AppDb appDb)
+  {
+    var serviceAccount = await appDb.ServiceAccounts
+      .IgnoreQueryFilters()
+      .FirstOrDefaultAsync(x => x.Id == creatorId && x.IsEnabled);
+    return serviceAccount is not null;
   }
 }

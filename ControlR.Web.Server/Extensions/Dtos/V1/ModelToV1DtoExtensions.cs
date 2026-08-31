@@ -10,6 +10,22 @@ namespace ControlR.Web.Server.Extensions.Dtos.V1;
 /// </summary>
 internal static class ModelToV1DtoExtensions
 {
+  public static ServiceAccountCredentialDto ToDto(this ServiceAccountCredentialResult result)
+  {
+    return new ServiceAccountCredentialDto(
+      result.Id,
+      result.Name,
+      result.CreatedAt,
+      result.ExpiresAt,
+      result.RevokedAt,
+      result.LastUsedAt);
+  }
+
+  public static CreateServiceAccountCredentialResponseDto ToDto(this CreateServiceAccountCredentialResult result)
+  {
+    return new CreateServiceAccountCredentialResponseDto(result.Credential.ToDto(), result.PlainTextSecretKey);
+  }
+
   public static ServerServiceAccountDto ToServerServiceAccountDto(this ServiceAccountResult result)
   {
     return new ServerServiceAccountDto(
@@ -31,22 +47,6 @@ internal static class ModelToV1DtoExtensions
       result.IsEnabled,
       result.CreatedAt,
       [.. result.Credentials.Select(c => c.ToDto())]);
-  }
-
-  public static ServiceAccountCredentialDto ToDto(this ServiceAccountCredentialResult result)
-  {
-    return new ServiceAccountCredentialDto(
-      result.Id,
-      result.Name,
-      result.CreatedAt,
-      result.ExpiresAt,
-      result.RevokedAt,
-      result.LastUsedAt);
-  }
-
-  public static CreateServiceAccountCredentialResponseDto ToDto(this CreateServiceAccountCredentialResult result)
-  {
-    return new CreateServiceAccountCredentialResponseDto(result.Credential.ToDto(), result.PlainTextSecretKey);
   }
 
   public static CreateTenantResponseDto ToV1CreateTenantDto(this TenantResult result)

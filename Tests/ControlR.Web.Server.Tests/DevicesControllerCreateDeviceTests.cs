@@ -105,6 +105,90 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task CreateDevice_ExistingDevice_ServerServiceAccountKey_DisabledAccount_Forbidden()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var existingDevice = await services.CreateTestDevice(tenant.Id);
+
+    var saManager = services.GetRequiredService<IServiceAccountManager>();
+    var saResult = await saManager.CreateForServer(
+      $"server-sa-{Guid.NewGuid():N}",
+      null,
+      ServiceAccountAccessMode.Unrestricted,
+      TestContext.Current.CancellationToken);
+    Assert.True(saResult.IsSuccess);
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenant.Id,
+      creatorId: saResult.Value.Id,
+      creatorKind: InstallerKeyCreatorKind.ServerServiceAccount,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "Server SA Key");
+
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      var sa = await db.ServiceAccounts
+        .IgnoreQueryFilters()
+        .FirstAsync(x => x.Id == saResult.Value.Id, TestContext.Current.CancellationToken);
+      sa.IsEnabled = false;
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var deviceDto = CreateDeviceDto(tenant.Id, deviceId: existingDevice.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: null);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+  }
+
+  [Fact]
+  public async Task CreateDevice_ExistingDevice_ServerServiceAccountKey_EnabledAccount_Succeeds()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var existingDevice = await services.CreateTestDevice(tenant.Id);
+
+    var saManager = services.GetRequiredService<IServiceAccountManager>();
+    var saResult = await saManager.CreateForServer(
+      $"server-sa-{Guid.NewGuid():N}",
+      null,
+      ServiceAccountAccessMode.Unrestricted,
+      TestContext.Current.CancellationToken);
+    Assert.True(saResult.IsSuccess);
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenant.Id,
+      creatorId: saResult.Value.Id,
+      creatorKind: InstallerKeyCreatorKind.ServerServiceAccount,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "Server SA Key");
+
+    var deviceDto = CreateDeviceDto(tenant.Id, deviceId: existingDevice.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: null);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+  }
+
+  [Fact]
   public async Task CreateDevice_ExistingDevice_UpdatesDeviceProperties()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
@@ -817,6 +901,102 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task CreateDevice_WithTags_ServerServiceAccountKey_DisabledAccount_Forbidden()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var tagId = Guid.NewGuid();
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.Tags.Add(new Tag { Id = tagId, Name = "Test Tag", TenantId = tenant.Id });
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var saManager = services.GetRequiredService<IServiceAccountManager>();
+    var saResult = await saManager.CreateForServer(
+      $"server-sa-{Guid.NewGuid():N}",
+      null,
+      ServiceAccountAccessMode.Unrestricted,
+      TestContext.Current.CancellationToken);
+    Assert.True(saResult.IsSuccess);
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenant.Id,
+      creatorId: saResult.Value.Id,
+      creatorKind: InstallerKeyCreatorKind.ServerServiceAccount,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "Server SA Key");
+
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      var sa = await db.ServiceAccounts
+        .IgnoreQueryFilters()
+        .FirstAsync(x => x.Id == saResult.Value.Id, TestContext.Current.CancellationToken);
+      sa.IsEnabled = false;
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var deviceDto = CreateDeviceDto(tenant.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: [tagId]);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+  }
+
+  [Fact]
+  public async Task CreateDevice_WithTags_ServerServiceAccountKey_EnabledAccount_Succeeds()
+  {
+    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
+    using var httpClient = await testServer.GetHttpClient();
+    var services = testServer.Services;
+
+    var tenant = await services.CreateTestTenant();
+    var tagId = Guid.NewGuid();
+    using (var scope = services.CreateScope())
+    {
+      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+      db.Tags.Add(new Tag { Id = tagId, Name = "Test Tag", TenantId = tenant.Id });
+      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    var saManager = services.GetRequiredService<IServiceAccountManager>();
+    var saResult = await saManager.CreateForServer(
+      $"server-sa-{Guid.NewGuid():N}",
+      null,
+      ServiceAccountAccessMode.Unrestricted,
+      TestContext.Current.CancellationToken);
+    Assert.True(saResult.IsSuccess);
+
+    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
+    var installerKey = await keyManager.CreateKey(
+      tenantId: tenant.Id,
+      creatorId: saResult.Value.Id,
+      creatorKind: InstallerKeyCreatorKind.ServerServiceAccount,
+      keyType: InstallerKeyType.Persistent,
+      allowedUses: null,
+      expiration: null,
+      friendlyName: "Server SA Key");
+
+    var deviceDto = CreateDeviceDto(tenant.Id);
+    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: [tagId]);
+
+    var response = await httpClient.PostAsJsonAsync(
+      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
+
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+  }
+
+  [Fact]
   public async Task CreateDevice_WithTags_WithoutTagPermission_Rejected()
   {
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
@@ -910,186 +1090,6 @@ public class DevicesControllerCreateDeviceTests(ITestOutputHelper testOutput)
       .FirstOrDefaultAsync(d => d.Id == deviceDto.Id, cancellationToken: TestContext.Current.CancellationToken);
     Assert.NotNull(dbDevice);
     Assert.Contains(dbDevice.Tags!, t => t.Id == tagId);
-  }
-
-  [Fact]
-  public async Task CreateDevice_ExistingDevice_ServerServiceAccountKey_EnabledAccount_Succeeds()
-  {
-    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
-    using var httpClient = await testServer.GetHttpClient();
-    var services = testServer.Services;
-
-    var tenant = await services.CreateTestTenant();
-    var existingDevice = await services.CreateTestDevice(tenant.Id);
-
-    var saManager = services.GetRequiredService<IServiceAccountManager>();
-    var saResult = await saManager.CreateForServer(
-      $"server-sa-{Guid.NewGuid():N}",
-      null,
-      ServiceAccountAccessMode.Unrestricted,
-      TestContext.Current.CancellationToken);
-    Assert.True(saResult.IsSuccess);
-
-    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
-    var installerKey = await keyManager.CreateKey(
-      tenantId: tenant.Id,
-      creatorId: saResult.Value.Id,
-      creatorKind: InstallerKeyCreatorKind.ServerServiceAccount,
-      keyType: InstallerKeyType.Persistent,
-      allowedUses: null,
-      expiration: null,
-      friendlyName: "Server SA Key");
-
-    var deviceDto = CreateDeviceDto(tenant.Id, deviceId: existingDevice.Id);
-    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: null);
-
-    var response = await httpClient.PostAsJsonAsync(
-      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
-
-    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-  }
-
-  [Fact]
-  public async Task CreateDevice_ExistingDevice_ServerServiceAccountKey_DisabledAccount_Forbidden()
-  {
-    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
-    using var httpClient = await testServer.GetHttpClient();
-    var services = testServer.Services;
-
-    var tenant = await services.CreateTestTenant();
-    var existingDevice = await services.CreateTestDevice(tenant.Id);
-
-    var saManager = services.GetRequiredService<IServiceAccountManager>();
-    var saResult = await saManager.CreateForServer(
-      $"server-sa-{Guid.NewGuid():N}",
-      null,
-      ServiceAccountAccessMode.Unrestricted,
-      TestContext.Current.CancellationToken);
-    Assert.True(saResult.IsSuccess);
-
-    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
-    var installerKey = await keyManager.CreateKey(
-      tenantId: tenant.Id,
-      creatorId: saResult.Value.Id,
-      creatorKind: InstallerKeyCreatorKind.ServerServiceAccount,
-      keyType: InstallerKeyType.Persistent,
-      allowedUses: null,
-      expiration: null,
-      friendlyName: "Server SA Key");
-
-    using (var scope = services.CreateScope())
-    {
-      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      var sa = await db.ServiceAccounts
-        .IgnoreQueryFilters()
-        .FirstAsync(x => x.Id == saResult.Value.Id, TestContext.Current.CancellationToken);
-      sa.IsEnabled = false;
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    var deviceDto = CreateDeviceDto(tenant.Id, deviceId: existingDevice.Id);
-    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: null);
-
-    var response = await httpClient.PostAsJsonAsync(
-      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
-
-    Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-  }
-
-  [Fact]
-  public async Task CreateDevice_WithTags_ServerServiceAccountKey_EnabledAccount_Succeeds()
-  {
-    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
-    using var httpClient = await testServer.GetHttpClient();
-    var services = testServer.Services;
-
-    var tenant = await services.CreateTestTenant();
-    var tagId = Guid.NewGuid();
-    using (var scope = services.CreateScope())
-    {
-      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      db.Tags.Add(new Tag { Id = tagId, Name = "Test Tag", TenantId = tenant.Id });
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    var saManager = services.GetRequiredService<IServiceAccountManager>();
-    var saResult = await saManager.CreateForServer(
-      $"server-sa-{Guid.NewGuid():N}",
-      null,
-      ServiceAccountAccessMode.Unrestricted,
-      TestContext.Current.CancellationToken);
-    Assert.True(saResult.IsSuccess);
-
-    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
-    var installerKey = await keyManager.CreateKey(
-      tenantId: tenant.Id,
-      creatorId: saResult.Value.Id,
-      creatorKind: InstallerKeyCreatorKind.ServerServiceAccount,
-      keyType: InstallerKeyType.Persistent,
-      allowedUses: null,
-      expiration: null,
-      friendlyName: "Server SA Key");
-
-    var deviceDto = CreateDeviceDto(tenant.Id);
-    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: [tagId]);
-
-    var response = await httpClient.PostAsJsonAsync(
-      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
-
-    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-  }
-
-  [Fact]
-  public async Task CreateDevice_WithTags_ServerServiceAccountKey_DisabledAccount_Forbidden()
-  {
-    using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
-    using var httpClient = await testServer.GetHttpClient();
-    var services = testServer.Services;
-
-    var tenant = await services.CreateTestTenant();
-    var tagId = Guid.NewGuid();
-    using (var scope = services.CreateScope())
-    {
-      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      db.Tags.Add(new Tag { Id = tagId, Name = "Test Tag", TenantId = tenant.Id });
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    var saManager = services.GetRequiredService<IServiceAccountManager>();
-    var saResult = await saManager.CreateForServer(
-      $"server-sa-{Guid.NewGuid():N}",
-      null,
-      ServiceAccountAccessMode.Unrestricted,
-      TestContext.Current.CancellationToken);
-    Assert.True(saResult.IsSuccess);
-
-    var keyManager = services.GetRequiredService<IAgentInstallerKeyManager>();
-    var installerKey = await keyManager.CreateKey(
-      tenantId: tenant.Id,
-      creatorId: saResult.Value.Id,
-      creatorKind: InstallerKeyCreatorKind.ServerServiceAccount,
-      keyType: InstallerKeyType.Persistent,
-      allowedUses: null,
-      expiration: null,
-      friendlyName: "Server SA Key");
-
-    using (var scope = services.CreateScope())
-    {
-      await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-      var sa = await db.ServiceAccounts
-        .IgnoreQueryFilters()
-        .FirstAsync(x => x.Id == saResult.Value.Id, TestContext.Current.CancellationToken);
-      sa.IsEnabled = false;
-      await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    var deviceDto = CreateDeviceDto(tenant.Id);
-    var requestDto = new CreateDeviceRequestDto(deviceDto, installerKey.Id, installerKey.KeySecret, TagIds: [tagId]);
-
-    var response = await httpClient.PostAsJsonAsync(
-      HttpConstants.Agent.DevicesEndpoint, requestDto, TestContext.Current.CancellationToken);
-
-    Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
   }
 
   private static DeviceConnectionContext CreateConnectionContext(Guid? deviceId = null)

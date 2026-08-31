@@ -7,20 +7,6 @@ namespace ControlR.Web.Server.Tests;
 
 public class PermissionRuleFactoryTests
 {
-  private static PermissionAssignment CreateAssignment(
-    Guid? owningTenantId,
-    bool isEnabled = true) =>
-    PermissionAssignment.CreateGrant(
-      PermissionPrincipalKind.User,
-      Guid.NewGuid(),
-      PermissionNames.DeviceRead,
-      PermissionScopeKind.Tenant,
-      Guid.NewGuid(),
-      owningTenantId,
-      "test",
-      Guid.NewGuid().ToString(),
-      isEnabled: isEnabled);
-
   [Fact]
   public void CreateDirectRules_FiltersEnabledAndTenantOwned()
   {
@@ -53,4 +39,18 @@ public class PermissionRuleFactoryTests
     Assert.Equal(RuleSource.UserGroup, rule.Source);
     Assert.Equal(SourcePriority.UserGroup, rule.Priority);
   }
+
+  private static PermissionAssignment CreateAssignment(
+    Guid? owningTenantId,
+    bool isEnabled = true) =>
+    PermissionAssignment.CreateGrant(
+      PermissionPrincipalKind.User,
+      Guid.NewGuid(),
+      PermissionNames.DeviceRead,
+      PermissionScopeKind.Tenant,
+      Guid.NewGuid(),
+      owningTenantId,
+      "test",
+      Guid.NewGuid().ToString(),
+      isEnabled: isEnabled);
 }

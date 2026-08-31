@@ -92,6 +92,67 @@ public class CredentialScopeService(
     return HttpResult.Ok();
   }
 
+  public async Task<HttpResult> ValidateLogonTokenScopes(
+    PrincipalDescriptor creator,
+    Guid tenantId,
+    IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
+    CancellationToken cancellationToken = default)
+  {
+    foreach (var scope in scopes)
+    {
+      if (scope.ScopeKind != PermissionScopeKind.Device)
+      {
+        return HttpResult.Fail(
+          HttpResultErrorCode.BadRequest,
+          $"Logon token scopes must be Device-scoped; '{scope.ScopeKind}' scopes are not honored for logon tokens.");
+      }
+    }
+
+    return await ValidateGrantableScopes(creator, tenantId, scopes, cancellationToken);
+  }
+
+  public async Task WriteLogonTokenScopes(
+    Guid tokenId,
+    Guid deviceId,
+    Guid tenantId,
+    string actorType,
+    Guid actorPrincipalId,
+    IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
+    CancellationToken cancellationToken = default)
+  {
+    foreach (var scope in scopes)
+    {
+      // ValidateLogonTokenScopes guarantees ScopeId == deviceId; fail loudly on deviation.
+      var scopeDeviceId = scope.ScopeId ??
+        throw new InvalidOperationException("Logon token scope is missing its device id. Scopes must be validated before writing.");
+      if (scopeDeviceId != deviceId)
+      {
+        throw new InvalidOperationException("Logon token scope targets a device other than the token's device. Scopes must be validated before writing.");
+      }
+
+      _appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.LogonToken,
+        tokenId,
+        scope.PermissionName,
+        scope.ScopeKind,
+        scopeDeviceId,
+        tenantId,
+        actorType,
+        actorPrincipalId.ToString()));
+    }
+
+    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+      AuthorizationChangeLogActions.CredentialScopeSet,
+      actorType,
+      actorPrincipalId,
+      AuthorizationChangeLogTargetTypes.LogonToken,
+      tokenId,
+      tenantId,
+      after: new CredentialScopeSetSummary(scopes.Count)));
+
+    await _appDb.SaveChangesAsync(cancellationToken);
+  }
+
   /// <summary>
   /// Resolves every requested scope in a bounded number of queries by grouping the lookups
   /// by scope kind, instead of issuing one <see cref="IResourceDescriptorFactory.CreateScope"/>
@@ -196,67 +257,6 @@ public class CredentialScopeService(
     }
 
     return results;
-  }
-
-  public async Task<HttpResult> ValidateLogonTokenScopes(
-    PrincipalDescriptor creator,
-    Guid tenantId,
-    IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
-    CancellationToken cancellationToken = default)
-  {
-    foreach (var scope in scopes)
-    {
-      if (scope.ScopeKind != PermissionScopeKind.Device)
-      {
-        return HttpResult.Fail(
-          HttpResultErrorCode.BadRequest,
-          $"Logon token scopes must be Device-scoped; '{scope.ScopeKind}' scopes are not honored for logon tokens.");
-      }
-    }
-
-    return await ValidateGrantableScopes(creator, tenantId, scopes, cancellationToken);
-  }
-
-  public async Task WriteLogonTokenScopes(
-    Guid tokenId,
-    Guid deviceId,
-    Guid tenantId,
-    string actorType,
-    Guid actorPrincipalId,
-    IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
-    CancellationToken cancellationToken = default)
-  {
-    foreach (var scope in scopes)
-    {
-      // ValidateLogonTokenScopes guarantees ScopeId == deviceId; fail loudly on deviation.
-      var scopeDeviceId = scope.ScopeId ??
-        throw new InvalidOperationException("Logon token scope is missing its device id. Scopes must be validated before writing.");
-      if (scopeDeviceId != deviceId)
-      {
-        throw new InvalidOperationException("Logon token scope targets a device other than the token's device. Scopes must be validated before writing.");
-      }
-
-      _appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
-        PermissionPrincipalKind.LogonToken,
-        tokenId,
-        scope.PermissionName,
-        scope.ScopeKind,
-        scopeDeviceId,
-        tenantId,
-        actorType,
-        actorPrincipalId.ToString()));
-    }
-
-    _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
-      AuthorizationChangeLogActions.CredentialScopeSet,
-      actorType,
-      actorPrincipalId,
-      AuthorizationChangeLogTargetTypes.LogonToken,
-      tokenId,
-      tenantId,
-      after: new CredentialScopeSetSummary(scopes.Count)));
-
-    await _appDb.SaveChangesAsync(cancellationToken);
   }
 
 }
