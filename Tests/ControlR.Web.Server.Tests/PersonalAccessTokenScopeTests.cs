@@ -37,7 +37,7 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
     var assignmentManager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
 
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Panel-Scoped PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Panel-Scoped PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
 
     var tokenId = patResult.Value.PersonalAccessToken.Id;
@@ -77,7 +77,7 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
     var assignmentManager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
 
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Panel-Scoped PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Panel-Scoped PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
 
     var tokenId = patResult.Value.PersonalAccessToken.Id;
@@ -161,7 +161,8 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
         "Inherit-With-Scopes PAT",
         PersonalAccessTokenPermissionMode.InheritOwner,
         [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     Assert.False(result.IsSuccess);
 
@@ -185,7 +186,8 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
 
     var result = await manager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Empty Restricted PAT", PersonalAccessTokenPermissionMode.Restricted),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     Assert.True(result.IsSuccess);
 
@@ -218,7 +220,8 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
 
     var result = await manager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Unscoped PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     Assert.True(result.IsSuccess);
 
@@ -252,7 +255,8 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
       new InternalDtos.CreatePersonalAccessTokenRequestDto(
         "Scoped PAT", PersonalAccessTokenPermissionMode.Restricted,
         Scopes: [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     Assert.False(result.IsSuccess);
 
@@ -283,7 +287,8 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
       new InternalDtos.CreatePersonalAccessTokenRequestDto(
         "Scoped PAT", PersonalAccessTokenPermissionMode.Restricted,
         Scopes: [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     Assert.True(result.IsSuccess, $"Scoped PAT creation failed: {result.Reason}");
 
@@ -326,7 +331,8 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
       new InternalDtos.CreatePersonalAccessTokenRequestDto(
         "Scoped PAT", PersonalAccessTokenPermissionMode.Restricted,
         Scopes: [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     Assert.True(result.IsSuccess, $"Scoped PAT creation failed: {result.Reason}");
 
@@ -370,7 +376,8 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
       new InternalDtos.CreatePersonalAccessTokenRequestDto(
         "Scoped PAT", PersonalAccessTokenPermissionMode.Restricted,
         Scopes: [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(createResult.IsSuccess, $"Scoped PAT creation failed: {createResult.Reason}");
     var tokenId = createResult.Value.PersonalAccessToken.Id;
 

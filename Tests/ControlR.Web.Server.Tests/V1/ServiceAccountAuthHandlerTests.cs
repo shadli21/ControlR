@@ -53,7 +53,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
         accountId,
         "Test Credential",
         expiresAt: null,
-        Guid.NewGuid(),
+        TestActors.User(),
         TestContext.Current.CancellationToken);
       Assert.True(credResult.IsSuccess);
       credentialId = credResult.Value.Credential.Id;
@@ -120,7 +120,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
         accountId,
         "Test Credential",
         expiresAt: null,
-        Guid.NewGuid(),
+        TestActors.User(),
         TestContext.Current.CancellationToken);
       Assert.True(credResult.IsSuccess);
       plainTextSecretKey = credResult.Value.PlainTextSecretKey;
@@ -185,7 +185,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
         createResult.Value.Id,
         "Test Credential",
         expiresAt: null,
-        Guid.NewGuid(),
+        TestActors.User(),
         TestContext.Current.CancellationToken);
       Assert.True(credResult.IsSuccess);
 
@@ -261,7 +261,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       createResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -270,7 +270,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
     await serviceAccountManager.RevokeCredentialForServer(
       accountId,
       credentialId,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
 
     var apiKey = credResult.Value.PlainTextSecretKey;
@@ -300,7 +300,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       createResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -351,7 +351,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       createResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -367,7 +367,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
     var revokeResult = await serviceAccountManager.RevokeCredentialForServer(
       createResult.Value.Id,
       credResult.Value.Credential.Id,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(revokeResult.IsSuccess);
 
@@ -396,7 +396,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       createResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -414,7 +414,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       "Disable Cache SA",
       null,
       isEnabled: false,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(updateResult.IsSuccess);
     Assert.False(updateResult.Value.IsEnabled);
@@ -439,7 +439,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       "Tenant Disable Cache SA",
       null,
       tenant.Id,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
@@ -448,7 +448,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       tenant.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -466,7 +466,7 @@ public class ServiceAccountAuthHandlerTests(ITestOutputHelper testOutput)
       "Tenant Disable Cache SA",
       null,
       isEnabled: false,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(updateResult.IsSuccess);
     Assert.False(updateResult.Value.IsEnabled);

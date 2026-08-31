@@ -169,7 +169,12 @@ public class UsersController : ControllerBase
       return NotFound();
     }
 
-    var result = await personalAccessTokenManager.CreateToken(request, userId);
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    {
+      return BadRequest("User ID not found.");
+    }
+
+    var result = await personalAccessTokenManager.CreateToken(request, userId, actor);
     if (!result.IsSuccess)
     {
       return BadRequest(result.Reason);

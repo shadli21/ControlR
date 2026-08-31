@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +28,7 @@ public class LogonTokenDeviceScopeTests(ITestOutputHelper testOutput)
 
     // Create PAT
     var patManager = testApp.TestServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
-    var patCreate = await patManager.CreateToken(new InternalDtos.CreatePersonalAccessTokenRequestDto("ScopeTest PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+    var patCreate = await patManager.CreateToken(new InternalDtos.CreatePersonalAccessTokenRequestDto("ScopeTest PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patCreate.IsSuccess, patCreate.Reason);
     var pat = patCreate.Value.PlainTextToken;
 

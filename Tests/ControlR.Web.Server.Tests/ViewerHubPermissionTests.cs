@@ -181,8 +181,7 @@ public class ViewerHubPermissionTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       deviceId,
       tenantId,
-      "test",
-      userId.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, userId, tenantId, "test")));
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
   }
 

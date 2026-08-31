@@ -33,13 +33,13 @@ public class DeviceGroupsController(IDeviceGroupManager deviceGroupManager) : Co
       return Forbid();
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _deviceGroupManager.AddMembers(
-      deviceGroupId, request.DeviceIds, tenantId, userId, cancellationToken);
+      deviceGroupId, request.DeviceIds, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -60,13 +60,13 @@ public class DeviceGroupsController(IDeviceGroupManager deviceGroupManager) : Co
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _deviceGroupManager.Create(
-      request.Name, request.Description, tenantId, userId, cancellationToken);
+      request.Name, request.Description, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -87,12 +87,12 @@ public class DeviceGroupsController(IDeviceGroupManager deviceGroupManager) : Co
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
-    var result = await _deviceGroupManager.Delete(deviceGroupId, tenantId, userId, cancellationToken);
+    var result = await _deviceGroupManager.Delete(deviceGroupId, tenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -156,13 +156,13 @@ public class DeviceGroupsController(IDeviceGroupManager deviceGroupManager) : Co
       return Forbid();
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _deviceGroupManager.RemoveMembers(
-      deviceGroupId, request.DeviceIds, tenantId, userId, cancellationToken);
+      deviceGroupId, request.DeviceIds, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -184,13 +184,13 @@ public class DeviceGroupsController(IDeviceGroupManager deviceGroupManager) : Co
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _deviceGroupManager.Update(
-      deviceGroupId, request.Name, request.Description, tenantId, userId, cancellationToken);
+      deviceGroupId, request.Name, request.Description, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {

@@ -241,8 +241,7 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.PersonalAccessToken,
       patId,
@@ -250,8 +249,7 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       deviceA.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
 
     var (claims, principal) = CreateCredentialPrincipalPair(
       user.Id,
@@ -284,8 +282,7 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
 
     var (claims, principal) = CreateCredentialPrincipalPair(
       user.Id, tenant.Id, patId, CredentialType.PersonalAccessToken);
@@ -312,8 +309,7 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       deviceB.Id,
       tenantB.Id,
-      "test",
-      serviceAccountId.ToString()));
+      new PrincipalDescriptor(PrincipalType.ServerServiceAccount, serviceAccountId, null, "test")));
 
     var claims = new ClaimsPrincipal(new ClaimsIdentity(
     [

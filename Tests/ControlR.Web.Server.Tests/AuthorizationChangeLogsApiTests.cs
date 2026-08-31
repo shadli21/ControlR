@@ -25,7 +25,7 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
     var (tenantA, tenantB, serverAdmin, _) = await SetupTenantsWithEntries(testServer);
 
-    using var httpClient = await CreatePatClient(testServer, serverAdmin.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, serverAdmin.Id, serverAdmin.TenantId, "test"));
 
     var response = await httpClient.GetAsync(
       HttpConstants.Internal.AuthorizationChangeLogsEndpoint, TestContext.Current.CancellationToken);
@@ -44,7 +44,7 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
     using var testServer = await TestWebServerBuilder.CreateTestServer(_testOutput);
     var (tenantA, tenantB, _, tenantAdminA) = await SetupTenantsWithEntries(testServer);
 
-    using var httpClient = await CreatePatClient(testServer, tenantAdminA.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, tenantAdminA.Id, tenantAdminA.TenantId, "test"));
 
     var response = await httpClient.GetAsync(
       HttpConstants.Internal.AuthorizationChangeLogsEndpoint, TestContext.Current.CancellationToken);
@@ -70,7 +70,7 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
     await testServer.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
     var plainUser = await testServer.Services.CreateTestUser(tenant.Id, $"plain-{Guid.NewGuid():N}@t.local");
 
-    using var httpClient = await CreatePatClient(testServer, plainUser.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, plainUser.Id, plainUser.TenantId, "test"));
 
     var response = await httpClient.GetAsync(
       HttpConstants.Internal.AuthorizationChangeLogsEndpoint, TestContext.Current.CancellationToken);
@@ -85,7 +85,7 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
       _testOutput, useInMemoryDatabase: false);
     var (tenantA, _, serverAdmin, _) = await SetupTenantsWithEntries(testServer);
 
-    using var httpClient = await CreatePatClient(testServer, serverAdmin.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, serverAdmin.Id, serverAdmin.TenantId, "test"));
 
     // The tenant-admin assignment created in Setup creates a change-log row with a real target ID.
     var allResponse = await httpClient.GetAsync(
@@ -130,7 +130,7 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
       _testOutput, useInMemoryDatabase: false);
     var (tenantA, _, serverAdmin, _) = await SetupTenantsWithEntries(testServer);
 
-    using var httpClient = await CreatePatClient(testServer, serverAdmin.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, serverAdmin.Id, serverAdmin.TenantId, "test"));
 
     var allResponse = await httpClient.GetAsync(
       HttpConstants.Internal.AuthorizationChangeLogsEndpoint, TestContext.Current.CancellationToken);
@@ -156,11 +156,11 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
     Assert.Contains(result.Items, x => x.TargetId == targetId);
   }
 
-  private async Task<HttpClient> CreatePatClient(TestWebServer testServer, Guid userId)
+  private async Task<HttpClient> CreatePatClient(TestWebServer testServer, PrincipalDescriptor actor)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Audit Log Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Audit Log Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), actor.PrincipalId, actor);
     Assert.True(patResult.IsSuccess);
 
     var client = testServer.Factory.CreateClient();
@@ -195,8 +195,7 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Server,
         null,
         tenantA.Id,
-        "test",
-        serverAdmin.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, serverAdmin.Id, tenantA.Id, "test")));
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.User,
         serverAdmin.Id,
@@ -204,8 +203,7 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Server,
         null,
         tenantA.Id,
-        "test",
-        serverAdmin.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, serverAdmin.Id, tenantA.Id, "test")));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 

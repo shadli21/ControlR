@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
@@ -11,18 +12,18 @@ namespace ControlR.Web.Server.Services.DeviceGroups;
 public interface IDeviceGroupManager
 {
   Task<HttpResult> AddMembers(
-    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.DeviceGroupDetailDto>> Create(
-    string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    string name, string? description, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
   Task<HttpResult> Delete(
-    Guid deviceGroupId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid deviceGroupId, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.DeviceGroupDetailDto>> Get(
     Guid deviceGroupId, Guid tenantId, CancellationToken cancellationToken = default);
   Task<IReadOnlyList<InternalDtos.DeviceGroupDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default);
   Task<HttpResult> RemoveMembers(
-    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.DeviceGroupDetailDto>> Update(
-    Guid deviceGroupId, string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid deviceGroupId, string name, string? description, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
 }
 
 public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory changeLogFactory) : IDeviceGroupManager
@@ -31,7 +32,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
   private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
 
   public async Task<HttpResult> AddMembers(
-    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.DeviceGroups
       .Include(x => x.Members)
@@ -75,8 +76,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupMembersAdded,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.DeviceGroup,
       deviceGroupId,
       tenantId,
@@ -88,7 +88,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
   }
 
   public async Task<HttpResult<InternalDtos.DeviceGroupDetailDto>> Create(
-    string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    string name, string? description, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
@@ -119,8 +119,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
 
       _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.DeviceGroupCreated,
-        AuthorizationChangeLogActorTypes.User,
-        actorPrincipalId,
+        actor,
         AuthorizationChangeLogTargetTypes.DeviceGroup,
         group.Id,
         tenantId,
@@ -133,7 +132,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
   }
 
   public async Task<HttpResult> Delete(
-    Guid deviceGroupId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid deviceGroupId, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.DeviceGroups
       .Include(x => x.Members)
@@ -156,8 +155,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupDeleted,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.DeviceGroup,
       deviceGroupId,
       tenantId,
@@ -200,7 +198,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
   }
 
   public async Task<HttpResult> RemoveMembers(
-    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid deviceGroupId, IReadOnlyList<Guid> deviceIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.DeviceGroups
       .Include(x => x.Members)
@@ -224,8 +222,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupMembersRemoved,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.DeviceGroup,
       deviceGroupId,
       tenantId,
@@ -237,7 +234,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
   }
 
   public async Task<HttpResult<InternalDtos.DeviceGroupDetailDto>> Update(
-    Guid deviceGroupId, string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid deviceGroupId, string name, string? description, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
@@ -270,8 +267,7 @@ public class DeviceGroupManager(AppDb appDb, IAuthorizationChangeLogFactory chan
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.DeviceGroupUpdated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.DeviceGroup,
       deviceGroupId,
       tenantId,

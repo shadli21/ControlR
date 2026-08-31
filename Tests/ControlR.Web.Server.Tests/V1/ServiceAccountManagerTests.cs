@@ -21,6 +21,38 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
   };
 
   [Fact]
+  public async Task AddCredentialForServer_WhenActorIsServiceAccount_RecordsServiceAccountActor()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var createResult = await manager.CreateForServer(
+      "Credential Attribution SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
+    Assert.True(createResult.IsSuccess, createResult.Reason);
+
+    var actorId = Guid.NewGuid();
+    var credResult = await manager.AddCredentialForServer(
+      createResult.Value.Id,
+      "Attributed Credential",
+      expiresAt: null,
+      TestActors.ServerServiceAccount(actorId),
+      TestContext.Current.CancellationToken);
+    Assert.True(credResult.IsSuccess, credResult.Reason);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var db = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+    var log = await db.AuthorizationChangeLogs
+      .IgnoreQueryFilters()
+      .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountCredentialCreated &&
+                        x.TargetId == credResult.Value.Credential.Id,
+        TestContext.Current.CancellationToken);
+
+    Assert.Equal(AuthorizationChangeLogActorTypes.ServiceAccount, log.ActorPrincipalType);
+    Assert.Equal(actorId, log.ActorPrincipalId);
+  }
+
+  [Fact]
   public async Task AddCredentialForTenant_WhenExpiresAtInPast_ReturnsBadRequest()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
@@ -30,7 +62,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
     var createResult = await manager.CreateForTenant(
-      "Tenant Expiration SA", null, tenant.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      "Tenant Expiration SA", null, tenant.Id, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
     var accountId = createResult.Value.Id;
 
@@ -39,7 +71,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
       tenant.Id,
       "Expired at creation",
       DateTimeOffset.UtcNow.AddMinutes(-5),
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
 
     Assert.False(addCredResult.IsSuccess);
@@ -63,7 +95,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
       accountId,
       "Expiring credential",
       expiresAt,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
 
     Assert.True(addCredResult.IsSuccess);
@@ -90,7 +122,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
       accountId,
       "Expired at creation",
       DateTimeOffset.UtcNow.AddMinutes(-5),
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
 
     Assert.False(addCredResult.IsSuccess);
@@ -197,10 +229,38 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
     var createResult = await manager.CreateForTenant(
-      "No Credential SA", null, tenant.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      "No Credential SA", null, tenant.Id, TestActors.User(), TestContext.Current.CancellationToken);
 
     Assert.True(createResult.IsSuccess);
     Assert.Empty(createResult.Value.Credentials);
+  }
+
+  [Fact]
+  public async Task DeleteForServer_WhenActorIsServiceAccount_RecordsServiceAccountActor()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var createResult = await manager.CreateForServer(
+      "Delete Attribution SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
+    Assert.True(createResult.IsSuccess, createResult.Reason);
+
+    var actorId = Guid.NewGuid();
+    var deleteResult = await manager.DeleteForServer(
+      createResult.Value.Id, TestActors.ServerServiceAccount(actorId), TestContext.Current.CancellationToken);
+    Assert.True(deleteResult.IsSuccess, deleteResult.Reason);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var db = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+    var log = await db.AuthorizationChangeLogs
+      .IgnoreQueryFilters()
+      .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountDeleted &&
+                        x.TargetId == createResult.Value.Id,
+        TestContext.Current.CancellationToken);
+
+    Assert.Equal(AuthorizationChangeLogActorTypes.ServiceAccount, log.ActorPrincipalType);
+    Assert.Equal(actorId, log.ActorPrincipalId);
   }
 
   [Fact]
@@ -213,7 +273,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var manager = managerScope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
     var createResult = await manager.CreateForTenant(
-      "Tenant SA", null, tenant.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      "Tenant SA", null, tenant.Id, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var accountId = createResult.Value.Id;
@@ -236,7 +296,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     }
 
     var deleteResult = await manager.DeleteForTenant(
-      accountId, tenant.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      accountId, tenant.Id, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(deleteResult.IsSuccess);
 
     using (var verifyScope = testApp.CreateScope())
@@ -272,7 +332,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
       accountId,
       "Primary key",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(primaryCredResult.IsSuccess);
     var credentialId = primaryCredResult.Value.Credential.Id;
@@ -287,12 +347,12 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
       accountId,
       "Secondary key",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(addCredResult.IsSuccess);
     var secondApiKey = addCredResult.Value.PlainTextSecretKey;
 
-    await manager.RevokeCredentialForServer(accountId, credentialId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    await manager.RevokeCredentialForServer(accountId, credentialId, TestActors.User(), TestContext.Current.CancellationToken);
 
     var shouldFail = await manager.ValidateCredential(apiKey, TestContext.Current.CancellationToken);
     Assert.False(shouldFail.IsSuccess);
@@ -301,10 +361,43 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     Assert.True(shouldPass.IsSuccess);
 
     // Authorization isn't exercised here — any valid principal ID is acceptable.
-    await manager.DeleteForServer(accountId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+    await manager.DeleteForServer(accountId, TestActors.User(), TestContext.Current.CancellationToken);
 
     var allAccounts = await manager.GetAllForServer(TestContext.Current.CancellationToken);
     Assert.DoesNotContain(allAccounts, a => a.Id == accountId);
+  }
+
+  [Fact]
+  public async Task UpdateForServer_WhenActorIsServiceAccount_RecordsServiceAccountActor()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
+
+    var createResult = await manager.CreateForServer(
+      "Update Attribution SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
+    Assert.True(createResult.IsSuccess, createResult.Reason);
+
+    var actorId = Guid.NewGuid();
+    var updateResult = await manager.UpdateForServer(
+      createResult.Value.Id,
+      "Update Attribution SA (renamed)",
+      null,
+      isEnabled: true,
+      TestActors.ServerServiceAccount(actorId),
+      TestContext.Current.CancellationToken);
+    Assert.True(updateResult.IsSuccess, updateResult.Reason);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var db = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+    var log = await db.AuthorizationChangeLogs
+      .IgnoreQueryFilters()
+      .SingleAsync(x => x.ActionType == AuthorizationChangeLogActions.ServiceAccountUpdated &&
+                        x.TargetId == createResult.Value.Id,
+        TestContext.Current.CancellationToken);
+
+    Assert.Equal(AuthorizationChangeLogActorTypes.ServiceAccount, log.ActorPrincipalType);
+    Assert.Equal(actorId, log.ActorPrincipalId);
   }
 
   [Fact]
@@ -323,7 +416,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     Assert.True(createResult.Value.IsEnabled);
 
     var updateResult = await manager.UpdateForServer(
-      accountId, "Toggle SA", null, isEnabled: false, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      accountId, "Toggle SA", null, isEnabled: false, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(updateResult.IsSuccess);
     Assert.False(updateResult.Value.IsEnabled);
 
@@ -354,14 +447,14 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var manager = managerScope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
     var createResult = await manager.CreateForTenant(
-      "Toggle SA", null, tenant.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      "Toggle SA", null, tenant.Id, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var accountId = createResult.Value.Id;
     Assert.True(createResult.Value.IsEnabled);
 
     var updateResult = await manager.UpdateForTenant(
-      accountId, tenant.Id, "Toggle SA", null, isEnabled: false, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      accountId, tenant.Id, "Toggle SA", null, isEnabled: false, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(updateResult.IsSuccess);
     Assert.False(updateResult.Value.IsEnabled);
 

@@ -50,7 +50,6 @@ public class PermissionRuleFactoryTests
       PermissionScopeKind.Tenant,
       Guid.NewGuid(),
       owningTenantId,
-      "test",
-      Guid.NewGuid().ToString(),
+      new PrincipalDescriptor(PrincipalType.User, Guid.NewGuid(), owningTenantId, "test"),
       isEnabled: isEnabled);
 }

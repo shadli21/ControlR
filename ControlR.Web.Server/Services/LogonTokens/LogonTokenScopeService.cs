@@ -1,4 +1,3 @@
-using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
@@ -65,8 +64,7 @@ public class LogonTokenScopeService(
 
       _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.CredentialScopeSetFailed,
-        AuthorizationChangeLogActorTypes.System,
-        actorPrincipalId: null,
+        actor: null,
         AuthorizationChangeLogTargetTypes.LogonToken,
         tokenId,
         orphaned.TenantId,
@@ -140,8 +138,7 @@ public class LogonTokenScopeService(
         result.Value.TokenId,
         request.DeviceId,
         request.TenantId,
-        preparation.ActorType,
-        preparation.Creator.PrincipalId,
+        preparation.Creator,
         preparation.ExplicitScopes,
         cancellationToken);
 
@@ -155,16 +152,6 @@ public class LogonTokenScopeService(
         HttpResultErrorCode.InternalServerError,
         "Failed to write credential scopes.");
     }
-  }
-
-  private string MapActorType(PrincipalType principalType)
-  {
-    var actorType = principalType.ToAuthorizationChangeLogActorType();
-    if (actorType == AuthorizationChangeLogActorTypes.System)
-    {
-      _logger.LogWarning("Unmapped principal type for authorization change log actor: {PrincipalType}", principalType);
-    }
-    return actorType;
   }
 
   /// <summary>
@@ -207,10 +194,9 @@ public class LogonTokenScopeService(
         "AllowedDesktopSessionIds cannot contain negative session IDs.");
     }
 
-    var actorType = MapActorType(creator.PrincipalType);
     if (requestedScopes is not { Count: > 0 })
     {
-      return HttpResult.Ok(new ScopePreparation(null, creator, actorType));
+      return HttpResult.Ok(new ScopePreparation(null, creator));
     }
 
     var scopes = new List<InternalDtos.CredentialScopeDto>();
@@ -248,14 +234,13 @@ public class LogonTokenScopeService(
       scopes.Add(new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, deviceId));
     }
 
-    return await ValidateScopes(scopes, tenantId, creator, actorType, cancellationToken);
+    return await ValidateScopes(scopes, tenantId, creator, cancellationToken);
   }
 
   private async Task<HttpResult<ScopePreparation>> ValidateScopes(
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     Guid tenantId,
     PrincipalDescriptor creator,
-    string actorType,
     CancellationToken cancellationToken)
   {
     var validation = await _credentialScopeService.ValidateLogonTokenScopes(
@@ -265,11 +250,10 @@ public class LogonTokenScopeService(
       return HttpResult.Fail<ScopePreparation>(validation.ErrorCode, validation.Reason);
     }
 
-    return HttpResult.Ok(new ScopePreparation(scopes, creator, actorType));
+    return HttpResult.Ok(new ScopePreparation(scopes, creator));
   }
 
   private sealed record ScopePreparation(
     IReadOnlyList<InternalDtos.CredentialScopeDto>? ExplicitScopes,
-    PrincipalDescriptor Creator,
-    string ActorType);
+    PrincipalDescriptor Creator);
 }

@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Authz.Permissions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -22,13 +23,13 @@ public class CustomersController(ICustomerManager customerManager) : ControllerB
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _customerManager.AssignDevices(
-      customerId, request.DeviceIds, request.RemoveDeviceIds, tenantId, userId, cancellationToken);
+      customerId, request.DeviceIds, request.RemoveDeviceIds, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -49,13 +50,13 @@ public class CustomersController(ICustomerManager customerManager) : ControllerB
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _customerManager.Create(
-      request.Name, request.Description, request.Notes, tenantId, userId, cancellationToken);
+      request.Name, request.Description, request.Notes, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -76,12 +77,12 @@ public class CustomersController(ICustomerManager customerManager) : ControllerB
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
-    var result = await _customerManager.Delete(customerId, tenantId, userId, cancellationToken);
+    var result = await _customerManager.Delete(customerId, tenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -136,13 +137,13 @@ public class CustomersController(ICustomerManager customerManager) : ControllerB
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _customerManager.Update(
-      customerId, request.Name, request.Description, request.Notes, tenantId, userId, cancellationToken);
+      customerId, request.Name, request.Description, request.Notes, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {

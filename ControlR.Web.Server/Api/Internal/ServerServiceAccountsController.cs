@@ -20,12 +20,12 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromBody] InternalDtos.CreateServerServiceAccountCredentialRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
-    var result = await _serviceAccountManager.AddCredentialForServer(serviceAccountId, request.Name, request.ExpiresAt, userId, cancellationToken);
+    var result = await _serviceAccountManager.AddCredentialForServer(serviceAccountId, request.Name, request.ExpiresAt, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -82,12 +82,12 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromRoute] Guid serviceAccountId,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
-    var result = await _serviceAccountManager.DeleteForServer(serviceAccountId, userId, cancellationToken);
+    var result = await _serviceAccountManager.DeleteForServer(serviceAccountId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -127,12 +127,12 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromRoute] Guid credentialId,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
-    var result = await _serviceAccountManager.RevokeCredentialForServer(serviceAccountId, credentialId, userId, cancellationToken);
+    var result = await _serviceAccountManager.RevokeCredentialForServer(serviceAccountId, credentialId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -149,13 +149,13 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromBody] InternalDtos.UpdateServerServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _serviceAccountManager.UpdateForServer(
-      serviceAccountId, request.Name, request.Description, request.IsEnabled, userId, cancellationToken);
+      serviceAccountId, request.Name, request.Description, request.IsEnabled, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {

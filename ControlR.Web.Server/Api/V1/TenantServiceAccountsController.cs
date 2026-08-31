@@ -2,6 +2,7 @@ using Asp.Versioning;
 using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1.ServiceAccounts;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Extensions.Dtos.V1;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,14 +34,13 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
-    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return Unauthorized();
     }
 
     var result = await _serviceAccountManager.AddCredentialForTenant(
-      serviceAccountId, resolvedTenantId, request.Name, request.ExpiresAt, principalId, cancellationToken);
+      serviceAccountId, resolvedTenantId, request.Name, request.ExpiresAt, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -65,13 +65,13 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    if (!User.TryGetPrincipalId(out var principalId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return Unauthorized();
     }
 
     var result = await _serviceAccountManager.CreateForTenant(
-      request.Name, request.Description, resolvedTenantId, principalId, cancellationToken);
+      request.Name, request.Description, resolvedTenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -99,12 +99,12 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    if (!User.TryGetPrincipalId(out var principalId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return Unauthorized();
     }
 
-    var result = await _serviceAccountManager.DeleteForTenant(serviceAccountId, resolvedTenantId, principalId, cancellationToken);
+    var result = await _serviceAccountManager.DeleteForTenant(serviceAccountId, resolvedTenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -173,13 +173,13 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    if (!User.TryGetPrincipalId(out var principalId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return Unauthorized();
     }
 
     var result = await _serviceAccountManager.RevokeCredentialForTenant(
-      serviceAccountId, credentialId, resolvedTenantId, principalId, cancellationToken);
+      serviceAccountId, credentialId, resolvedTenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -205,7 +205,7 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    if (!User.TryGetPrincipalId(out var principalId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return Unauthorized();
     }
@@ -216,7 +216,7 @@ public class TenantServiceAccountsController(
       request.Name,
       request.Description,
       request.IsEnabled,
-      principalId,
+      actor,
       cancellationToken);
     if (!result.IsSuccess)
     {

@@ -104,8 +104,7 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Tenant,
         tenantA.Id,
         tenantA.Id,
-        "test",
-        user.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, user.Id, tenantA.Id, "test")));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
@@ -214,8 +213,7 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
         PermissionScopeKind.DeviceGroup,
         deviceGroupId,
         tenantA.Id,
-        "test",
-        user.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, user.Id, tenantA.Id, "test")));
 
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.User,
@@ -224,8 +222,7 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Tenant,
         tenantA.Id,
         tenantA.Id,
-        "test",
-        user.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, user.Id, tenantA.Id, "test")));
 
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }

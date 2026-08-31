@@ -20,7 +20,7 @@ public class TenantSettingsControllerTests(ITestOutputHelper testOutput)
     var reader = await testServer.Services.CreateTestUser(
       tenant.Id, $"reader-{Guid.NewGuid():N}@t.local", PermissionPresets.AgentInstaller);
 
-    using var httpClient = await CreatePatClient(testServer, reader.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, reader.Id, reader.TenantId, "test"));
 
     var response = await httpClient.GetAsync(
       HttpConstants.Internal.TenantSettingsEndpoint, TestContext.Current.CancellationToken);
@@ -36,7 +36,7 @@ public class TenantSettingsControllerTests(ITestOutputHelper testOutput)
     await testServer.Services.CreateTestUser(tenant.Id, email: $"seed-{Guid.NewGuid():N}@t.local");
     var plainUser = await testServer.Services.CreateTestUser(tenant.Id, $"plain-{Guid.NewGuid():N}@t.local");
 
-    using var httpClient = await CreatePatClient(testServer, plainUser.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, plainUser.Id, plainUser.TenantId, "test"));
 
     var response = await httpClient.GetAsync(
       HttpConstants.Internal.TenantSettingsEndpoint, TestContext.Current.CancellationToken);
@@ -44,11 +44,11 @@ public class TenantSettingsControllerTests(ITestOutputHelper testOutput)
     Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
   }
 
-  private static async Task<HttpClient> CreatePatClient(TestWebServer testServer, Guid userId)
+  private static async Task<HttpClient> CreatePatClient(TestWebServer testServer, PrincipalDescriptor actor)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant Settings Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant Settings Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), actor.PrincipalId, actor);
     Assert.True(patResult.IsSuccess);
 
     var client = testServer.Factory.CreateClient();

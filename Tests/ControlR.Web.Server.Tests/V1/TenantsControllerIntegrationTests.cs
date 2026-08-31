@@ -29,7 +29,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -62,7 +62,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -109,7 +109,8 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(
@@ -139,7 +140,8 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Server Admin PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(
@@ -176,7 +178,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -215,7 +217,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -247,7 +249,7 @@ public class TenantsControllerIntegrationTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 

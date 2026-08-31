@@ -33,13 +33,13 @@ public class UserGroupsController(IUserGroupManager userGroupManager) : Controll
       return Forbid();
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _userGroupManager.AddMembers(
-      userGroupId, request.UserIds, tenantId, userId, cancellationToken);
+      userGroupId, request.UserIds, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -60,13 +60,13 @@ public class UserGroupsController(IUserGroupManager userGroupManager) : Controll
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _userGroupManager.Create(
-      request.Name, request.Description, tenantId, userId, cancellationToken);
+      request.Name, request.Description, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -87,12 +87,12 @@ public class UserGroupsController(IUserGroupManager userGroupManager) : Controll
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
-    var result = await _userGroupManager.Delete(userGroupId, tenantId, userId, cancellationToken);
+    var result = await _userGroupManager.Delete(userGroupId, tenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -156,13 +156,13 @@ public class UserGroupsController(IUserGroupManager userGroupManager) : Controll
       return Forbid();
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _userGroupManager.RemoveMembers(
-      userGroupId, request.UserIds, tenantId, userId, cancellationToken);
+      userGroupId, request.UserIds, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -184,13 +184,13 @@ public class UserGroupsController(IUserGroupManager userGroupManager) : Controll
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _userGroupManager.Update(
-      userGroupId, request.Name, request.Description, tenantId, userId, cancellationToken);
+      userGroupId, request.Name, request.Description, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {

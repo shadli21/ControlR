@@ -17,14 +17,14 @@ public interface IServiceAccountManager
   /// this once. A null <paramref name="expiresAt"/> creates a credential that never expires.
   /// </summary>
   Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForServer(
-    Guid serviceAccountId, string name, DateTimeOffset? expiresAt, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, string name, DateTimeOffset? expiresAt, PrincipalDescriptor actor, CancellationToken cancellationToken);
 
   /// <summary>
   /// Adds a credential to a tenant-scoped service account. A null <paramref name="expiresAt"/>
   /// creates a credential that never expires.
   /// </summary>
   Task<HttpResult<CreateServiceAccountCredentialResult>> AddCredentialForTenant(
-    Guid serviceAccountId, Guid tenantId, string name, DateTimeOffset? expiresAt, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, Guid tenantId, string name, DateTimeOffset? expiresAt, PrincipalDescriptor actor, CancellationToken cancellationToken);
 
   /// <summary>
   /// Creates the bootstrapped server service account and its initial credential when the
@@ -47,18 +47,18 @@ public interface IServiceAccountManager
   /// Creates a tenant-scoped service account with no credential; issue one via <see cref="AddCredentialForTenant"/>.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> CreateForTenant(
-    string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
+    string name, string? description, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken);
 
   /// <summary>
   /// Deletes a server service account; credentials cascade and orphaned PermissionAssignment
   /// rows for this account are removed.
   /// </summary>
-  Task<HttpResult> DeleteForServer(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken);
+  Task<HttpResult> DeleteForServer(Guid serviceAccountId, PrincipalDescriptor actor, CancellationToken cancellationToken);
 
   /// <summary>
   /// Deletes a tenant-scoped service account and its orphaned PermissionAssignment rows.
   /// </summary>
-  Task<HttpResult> DeleteForTenant(Guid serviceAccountId, Guid tenantId, Guid requestingPrincipalId, CancellationToken cancellationToken);
+  Task<HttpResult> DeleteForTenant(Guid serviceAccountId, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken);
 
   /// <summary>
   /// Returns all server-scoped service accounts with their credential metadata.
@@ -84,25 +84,25 @@ public interface IServiceAccountManager
   /// Revokes a credential on a server-scoped service account.
   /// </summary>
   Task<HttpResult> RevokeCredentialForServer(
-    Guid serviceAccountId, Guid credentialId, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, Guid credentialId, PrincipalDescriptor actor, CancellationToken cancellationToken);
 
   /// <summary>
   /// Revokes a credential on a tenant-scoped service account.
   /// </summary>
   Task<HttpResult> RevokeCredentialForTenant(
-    Guid serviceAccountId, Guid credentialId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, Guid credentialId, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken);
 
   /// <summary>
   /// Updates a server service account's name, description, and enabled state.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> UpdateForServer(
-    Guid serviceAccountId, string name, string? description, bool isEnabled, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, string name, string? description, bool isEnabled, PrincipalDescriptor actor, CancellationToken cancellationToken);
 
   /// <summary>
   /// Updates a tenant-scoped service account's name, description, and enabled state.
   /// </summary>
   Task<HttpResult<ServiceAccountResult>> UpdateForTenant(
-    Guid serviceAccountId, Guid tenantId, string name, string? description, bool isEnabled, Guid actorPrincipalId, CancellationToken cancellationToken);
+    Guid serviceAccountId, Guid tenantId, string name, string? description, bool isEnabled, PrincipalDescriptor actor, CancellationToken cancellationToken);
 
   /// <summary>
   /// Validates a <c>{hex_id}:{plaintext_secret}</c> API key against a service account credential,
@@ -137,7 +137,7 @@ public class ServiceAccountManager(
     Guid serviceAccountId,
     string name,
     DateTimeOffset? expiresAt,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
@@ -179,8 +179,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
       credential.Id,
       null,
@@ -197,7 +196,7 @@ public class ServiceAccountManager(
     Guid tenantId,
     string name,
     DateTimeOffset? expiresAt,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
@@ -239,8 +238,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialCreated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
       credential.Id,
       tenantId,
@@ -388,8 +386,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCreated,
-      actor?.PrincipalType.ToAuthorizationChangeLogActorType() ?? AuthorizationChangeLogActorTypes.System,
-      actor?.PrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       account.Id,
       null,
@@ -404,7 +401,7 @@ public class ServiceAccountManager(
     string name,
     string? description,
     Guid tenantId,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
@@ -441,8 +438,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCreated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       account.Id,
       tenantId,
@@ -453,9 +449,9 @@ public class ServiceAccountManager(
     return HttpResult.Ok(MapToResult(account));
   }
 
-  public async Task<HttpResult> DeleteForServer(Guid serviceAccountId, Guid requestingPrincipalId, CancellationToken cancellationToken)
+  public async Task<HttpResult> DeleteForServer(Guid serviceAccountId, PrincipalDescriptor actor, CancellationToken cancellationToken)
   {
-    if (serviceAccountId.Equals(requestingPrincipalId))
+    if (serviceAccountId.Equals(actor.PrincipalId))
     {
       return HttpResult.Fail(HttpResultErrorCode.Forbidden, "A service account cannot delete itself.");
     }
@@ -480,8 +476,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountDeleted,
-      AuthorizationChangeLogActorTypes.User,
-      requestingPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       serviceAccountId,
       null,
@@ -496,10 +491,10 @@ public class ServiceAccountManager(
   public async Task<HttpResult> DeleteForTenant(
     Guid serviceAccountId,
     Guid tenantId,
-    Guid requestingPrincipalId,
+    PrincipalDescriptor actor,
     CancellationToken cancellationToken)
   {
-    if (serviceAccountId.Equals(requestingPrincipalId))
+    if (serviceAccountId.Equals(actor.PrincipalId))
     {
       return HttpResult.Fail(HttpResultErrorCode.Forbidden, "A service account cannot delete itself.");
     }
@@ -524,8 +519,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountDeleted,
-      AuthorizationChangeLogActorTypes.User,
-      requestingPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       serviceAccountId,
       tenantId,
@@ -597,7 +591,7 @@ public class ServiceAccountManager(
   public async Task<HttpResult> RevokeCredentialForServer(
     Guid serviceAccountId,
     Guid credentialId,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     CancellationToken cancellationToken)
   {
     var credential = await appDb.ServiceAccountCredentials
@@ -621,8 +615,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
       credentialId,
       null,
@@ -638,7 +631,7 @@ public class ServiceAccountManager(
     Guid serviceAccountId,
     Guid credentialId,
     Guid tenantId,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     CancellationToken cancellationToken)
   {
     var credential = await appDb.ServiceAccountCredentials
@@ -664,8 +657,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountCredentialRevoked,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccountCredential,
       credentialId,
       tenantId,
@@ -682,7 +674,7 @@ public class ServiceAccountManager(
     string name,
     string? description,
     bool isEnabled,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
@@ -709,8 +701,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       serviceAccountId,
       null,
@@ -733,7 +724,7 @@ public class ServiceAccountManager(
     string name,
     string? description,
     bool isEnabled,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     CancellationToken cancellationToken)
   {
     if (string.IsNullOrWhiteSpace(name))
@@ -760,8 +751,7 @@ public class ServiceAccountManager(
 
     appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.ServiceAccountUpdated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.ServiceAccount,
       serviceAccountId,
       tenantId,

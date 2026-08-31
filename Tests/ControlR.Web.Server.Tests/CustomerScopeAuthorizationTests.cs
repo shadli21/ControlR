@@ -32,8 +32,7 @@ public class CustomerScopeAuthorizationTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Tenant,
         tenant.Id,
         tenant.Id,
-        "test",
-        user.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 

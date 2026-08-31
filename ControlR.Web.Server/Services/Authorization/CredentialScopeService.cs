@@ -35,8 +35,7 @@ public interface ICredentialScopeService
     Guid tokenId,
     Guid deviceId,
     Guid tenantId,
-    string actorType,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default);
 }
@@ -115,8 +114,7 @@ public class CredentialScopeService(
     Guid tokenId,
     Guid deviceId,
     Guid tenantId,
-    string actorType,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default)
   {
@@ -137,14 +135,12 @@ public class CredentialScopeService(
         scope.ScopeKind,
         scopeDeviceId,
         tenantId,
-        actorType,
-        actorPrincipalId.ToString()));
+        actor));
     }
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CredentialScopeSet,
-      actorType,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.LogonToken,
       tokenId,
       tenantId,

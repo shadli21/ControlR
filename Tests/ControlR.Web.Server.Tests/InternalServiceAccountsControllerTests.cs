@@ -135,7 +135,7 @@ public class InternalServiceAccountsControllerTests(ITestOutputHelper testOutput
 
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
     var credResult = await manager.AddCredentialForTenant(
-      account.Id, tenant.Id, "Cred", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      account.Id, tenant.Id, "Cred", null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     var result = await controller.RevokeCredential(
@@ -170,7 +170,7 @@ public class InternalServiceAccountsControllerTests(ITestOutputHelper testOutput
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
     var result = await manager.CreateForTenant(
-      name, null, tenantId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      name, null, tenantId, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(result.IsSuccess, $"CreateForTenant failed: {result.Reason}");
     return result.Value;
   }

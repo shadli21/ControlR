@@ -161,8 +161,7 @@ public class DeviceScopeParityPropertyTests(ITestOutputHelper testOutput)
           kind,
           scopeId,
           tenantId,
-          "parity-test",
-          userId.ToString(),
+          new PrincipalDescriptor(PrincipalType.User, userId, tenantId, "parity-test"),
           effect));
       }
     }

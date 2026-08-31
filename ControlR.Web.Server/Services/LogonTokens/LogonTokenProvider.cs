@@ -110,8 +110,7 @@ public class LogonTokenProvider(
           PermissionScopeKind.Device,
           deviceId,
           tenantId,
-          AuthorizationChangeLogActorTypes.System,
-          userId.ToString()));
+          createdBy: null));
       }
     }
 

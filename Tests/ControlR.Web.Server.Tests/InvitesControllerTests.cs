@@ -37,10 +37,9 @@ public class InvitesControllerTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      readOnlyUser.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, readOnlyUser.Id, tenant.Id, "test")));
 
-    using var readerClient = await CreatePatClient(testServer, readOnlyUser.Id);
+    using var readerClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, readOnlyUser.Id, readOnlyUser.TenantId, "test"));
     var readerResponse = await readerClient.GetAsync(
       HttpConstants.Internal.InvitesEndpoint, TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.OK, readerResponse.StatusCode);
@@ -54,7 +53,7 @@ public class InvitesControllerTests(ITestOutputHelper testOutput)
     var writeUser = await services.CreateTestUser(
       tenant.Id, $"writer-{Guid.NewGuid():N}@t.local", PermissionPresets.TenantAdministrator);
 
-    using var writerClient = await CreatePatClient(testServer, writeUser.Id);
+    using var writerClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, writeUser.Id, writeUser.TenantId, "test"));
     var writerResponse = await writerClient.GetAsync(
       HttpConstants.Internal.InvitesEndpoint, TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.OK, writerResponse.StatusCode);
@@ -65,11 +64,11 @@ public class InvitesControllerTests(ITestOutputHelper testOutput)
     Assert.Contains(writerInvites, x => x.InviteUrl.ToString().Contains(activationCode));
   }
 
-  private static async Task<HttpClient> CreatePatClient(TestWebServer testServer, Guid userId)
+  private static async Task<HttpClient> CreatePatClient(TestWebServer testServer, PrincipalDescriptor actor)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Invites Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Invites Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), actor.PrincipalId, actor);
     Assert.True(patResult.IsSuccess);
 
     var client = testServer.Factory.CreateClient();

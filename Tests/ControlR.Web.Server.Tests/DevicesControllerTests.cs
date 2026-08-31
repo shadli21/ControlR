@@ -1701,8 +1701,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       scopedDeviceId,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
     var claims = new List<Claim>

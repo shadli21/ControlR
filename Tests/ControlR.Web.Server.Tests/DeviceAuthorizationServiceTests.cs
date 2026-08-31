@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services.Authorization.Capabilities;
@@ -230,8 +231,7 @@ public class DeviceAuthorizationServiceTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       Guid.NewGuid(),
       tenantId,
-      "test",
-      serverAccount.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.ServerServiceAccount, serverAccount.Id, null, "test")));
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
     var canScopedServerInstall = await authorizationService.CanInstallAgentOnDevice(serverAccount, device);

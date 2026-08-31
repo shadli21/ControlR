@@ -37,7 +37,8 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      userA.Id);
+      userA.Id,
+      new PrincipalDescriptor(PrincipalType.User, userA.Id, userA.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
@@ -77,7 +78,8 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      userA.Id);
+      userA.Id,
+      new PrincipalDescriptor(PrincipalType.User, userA.Id, userA.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
@@ -114,7 +116,8 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      userA.Id);
+      userA.Id,
+      new PrincipalDescriptor(PrincipalType.User, userA.Id, userA.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
@@ -156,7 +159,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -204,7 +207,7 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -239,7 +242,8 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      userA.Id);
+      userA.Id,
+      new PrincipalDescriptor(PrincipalType.User, userA.Id, userA.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
@@ -275,7 +279,8 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      userA.Id);
+      userA.Id,
+      new PrincipalDescriptor(PrincipalType.User, userA.Id, userA.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
@@ -309,7 +314,8 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      userA.Id);
+      userA.Id,
+      new PrincipalDescriptor(PrincipalType.User, userA.Id, userA.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
@@ -343,7 +349,8 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      userA.Id);
+      userA.Id,
+      new PrincipalDescriptor(PrincipalType.User, userA.Id, userA.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
@@ -378,7 +385,8 @@ public class V1TenantIsolationIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant A PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      userA.Id);
+      userA.Id,
+      new PrincipalDescriptor(PrincipalType.User, userA.Id, userA.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,

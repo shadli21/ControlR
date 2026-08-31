@@ -52,10 +52,9 @@ public class TagsControllerTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       readableDevice.Id,
       tenant.Id,
-      "tags-test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "tags-test")));
 
-    using var httpClient = await CreatePatClient(testServer, user.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     var response = await httpClient.GetAsync(
       $"{HttpConstants.Internal.TagsEndpoint}?includeLinkedIds=true",
@@ -72,11 +71,11 @@ public class TagsControllerTests(ITestOutputHelper testOutput)
     Assert.DoesNotContain(hiddenDevice.Id, tag.DeviceIds);
   }
 
-  private static async Task<HttpClient> CreatePatClient(TestWebServer testServer, Guid userId)
+  private static async Task<HttpClient> CreatePatClient(TestWebServer testServer, PrincipalDescriptor actor)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tags Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tags Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), actor.PrincipalId, actor);
     Assert.True(patResult.IsSuccess);
 
     var client = testServer.Factory.CreateClient();

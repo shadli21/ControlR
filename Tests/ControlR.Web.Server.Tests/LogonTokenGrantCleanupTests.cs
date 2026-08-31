@@ -35,11 +35,11 @@ public class LogonTokenGrantCleanupTests(ITestOutputHelper testOutput)
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.LogonToken, tokenId,
         PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id,
-        tenant.Id, "system", null));
+        tenant.Id, createdBy: null));
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.LogonToken, tokenId,
         PermissionNames.DeviceTerminalUse, PermissionScopeKind.Device, device.Id,
-        tenant.Id, "system", null));
+        tenant.Id, createdBy: null));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
       var rows = await db.PermissionAssignments
@@ -94,7 +94,7 @@ public class LogonTokenGrantCleanupTests(ITestOutputHelper testOutput)
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.LogonToken, oldTokenId,
         PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id,
-        tenant.Id, "system", null));
+        tenant.Id, createdBy: null));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
       var oldRow = await db.PermissionAssignments
@@ -105,7 +105,7 @@ public class LogonTokenGrantCleanupTests(ITestOutputHelper testOutput)
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.LogonToken, freshTokenId,
         PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id,
-        tenant.Id, "system", null));
+        tenant.Id, createdBy: null));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
       var freshRow = await db.PermissionAssignments
@@ -152,7 +152,7 @@ public class LogonTokenGrantCleanupTests(ITestOutputHelper testOutput)
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.LogonToken, tokenId,
         PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id,
-        tenant.Id, "system", null));
+        tenant.Id, createdBy: null));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
       var row = await db.PermissionAssignments

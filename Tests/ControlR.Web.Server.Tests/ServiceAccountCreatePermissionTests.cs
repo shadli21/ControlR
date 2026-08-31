@@ -30,7 +30,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
       PermissionNames.ServerServiceAccountsRead,
       PermissionNames.ServerServiceAccountsWrite);
 
-    using var httpClient = await CreatePatClient(testServer, user.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     // Omitting accessMode must never grant Unrestricted. The non-nullable enum binds to
     // its default (Restricted), so the created account must be Restricted, not a silent
@@ -64,7 +64,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
       PermissionNames.ServerServiceAccountsWrite,
       PermissionNames.ServerPermissionsWrite);
 
-    using var httpClient = await CreatePatClient(testServer, user.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     var createResponse = await httpClient.PostAsJsonAsync(
       HttpConstants.Internal.ServerServiceAccountsEndpoint,
@@ -142,7 +142,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
       PermissionNames.ServerServiceAccountsRead,
       PermissionNames.ServerServiceAccountsWrite);
 
-    using var httpClient = await CreatePatClient(testServer, user.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     // Creating a Restricted server account only requires the write permission, which
     // this user holds, so it succeeds.
@@ -181,7 +181,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
       PermissionNames.ServerServiceAccountsRead,
       PermissionNames.ServerServiceAccountsWrite);
 
-    using var httpClient = await CreatePatClient(testServer, user.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     // A write-only user (no ServerPermissionsWrite) cannot create an Unrestricted
     // server account, which grants full server bypass.
@@ -252,7 +252,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
       PermissionNames.ServiceAccountRead,
       PermissionNames.ServiceAccountWrite);
 
-    using var httpClient = await CreatePatClient(testServer, user.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     // Create succeeds with only the write permission.
     var createResponse = await httpClient.PostAsJsonAsync(
@@ -274,11 +274,11 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
     Assert.Equal(HttpStatusCode.Forbidden, addCredResponse.StatusCode);
   }
 
-  private static async Task<HttpClient> CreatePatClient(TestWebServer testServer, Guid userId)
+  private static async Task<HttpClient> CreatePatClient(TestWebServer testServer, PrincipalDescriptor actor)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Service Account Create Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Service Account Create Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), actor.PrincipalId, actor);
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     var client = testServer.Factory.CreateClient();
@@ -314,8 +314,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Server,
         scopeId: null,
         owningTenantId: null,
-        AuthorizationChangeLogActorTypes.System,
-        userId.ToString()));
+        createdBy: null));
     }
 
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -339,8 +338,7 @@ public class ServiceAccountCreatePermissionTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Tenant,
         tenantId,
         tenantId,
-        AuthorizationChangeLogActorTypes.System,
-        userId.ToString()));
+        createdBy: null));
     }
 
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);

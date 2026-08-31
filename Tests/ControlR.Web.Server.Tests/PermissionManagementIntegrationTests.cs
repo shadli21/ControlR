@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services;
@@ -456,10 +457,10 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
 
     var saManager = services.GetRequiredService<IServiceAccountManager>();
     var saResult = await saManager.CreateForTenant(
-      $"actor-sa-{Guid.NewGuid():N}", null, tenant.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      $"actor-sa-{Guid.NewGuid():N}", null, tenant.Id, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess, saResult.Reason);
     var credResult = await saManager.AddCredentialForTenant(
-      saResult.Value.Id, tenant.Id, "Actor Cred", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      saResult.Value.Id, tenant.Id, "Actor Cred", null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess, credResult.Reason);
 
     // Grant the service account tenant.permissions.write so it can create assignments.
@@ -473,8 +474,7 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Tenant,
         tenant.Id,
         tenant.Id,
-        AuthorizationChangeLogActorTypes.System,
-        saResult.Value.Id.ToString()));
+        createdBy: null));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
@@ -930,8 +930,7 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
       scopeKind,
       scopeId,
       tenantId,
-      "test",
-      userId.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, userId, tenantId, "test")));
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
   }
 
@@ -949,7 +948,8 @@ public class PermissionManagementIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Integration Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(

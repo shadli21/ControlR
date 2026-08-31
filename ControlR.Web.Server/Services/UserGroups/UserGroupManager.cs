@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
@@ -11,13 +12,13 @@ namespace ControlR.Web.Server.Services.UserGroups;
 public interface IUserGroupManager
 {
   Task<HttpResult> AddMembers(
-    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
 
   Task<HttpResult<InternalDtos.UserGroupDetailDto>> Create(
-    string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    string name, string? description, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
 
   Task<HttpResult> Delete(
-    Guid userGroupId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid userGroupId, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
 
   Task<HttpResult<InternalDtos.UserGroupDetailDto>> Get(
     Guid userGroupId, Guid tenantId, CancellationToken cancellationToken = default);
@@ -25,10 +26,10 @@ public interface IUserGroupManager
   Task<IReadOnlyList<InternalDtos.UserGroupDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default);
 
   Task<HttpResult> RemoveMembers(
-    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
 
   Task<HttpResult<InternalDtos.UserGroupDetailDto>> Update(
-    Guid userGroupId, string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid userGroupId, string name, string? description, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
 }
 
 public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory changeLogFactory) : IUserGroupManager
@@ -37,7 +38,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
   private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
 
   public async Task<HttpResult> AddMembers(
-    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.UserGroups
       .Include(x => x.Members)
@@ -80,8 +81,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupMembersAdded,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.UserGroup,
       userGroupId,
       tenantId,
@@ -93,7 +93,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
   }
 
   public async Task<HttpResult<InternalDtos.UserGroupDetailDto>> Create(
-    string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    string name, string? description, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
@@ -122,8 +122,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupCreated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.UserGroup,
       group.Id,
       tenantId,
@@ -135,7 +134,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
   }
 
   public async Task<HttpResult> Delete(
-    Guid userGroupId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid userGroupId, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.UserGroups
       .Include(x => x.Members)
@@ -158,8 +157,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupDeleted,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.UserGroup,
       userGroupId,
       tenantId,
@@ -201,7 +199,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
   }
 
   public async Task<HttpResult> RemoveMembers(
-    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid userGroupId, IReadOnlyList<Guid> userIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     var group = await _appDb.UserGroups
       .Include(x => x.Members)
@@ -225,8 +223,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupMembersRemoved,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.UserGroup,
       userGroupId,
       tenantId,
@@ -238,7 +235,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
   }
 
   public async Task<HttpResult<InternalDtos.UserGroupDetailDto>> Update(
-    Guid userGroupId, string name, string? description, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid userGroupId, string name, string? description, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
@@ -270,8 +267,7 @@ public class UserGroupManager(AppDb appDb, IAuthorizationChangeLogFactory change
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.UserGroupUpdated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.UserGroup,
       userGroupId,
       tenantId,

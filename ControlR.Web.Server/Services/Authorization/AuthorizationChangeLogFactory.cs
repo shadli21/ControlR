@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
 
 namespace ControlR.Web.Server.Services.Authorization;
 
@@ -13,8 +15,7 @@ public interface IAuthorizationChangeLogFactory
 {
   AuthorizationChangeLog Create(
     string actionType,
-    string actorPrincipalType,
-    Guid? actorPrincipalId,
+    PrincipalDescriptor? actor,
     string targetType,
     Guid? targetId,
     Guid? owningTenantId,
@@ -35,8 +36,7 @@ public class AuthorizationChangeLogFactory(IHttpContextAccessor httpContextAcces
 
   public AuthorizationChangeLog Create(
     string actionType,
-    string actorPrincipalType,
-    Guid? actorPrincipalId,
+    PrincipalDescriptor? actor,
     string targetType,
     Guid? targetId,
     Guid? owningTenantId,
@@ -46,8 +46,8 @@ public class AuthorizationChangeLogFactory(IHttpContextAccessor httpContextAcces
     return new AuthorizationChangeLog
     {
       ActionType = actionType,
-      ActorPrincipalType = actorPrincipalType,
-      ActorPrincipalId = NormalizeEmptyGuid(actorPrincipalId),
+      ActorPrincipalType = actor?.PrincipalType.ToAuthorizationChangeLogActorType() ?? AuthorizationChangeLogActorTypes.System,
+      ActorPrincipalId = NormalizeEmptyGuid(actor?.PrincipalId),
       TargetType = targetType,
       TargetId = NormalizeEmptyGuid(targetId),
       OwningTenantId = owningTenantId,

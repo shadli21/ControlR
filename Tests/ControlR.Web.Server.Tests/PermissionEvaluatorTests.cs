@@ -463,8 +463,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       deviceA.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
 
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id);
@@ -507,8 +506,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       user.Id,
@@ -516,8 +514,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       device.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString(),
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test"),
       PermissionEffect.Deny));
 
     var evaluator = GetEvaluator(testApp);
@@ -597,8 +594,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
 
     var evaluator = GetEvaluator(testApp);
     var result = await evaluator.Evaluate(

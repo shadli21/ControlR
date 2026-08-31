@@ -1,5 +1,4 @@
 using ControlR.Libraries.Shared.Helpers;
-using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.Authorization;
@@ -11,7 +10,7 @@ namespace ControlR.Web.Server.Services;
 /// </summary>
 public interface IPersonalAccessTokenManager
 {
-  Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId);
+  Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId, PrincipalDescriptor actor);
 
   /// <summary>
   /// Creates a token with a pre-specified secret and ID for bootstrap scenarios where the
@@ -46,7 +45,7 @@ public class PersonalAccessTokenManager(
   private readonly IPasswordHasher<string> _passwordHasher = passwordHasher;
   private readonly TimeProvider _timeProvider = timeProvider;
 
-  public async Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId)
+  public async Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId, PrincipalDescriptor actor)
   {
     try
     {
@@ -130,14 +129,12 @@ public class PersonalAccessTokenManager(
             scope.ScopeKind,
             scope.ScopeId,
             scopeTenantId,
-            AuthorizationChangeLogActorTypes.User,
-            userId.ToString()));
+            actor));
         }
 
         _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
           AuthorizationChangeLogActions.CredentialScopeSet,
-          AuthorizationChangeLogActorTypes.User,
-          userId,
+          actor,
           AuthorizationChangeLogTargetTypes.PersonalAccessToken,
           personalAccessToken.Id,
           scopeTenantId,

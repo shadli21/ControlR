@@ -39,8 +39,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     // Seed a DENY for DeviceRead at Tenant scope on the target. ApplyPresets selects existing
     // keys by (PermissionName, ScopeKind) regardless of effect, so this deny must suppress the
@@ -52,8 +51,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString(),
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test"),
       PermissionEffect.Deny));
 
     using var scope = testApp.CreateScope();
@@ -95,8 +93,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Server,
         null,
         tenant.Id,
-        "test",
-        actor.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
       await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.User,
         actor.Id,
@@ -104,8 +101,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Tenant,
         tenant.Id,
         tenant.Id,
-        "test",
-        actor.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
       using var scope = testApp.CreateScope();
       var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
@@ -139,8 +135,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Server,
       null,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     using var setupScope = testApp.CreateScope();
     var accountManager = setupScope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
@@ -186,8 +181,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     // Create a server-scoped service account to target.
     using var setupScope = testApp.CreateScope();
@@ -234,8 +228,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
@@ -283,8 +276,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       actor.Id,
@@ -292,8 +284,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
@@ -330,8 +321,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       actor.Id,
@@ -339,8 +329,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
@@ -412,8 +401,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Server,
       null,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
@@ -450,8 +438,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IPermissionAssignmentManager>();
@@ -484,7 +471,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Grant Authority Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Grant Authority Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
     httpClient.DefaultRequestHeaders.Add(
       PersonalAccessTokenAuthenticationSchemeOptions.DefaultHeaderName,
@@ -521,8 +508,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Server,
       null,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       actor.Id,
@@ -530,8 +516,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       actor.Id,
@@ -539,8 +524,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Server,
       null,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     var tenantRow = PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
@@ -549,8 +533,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString());
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test"));
 
     var serverRow = PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
@@ -559,8 +542,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Server,
       null,
       tenant.Id,
-      "test",
-      actor.Id.ToString());
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test"));
 
     await SeedAssignment(testApp, tenantRow);
     await SeedAssignment(testApp, serverRow);
@@ -615,8 +597,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Server,
       null,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       actor.Id,
@@ -624,8 +605,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Server,
       null,
       tenant.Id,
-      "test",
-      actor.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
     var tenantRow = PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
@@ -634,8 +614,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString());
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test"));
     var serverRow = PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       target.Id,
@@ -643,8 +622,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Server,
       null,
       tenant.Id,
-      "test",
-      actor.Id.ToString());
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test"));
 
     await SeedAssignment(testApp, tenantRow);
     await SeedAssignment(testApp, serverRow);
@@ -699,8 +677,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Server,
         null,
         tenant.Id,
-        "test",
-        actor.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test")));
 
       var assignment = PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.User,
@@ -709,8 +686,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Server,
         null,
         tenant.Id,
-        "test",
-        actor.Id.ToString());
+        new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test"));
       await SeedAssignment(testApp, assignment);
 
       using var scope = testApp.CreateScope();
@@ -749,8 +725,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      actor.Id.ToString());
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenant.Id, "test"));
 
     await SeedAssignment(testApp, assignment);
 

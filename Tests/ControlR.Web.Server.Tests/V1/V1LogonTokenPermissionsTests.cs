@@ -34,7 +34,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Limited PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Limited PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -70,7 +70,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
-      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      saResult.Value.Id, "Test Credential", expiresAt: null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -122,7 +122,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
-      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      saResult.Value.Id, "Test Credential", expiresAt: null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -194,7 +194,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Denied PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Denied PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -230,7 +230,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
-      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      saResult.Value.Id, "Test Credential", expiresAt: null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -284,7 +284,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
-      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      saResult.Value.Id, "Test Credential", expiresAt: null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -346,7 +346,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
-      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      saResult.Value.Id, "Test Credential", expiresAt: null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -386,7 +386,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
-      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      saResult.Value.Id, "Test Credential", expiresAt: null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -487,7 +487,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
-      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      saResult.Value.Id, "Test Credential", expiresAt: null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -525,7 +525,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
-      saResult.Value.Id, "Test Credential", expiresAt: null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+      saResult.Value.Id, "Test Credential", expiresAt: null, TestActors.User(), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -607,7 +607,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("LimitedUser PAT", PersonalAccessTokenPermissionMode.InheritOwner), caller.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("LimitedUser PAT", PersonalAccessTokenPermissionMode.InheritOwner), caller.Id, new PrincipalDescriptor(PrincipalType.User, caller.Id, caller.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
@@ -642,7 +642,7 @@ public class V1LogonTokenPermissionsTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("UserEndpoint PAT", PersonalAccessTokenPermissionMode.InheritOwner), caller.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("UserEndpoint PAT", PersonalAccessTokenPermissionMode.InheritOwner), caller.Id, new PrincipalDescriptor(PrincipalType.User, caller.Id, caller.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
 
     httpClient.DefaultRequestHeaders.Add(
