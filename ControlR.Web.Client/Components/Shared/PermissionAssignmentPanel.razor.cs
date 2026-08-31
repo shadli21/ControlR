@@ -175,7 +175,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
     {
       { x => x.PrincipalKind, kind },
       { x => x.PrincipalId, principalId },
-      { x => x.AccountKind, AccountKind }
+      { x => x.AccountKind, AccountKind },
+      { x => x.CanManageServerScope, _hasWritePermission }
     };
 
     var dialogOptions = PermissionAssignmentDialog.DefaultOptions;
@@ -278,7 +279,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
       { x => x.ExistingAssignment, assignment },
       { x => x.PrincipalId, assignment.PrincipalId },
       { x => x.PrincipalKind, assignment.PrincipalKind },
-      { x => x.AccountKind, AccountKind }
+      { x => x.AccountKind, AccountKind },
+      { x => x.CanManageServerScope, _hasWritePermission }
     };
 
     var dialogOptions = PermissionAssignmentDialog.DefaultOptions;

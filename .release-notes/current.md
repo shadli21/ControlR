@@ -42,4 +42,6 @@ None.
   service accounts in Unrestricted mode) can be granted device permissions. Preset seeding
   still uses the broadest tenant-scoped scope, so presets never create cross-tenant grants.
   The decision evaluator fails closed on allow rules at illegal scope kinds while still
-  honoring deny rules at any scope.
+  honoring deny rules at any scope. The permission assignment UI now hides the Server scope
+  option from the dropdown when the caller does not have server permission management
+  authority.
