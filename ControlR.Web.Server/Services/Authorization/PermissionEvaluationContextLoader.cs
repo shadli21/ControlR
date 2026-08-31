@@ -29,14 +29,14 @@ public sealed class PermissionEvaluationContextLoader(
 
     if (principal.PrincipalType == PrincipalType.ServerServiceAccount)
     {
-      var hasAssignments = await db.PermissionAssignments
+      var accessMode = await db.ServiceAccounts
         .IgnoreQueryFilters()
-        .AnyAsync(
-          assignment => assignment.PrincipalKind == PermissionPrincipalKind.ServiceAccount &&
-                        assignment.PrincipalId == principal.PrincipalId,
-          cancellationToken);
+        .AsNoTracking()
+        .Where(account => account.Id == principal.PrincipalId)
+        .Select(account => account.AccessMode)
+        .FirstOrDefaultAsync(cancellationToken);
 
-      if (!hasAssignments)
+      if (accessMode == ServiceAccountAccessMode.Unrestricted)
       {
         return PermissionEvaluationContext.Bypass(principal);
       }
@@ -78,6 +78,20 @@ public sealed class PermissionEvaluationContextLoader(
       return new PermissionEvaluationContext(principal, false, ownerRules, tokenRules, false);
     }
 
+    // Project nullable so a missing (deleted) token row yields null, not the enum default,
+    // and falls through to the restricted path below.
+    var permissionMode = await db.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .AsNoTracking()
+      .Where(token => token.Id == principal.CredentialId.Value)
+      .Select(token => (PersonalAccessTokenPermissionMode?)token.PermissionMode)
+      .FirstOrDefaultAsync(cancellationToken);
+
+    if (permissionMode == PersonalAccessTokenPermissionMode.InheritOwner)
+    {
+      return new PermissionEvaluationContext(principal, false, ownerRules, ownerRules, false);
+    }
+
     var patRules = await LoadCredentialRules(
       db,
       PermissionPrincipalKind.PersonalAccessToken,
@@ -86,11 +100,6 @@ public sealed class PermissionEvaluationContextLoader(
       SourcePriority.CredentialPat,
       principal.TenantId,
       cancellationToken);
-
-    if (patRules.Count == 0)
-    {
-      return new PermissionEvaluationContext(principal, false, ownerRules, ownerRules, false);
-    }
 
     return new PermissionEvaluationContext(principal, false, ownerRules, patRules, true);
   }

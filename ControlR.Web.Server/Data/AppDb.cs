@@ -334,6 +334,14 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
   {
     builder
       .Entity<PersonalAccessToken>()
+      .Property(x => x.PermissionMode)
+      .HasConversion<string>()
+      .HasMaxLength(50)
+      .HasDefaultValue(PersonalAccessTokenPermissionMode.Restricted)
+      .HasSentinel(PersonalAccessTokenPermissionMode.Restricted);
+
+    builder
+      .Entity<PersonalAccessToken>()
       .HasIndex(x => x.HashedKey)
       .IsUnique();
 
@@ -375,6 +383,14 @@ public class AppDb : IdentityUserContext<AppUser, Guid>, IDataProtectionKeyConte
       .Property(x => x.Kind)
       .HasConversion<string>()
       .HasMaxLength(50);
+
+    builder
+      .Entity<ServiceAccount>()
+      .Property(x => x.AccessMode)
+      .HasConversion<string>()
+      .HasMaxLength(50)
+      .HasDefaultValue(ServiceAccountAccessMode.Restricted)
+      .HasSentinel(ServiceAccountAccessMode.Restricted);
 
     builder
       .Entity<ServiceAccount>()

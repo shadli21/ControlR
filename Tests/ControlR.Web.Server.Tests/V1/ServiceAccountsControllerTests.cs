@@ -1,7 +1,8 @@
 using System.Reflection;
 using ControlR.Web.Server.Api.V1;
-using ControlR.Web.Server.Authz.Policies;
 using ControlR.Web.Server.Data;
+using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Authorization;
@@ -24,7 +25,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
       await using var appDb = scope.ServiceProvider.GetRequiredService<AppDb>();
 
-      var saResult = await manager.CreateForServer("Disabled SA", null, TestContext.Current.CancellationToken);
+      var saResult = await manager.CreateForServer("Disabled SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
       Assert.True(saResult.IsSuccess);
       accountId = saResult.Value.Id;
 
@@ -58,7 +59,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
     var manager = services.GetRequiredService<IServiceAccountManager>();
 
-    var saResult = await manager.CreateForServer("Add Credential SA", null, TestContext.Current.CancellationToken);
+    var saResult = await manager.CreateForServer("Add Credential SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
     var accountId = saResult.Value.Id;
 
@@ -93,6 +94,32 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task Create_PermissionWriteUserCreatesUnrestricted_Succeeds()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+
+    var (controller, _, user) = await scope.CreateControllerWithTestData<ServerServiceAccountsController>(
+      userEmail: "v1-perm-write@t.local");
+
+    await GrantServerPermissions(scope.ServiceProvider, user.Id,
+      PermissionNames.ServerServiceAccountsRead,
+      PermissionNames.ServerServiceAccountsWrite,
+      PermissionNames.ServerPermissionsWrite);
+
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+    var result = await controller.Create(
+      new CreateServerServiceAccountRequestDto("Unrestricted SA", null, ServiceAccountAccessMode.Unrestricted),
+      evaluator,
+      TestContext.Current.CancellationToken);
+
+    var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+    var dto = Assert.IsType<ServerServiceAccountDto>(createdResult.Value);
+    Assert.Equal(ServiceAccountAccessMode.Unrestricted, dto.AccessMode);
+    Assert.Equal(nameof(ServerServiceAccountsController.Get), createdResult.ActionName);
+  }
+
+  [Fact]
   public void Create_RequiresServerServiceAccountsWritePolicy()
   {
     var attribute = typeof(ServerServiceAccountsController)
@@ -111,8 +138,10 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
       ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
     var result = await controller.Create(
-      new CreateServiceAccountRequestDto("", null),
+      new CreateServerServiceAccountRequestDto("", null, ServiceAccountAccessMode.Restricted),
+      evaluator,
       TestContext.Current.CancellationToken);
 
     var problem = Assert.IsType<ObjectResult>(result.Result);
@@ -128,15 +157,43 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var controller = await TestPrincipalHelper.CreateControllerWithServerServiceAccountAsync<
       ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
 
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
     var result = await controller.Create(
-      new CreateServiceAccountRequestDto("New Test Account", "Description"),
+      new CreateServerServiceAccountRequestDto("New Test Account", "Description", ServiceAccountAccessMode.Restricted),
+      evaluator,
       TestContext.Current.CancellationToken);
 
     var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-    var dto = Assert.IsType<ServiceAccountDto>(createdResult.Value);
+    var dto = Assert.IsType<ServerServiceAccountDto>(createdResult.Value);
     Assert.Equal("New Test Account", dto.Name);
+    Assert.Equal(ServiceAccountAccessMode.Restricted, dto.AccessMode);
     Assert.Equal(nameof(ServerServiceAccountsController.Get), createdResult.ActionName);
     Assert.Equal(dto.Id, (Guid)createdResult.RouteValues!["serviceAccountId"]!);
+  }
+
+  [Fact]
+  public async Task Create_WriteOnlyUserCreatesUnrestricted_ReturnsForbidden()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(testOutput);
+    using var scope = testApp.CreateScope();
+
+    // A write-only user holds the server service-account write policy but lacks the
+    // elevated ServerPermissionsWrite required to grant Unrestricted, so the
+    // imperative gate inside Create must deny with 403 Forbidden.
+    var (controller, _, user) = await scope.CreateControllerWithTestData<ServerServiceAccountsController>(
+      userEmail: "v1-write-only@t.local");
+
+    await GrantServerPermissions(scope.ServiceProvider, user.Id,
+      PermissionNames.ServerServiceAccountsRead,
+      PermissionNames.ServerServiceAccountsWrite);
+
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+    var result = await controller.Create(
+      new CreateServerServiceAccountRequestDto("Unrestricted SA", null, ServiceAccountAccessMode.Unrestricted),
+      evaluator,
+      TestContext.Current.CancellationToken);
+
+    Assert.IsType<ForbidResult>(result.Result);
   }
 
   [Fact]
@@ -150,7 +207,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var saResult = await manager.CreateForServer(
       "Delete Me",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
     var accountId = saResult.Value.Id;
 
@@ -190,7 +247,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var saResult = await manager.CreateForServer(
       "Self Delete Test",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await manager.AddCredentialForServer(
@@ -230,11 +287,11 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var manager = services.GetRequiredService<IServiceAccountManager>();
 
     // Create another account.
-    await manager.CreateForServer("Additional Account", null, TestContext.Current.CancellationToken);
+    await manager.CreateForServer("Additional Account", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
 
     var result = await controller.GetAll(TestContext.Current.CancellationToken);
     var okResult = Assert.IsType<OkObjectResult>(result.Result);
-    var response = Assert.IsType<ServiceAccountsResponseDto>(okResult.Value);
+    var response = Assert.IsType<ServerServiceAccountsResponseDto>(okResult.Value);
     Assert.True(response.Items.Count >= 2, "Should have at least 2 accounts");
   }
 
@@ -246,7 +303,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
     var manager = services.GetRequiredService<IServiceAccountManager>();
 
-    var saResult = await manager.CreateForServer("Get Me", "Get description", TestContext.Current.CancellationToken);
+    var saResult = await manager.CreateForServer("Get Me", "Get description", ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
     var accountId = saResult.Value.Id;
 
@@ -255,7 +312,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
 
     var result = await controller.Get(accountId, TestContext.Current.CancellationToken);
     var okResult = Assert.IsType<OkObjectResult>(result.Result);
-    var dto = Assert.IsType<ServiceAccountDto>(okResult.Value);
+    var dto = Assert.IsType<ServerServiceAccountDto>(okResult.Value);
     Assert.Equal(accountId, dto.Id);
     Assert.Equal("Get Me", dto.Name);
     Assert.Equal("Get description", dto.Description);
@@ -283,7 +340,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
     var services = scope.ServiceProvider;
     var manager = services.GetRequiredService<IServiceAccountManager>();
 
-    var saResult = await manager.CreateForServer("Revoke Credential SA", null, TestContext.Current.CancellationToken);
+    var saResult = await manager.CreateForServer("Revoke Credential SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await manager.AddCredentialForServer(
@@ -321,12 +378,36 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       ServerServiceAccountsController>(scope, cancellationToken: TestContext.Current.CancellationToken);
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
-    var saResult = await manager.CreateForServer("Revoke NonExistent SA", null, TestContext.Current.CancellationToken);
+    var saResult = await manager.CreateForServer("Revoke NonExistent SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
     var accountId = saResult.Value.Id;
 
     var result = await controller.RevokeCredential(accountId, Guid.NewGuid(), TestContext.Current.CancellationToken);
     var notFound = Assert.IsType<ObjectResult>(result);
     Assert.Equal(404, notFound.StatusCode);
+  }
+
+  private static async Task GrantServerPermissions(
+    IServiceProvider services,
+    Guid userId,
+    params string[] permissionNames)
+  {
+    using var scope = services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+
+    foreach (var permissionName in permissionNames)
+    {
+      db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
+        PermissionPrincipalKind.User,
+        userId,
+        permissionName,
+        PermissionScopeKind.Server,
+        scopeId: null,
+        owningTenantId: null,
+        AuthorizationChangeLogActorTypes.System,
+        userId.ToString()));
+    }
+
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
   }
 }

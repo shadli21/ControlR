@@ -176,7 +176,7 @@ public class PermissionAssignmentTenantIsolationTests(ITestOutputHelper testOutp
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant Isolation Test PAT"), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant Isolation Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     var client = testServer.Factory.CreateClient();

@@ -25,7 +25,7 @@ internal partial class V1Api
     });
   }
 
-  async Task<ApiResult<ServiceAccountDto>> ITenantServiceAccountsApi.Create(
+  async Task<ApiResult<TenantServiceAccountDto>> ITenantServiceAccountsApi.Create(
     Guid tenantId,
     CreateServiceAccountRequestDto request,
     CancellationToken cancellationToken)
@@ -37,7 +37,7 @@ internal partial class V1Api
         request,
         cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
-      return await response.Content.ReadFromJsonAsync<ServiceAccountDto>(cancellationToken);
+      return await response.Content.ReadFromJsonAsync<TenantServiceAccountDto>(cancellationToken);
     });
   }
 
@@ -55,7 +55,7 @@ internal partial class V1Api
     });
   }
 
-  async Task<ApiResult<ServiceAccountDto>> ITenantServiceAccountsApi.Get(
+  async Task<ApiResult<TenantServiceAccountDto>> ITenantServiceAccountsApi.Get(
     Guid tenantId,
     Guid serviceAccountId,
     CancellationToken cancellationToken)
@@ -66,11 +66,11 @@ internal partial class V1Api
         $"{HttpConstants.V1.TenantServiceAccountsEndpoint}/{tenantId}/{serviceAccountId}",
         cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
-      return await response.Content.ReadFromJsonAsync<ServiceAccountDto>(cancellationToken);
+      return await response.Content.ReadFromJsonAsync<TenantServiceAccountDto>(cancellationToken);
     });
   }
 
-  async Task<ApiResult<ServiceAccountsResponseDto>> ITenantServiceAccountsApi.GetAll(
+  async Task<ApiResult<TenantServiceAccountsResponseDto>> ITenantServiceAccountsApi.GetAll(
     Guid tenantId,
     CancellationToken cancellationToken)
   {
@@ -80,7 +80,7 @@ internal partial class V1Api
         $"{HttpConstants.V1.TenantServiceAccountsEndpoint}/{tenantId}",
         cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
-      return await response.Content.ReadFromJsonAsync<ServiceAccountsResponseDto>(cancellationToken);
+      return await response.Content.ReadFromJsonAsync<TenantServiceAccountsResponseDto>(cancellationToken);
     });
   }
 
@@ -99,7 +99,7 @@ internal partial class V1Api
     });
   }
 
-  async Task<ApiResult<ServiceAccountDto>> ITenantServiceAccountsApi.Update(
+  async Task<ApiResult<TenantServiceAccountDto>> ITenantServiceAccountsApi.Update(
     Guid tenantId,
     Guid serviceAccountId,
     UpdateServiceAccountRequestDto request,
@@ -112,7 +112,7 @@ internal partial class V1Api
         request,
         cancellationToken);
       await response.EnsureSuccessStatusCodeWithDetails();
-      return await response.Content.ReadFromJsonAsync<ServiceAccountDto>(cancellationToken);
+      return await response.Content.ReadFromJsonAsync<TenantServiceAccountDto>(cancellationToken);
     });
   }
 }

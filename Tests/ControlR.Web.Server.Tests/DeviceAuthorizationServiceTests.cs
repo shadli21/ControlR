@@ -205,14 +205,15 @@ public class DeviceAuthorizationServiceTests(ITestOutputHelper testOutput)
     var canInstallAfterDeny = await authorizationService.CanInstallAgentOnDevice(serviceAccount, device);
     Assert.False(canInstallAfterDeny);
 
-    // Assignment-free server accounts follow the central cross-tenant bypass.
+    // Unrestricted server accounts follow the central cross-tenant bypass.
     var serverAccount = new ServiceAccount
     {
       Id = Guid.NewGuid(),
       Name = "server-account",
       Kind = ServiceAccountKind.Server,
       TenantId = null,
-      IsEnabled = true
+      IsEnabled = true,
+      AccessMode = ServiceAccountAccessMode.Unrestricted
     };
     db.ServiceAccounts.Add(serverAccount);
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -220,7 +221,8 @@ public class DeviceAuthorizationServiceTests(ITestOutputHelper testOutput)
     var canServerInstall = await authorizationService.CanInstallAgentOnDevice(serverAccount, device);
     Assert.True(canServerInstall);
 
-    // Any assignment disables bypass and constrains the account to its explicit scope.
+    // A restricted account is constrained to its explicit scopes, even outside its grants.
+    serverAccount.AccessMode = ServiceAccountAccessMode.Restricted;
     db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.ServiceAccount,
       serverAccount.Id,

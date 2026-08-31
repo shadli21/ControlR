@@ -126,7 +126,7 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Audit Log Test PAT"), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Audit Log Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
     Assert.True(patResult.IsSuccess);
 
     var client = testServer.Factory.CreateClient();

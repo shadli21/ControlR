@@ -16,8 +16,10 @@ public interface IPersonalAccessTokenManager
   /// <summary>
   /// Creates a token with a pre-specified secret and ID for bootstrap scenarios where the
   /// token must be known ahead of time. The caller is responsible for logging the secret.
+  /// The permission mode is required explicitly and never inferred.
   /// </summary>
-  Task<Result<InternalDtos.PersonalAccessTokenResponseDto>> CreateTokenWithKey(Guid tokenId, string secret, string name, Guid userId);
+  Task<Result<InternalDtos.PersonalAccessTokenResponseDto>> CreateTokenWithKey(
+    Guid tokenId, string secret, string name, Guid userId, PersonalAccessTokenPermissionMode permissionMode);
 
   Task<Result> Delete(Guid id, Guid userId);
 
@@ -48,10 +50,26 @@ public class PersonalAccessTokenManager(
   {
     try
     {
+      if (!Enum.IsDefined(request.PermissionMode))
+      {
+        return Result.Fail<InternalDtos.CreatePersonalAccessTokenResponseDto>("PermissionMode is not a valid value.");
+      }
+
+      var scopes = request.Scopes;
+      var hasScopes = scopes is { Count: > 0 };
+
+      if (request.PermissionMode == PersonalAccessTokenPermissionMode.InheritOwner && hasScopes)
+      {
+        return Result.Fail<InternalDtos.CreatePersonalAccessTokenResponseDto>(
+          "Scopes are not meaningful for an inherit-owner token. Omit scopes or use the restricted mode.");
+      }
+
       Guid? ownerTenantId = null;
 
-      if (request.Scopes is { Count: > 0 })
+      IReadOnlyList<InternalDtos.CredentialScopeDto>? requestScopes = null;
+      if (scopes is { Count: > 0 } scopeRows)
       {
+        requestScopes = scopeRows;
         var owner = await _appDb.Users
           .IgnoreQueryFilters()
           .AsNoTracking()
@@ -70,7 +88,7 @@ public class PersonalAccessTokenManager(
           AuthMethod: "pat-scope-validation");
 
         var scopeValidation = await _credentialScopeService.ValidateGrantableScopes(
-          ownerPrincipal, owner.TenantId, request.Scopes);
+          ownerPrincipal, owner.TenantId, requestScopes);
         if (!scopeValidation.IsSuccess)
         {
           return Result.Fail<InternalDtos.CreatePersonalAccessTokenResponseDto>(scopeValidation.Reason);
@@ -84,7 +102,8 @@ public class PersonalAccessTokenManager(
       {
         Name = request.Name,
         HashedKey = hashedKey,
-        UserId = userId
+        UserId = userId,
+        PermissionMode = request.PermissionMode
       };
 
       _appDb.PersonalAccessTokens.Add(personalAccessToken);
@@ -98,12 +117,11 @@ public class PersonalAccessTokenManager(
 
       await _appDb.SaveChangesAsync();
 
-      var hasScopes = request.Scopes is { Count: > 0 };
       var tenantId = hasScopes ? ownerTenantId : null;
 
-      if (hasScopes && tenantId is { } scopeTenantId)
+      if (hasScopes && tenantId is { } scopeTenantId && requestScopes is { } nonNullScopes)
       {
-        foreach (var scope in request.Scopes!)
+        foreach (var scope in nonNullScopes)
         {
           _appDb.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
             PermissionPrincipalKind.PersonalAccessToken,
@@ -123,7 +141,7 @@ public class PersonalAccessTokenManager(
           AuthorizationChangeLogTargetTypes.PersonalAccessToken,
           personalAccessToken.Id,
           scopeTenantId,
-          after: new CredentialScopeSetSummary(request.Scopes!.Count)));
+          after: new CredentialScopeSetSummary(nonNullScopes.Count)));
 
         await _appDb.SaveChangesAsync();
       }
@@ -135,7 +153,7 @@ public class PersonalAccessTokenManager(
 
       var hexId = Convert.ToHexString(personalAccessToken.Id.ToByteArray());
       var combinedKey = $"{hexId}:{plainTextKey}";
-      var permissionCount = request.Scopes?.Select(x => x.PermissionName).Distinct().Count() ?? 0;
+      var permissionCount = requestScopes?.Select(x => x.PermissionName).Distinct().Count() ?? 0;
       var response = new InternalDtos.CreatePersonalAccessTokenResponseDto(MapToDto(personalAccessToken, permissionCount), combinedKey);
       return Result.Ok(response);
     }
@@ -145,7 +163,8 @@ public class PersonalAccessTokenManager(
     }
   }
 
-  public async Task<Result<InternalDtos.PersonalAccessTokenResponseDto>> CreateTokenWithKey(Guid tokenId, string secret, string name, Guid userId)
+  public async Task<Result<InternalDtos.PersonalAccessTokenResponseDto>> CreateTokenWithKey(
+    Guid tokenId, string secret, string name, Guid userId, PersonalAccessTokenPermissionMode permissionMode)
   {
     if (tokenId == Guid.Empty)
     {
@@ -162,6 +181,11 @@ public class PersonalAccessTokenManager(
       return Result.Fail<InternalDtos.PersonalAccessTokenResponseDto>("PAT secret must be at least 32 characters.");
     }
 
+    if (!Enum.IsDefined(permissionMode))
+    {
+      return Result.Fail<InternalDtos.PersonalAccessTokenResponseDto>("PermissionMode is not a valid value.");
+    }
+
     try
     {
       var hashedKey = _passwordHasher.HashPassword(string.Empty, secret);
@@ -170,7 +194,8 @@ public class PersonalAccessTokenManager(
         Id = tokenId,
         Name = name,
         HashedKey = hashedKey,
-        UserId = userId
+        UserId = userId,
+        PermissionMode = permissionMode
       };
 
       _appDb.PersonalAccessTokens.Add(personalAccessToken);
@@ -314,7 +339,8 @@ public class PersonalAccessTokenManager(
       personalAccessToken.Name,
       personalAccessToken.CreatedAt,
       personalAccessToken.LastUsed,
-      permissionCount);
+      permissionCount,
+      personalAccessToken.PermissionMode);
   }
 
   private async Task<Dictionary<Guid, int>> GetPermissionCountLookup(IReadOnlyCollection<Guid> tokenIds)

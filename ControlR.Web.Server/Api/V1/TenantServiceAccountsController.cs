@@ -51,11 +51,11 @@ public class TenantServiceAccountsController(
 
   [HttpPost]
   [Authorize(Policy = PolicyNames.RequireServiceAccountWrite)]
-  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status201Created)]
+  [ProducesResponseType<TenantServiceAccountDto>(StatusCodes.Status201Created)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status403Forbidden)]
   [ProducesResponseType(StatusCodes.Status409Conflict)]
-  public async Task<ActionResult<ServiceAccountDto>> Create(
+  public async Task<ActionResult<TenantServiceAccountDto>> Create(
     Guid tenantId,
     [FromBody] CreateServiceAccountRequestDto request,
     CancellationToken cancellationToken)
@@ -80,7 +80,7 @@ public class TenantServiceAccountsController(
     return CreatedAtAction(
       nameof(Get),
       new { tenantId = resolvedTenantId, serviceAccountId = result.Value.Id },
-      result.Value.ToDto());
+      result.Value.ToTenantServiceAccountDto());
   }
 
   [HttpDelete("{serviceAccountId:guid}")]
@@ -115,10 +115,10 @@ public class TenantServiceAccountsController(
 
   [HttpGet("{serviceAccountId:guid}")]
   [Authorize(Policy = PolicyNames.RequireServiceAccountRead)]
-  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType<TenantServiceAccountDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status403Forbidden)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
-  public async Task<ActionResult<ServiceAccountDto>> Get(
+  public async Task<ActionResult<TenantServiceAccountDto>> Get(
     Guid tenantId,
     Guid serviceAccountId,
     CancellationToken cancellationToken)
@@ -134,14 +134,14 @@ public class TenantServiceAccountsController(
       return result.ToHttpResult().ToActionResult();
     }
 
-    return Ok(result.Value.ToDto());
+    return Ok(result.Value.ToTenantServiceAccountDto());
   }
 
   [HttpGet]
   [Authorize(Policy = PolicyNames.RequireServiceAccountRead)]
-  [ProducesResponseType<ServiceAccountsResponseDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType<TenantServiceAccountsResponseDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status403Forbidden)]
-  public async Task<ActionResult<ServiceAccountsResponseDto>> GetAll(
+  public async Task<ActionResult<TenantServiceAccountsResponseDto>> GetAll(
     Guid tenantId,
     CancellationToken cancellationToken)
   {
@@ -151,9 +151,9 @@ public class TenantServiceAccountsController(
     }
 
     var accounts = await _serviceAccountManager.GetAllForTenant(resolvedTenantId, cancellationToken);
-    return Ok(new ServiceAccountsResponseDto
+    return Ok(new TenantServiceAccountsResponseDto
     {
-      Items = accounts.Select(x => x.ToDto()).ToArray()
+      Items = [.. accounts.Select(x => x.ToTenantServiceAccountDto())]
     });
   }
 
@@ -190,11 +190,11 @@ public class TenantServiceAccountsController(
 
   [HttpPut("{serviceAccountId:guid}")]
   [Authorize(Policy = PolicyNames.RequireServiceAccountWrite)]
-  [ProducesResponseType<ServiceAccountDto>(StatusCodes.Status200OK)]
+  [ProducesResponseType<TenantServiceAccountDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status403Forbidden)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
-  public async Task<ActionResult<ServiceAccountDto>> Update(
+  public async Task<ActionResult<TenantServiceAccountDto>> Update(
     Guid tenantId,
     Guid serviceAccountId,
     [FromBody] UpdateServiceAccountRequestDto request,
@@ -223,6 +223,6 @@ public class TenantServiceAccountsController(
       return result.ToHttpResult().ToActionResult();
     }
 
-    return Ok(result.Value.ToDto());
+    return Ok(result.Value.ToTenantServiceAccountDto());
   }
 }

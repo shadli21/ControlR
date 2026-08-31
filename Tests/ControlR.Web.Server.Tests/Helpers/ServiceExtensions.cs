@@ -109,7 +109,7 @@ internal static class ServiceExtensions
   {
     var manager = services.GetRequiredService<IServiceAccountManager>();
     var accountNameValue = accountName ?? $"server-principal-{Guid.NewGuid():N}";
-    var accountResult = await manager.CreateForServer(accountNameValue, null, TestContext.Current.CancellationToken);
+    var accountResult = await manager.CreateForServer(accountNameValue, null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
 
     Assert.True(accountResult.IsSuccess);
 

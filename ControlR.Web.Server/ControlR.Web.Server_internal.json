@@ -10518,6 +10518,9 @@
             "minLength": 1,
             "type": "string"
           },
+          "permissionMode": {
+            "$ref": "#/components/schemas/PersonalAccessTokenPermissionMode"
+          },
           "scopes": {
             "type": [
               "null",
@@ -10582,7 +10585,8 @@
       "CreateServerServiceAccountRequestDto": {
         "required": [
           "name",
-          "description"
+          "description",
+          "accessMode"
         ],
         "type": "object",
         "properties": {
@@ -10598,6 +10602,9 @@
               "null",
               "string"
             ]
+          },
+          "accessMode": {
+            "$ref": "#/components/schemas/ServiceAccountAccessMode"
           }
         }
       },
@@ -12175,13 +12182,20 @@
       "PermissionScopeKind": {
         "type": "integer"
       },
+      "PersonalAccessTokenPermissionMode": {
+        "enum": [
+          "Restricted",
+          "InheritOwner"
+        ]
+      },
       "PersonalAccessTokenResponseDto": {
         "required": [
           "id",
           "name",
           "createdAt",
           "lastUsed",
-          "permissionCount"
+          "permissionCount",
+          "permissionMode"
         ],
         "type": "object",
         "properties": {
@@ -12207,6 +12221,9 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
             "format": "int32"
+          },
+          "permissionMode": {
+            "$ref": "#/components/schemas/PersonalAccessTokenPermissionMode"
           }
         }
       },
@@ -12535,6 +12552,7 @@
           "name",
           "description",
           "isEnabled",
+          "accessMode",
           "createdAt",
           "credentials"
         ],
@@ -12555,6 +12573,9 @@
           },
           "isEnabled": {
             "type": "boolean"
+          },
+          "accessMode": {
+            "$ref": "#/components/schemas/ServiceAccountAccessMode"
           },
           "createdAt": {
             "type": "string",
@@ -12604,6 +12625,12 @@
             "format": "int32"
           }
         }
+      },
+      "ServiceAccountAccessMode": {
+        "enum": [
+          "Restricted",
+          "Unrestricted"
+        ]
       },
       "SystemPlatform": {
         "type": "integer"

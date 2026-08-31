@@ -19,7 +19,7 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer(
       "Integration Test SA - IK",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(
@@ -60,7 +60,7 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
     var saResult = await saManager.CreateForServer(
       "Integration Test SA - LT",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(saResult.IsSuccess);
 
     var credResult = await saManager.AddCredentialForServer(

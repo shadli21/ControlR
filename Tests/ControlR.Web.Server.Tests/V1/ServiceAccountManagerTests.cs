@@ -54,7 +54,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
     var createResult = await manager.CreateForServer(
-      "Expiration SA", null, TestContext.Current.CancellationToken);
+      "Expiration SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
     var accountId = createResult.Value.Id;
 
@@ -82,7 +82,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
     var createResult = await manager.CreateForServer(
-      "Expiration SA", null, TestContext.Current.CancellationToken);
+      "Expiration SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
     var accountId = createResult.Value.Id;
 
@@ -105,7 +105,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var manager = scope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
     var createResult = await manager.CreateForServer(
-      "No Credential Server SA", null, TestContext.Current.CancellationToken);
+      "No Credential Server SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
 
     Assert.True(createResult.IsSuccess);
     Assert.Empty(createResult.Value.Credentials);
@@ -187,7 +187,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var createResult = await manager.CreateForServer(
       "Lifecycle SA",
       "Created by test",
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var accountId = createResult.Value.Id;
@@ -240,7 +240,7 @@ public class ServiceAccountManagerTests(ITestOutputHelper testOutput)
     var manager = managerScope.ServiceProvider.GetRequiredService<IServiceAccountManager>();
 
     var createResult = await manager.CreateForServer(
-      "Toggle SA", null, TestContext.Current.CancellationToken);
+      "Toggle SA", null, ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var accountId = createResult.Value.Id;

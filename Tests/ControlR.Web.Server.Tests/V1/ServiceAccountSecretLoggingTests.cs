@@ -27,7 +27,7 @@ public class ServiceAccountSecretLoggingTests(ITestOutputHelper testOutput)
     var createResult = await manager.CreateForServer(
       "AddCred Secret Log Test SA",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
     var accountId = createResult.Value.Id;
 
@@ -70,7 +70,7 @@ public class ServiceAccountSecretLoggingTests(ITestOutputHelper testOutput)
     var createResult = await manager.CreateForServer(
       "Secret Log Test SA",
       null,
-      TestContext.Current.CancellationToken);
+      ServiceAccountAccessMode.Unrestricted, TestContext.Current.CancellationToken);
     Assert.True(createResult.IsSuccess);
 
     var addCredResult = await manager.AddCredentialForServer(

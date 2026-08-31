@@ -1,4 +1,6 @@
 using ControlR.Libraries.Api.Contracts.Constants;
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -39,9 +41,31 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
   [Authorize(Policy = PolicyNames.RequireServerServiceAccountsWrite)]
   public async Task<ActionResult<InternalDtos.ServerServiceAccountDto>> Create(
     [FromBody] InternalDtos.CreateServerServiceAccountRequestDto request,
+    [FromServices] IPermissionEvaluator permissionEvaluator,
     CancellationToken cancellationToken)
   {
-    var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, cancellationToken);
+    if (request.AccessMode == ServiceAccountAccessMode.Unrestricted)
+    {
+      var caller = PrincipalDescriptorBuilder.FromClaims(User);
+
+      if (caller is null)
+      {
+        return Unauthorized();
+      }
+
+      var decision = await permissionEvaluator.Evaluate(
+        caller,
+        PermissionNames.ServerPermissionsWrite,
+        new ResourceDescriptor(PermissionScopeKind.Server),
+        cancellationToken);
+
+      if (!decision.Allowed)
+      {
+        return Forbid();
+      }
+    }
+
+    var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, request.AccessMode, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -158,6 +182,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
       result.Name,
       result.Description,
       result.IsEnabled,
+      result.AccessMode,
       result.CreatedAt,
       [.. result.Credentials.Select(MapCredentialToDto)]);
   }
