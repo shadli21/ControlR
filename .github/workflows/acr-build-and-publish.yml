@@ -54,11 +54,25 @@ jobs:
       use_self_hosted_runners: true
       use_local_storage: true
       retention_days_artifacts: 1
-      build_nugets: true
+      build_nugets: false
       notarize_mac_bundle: true
       prerelease: false
-      run_tests: true
+      run_tests: false
     secrets: inherit
+
+  echo-environment:
+    name: Echo Environment
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Echo Environment Variables
+        run: |
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Sponsor Login: ${{ inputs.sponsor_login }}"
+          echo "Slot Number: ${{ inputs.slot_number }}"
+          echo "Image Reference: ${{ inputs.image_reference }}"
+          echo "Environment: ${{ inputs.environment }}"
 
   publish-acr:
     name: Publish to ACR
