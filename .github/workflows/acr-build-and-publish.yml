@@ -62,6 +62,7 @@ jobs:
       notarize_mac_bundle: false
       prerelease: false
       run_tests: false
+    secrets: inherit
 
   publish-acr:
     name: Publish to ACR
