@@ -15,6 +15,10 @@ on:
           - docker_buildx_only
           - docker_login_direct
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   test-acr-login:
     name: Test ACR login strategy
