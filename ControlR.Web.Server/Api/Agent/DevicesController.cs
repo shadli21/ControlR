@@ -66,6 +66,10 @@ public class DevicesController : ControllerBase
     }
 
     var existingDevice = await appDb.Devices.FirstOrDefaultAsync(x => x.Id == deviceDto.Id && x.TenantId == tenantId);
+
+    // Tracks whether the server-SA check below already passed, so the tag-authorization switch
+    // does not repeat the query for a ServerServiceAccount-keyed re-provision request.
+    var serverSaValidated = false;
     if (existingDevice is not null)
     {
       logger.LogInformation("Device already exists.  Verifying user authorization.");
@@ -113,6 +117,8 @@ public class DevicesController : ControllerBase
             logger.LogWarning("Server service account not found or disabled.");
             return Forbid();
           }
+
+          serverSaValidated = true;
           break;
 
         default:
@@ -157,7 +163,7 @@ public class DevicesController : ControllerBase
 
       var canAssignTags = installerKey.CreatorKind switch
       {
-        InstallerKeyCreatorKind.ServerServiceAccount => await ValidateServerSa(installerKey.CreatorId, appDb),
+        InstallerKeyCreatorKind.ServerServiceAccount => serverSaValidated || await ValidateServerSa(installerKey.CreatorId, appDb),
         InstallerKeyCreatorKind.User => await CanAssignTagsForUser(installerKey.CreatorId, tagTarget, userManager, deviceAuthorizationService),
         InstallerKeyCreatorKind.TenantServiceAccount => await CanAssignTagsForServiceAccount(installerKey.CreatorId, tenantId, tagTarget, appDb, deviceAuthorizationService),
         _ => false,
