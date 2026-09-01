@@ -1053,8 +1053,6 @@ jobs:
         build-nugets,
         set-version
       ]
-    outputs:
-      build_succeeded: ${{ needs.build-web-server.result == 'success' }}
     env:
       VERSION: ${{ needs.set-version.outputs.version }}
     steps:

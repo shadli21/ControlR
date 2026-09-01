@@ -63,7 +63,7 @@ jobs:
   publish-acr:
     name: Publish to ACR
     needs: build
-    if: ${{ always() && needs.build.outputs.build_succeeded == 'true' }}
+    if: ${{ always() }}
     concurrency:
       group: acr-publish-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
       cancel-in-progress: false
