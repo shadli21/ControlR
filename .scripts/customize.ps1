@@ -363,8 +363,8 @@ if ($BrandName -notmatch "^[A-Za-z][A-Za-z0-9_ \-\.]*$") {
   throw "BrandName must start with a letter and contain only alphanumeric characters, underscores, hyphens, spaces, and periods."
 }
 
-if ($Publisher -notmatch "^[A-Za-z][A-Za-z0-9_ \-]*$") {
-  throw "Publisher must start with a letter and contain only alphanumeric characters, underscores, hyphens, and spaces."
+if ($Publisher -notmatch "^[A-Za-z][A-Za-z0-9_ \-\.]*$") {
+  throw "Publisher must start with a letter and contain only alphanumeric characters, underscores, hyphens, periods, and spaces."
 }
 
 #endregion
