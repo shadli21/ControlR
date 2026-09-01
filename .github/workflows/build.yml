@@ -217,6 +217,50 @@ jobs:
           # Expose the current version as a step output for this run
           echo "version=$CurrentVersion" >> $env:GITHUB_OUTPUT
 
+  download-customization:
+    name: Download Customization Config
+    runs-on: ${{ inputs.use_self_hosted_runners && fromJson('["self-hosted","Linux"]') || fromJson('["ubuntu-latest"]') }}
+    needs: [set-version]
+    permissions:
+      contents: read
+      actions: write
+    outputs:
+      has_config: ${{ steps.download.outputs.has_config || 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          clean: true
+          fetch-depth: 0
+          ref: ${{ inputs.ref || '' }}
+
+      - name: Download Customization Config
+        id: download
+        if: inputs.customization_config_url != ''
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $configUrl = '${{ inputs.customization_config_url }}'
+          $configPath = Join-Path $env:RUNNER_TEMP 'customization.json'
+          Write-Host "Downloading customization config from: $configUrl"
+          Invoke-WebRequest -Uri $configUrl -OutFile $configPath -UseBasicParsing
+          if (-not (Test-Path $configPath)) {
+            Write-Error "Failed to download customization config."
+            exit 1
+          }
+          Write-Host "Downloaded customization config to $configPath"
+          echo "has_config=true" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Customization Config
+        if: inputs.customization_config_url != ''
+        uses: ./.github/actions/upload-artifact
+        with:
+          name: CustomizationConfig
+          path: ${{ runner.temp }}/customization.json
+          retention-days: ${{ env.RETENTION_DAYS_ARTIFACTS }}
+          artifact-host: ${{ inputs.use_local_storage && vars.ARTIFACT_HOST || '' }}
+          artifact-base-path: ${{ inputs.use_local_storage && vars.ARTIFACT_BASE_PATH || '' }}
+
   run-tests:
     name: Run Tests
     needs: set-version
@@ -244,7 +288,7 @@ jobs:
   build-mac-binaries:
     name: Apple Build (${{ matrix.arch }})
     runs-on: ${{ inputs.use_self_hosted_runners && fromJson('["self-hosted","macOS"]') || fromJson('["macos-26"]') }}
-    needs: [set-version]
+    needs: [set-version, download-customization]
     env:
       VERSION: ${{ needs.set-version.outputs.version }}
     strategy:
@@ -320,14 +364,23 @@ jobs:
           fi
           echo "IDENTITY_HASH=$IDENTITY_HASH" >> "$GITHUB_ENV"
 
+      - name: Download Customization Config
+        if: needs.download-customization.outputs.has_config == 'true'
+        uses: ./.github/actions/download-artifact
+        with:
+          name: CustomizationConfig
+          path: ${{ runner.temp }}/customization
+          artifact-host: ${{ inputs.use_local_storage && vars.ARTIFACT_HOST || '' }}
+          artifact-base-path: ${{ inputs.use_local_storage && vars.ARTIFACT_BASE_PATH || '' }}
+
       - name: Apply Customization
         id: customize
-        if: inputs.customization_config_url != ''
+        if: needs.download-customization.outputs.has_config == 'true'
         shell: pwsh
-        run: ./.scripts/Invoke-Customize.ps1 -ConfigUrl '${{ inputs.customization_config_url }}' -Version '${{ needs.set-version.outputs.version }}'
+        run: ./.scripts/Invoke-Customize.ps1 -ConfigPath '${{ runner.temp }}/customization/customization.json' -Version '${{ needs.set-version.outputs.version }}'
 
       - name: Set Default Branding
-        if: inputs.customization_config_url == ''
+        if: needs.download-customization.outputs.has_config != 'true'
         shell: pwsh
         run: |
           echo "BRAND_KEY=ControlR" >> $env:GITHUB_ENV
@@ -538,7 +591,7 @@ jobs:
     # When using self-hosted Windows runners, require both the self-hosted label and OS label.
     runs-on: ${{ inputs.use_self_hosted_runners && fromJson('["self-hosted","Windows"]') || fromJson('["windows-latest"]') }}
     environment: ${{ github.repository == 'bitbound/ControlR' && 'production' || 'development' }}
-    needs: [set-version]
+    needs: [set-version, download-customization]
     permissions:
       id-token: write
       contents: read
@@ -560,14 +613,23 @@ jobs:
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
 
+      - name: Download Customization Config
+        if: needs.download-customization.outputs.has_config == 'true'
+        uses: ./.github/actions/download-artifact
+        with:
+          name: CustomizationConfig
+          path: ${{ runner.temp }}/customization
+          artifact-host: ${{ inputs.use_local_storage && vars.ARTIFACT_HOST || '' }}
+          artifact-base-path: ${{ inputs.use_local_storage && vars.ARTIFACT_BASE_PATH || '' }}
+
       - name: Apply Customization
         id: customize
-        if: inputs.customization_config_url != ''
+        if: needs.download-customization.outputs.has_config == 'true'
         shell: pwsh
-        run: ./.scripts/Invoke-Customize.ps1 -ConfigUrl '${{ inputs.customization_config_url }}' -Version '${{ needs.set-version.outputs.version }}'
+        run: ./.scripts/Invoke-Customize.ps1 -ConfigPath '${{ runner.temp }}/customization/customization.json' -Version '${{ needs.set-version.outputs.version }}'
 
       - name: Set Default Branding
-        if: inputs.customization_config_url == ''
+        if: needs.download-customization.outputs.has_config != 'true'
         shell: pwsh
         run: |
           echo "BRAND_KEY=ControlR" >> $env:GITHUB_ENV
@@ -703,7 +765,7 @@ jobs:
   build-linux-binaries:
     name: Linux Build
     runs-on: ${{ inputs.use_self_hosted_runners && fromJson('["self-hosted","Linux"]') || fromJson('["ubuntu-latest"]') }}
-    needs: [set-version]
+    needs: [set-version, download-customization]
     env:
       VERSION: ${{ needs.set-version.outputs.version }}
 
@@ -722,14 +784,23 @@ jobs:
       - name: Install macOS workload
         run: dotnet workload install macos
 
+      - name: Download Customization Config
+        if: needs.download-customization.outputs.has_config == 'true'
+        uses: ./.github/actions/download-artifact
+        with:
+          name: CustomizationConfig
+          path: ${{ runner.temp }}/customization
+          artifact-host: ${{ inputs.use_local_storage && vars.ARTIFACT_HOST || '' }}
+          artifact-base-path: ${{ inputs.use_local_storage && vars.ARTIFACT_BASE_PATH || '' }}
+
       - name: Apply Customization
         id: customize
-        if: inputs.customization_config_url != ''
+        if: needs.download-customization.outputs.has_config == 'true'
         shell: pwsh
-        run: ./.scripts/Invoke-Customize.ps1 -ConfigUrl '${{ inputs.customization_config_url }}' -Version '${{ needs.set-version.outputs.version }}'
+        run: ./.scripts/Invoke-Customize.ps1 -ConfigPath '${{ runner.temp }}/customization/customization.json' -Version '${{ needs.set-version.outputs.version }}'
 
       - name: Set Default Branding
-        if: inputs.customization_config_url == ''
+        if: needs.download-customization.outputs.has_config != 'true'
         shell: pwsh
         run: |
           echo "BRAND_KEY=ControlR" >> $env:GITHUB_ENV
@@ -791,6 +862,7 @@ jobs:
     needs:
       [
         set-version,
+        download-customization,
         build-windows-binaries,
         build-linux-binaries,
         build-mac-binaries,
@@ -810,14 +882,23 @@ jobs:
       - name: Setup .NET
         uses: ./.github/actions/setup-dotnet
 
+      - name: Download Customization Config
+        if: needs.download-customization.outputs.has_config == 'true'
+        uses: ./.github/actions/download-artifact
+        with:
+          name: CustomizationConfig
+          path: ${{ runner.temp }}/customization
+          artifact-host: ${{ inputs.use_local_storage && vars.ARTIFACT_HOST || '' }}
+          artifact-base-path: ${{ inputs.use_local_storage && vars.ARTIFACT_BASE_PATH || '' }}
+
       - name: Apply Customization
         id: customize
-        if: inputs.customization_config_url != ''
+        if: needs.download-customization.outputs.has_config == 'true'
         shell: pwsh
-        run: ./.scripts/Invoke-Customize.ps1 -ConfigUrl '${{ inputs.customization_config_url }}' -Version '${{ env.VERSION }}'
+        run: ./.scripts/Invoke-Customize.ps1 -ConfigPath '${{ runner.temp }}/customization/customization.json' -Version '${{ env.VERSION }}'
 
       - name: Set Default Branding
-        if: inputs.customization_config_url == ''
+        if: needs.download-customization.outputs.has_config != 'true'
         shell: pwsh
         run: |
           echo "BRAND_KEY=ControlR" >> $env:GITHUB_ENV

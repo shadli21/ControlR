@@ -4,13 +4,15 @@ param(
   [string] $Version,
 
   [Parameter()]
-  [string] $ConfigUrl = ""
+  [string] $ConfigUrl = "",
+
+  [Parameter()]
+  [string] $ConfigPath = ""
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $customizeScript = Join-Path $PSScriptRoot "customize.ps1"
 
 # Default brand values when no config URL is provided.
@@ -18,14 +20,26 @@ $brandName = "ControlR"
 $brandKey = "ControlR"
 $unixBrandKey = "controlr"
 
-if ($ConfigUrl) {
-  Write-Host "Downloading customization config from: $ConfigUrl"
-  try {
-    $config = Invoke-RestMethod -Uri $ConfigUrl -UseBasicParsing
+if ($ConfigPath -or $ConfigUrl) {
+  if ($ConfigPath) {
+    Write-Host "Reading customization config from: $ConfigPath"
+    try {
+      $config = Get-Content -Path $ConfigPath -Raw | ConvertFrom-Json
+    }
+    catch {
+      Write-Error "Failed to read or parse customization config: $_"
+      throw
+    }
   }
-  catch {
-    Write-Error "Failed to download or parse customization config: $_"
-    throw
+  else {
+    Write-Host "Downloading customization config from: $ConfigUrl"
+    try {
+      $config = Invoke-RestMethod -Uri $ConfigUrl -UseBasicParsing
+    }
+    catch {
+      Write-Error "Failed to download or parse customization config: $_"
+      throw
+    }
   }
 
   # Resolve brand name.
@@ -94,7 +108,7 @@ if ($ConfigUrl) {
   Write-Host "Customization applied successfully."
 }
 else {
-  Write-Host "No customization config URL provided. Using default branding: $brandName"
+  Write-Host "No customization config provided. Using default branding: $brandName"
 }
 
 # Also export as job-level environment variables so shell steps can use $BRAND_KEY / $UNIX_BRAND_KEY.
