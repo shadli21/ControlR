@@ -60,13 +60,17 @@ jobs:
       run_tests: false
     secrets: inherit
 
-  echo-environment:
-    name: Echo Environment
+  # A "native" job (runs-on + steps) is intentionally kept in this workflow. If the
+  # publish-acr reusable-call job ever fails to instantiate again (e.g. an input
+  # resolution error), the error would otherwise be invisible in the job list. This
+  # guarantees a native job runs so template-resolution errors surface on the run.
+  echo-build-summary:
+    name: Echo Build Summary
     needs: build
     runs-on: ubuntu-latest
     if: ${{ always() }}
     steps:
-      - name: Echo Environment Variables
+      - name: Echo Build Summary
         run: |
           echo "Run ID: ${{ github.run_id }}"
           echo "Sponsor Login: ${{ inputs.sponsor_login }}"
@@ -78,6 +82,9 @@ jobs:
     name: Publish to ACR
     needs: build
     if: ${{ always() }}
+    concurrency:
+      group: acr-publish-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
+      cancel-in-progress: false
     uses: ./.github/workflows/publish-acr.yml
     with:
       run_id: ${{ github.run_id }}

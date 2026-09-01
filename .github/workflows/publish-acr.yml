@@ -143,13 +143,49 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
+      # Download the customization config (uploaded by build.yml download-customization
+      # job) so the brand name and other properties are available for the publish steps.
+      # Only present when a customization config URL was supplied; default brand "ControlR"
+      # is used otherwise.
+      - name: Download Customization Config
+        id: download-customization
+        continue-on-error: true
+        uses: ./.github/actions/download-artifact
+        with:
+          name: CustomizationConfig
+          path: ./customization
+          github-token: ${{ github.token }}
+          artifact-host: ${{ inputs.use_local_storage && vars.ARTIFACT_HOST || '' }}
+          artifact-base-path: ${{ inputs.use_local_storage && vars.ARTIFACT_BASE_PATH || '' }}
+          run-id: ${{ inputs.run_id }}
+
+      - name: Resolve Brand Key
+        id: brand
+        shell: bash
+        run: |
+          BRAND_NAME="ControlR"
+          if [ -f "./customization/customization.json" ]; then
+            BRAND_NAME=$(jq -r '.brandName // "ControlR"' ./customization/customization.json)
+          fi
+          if [ -z "$BRAND_NAME" ] || [ "$BRAND_NAME" = "null" ]; then
+            BRAND_NAME="ControlR"
+          fi
+          # Mirrors Invoke-Customize.ps1 sanitization: keep only alphanumerics, others -> '_'
+          BRAND_KEY=$(printf '%s' "$BRAND_NAME" | sed 's/[^A-Za-z0-9]/_/g')
+          echo "brand_name=$BRAND_NAME" >> $GITHUB_OUTPUT
+          echo "brand_key=$BRAND_KEY" >> $GITHUB_OUTPUT
+          echo "Brand name: $BRAND_NAME"
+          echo "Brand key: $BRAND_KEY"
+
       - name: Verify Downloaded Files
         shell: bash
+        env:
+          BRAND_KEY: ${{ steps.brand.outputs.brand_key }}
         run: |
           TEST_PATHS=(
             "./server-publish/wwwroot/downloads/Version.txt"
-            "./server-publish/wwwroot/downloads/linux-x64/ControlR.Agent.Installer"
-            "./server-publish/wwwroot/downloads/linux-x64/ControlR.Agent.bundle.zip"
+            "./server-publish/wwwroot/downloads/linux-x64/${BRAND_KEY}.Agent.Installer"
+            "./server-publish/wwwroot/downloads/linux-x64/${BRAND_KEY}.Agent.bundle.zip"
             "./server-publish/novnc/vnc.html"
           )
 
