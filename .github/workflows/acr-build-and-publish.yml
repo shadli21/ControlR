@@ -54,19 +54,16 @@ jobs:
       use_self_hosted_runners: true
       use_local_storage: true
       retention_days_artifacts: 1
-      build_nugets: false
-      notarize_mac_bundle: false
+      build_nugets: true
+      notarize_mac_bundle: true
       prerelease: false
-      run_tests: false
+      run_tests: true
     secrets: inherit
 
   publish-acr:
     name: Publish to ACR
     needs: build
-    if: ${{ success('build') }}
-    concurrency:
-      group: acr-publish-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
-      cancel-in-progress: false
+    if: ${{ always() }}
     uses: ./.github/workflows/publish-acr.yml
     with:
       run_id: ${{ github.run_id }}
