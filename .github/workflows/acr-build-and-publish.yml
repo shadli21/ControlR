@@ -65,7 +65,7 @@ jobs:
   # resolution error), the error would otherwise be invisible in the job list. This
   # guarantees a native job runs so template-resolution errors surface on the run.
   echo-build-summary:
-    name: Echo Build Summary
+    name: Print Build Summary
     needs: build
     runs-on: ubuntu-latest
     if: ${{ always() }}
