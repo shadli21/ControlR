@@ -43,7 +43,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: acr-publish-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
+  group: acr-build-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
   cancel-in-progress: false
 
 jobs:
