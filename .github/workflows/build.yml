@@ -1042,7 +1042,21 @@ jobs:
           artifact-host: ${{ inputs.use_local_storage && vars.ARTIFACT_HOST || '' }}
           artifact-base-path: ${{ inputs.use_local_storage && vars.ARTIFACT_BASE_PATH || '' }}
 
-      - name: Build Completed
+  print-summary:
+    name: Print Build Summary
+    runs-on: ${{ inputs.use_self_hosted_runners && fromJson('["self-hosted","Windows"]') || fromJson('["ubuntu-latest"]') }}
+    if: ${{ needs.build-web-server.result == 'success' }}
+    needs:
+      [
+        build-web-server,
+        run-tests,
+        build-nugets,
+        set-version
+      ]
+    env:
+      VERSION: ${{ needs.set-version.outputs.version }}
+    steps:
+      - name: Print Build Summary
         shell: pwsh
         env:
           VERSION: ${{ env.VERSION }}
