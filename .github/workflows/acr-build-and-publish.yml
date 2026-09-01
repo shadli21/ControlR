@@ -63,7 +63,11 @@ jobs:
   publish-acr:
     name: Publish to ACR
     needs: build
-    if: ${{ always() }}
+    # The build reusable workflow contains always-skipped jobs (run-tests, build-nugets)
+    # in this path. GitHub's default success() treats a skipped job as failing, which
+    # drops this job. Use the job-specific success('build') so only the build job's real
+    # result matters, decoupled from the skipped ancestors.
+    if: ${{ success('build') }}
     concurrency:
       group: acr-publish-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
       cancel-in-progress: false
