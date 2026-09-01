@@ -1045,7 +1045,7 @@ jobs:
   print-summary:
     name: Print Build Summary
     runs-on: ${{ inputs.use_self_hosted_runners && fromJson('["self-hosted","Windows"]') || fromJson('["ubuntu-latest"]') }}
-    if: ${{ needs.build-web-server.result == 'success' }}
+    if: ${{ always() && needs.build-web-server.result == 'success' }}
     needs:
       [
         build-web-server,
