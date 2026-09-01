@@ -60,6 +60,12 @@ public class PermissionRequirementHandler(
         requirement.PermissionName, resourceDescriptor, principal.PrincipalId, result.DenialReason);
       context.Fail(new AuthorizationFailureReason(this, result.DenialReason ?? "Permission denied."));
     }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+      // A client disconnect / aborted request is not an evaluation failure. Let it propagate so it
+      // is not logged as an Error or reported as a generic authorization denial.
+      throw;
+    }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Authorization evaluation failed for {Permission}. Denying.", requirement.PermissionName);

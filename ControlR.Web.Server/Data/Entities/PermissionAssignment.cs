@@ -59,7 +59,7 @@ public class PermissionAssignment : EntityBase
       ScopeId = scopeKind == PermissionScopeKind.Server ? null : scopeId,
       IsEnabled = isEnabled,
       OwningTenantId = scopeKind == PermissionScopeKind.Server ? null : owningTenantId,
-      CreatedByPrincipalType = createdBy?.PrincipalType.ToAuthorizationChangeLogActorType(),
+      CreatedByPrincipalType = createdBy?.PrincipalType.ToAuthorizationChangeLogActorType() ?? AuthorizationChangeLogActorTypes.System,
       CreatedByPrincipalId = createdBy?.PrincipalId.ToString(),
       Notes = notes
     };

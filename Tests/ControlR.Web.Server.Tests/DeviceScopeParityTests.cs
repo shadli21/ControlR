@@ -159,7 +159,9 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
 
     var (claims, principal) = CreateUserPrincipalPair(user.Id, tenant.Id);
 
-    await AssertResolverEvaluatorParity(testApp, tenant.Id, claims, principal,
+    // Assert the absolute expected outcome (deny + empty enumeration), not just parity, so the
+    // test fails if both the resolver and the evaluator incorrectly grant access.
+    await AssertResolverAndEvaluatorDenyAll(testApp, tenant.Id, claims, principal,
     [
       new ParityDevice(deviceA.Id, null, [])
     ]);
@@ -287,7 +289,9 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
     var (claims, principal) = CreateCredentialPrincipalPair(
       user.Id, tenant.Id, patId, CredentialType.PersonalAccessToken);
 
-    await AssertResolverEvaluatorParity(testApp, tenant.Id, claims, principal,
+    // Assert the absolute expected outcome (deny + empty enumeration), not just parity, so the
+    // test fails if both the resolver and the evaluator incorrectly grant access.
+    await AssertResolverAndEvaluatorDenyAll(testApp, tenant.Id, claims, principal,
     [
       new ParityDevice(deviceA.Id, null, [])
     ]);
@@ -471,6 +475,45 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       PermissionNames.DeviceRead,
       new ResourceDescriptor(PermissionScopeKind.Device, deviceB.Id, tenantB.Id),
       TestContext.Current.CancellationToken)).Allowed);
+  }
+
+  /// <summary>
+  /// Asserts the absolute expected outcome for a deny scenario: the enumeration returns no
+  /// devices and the evaluator denies every listed device. Unlike
+  /// <see cref="AssertResolverEvaluatorParity"/>, this fails when both paths share the same bug
+  /// and wrongly grant access.
+  /// </summary>
+  private static async Task AssertResolverAndEvaluatorDenyAll(
+    TestApp testApp,
+    Guid tenantId,
+    ClaimsPrincipal claimsPrincipal,
+    PrincipalDescriptor principal,
+    IReadOnlyList<ParityDevice> devices)
+  {
+    var cancellationToken = TestContext.Current.CancellationToken;
+    using var scope = testApp.App.Services.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var resolver = scope.ServiceProvider.GetRequiredService<IDeviceAccessScopeResolver>();
+    var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
+
+    var accessScope = await resolver.Resolve(claimsPrincipal, cancellationToken);
+
+    var listedDeviceIds = await db.Devices
+      .ApplyAccessScope(tenantId, accessScope)
+      .Select(x => x.Id)
+      .ToListAsync(cancellationToken);
+
+    Assert.Empty(listedDeviceIds);
+
+    foreach (var device in devices)
+    {
+      var descriptor = new ResourceDescriptor(
+        PermissionScopeKind.Device, device.Id, tenantId, device.CustomerId, DeviceGroupIds: device.GroupIds);
+
+      var result = await evaluator.Evaluate(principal, PermissionNames.DeviceRead, descriptor, cancellationToken);
+
+      Assert.False(result.Allowed);
+    }
   }
 
   private static async Task AssertResolverEvaluatorParity(

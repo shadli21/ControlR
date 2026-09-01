@@ -218,9 +218,11 @@ public class DevicesController : ControllerBase
 
   private static async Task<bool> ValidateServerSa(Guid creatorId, AppDb appDb)
   {
+    // ServiceAccounts is polymorphic (server and tenant rows share the table). Restrict to a real
+    // server account so a tenant service-account id can never satisfy the server-wide trust check.
     var serviceAccount = await appDb.ServiceAccounts
       .IgnoreQueryFilters()
-      .FirstOrDefaultAsync(x => x.Id == creatorId && x.IsEnabled);
+      .FirstOrDefaultAsync(x => x.Id == creatorId && x.IsEnabled && x.Kind == ServiceAccountKind.Server);
     return serviceAccount is not null;
   }
 }

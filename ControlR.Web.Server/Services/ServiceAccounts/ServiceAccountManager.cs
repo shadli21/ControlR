@@ -375,24 +375,36 @@ public class ServiceAccountManager(
 
     appDb.ServiceAccounts.Add(account);
 
-    var saveResult = await appDb.SaveChangesOrConfirmConflictAsync<ServiceAccount>(
-      x => x.Kind == ServiceAccountKind.Server && x.Name == name,
-      cancellationToken);
-
-    if (saveResult == SaveChangesResult.ConflictDetected)
+    try
     {
+      await appDb.ExecuteInTransaction(async () =>
+      {
+        await appDb.SaveChangesAsync(cancellationToken);
+
+        appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
+          AuthorizationChangeLogActions.ServiceAccountCreated,
+          actor,
+          AuthorizationChangeLogTargetTypes.ServiceAccount,
+          account.Id,
+          null,
+          after: new ServiceAccountSnapshot(name, ServiceAccountKind.Server, description, true)));
+
+        await appDb.SaveChangesAsync(cancellationToken);
+      }, cancellationToken);
+    }
+    catch (DbUpdateException)
+    {
+      var conflictExists = await appDb.ServiceAccounts
+        .IgnoreQueryFilters()
+        .AnyAsync(x => x.Kind == ServiceAccountKind.Server && x.Name == name, cancellationToken);
+
+      if (!conflictExists)
+      {
+        throw;
+      }
+
       return HttpResult.Fail<ServiceAccountResult>(HttpResultErrorCode.Conflict, "A server service account with that name already exists.");
     }
-
-    appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
-      AuthorizationChangeLogActions.ServiceAccountCreated,
-      actor,
-      AuthorizationChangeLogTargetTypes.ServiceAccount,
-      account.Id,
-      null,
-      after: new ServiceAccountSnapshot(name, ServiceAccountKind.Server, description, true)));
-
-    await appDb.SaveChangesAsync(cancellationToken);
 
     return HttpResult.Ok(MapToResult(account));
   }

@@ -63,7 +63,10 @@ public partial class PermissionAssignmentDialog : ComponentBase
       await PermissionCatalogStore.Refresh();
     }
 
-    _catalog = PermissionCatalogStore.Items;
+    // Server-only permissions have no assignable scope without server authority, so hide them.
+    _catalog = CanManageServerScope
+      ? PermissionCatalogStore.Items
+      : [.. PermissionCatalogStore.Items.Where(HasNonServerScope)];
 
     if (ExistingAssignment is { } existing)
     {
@@ -97,6 +100,9 @@ public partial class PermissionAssignmentDialog : ComponentBase
   {
     return PermissionScopeKinds.GetBroadestTenantLegalScope(entry?.AllowedScopeKinds ?? []) ?? PermissionScopeKind.Tenant;
   }
+
+  private static bool HasNonServerScope(InternalDtos.PermissionCatalogEntryDto entry) =>
+    entry.AllowedScopeKinds.Any(static kind => kind != PermissionScopeKind.Server);
 
   private static string ScopeKindLabel(PermissionScopeKind scopeKind) => scopeKind switch
   {
