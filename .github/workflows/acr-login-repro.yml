@@ -1,0 +1,110 @@
+name: ACR Login Repro
+
+on:
+  workflow_dispatch:
+    inputs:
+      strategy:
+        description: "Login strategy to test"
+        required: true
+        type: choice
+        default: name_only
+        options:
+          - name_only
+          - name_and_suffix
+          - full_fqdn
+          - docker_buildx_only
+          - docker_login_direct
+
+jobs:
+  test-acr-login:
+    name: Test ACR login strategy
+    runs-on: ubuntu-latest
+    environment: acr-publish-dev
+
+    env:
+      ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+
+    steps:
+      - name: Echo inputs and server
+        run: |
+          echo "Strategy: ${{ inputs.strategy }}"
+          echo "Login server: $ACR_LOGIN_SERVER"
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_ACR_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ----- Strategy A: pass the full login server as --name -----
+      - name: "Strategy A: az acr login --name (FQDN)"
+        if: ${{ inputs.strategy == 'full_fqdn' }}
+        shell: bash
+        run: |
+          echo "--- az acr login --name $ACR_LOGIN_SERVER ---"
+          if az acr login --name "$ACR_LOGIN_SERVER" 2>&1; then
+            echo "RESULT: A: SUCCESS"
+          else
+            echo "RESULT: A: FAILED"
+          fi
+
+      # ----- Strategy B: split into short name + suffix -----
+      - name: "Strategy B: az acr login --name X --suffix Y"
+        if: ${{ inputs.strategy == 'name_and_suffix' }}
+        shell: bash
+        run: |
+          ACR_NAME="${ACR_LOGIN_SERVER%%[.-]*}"
+          ACR_SUFFIX="${ACR_LOGIN_SERVER#${ACR_NAME}.}"
+          echo "ACR_NAME=$ACR_NAME"
+          echo "ACR_SUFFIX=$ACR_SUFFIX"
+          echo "--- az acr login --name $ACR_NAME --suffix $ACR_SUFFIX ---"
+          if az acr login --name "${ACR_NAME}" --suffix "${ACR_SUFFIX}" 2>&1; then
+            echo "RESULT: B: SUCCESS"
+          else
+            echo "RESULT: B: FAILED"
+          fi
+
+      # ----- Strategy C: pass just the short name (baseline) -----
+      - name: "Strategy C: az acr login --name (short name only)"
+        if: ${{ inputs.strategy == 'name_only' }}
+        shell: bash
+        run: |
+          ACR_NAME="${ACR_LOGIN_SERVER%%[.-]*}"
+          echo "ACR_NAME=$ACR_NAME"
+          echo "--- az acr login --name $ACR_NAME ---"
+          if az acr login --name "${ACR_NAME}" 2>&1; then
+            echo "RESULT: C: SUCCESS"
+          else
+            echo "RESULT: C: FAILED"
+          fi
+
+      # ----- Strategy D: skip az acr login entirely; rely on docker/build-push-action with OIDC creds -----
+      - name: "Strategy D: skip az acr login; use docker/build-push-action OIDC"
+        if: ${{ inputs.strategy == 'docker_buildx_only' }}
+        shell: bash
+        run: |
+          # Set up Buildx, then attempt an ACR pull using docker/buildx (no prior az login).
+          # This tests whether the OIDC token alone is sufficient without an explicit az acr login.
+          docker buildx create --use --name repro-builder 2>/dev/null || docker buildx use repro-builder
+          if docker buildx imagetools inspect "$ACR_LOGIN_SERVER/sponsortest/null:null" 2>&1 | head -20; then
+            echo "RESULT: D: SUCCESS (or already authenticated from elsewhere)"
+          else
+            echo "RESULT: D: FAILED (expected without az acr login)"
+          fi
+
+      # ----- Strategy E: use plain `docker login` with the OIDC token -----
+      - name: "Strategy E: docker login using OIDC access token"
+        if: ${{ inputs.strategy == 'docker_login_direct' }}
+        shell: bash
+        run: |
+          # azure/login@v3 stores the OIDC access token for use in subsequent steps.
+          # Fetch it and pass directly to docker login.
+          ACCESS_TOKEN=$(az account get-access-token --resource https://containerregistry.azurecr.io --query accessToken -o tsv)
+          echo "Got OIDC access token (length: ${#ACCESS_TOKEN})"
+          echo "$ACCESS_TOKEN" | docker login "$ACR_LOGIN_SERVER" -u 00000000-0000-0000-0000-000000000000 --password-stdin
+          if [ $? -eq 0 ]; then
+            echo "RESULT: E: SUCCESS"
+          else
+            echo "RESULT: E: FAILED"
+          fi
