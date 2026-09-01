@@ -77,10 +77,6 @@ permissions:
   contents: read
   id-token: write
 
-concurrency:
-  group: acr-publish-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
-  cancel-in-progress: false
-
 jobs:
   publish:
     name: Publish to ACR

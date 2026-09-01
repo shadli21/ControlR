@@ -42,10 +42,6 @@ permissions:
   contents: read
   id-token: write
 
-concurrency:
-  group: acr-build-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
-  cancel-in-progress: false
-
 jobs:
   build:
     name: Build
@@ -67,6 +63,9 @@ jobs:
   publish-acr:
     name: Publish to ACR
     needs: build
+    concurrency:
+      group: acr-publish-${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }}
+      cancel-in-progress: false
     uses: ./.github/workflows/publish-acr.yml
     with:
       run_id: ${{ github.run_id }}
