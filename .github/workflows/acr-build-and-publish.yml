@@ -1,5 +1,5 @@
 name: ACR Build and Publish
-run-name: ACR Build (${{ inputs.image_reference }})
+run-name: Portal Build (${{ inputs.environment }} | ${{ inputs.sponsor_login }}-slot${{ inputs.slot_number }})
 
 on:
   workflow_dispatch:
