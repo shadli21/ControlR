@@ -1053,6 +1053,8 @@ jobs:
         build-nugets,
         set-version
       ]
+    outputs:
+      build_succeeded: ${{ needs.build-web-server.result == 'success' }}
     env:
       VERSION: ${{ needs.set-version.outputs.version }}
     steps:
@@ -1062,6 +1064,7 @@ jobs:
           VERSION: ${{ env.VERSION }}
         run: |
           echo "## Build Summary" >> $env:GITHUB_STEP_SUMMARY
+          echo "**Build Status:** ${{ needs.build-web-server.result }}" >> $env:GITHUB_STEP_SUMMARY
           echo "**Version:** v${{ env.VERSION }}" >> $env:GITHUB_STEP_SUMMARY
           echo "**Git Ref:** ${{ github.ref }}" >> $env:GITHUB_STEP_SUMMARY
           echo "**Use Self-Hosted Runners:** ${{ inputs.use_self_hosted_runners }}" >> $env:GITHUB_STEP_SUMMARY
