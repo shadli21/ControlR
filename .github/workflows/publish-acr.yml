@@ -240,8 +240,7 @@ jobs:
       - name: Login to ACR
         shell: bash
         run: |
-          ACR_NAME="${ACR_LOGIN_SERVER%%[.-]*}"
-          az acr login --name "$ACR_NAME"
+          az acr login --name "${ACR_LOGIN_SERVER}"
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v7
