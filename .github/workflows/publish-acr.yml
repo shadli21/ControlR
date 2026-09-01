@@ -51,7 +51,7 @@ on:
       slot_number:
         description: "Sponsor build slot number"
         required: true
-        type: number
+        type: string
       image_reference:
         description: "Full ACR image reference. When provided, overrides the derived reference."
         required: false
