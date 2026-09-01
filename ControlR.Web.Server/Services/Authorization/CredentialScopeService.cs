@@ -35,8 +35,7 @@ public interface ICredentialScopeService
     Guid tokenId,
     Guid deviceId,
     Guid tenantId,
-    string actorType,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default);
 }
@@ -58,22 +57,20 @@ public class CredentialScopeService(
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default)
   {
+    var scopeResources = await ResolveScopes(scopes, tenantId, cancellationToken);
+
     var requests = new List<PermissionEvaluationRequest>(scopes.Count);
-    foreach (var scope in scopes)
+    for (var i = 0; i < scopes.Count; i++)
     {
-      var scopeResource = await _resourceFactory.CreateScope(
-        scope.ScopeKind,
-        scope.ScopeId,
-        tenantId,
-        cancellationToken);
+      var scopeResource = scopeResources[i];
       if (scopeResource is null)
       {
         return HttpResult.Fail(
           HttpResultErrorCode.BadRequest,
-          $"Scope target not found in this tenant: {scope.ScopeKind}/{scope.ScopeId}.");
+          $"Scope target not found in this tenant: {scopes[i].ScopeKind}/{scopes[i].ScopeId}.");
       }
 
-      requests.Add(new PermissionEvaluationRequest(scope.PermissionName, scopeResource));
+      requests.Add(new PermissionEvaluationRequest(scopes[i].PermissionName, scopeResource));
     }
 
     var decisions = await _permissionEvaluator.EvaluateBatch(
@@ -117,8 +114,7 @@ public class CredentialScopeService(
     Guid tokenId,
     Guid deviceId,
     Guid tenantId,
-    string actorType,
-    Guid actorPrincipalId,
+    PrincipalDescriptor actor,
     IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
     CancellationToken cancellationToken = default)
   {
@@ -139,20 +135,124 @@ public class CredentialScopeService(
         scope.ScopeKind,
         scopeDeviceId,
         tenantId,
-        actorType,
-        actorPrincipalId.ToString()));
+        actor));
     }
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CredentialScopeSet,
-      actorType,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.LogonToken,
       tokenId,
       tenantId,
       after: new CredentialScopeSetSummary(scopes.Count)));
 
     await _appDb.SaveChangesAsync(cancellationToken);
+  }
+
+  /// <summary>
+  /// Resolves every requested scope in a bounded number of queries by grouping the lookups
+  /// by scope kind, instead of issuing one <see cref="IResourceDescriptorFactory.CreateScope"/>
+  /// (and one DbContext/query) per scope.
+  /// </summary>
+  private async Task<IReadOnlyList<ResourceDescriptor?>> ResolveScopes(
+    IReadOnlyList<InternalDtos.CredentialScopeDto> scopes,
+    Guid tenantId,
+    CancellationToken cancellationToken)
+  {
+    var results = new ResourceDescriptor?[scopes.Count];
+
+    var deviceGroupIds = scopes
+      .Where(s => s.ScopeKind == PermissionScopeKind.DeviceGroup && s.ScopeId.HasValue)
+      .Select(s => s.ScopeId!.Value)
+      .Distinct()
+      .ToList();
+    var customerIds = scopes
+      .Where(s => s.ScopeKind == PermissionScopeKind.CustomerTenant && s.ScopeId.HasValue)
+      .Select(s => s.ScopeId!.Value)
+      .Distinct()
+      .ToList();
+    var userGroupIds = scopes
+      .Where(s => s.ScopeKind == PermissionScopeKind.UserGroup && s.ScopeId.HasValue)
+      .Select(s => s.ScopeId!.Value)
+      .Distinct()
+      .ToList();
+    var deviceIds = scopes
+      .Where(s => s.ScopeKind == PermissionScopeKind.Device && s.ScopeId.HasValue)
+      .Select(s => s.ScopeId!.Value)
+      .Distinct()
+      .ToList();
+
+    var deviceGroupSet = deviceGroupIds.Count == 0
+      ? []
+      : (await _appDb.DeviceGroups
+          .IgnoreQueryFilters()
+          .AsNoTracking()
+          .Where(g => deviceGroupIds.Contains(g.Id) && g.TenantId == tenantId)
+          .Select(g => g.Id)
+          .ToListAsync(cancellationToken))
+        .ToHashSet();
+
+    var customerSet = customerIds.Count == 0
+      ? []
+      : (await _appDb.Customers
+          .IgnoreQueryFilters()
+          .AsNoTracking()
+          .Where(c => customerIds.Contains(c.Id) && c.TenantId == tenantId)
+          .Select(c => c.Id)
+          .ToListAsync(cancellationToken))
+        .ToHashSet();
+
+    var userGroupSet = userGroupIds.Count == 0
+      ? []
+      : (await _appDb.UserGroups
+          .IgnoreQueryFilters()
+          .AsNoTracking()
+          .Where(g => userGroupIds.Contains(g.Id) && g.TenantId == tenantId)
+          .Select(g => g.Id)
+          .ToListAsync(cancellationToken))
+        .ToHashSet();
+
+    var deviceLookup = deviceIds.Count == 0
+      ? new Dictionary<Guid, Device>()
+      : (await _appDb.Devices
+          .IgnoreQueryFilters()
+          .AsNoTracking()
+          .Include(x => x.DeviceGroupMembers)
+          .Where(d => deviceIds.Contains(d.Id) && d.TenantId == tenantId)
+          .ToListAsync(cancellationToken))
+        .ToDictionary(d => d.Id);
+
+    for (var i = 0; i < scopes.Count; i++)
+    {
+      var scope = scopes[i];
+      results[i] = scope.ScopeKind switch
+      {
+        PermissionScopeKind.Server => _resourceFactory.CreateServer(),
+        PermissionScopeKind.Tenant =>
+          scope.ScopeId is null || scope.ScopeId == tenantId
+            ? _resourceFactory.CreateTenant(tenantId)
+            : null,
+        PermissionScopeKind.DeviceGroup =>
+          scope.ScopeId.HasValue && deviceGroupSet.Contains(scope.ScopeId.Value)
+            ? new ResourceDescriptor(PermissionScopeKind.DeviceGroup, scope.ScopeId, tenantId)
+            : null,
+        PermissionScopeKind.CustomerTenant =>
+          scope.ScopeId.HasValue && customerSet.Contains(scope.ScopeId.Value)
+            ? new ResourceDescriptor(PermissionScopeKind.CustomerTenant, scope.ScopeId, tenantId)
+            : null,
+        PermissionScopeKind.UserGroup =>
+          scope.ScopeId.HasValue && userGroupSet.Contains(scope.ScopeId.Value)
+            ? new ResourceDescriptor(PermissionScopeKind.UserGroup, scope.ScopeId, tenantId)
+            : null,
+        PermissionScopeKind.Device =>
+          scope.ScopeId.HasValue && deviceLookup.TryGetValue(scope.ScopeId.Value, out var device)
+            ? await _resourceFactory.CreateDevice(device, cancellationToken)
+            : null,
+        _ => null
+      };
+    }
+
+    return results;
   }
 
 }

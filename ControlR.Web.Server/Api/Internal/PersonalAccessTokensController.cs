@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Authz.Permissions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -21,7 +22,12 @@ public class PersonalAccessTokensController : ControllerBase
       return BadRequest("User tenant not found");
     }
 
-    var result = await personalAccessTokenManager.CreateToken(request, user.Id);
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    {
+      return BadRequest("User ID not found.");
+    }
+
+    var result = await personalAccessTokenManager.CreateToken(request, user.Id, actor);
     if (!result.IsSuccess)
     {
       return BadRequest(result.Reason);

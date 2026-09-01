@@ -56,21 +56,21 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant, tenant.Id, tenant.Id));
     await SeedAssignment(testServer, CreateGrant(tenantAllowUser.Id, PermissionNames.DeviceRead,
       PermissionScopeKind.Device, deniedDevice.Id, tenant.Id, PermissionEffect.Deny));
-    await AssertParity(testServer, tenantAllowUser.Id, allDevices,
+    await AssertParity(testServer, new PrincipalDescriptor(PrincipalType.User, tenantAllowUser.Id, tenantAllowUser.TenantId, "test"), allDevices,
       expectedReadable: [deviceInGroup.Id, deviceInCustomer.Id, plainDevice.Id]);
 
     // Scenario 2: group-scoped allow only.
     var groupAllowUser = await testServer.Services.CreateTestUser(tenant.Id, $"group-allow-{Guid.NewGuid():N}@t.local");
     await SeedAssignment(testServer, CreateGrant(groupAllowUser.Id, PermissionNames.DeviceRead,
       PermissionScopeKind.DeviceGroup, groupId, tenant.Id));
-    await AssertParity(testServer, groupAllowUser.Id, allDevices,
+    await AssertParity(testServer, new PrincipalDescriptor(PrincipalType.User, groupAllowUser.Id, groupAllowUser.TenantId, "test"), allDevices,
       expectedReadable: [deviceInGroup.Id]);
 
     // Scenario 3: customer-scoped allow only.
     var customerAllowUser = await testServer.Services.CreateTestUser(tenant.Id, $"customer-allow-{Guid.NewGuid():N}@t.local");
     await SeedAssignment(testServer, CreateGrant(customerAllowUser.Id, PermissionNames.DeviceRead,
       PermissionScopeKind.CustomerTenant, customerId, tenant.Id));
-    await AssertParity(testServer, customerAllowUser.Id, allDevices,
+    await AssertParity(testServer, new PrincipalDescriptor(PrincipalType.User, customerAllowUser.Id, customerAllowUser.TenantId, "test"), allDevices,
       expectedReadable: [deviceInCustomer.Id]);
   }
 
@@ -93,7 +93,8 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Explicit PAT parity", PersonalAccessTokenPermissionMode.InheritOwner),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess);
 
     using (var scope = testServer.Services.CreateScope())
@@ -110,8 +111,7 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Device,
         deviceA.Id,
         tenant.Id,
-        "test",
-        user.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
@@ -136,7 +136,7 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
       $"{HttpConstants.Internal.DevicesEndpoint}/{deviceB.Id}",
       TestContext.Current.CancellationToken);
     Assert.Equal(HttpStatusCode.OK, deviceAResponse.StatusCode);
-    Assert.Equal(HttpStatusCode.Forbidden, deviceBResponse.StatusCode);
+    Assert.Equal(HttpStatusCode.NotFound, deviceBResponse.StatusCode);
   }
 
   private static PermissionAssignment CreateGrant(
@@ -153,8 +153,7 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
       scopeKind,
       scopeId,
       tenantId,
-      "parity-test",
-      userId.ToString(),
+      new PrincipalDescriptor(PrincipalType.User, userId, tenantId, "parity-test"),
       effect);
 
   private static async Task SeedAssignment(TestWebServer testServer, PermissionAssignment assignment)
@@ -167,11 +166,11 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
 
   private async Task AssertParity(
     TestWebServer testServer,
-    Guid userId,
+    PrincipalDescriptor actor,
     Guid[] allDevices,
     Guid[] expectedReadable)
   {
-    using var httpClient = await CreatePatClient(testServer, userId);
+    using var httpClient = await CreatePatClient(testServer, actor);
 
     var listResponse = await httpClient.GetAsync(
       HttpConstants.Internal.DevicesEndpoint, TestContext.Current.CancellationToken);
@@ -204,11 +203,11 @@ public class DeviceEndpointParityTests(ITestOutputHelper testOutput)
     }
   }
 
-  private async Task<HttpClient> CreatePatClient(TestWebServer testServer, Guid userId)
+  private async Task<HttpClient> CreatePatClient(TestWebServer testServer, PrincipalDescriptor actor)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Device Endpoint Parity PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Device Endpoint Parity PAT", PersonalAccessTokenPermissionMode.InheritOwner), actor.PrincipalId, actor);
     Assert.True(patResult.IsSuccess);
 
     var client = testServer.Factory.CreateClient();

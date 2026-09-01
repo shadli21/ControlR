@@ -26,7 +26,7 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
       tenant.Id,
       $"installer-{Guid.NewGuid():N}@t.local",
       PermissionPresets.AgentInstaller);
-    using var httpClient = await CreatePatClient(testServer, installer.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, installer.Id, installer.TenantId, "test"));
 
     var createKeyResponse = await httpClient.PostAsJsonAsync(
       HttpConstants.Internal.InstallerKeysEndpoint,
@@ -56,7 +56,7 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
       tenant.Id,
       $"installer-{Guid.NewGuid():N}@t.local",
       PermissionPresets.AgentInstaller);
-    using var httpClient = await CreatePatClient(testServer, installer.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, installer.Id, installer.TenantId, "test"));
 
     var response = await httpClient.PostAsJsonAsync(
       HttpConstants.Internal.DeploymentOptionsEndpoint + "/tag-capability",
@@ -92,7 +92,7 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    using var httpClient = await CreatePatClient(testServer, user.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     var allowedResponse = await httpClient.PostAsJsonAsync(
       HttpConstants.Internal.DeploymentOptionsEndpoint + "/tag-capability",
@@ -135,7 +135,7 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
       await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    using var httpClient = await CreatePatClient(testServer, user.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     var response = await httpClient.PostAsJsonAsync(
       HttpConstants.Internal.DeploymentOptionsEndpoint + "/tag-capability",
@@ -171,7 +171,7 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
       Assert.True(result.IsSuccess);
     }
 
-    using var httpClient = await CreatePatClient(testServer, installer.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, installer.Id, installer.TenantId, "test"));
 
     var response = await httpClient.GetAsync(
       HttpConstants.Internal.DeploymentOptionsEndpoint,
@@ -196,7 +196,7 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
     var user = await testServer.Services.CreateTestUser(
       tenant.Id,
       $"plain-{Guid.NewGuid():N}@t.local");
-    using var httpClient = await CreatePatClient(testServer, user.Id);
+    using var httpClient = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     var response = await httpClient.GetAsync(
       HttpConstants.Internal.DeploymentOptionsEndpoint,
@@ -227,12 +227,13 @@ public class DeploymentOptionsControllerTests(ITestOutputHelper testOutput)
 
   private static async Task<HttpClient> CreatePatClient(
     TestWebServer testServer,
-    Guid userId)
+    PrincipalDescriptor actor)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Deployment Options Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      userId);
+      actor.PrincipalId,
+      actor);
     Assert.True(patResult.IsSuccess);
 
     var client = testServer.Factory.CreateClient();

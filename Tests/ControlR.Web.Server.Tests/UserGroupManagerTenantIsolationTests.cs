@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Primitives;
@@ -31,7 +32,7 @@ public class UserGroupManagerTenantIsolationTests(ITestOutputHelper testOutput)
       groupA.Id,
       [userB.Id],
       tenantA.Id,
-      actor.Id,
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenantA.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
@@ -60,7 +61,7 @@ public class UserGroupManagerTenantIsolationTests(ITestOutputHelper testOutput)
     var result = await manager.Delete(
       groupB.Id,
       tenantA.Id,
-      actor.Id,
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenantA.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
@@ -132,7 +133,7 @@ public class UserGroupManagerTenantIsolationTests(ITestOutputHelper testOutput)
       "Renamed",
       null,
       tenantA.Id,
-      actor.Id,
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenantA.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);

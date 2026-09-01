@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.Internal;
 using ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.ServiceAccounts;
 using ControlR.Web.Server.Tests.Helpers;
@@ -73,7 +74,8 @@ public class AuthIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var createResult = await patManager.CreateToken(
       new CreatePersonalAccessTokenRequestDto("Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(createResult.IsSuccess, $"PAT creation failed: {createResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(
@@ -123,7 +125,7 @@ public class AuthIntegrationTests(ITestOutputHelper testOutput)
       createResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 

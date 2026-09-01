@@ -254,7 +254,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
     var selfAccountId = saResult.Value.Id;
@@ -347,7 +347,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -404,8 +404,7 @@ public class ServerServiceAccountsControllerTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Server,
         scopeId: null,
         owningTenantId: null,
-        AuthorizationChangeLogActorTypes.System,
-        userId.ToString()));
+        createdBy: null));
     }
 
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);

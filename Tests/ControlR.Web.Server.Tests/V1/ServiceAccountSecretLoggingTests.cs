@@ -35,7 +35,7 @@ public class ServiceAccountSecretLoggingTests(ITestOutputHelper testOutput)
       accountId,
       "Secret Log Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(addCredResult.IsSuccess);
 
@@ -77,7 +77,7 @@ public class ServiceAccountSecretLoggingTests(ITestOutputHelper testOutput)
       createResult.Value.Id,
       "Secret Log Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(addCredResult.IsSuccess);
 

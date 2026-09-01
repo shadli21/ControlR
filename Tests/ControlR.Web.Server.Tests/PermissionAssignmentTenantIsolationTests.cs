@@ -172,11 +172,11 @@ public class PermissionAssignmentTenantIsolationTests(ITestOutputHelper testOutp
     return assignments;
   }
 
-  private async Task<HttpClient> CreatePatClient(TestWebServer testServer, Guid userId)
+  private async Task<HttpClient> CreatePatClient(TestWebServer testServer, PrincipalDescriptor actor)
   {
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant Isolation Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), userId);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Tenant Isolation Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), actor.PrincipalId, actor);
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     var client = testServer.Factory.CreateClient();
@@ -196,7 +196,7 @@ public class PermissionAssignmentTenantIsolationTests(ITestOutputHelper testOutp
     var regularUser = await testServer.Services.CreateTestUser(
       tenant.Id, $"user-{Guid.NewGuid():N}@t.local");
 
-    var client = await CreatePatClient(testServer, admin.Id);
+    var client = await CreatePatClient(testServer, new PrincipalDescriptor(PrincipalType.User, admin.Id, admin.TenantId, "test"));
     return (client, tenant.Id, admin, regularUser);
   }
 }

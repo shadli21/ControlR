@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Authz.Permissions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ControlR.Web.Server.Api.Internal;
@@ -22,13 +23,13 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _serviceAccountManager.AddCredentialForTenant(
-      serviceAccountId, tenantId, request.Name, request.ExpiresAt, userId, cancellationToken);
+      serviceAccountId, tenantId, request.Name, request.ExpiresAt, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -51,13 +52,13 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _serviceAccountManager.CreateForTenant(
-      request.Name, request.Description, tenantId, userId, cancellationToken);
+      request.Name, request.Description, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -78,12 +79,12 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
-    var result = await _serviceAccountManager.DeleteForTenant(serviceAccountId, tenantId, userId, cancellationToken);
+    var result = await _serviceAccountManager.DeleteForTenant(serviceAccountId, tenantId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -138,13 +139,13 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _serviceAccountManager.RevokeCredentialForTenant(
-      serviceAccountId, credentialId, tenantId, userId, cancellationToken);
+      serviceAccountId, credentialId, tenantId, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {
@@ -166,13 +167,13 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (!User.TryGetUserId(out var userId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
 
     var result = await _serviceAccountManager.UpdateForTenant(
-      serviceAccountId, tenantId, request.Name, request.Description, request.IsEnabled, userId, cancellationToken);
+      serviceAccountId, tenantId, request.Name, request.Description, request.IsEnabled, actor, cancellationToken);
 
     if (!result.IsSuccess)
     {

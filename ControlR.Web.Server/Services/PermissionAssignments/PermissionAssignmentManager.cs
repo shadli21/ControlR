@@ -1,4 +1,3 @@
-using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
@@ -100,7 +99,7 @@ public class PermissionAssignmentManager(
         request.PrincipalId,
         permissionName,
         PermissionEffect.Allow,
-        PermissionCatalog.GetBroadestLegalScope(permissionName) ?? PermissionScopeKind.Tenant,
+        PermissionCatalog.GetBroadestTenantLegalScope(permissionName) ?? PermissionScopeKind.Tenant,
         null,
         null))
       .ToList();
@@ -218,8 +217,7 @@ public class PermissionAssignmentManager(
       request.ScopeKind,
       normalizedScopeId,
       tenantId,
-      AuthorizationChangeLogActorTypes.User,
-      actor.PrincipalId.ToString(),
+      actor,
       request.Effect,
       request.Notes,
       request.IsEnabled);
@@ -246,8 +244,7 @@ public class PermissionAssignmentManager(
 
         _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
           AuthorizationChangeLogActions.PermissionAssignmentCreated,
-          AuthorizationChangeLogActorTypes.User,
-          actor.PrincipalId,
+          actor,
           AuthorizationChangeLogTargetTypes.PermissionAssignment,
           assignment.Id,
           assignment.OwningTenantId,
@@ -372,8 +369,7 @@ public class PermissionAssignmentManager(
         request.ScopeKind,
         NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
         tenantId,
-        AuthorizationChangeLogActorTypes.User,
-        actor.PrincipalId.ToString(),
+        actor,
         request.Effect,
         request.Notes,
         request.IsEnabled);
@@ -406,8 +402,7 @@ public class PermissionAssignmentManager(
           var assignment = created[i];
           _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
             AuthorizationChangeLogActions.PermissionAssignmentCreated,
-            AuthorizationChangeLogActorTypes.User,
-            actor.PrincipalId,
+            actor,
             AuthorizationChangeLogTargetTypes.PermissionAssignment,
             assignment.Id,
             assignment.OwningTenantId,
@@ -481,8 +476,7 @@ public class PermissionAssignmentManager(
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-      AuthorizationChangeLogActorTypes.User,
-      actor.PrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.PermissionAssignment,
       assignmentId,
       assignment.OwningTenantId,
@@ -547,8 +541,7 @@ public class PermissionAssignmentManager(
     {
       _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-        AuthorizationChangeLogActorTypes.User,
-        actor.PrincipalId,
+        actor,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
         assignment.Id,
         assignment.OwningTenantId,
@@ -632,8 +625,7 @@ public class PermissionAssignmentManager(
           request.ScopeKind,
           NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
           tenantId,
-          AuthorizationChangeLogActorTypes.User,
-          actor.PrincipalId.ToString(),
+          actor,
           request.Effect,
           request.Notes,
           request.IsEnabled))
@@ -694,8 +686,7 @@ public class PermissionAssignmentManager(
           {
             _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
               AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-              AuthorizationChangeLogActorTypes.User,
-              actor.PrincipalId,
+              actor,
               AuthorizationChangeLogTargetTypes.PermissionAssignment,
               existingAssignment.Id,
               existingAssignment.OwningTenantId,
@@ -715,8 +706,7 @@ public class PermissionAssignmentManager(
               request.ScopeKind,
               NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
               tenantId,
-              AuthorizationChangeLogActorTypes.User,
-              actor.PrincipalId.ToString(),
+              actor,
               request.Effect,
               null,
               request.IsEnabled);
@@ -733,8 +723,7 @@ public class PermissionAssignmentManager(
             var request = assignments[i];
             _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
               AuthorizationChangeLogActions.PermissionAssignmentCreated,
-              AuthorizationChangeLogActorTypes.User,
-              actor.PrincipalId,
+              actor,
               AuthorizationChangeLogTargetTypes.PermissionAssignment,
               assignment.Id,
               assignment.OwningTenantId,
@@ -818,6 +807,8 @@ public class PermissionAssignmentManager(
 
     if (IsSelf(assignment, actor.PrincipalId))
     {
+      // The replacement is transient: it only feeds the self-protection check and is never
+      // persisted. The live row's creator columns are left untouched below.
       var replacement = PermissionAssignment.CreateGrant(
         assignment.PrincipalKind,
         assignment.PrincipalId,
@@ -825,11 +816,11 @@ public class PermissionAssignmentManager(
         request.ScopeKind,
         NormalizeScopeId(request.ScopeKind, request.ScopeId, tenantId),
         tenantId,
-        assignment.CreatedByPrincipalType ?? AuthorizationChangeLogActorTypes.User,
-        assignment.CreatedByPrincipalId,
+        createdBy: null,
         request.Effect,
         request.Notes,
         request.IsEnabled);
+
       replacement.Id = assignment.Id;
       if (await FindViolatedSelfProtected(
         actor,
@@ -857,8 +848,7 @@ public class PermissionAssignmentManager(
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.PermissionAssignmentUpdated,
-      AuthorizationChangeLogActorTypes.User,
-      actor.PrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.PermissionAssignment,
       assignment.Id,
       assignment.OwningTenantId,
@@ -876,20 +866,8 @@ public class PermissionAssignmentManager(
     IReadOnlyCollection<PermissionAssignment> groupAssignments,
     Guid tenantId) =>
     [
-      .. directAssignments
-        .Where(row => row.IsEnabled &&
-                      (row.OwningTenantId is null || row.OwningTenantId == tenantId))
-        .Select(row => PermissionRule.Create(
-          row,
-          RuleSource.Direct,
-          SourcePriority.Direct)),
-      .. groupAssignments
-        .Where(row => row.IsEnabled &&
-                      (row.OwningTenantId is null || row.OwningTenantId == tenantId))
-        .Select(row => PermissionRule.Create(
-          row,
-          RuleSource.UserGroup,
-          SourcePriority.UserGroup))
+      .. PermissionRuleFactory.CreateDirectRules(directAssignments, tenantId),
+      .. PermissionRuleFactory.CreateGroupRules(groupAssignments, tenantId)
     ];
 
   private static bool IsSelf(PermissionAssignment assignment, Guid actorPrincipalId) =>
@@ -1160,6 +1138,11 @@ public class PermissionAssignmentManager(
     if (scopeKind is PermissionScopeKind.Device or PermissionScopeKind.DeviceGroup or PermissionScopeKind.CustomerTenant or PermissionScopeKind.UserGroup && !scopeId.HasValue)
     {
       return (HttpResultErrorCode.BadRequest, $"ScopeId is required for scope kind: {scopeKind}");
+    }
+
+    if (scopeKind == PermissionScopeKind.Server && scopeId.HasValue)
+    {
+      return (HttpResultErrorCode.BadRequest, $"ScopeId must be null for {scopeKind} scope.");
     }
 
     if (scopeKind == PermissionScopeKind.Device && !await _appDb.Devices.AnyAsync(x => x.Id == scopeId && x.TenantId == tenantId, cancellationToken))

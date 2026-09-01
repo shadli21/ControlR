@@ -1,5 +1,6 @@
 using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Data;
+using ControlR.Web.Server.Constants;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Tests.Helpers;
@@ -36,7 +37,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
 
     var createRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key", PersonalAccessTokenPermissionMode.InheritOwner);
-    var createResult = await patManager.CreateToken(createRequest, serverAdmin.Id);
+    var createResult = await patManager.CreateToken(createRequest, serverAdmin.Id, new PrincipalDescriptor(PrincipalType.User, serverAdmin.Id, tenantId, "test"));
     var plainTextToken = createResult.Value!.PlainTextToken;
 
     var context = CreateHttpContext(plainTextToken);
@@ -70,7 +71,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
 
     var createRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key", PersonalAccessTokenPermissionMode.InheritOwner);
-    var createResult = await patManager.CreateToken(createRequest, user.Id);
+    var createResult = await patManager.CreateToken(createRequest, user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     var plainTextToken = createResult.Value!.PlainTextToken;
 
     // Lock the user (re-fetch so EF tracks the instance correctly).
@@ -93,6 +94,33 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
   }
 
   [Fact]
+  public async Task HandleAuthenticateAsync_MalformedTokenPrefixes_CollapseToSingleCacheKey()
+  {
+    // Distinct malformed prefixes must all collapse to the single fixed "invalid" token key,
+    // so an attacker cannot plant unbounded cache entries.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
+    using var scope = testApp.CreateScope();
+    var services = scope.ServiceProvider;
+    var memoryCache = services.GetRequiredService<IMemoryCache>();
+
+    var malformedTokens = new[] { ":foo", "bar:secret", "baz:secret", "qux:secret" };
+
+    for (var i = 0; i < malformedTokens.Length; i++)
+    {
+      var context = CreateHttpContext(malformedTokens[i]);
+      // Distinct IP per attempt so the IP-axis throttle does not fire.
+      context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse($"10.0.0.{i + 1}");
+      var handler = await CreateHandler(services, context);
+      var result = await handler.AuthenticateAsync();
+      Assert.False(result.Succeeded);
+    }
+
+    var fixedKey = CacheKeys.GetPersonalAccessTokenAuthFailureByToken("invalid");
+    Assert.True(memoryCache.TryGetValue<int>(fixedKey, out var failures));
+    Assert.Equal(malformedTokens.Length, failures);
+  }
+
+  [Fact]
   public async Task HandleAuthenticateAsync_ShouldCreateCorrectIdentity()
   {
     // Arrange
@@ -105,7 +133,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
     var createRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key", PersonalAccessTokenPermissionMode.InheritOwner);
-    var createResult = await personalAccessTokenManager.CreateToken(createRequest, user.Id);
+    var createResult = await personalAccessTokenManager.CreateToken(createRequest, user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, tenantId, "test"));
     var plainTextToken = createResult.Value!.PlainTextToken;
 
     var context = CreateHttpContext(plainTextToken);
@@ -211,7 +239,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     await using var db = services.GetRequiredService<AppDb>();
 
     var createRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key", PersonalAccessTokenPermissionMode.InheritOwner);
-    var createResult = await patManager.CreateToken(createRequest, user.Id);
+    var createResult = await patManager.CreateToken(createRequest, user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     var plainTextToken = createResult.Value!.PlainTextToken;
 
     // Advance time
@@ -286,7 +314,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
 
     var createRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Canonical Claim Test", PersonalAccessTokenPermissionMode.InheritOwner);
-    var createResult = await patManager.CreateToken(createRequest, user.Id);
+    var createResult = await patManager.CreateToken(createRequest, user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(createResult.IsSuccess);
     var plainTextToken = createResult.Value!.PlainTextToken;
 
@@ -348,7 +376,7 @@ public class PersonalAccessTokenAuthenticationHandlerTests(ITestOutputHelper tes
     var patManager = services.GetRequiredService<IPersonalAccessTokenManager>();
 
     var createRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key", PersonalAccessTokenPermissionMode.InheritOwner);
-    var createResult = await patManager.CreateToken(createRequest, normalUser.Id);
+    var createResult = await patManager.CreateToken(createRequest, normalUser.Id, new PrincipalDescriptor(PrincipalType.User, normalUser.Id, tenantId, "test"));
     var plainTextToken = createResult.Value!.PlainTextToken;
 
     var context = CreateHttpContext(plainTextToken);

@@ -1,3 +1,5 @@
+using ControlR.Web.Server.Authz.Permissions;
+using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.Authorization;
 
@@ -10,16 +12,16 @@ namespace ControlR.Web.Server.Services.Customers;
 public interface ICustomerManager
 {
   Task<HttpResult> AssignDevices(
-    Guid customerId, IReadOnlyList<Guid> deviceIds, IReadOnlyList<Guid>? removeDeviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid customerId, IReadOnlyList<Guid> deviceIds, IReadOnlyList<Guid>? removeDeviceIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.CustomerDto>> Create(
-    string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    string name, string? description, string? notes, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
   Task<HttpResult> Delete(
-    Guid customerId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid customerId, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.CustomerDto>> Get(
     Guid customerId, Guid tenantId, CancellationToken cancellationToken = default);
   Task<IReadOnlyList<InternalDtos.CustomerDto>> GetAll(Guid tenantId, CancellationToken cancellationToken = default);
   Task<HttpResult<InternalDtos.CustomerDto>> Update(
-    Guid customerId, string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default);
+    Guid customerId, string name, string? description, string? notes, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default);
 }
 
 public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeLogFactory) : ICustomerManager
@@ -28,7 +30,7 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
   private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
 
   public async Task<HttpResult> AssignDevices(
-    Guid customerId, IReadOnlyList<Guid> deviceIds, IReadOnlyList<Guid>? removeDeviceIds, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid customerId, IReadOnlyList<Guid> deviceIds, IReadOnlyList<Guid>? removeDeviceIds, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     var customerExists = await _appDb.Customers
       .AnyAsync(x => x.Id == customerId && x.TenantId == tenantId, cancellationToken);
@@ -42,11 +44,12 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
 
     if (deviceIds.Count > 0)
     {
+      var distinctDeviceIds = deviceIds.Distinct().ToList();
       var devices = await _appDb.Devices
-        .Where(x => x.TenantId == tenantId && deviceIds.Contains(x.Id))
+        .Where(x => x.TenantId == tenantId && distinctDeviceIds.Contains(x.Id))
         .ToListAsync(cancellationToken);
 
-      if (devices.Count != deviceIds.Count)
+      if (devices.Count != distinctDeviceIds.Count)
       {
         return HttpResult.Fail(HttpResultErrorCode.BadRequest, "One or more devices were not found in this tenant.");
       }
@@ -80,8 +83,7 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerDevicesAssigned,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.Customer,
       customerId,
       tenantId,
@@ -93,7 +95,7 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
   }
 
   public async Task<HttpResult<InternalDtos.CustomerDto>> Create(
-    string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    string name, string? description, string? notes, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
@@ -118,12 +120,18 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
 
     _appDb.Customers.Add(customer);
 
-    await _appDb.SaveChangesAsync(cancellationToken);
+    var saveResult = await _appDb.SaveChangesOrConfirmConflictAsync<Customer>(
+      x => x.TenantId == tenantId && x.Name == name,
+      cancellationToken);
+
+    if (saveResult == SaveChangesResult.ConflictDetected)
+    {
+      return HttpResult.Fail<InternalDtos.CustomerDto>(HttpResultErrorCode.Conflict, "A customer with that name already exists.");
+    }
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerCreated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.Customer,
       customer.Id,
       tenantId,
@@ -135,7 +143,7 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
   }
 
   public async Task<HttpResult> Delete(
-    Guid customerId, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid customerId, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     var customer = await _appDb.Customers
       .FirstOrDefaultAsync(x => x.Id == customerId && x.TenantId == tenantId, cancellationToken);
@@ -156,8 +164,7 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerDeleted,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.Customer,
       customerId,
       tenantId,
@@ -207,7 +214,7 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
   }
 
   public async Task<HttpResult<InternalDtos.CustomerDto>> Update(
-    Guid customerId, string name, string? description, string? notes, Guid tenantId, Guid actorPrincipalId, CancellationToken cancellationToken = default)
+    Guid customerId, string name, string? description, string? notes, Guid tenantId, PrincipalDescriptor actor, CancellationToken cancellationToken = default)
   {
     if (string.IsNullOrWhiteSpace(name))
     {
@@ -238,8 +245,7 @@ public class CustomerManager(AppDb appDb, IAuthorizationChangeLogFactory changeL
 
     _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
       AuthorizationChangeLogActions.CustomerUpdated,
-      AuthorizationChangeLogActorTypes.User,
-      actorPrincipalId,
+      actor,
       AuthorizationChangeLogTargetTypes.Customer,
       customerId,
       tenantId,

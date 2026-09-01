@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,7 +32,7 @@ public class LogonTokenEndToEndTests(ITestOutputHelper testOutput)
     // Create a test user and issue a personal access token for that user
     var patManager = testServer.TestServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var createPatRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key for Cross-Device Access", PersonalAccessTokenPermissionMode.InheritOwner);
-    var createResult = await patManager.CreateToken(createPatRequest, user.Id);
+    var createResult = await patManager.CreateToken(createPatRequest, user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     Assert.True(createResult.IsSuccess, $"PAT creation failed: {createResult.Reason}");
     var pat = createResult.Value.PlainTextToken;
@@ -88,7 +89,7 @@ public class LogonTokenEndToEndTests(ITestOutputHelper testOutput)
     // Create a test user and issue a personal access token for that user
     var patManager = testServer.TestServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var createPatRequest = new InternalDtos.CreatePersonalAccessTokenRequestDto("Test Key for Logon Token", PersonalAccessTokenPermissionMode.InheritOwner);
-    var createResult = await patManager.CreateToken(createPatRequest, user.Id);
+    var createResult = await patManager.CreateToken(createPatRequest, user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
 
     Assert.True(createResult.IsSuccess, $"PAT creation failed: {createResult.Reason}");
     var pat = createResult.Value.PlainTextToken;

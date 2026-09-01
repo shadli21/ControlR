@@ -3,6 +3,7 @@ using System;
 using ControlR.Web.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ControlR.Web.Server.Data.Migrations
 {
     [DbContext(typeof(AppDb))]
-    partial class AppDbModelSnapshot : ModelSnapshot
+    [Migration("20260830061424_AddAuthorizationChangeLogIndexes")]
+    partial class AddAuthorizationChangeLogIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -602,14 +605,7 @@ namespace ControlR.Web.Server.Data.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("PrincipalKind", "PrincipalId", "PermissionName", "ScopeKind", "ScopeId", "Effect"), false);
 
-                    b.ToTable("PermissionAssignments", t =>
-                        {
-                            t.HasCheckConstraint("CA_PermissionAssignments_NonServer_OwningTenant", "\"ScopeKind\" IN ('Unknown', 'Server') OR \"OwningTenantId\" IS NOT NULL");
-
-                            t.HasCheckConstraint("CA_PermissionAssignments_ScopeKind_ScopeId", "\"ScopeKind\" NOT IN ('Tenant', 'Device', 'DeviceGroup', 'CustomerTenant', 'UserGroup') OR \"ScopeId\" IS NOT NULL");
-
-                            t.HasCheckConstraint("CA_PermissionAssignments_Server_NullScope", "\"ScopeKind\" <> 'Server' OR (\"ScopeId\" IS NULL AND \"OwningTenantId\" IS NULL)");
-                        });
+                    b.ToTable("PermissionAssignments");
                 });
 
             modelBuilder.Entity("ControlR.Web.Server.Data.Entities.PersonalAccessToken", b =>

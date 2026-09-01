@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
@@ -95,7 +96,7 @@ public class CredentialManagementApiTests(ITestOutputHelper testOutput)
     var passwordManager = services.GetRequiredService<IPasswordManager>();
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
-    var patResult = await patManager.CreateToken(new InternalDtos.CreatePersonalAccessTokenRequestDto("Credential Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+    var patResult = await patManager.CreateToken(new InternalDtos.CreatePersonalAccessTokenRequestDto("Credential Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     var personalAccessToken = patResult.Value!.PlainTextToken;
 
     var resetResult = await passwordManager.AdminResetPassword(tenant.Id, user.Id);

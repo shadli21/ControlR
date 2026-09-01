@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services.Authorization;
 using Microsoft.AspNetCore.Http;
 using Moq;
@@ -20,7 +21,7 @@ public class AuthorizationChangeLogFactoryTests
     activity.SetIdFormat(ActivityIdFormat.W3C);
     activity.Start();
 
-    var log = factory.Create("action", "user", null, "ServiceAccount", null, owningTenantId: null);
+    var log = factory.Create("action", actor: null, "ServiceAccount", null, owningTenantId: null);
 
     Assert.Equal(activity.TraceId.ToString(), log.CorrelationId);
   }
@@ -32,8 +33,7 @@ public class AuthorizationChangeLogFactoryTests
 
     var log = factory.Create(
       "action",
-      "user",
-      Guid.Empty,
+      actor: null,
       "ServiceAccount",
       Guid.Empty,
       owningTenantId: null);
@@ -47,7 +47,7 @@ public class AuthorizationChangeLogFactoryTests
   {
     var factory = CreateFactory(remoteIp: IPAddress.Parse("203.0.113.7"));
 
-    var log = factory.Create("action", "user", null, "ServiceAccount", null, owningTenantId: null);
+    var log = factory.Create("action", actor: null, "ServiceAccount", null, owningTenantId: null);
 
     Assert.Equal("203.0.113.7", log.IpAddress);
   }
@@ -57,7 +57,7 @@ public class AuthorizationChangeLogFactoryTests
   {
     var factory = CreateFactory(remoteIp: IPAddress.Parse("::ffff:192.168.1.1"));
 
-    var log = factory.Create("action", "user", null, "ServiceAccount", null, owningTenantId: null);
+    var log = factory.Create("action", actor: null, "ServiceAccount", null, owningTenantId: null);
 
     Assert.Equal("192.168.1.1", log.IpAddress);
   }
@@ -67,7 +67,7 @@ public class AuthorizationChangeLogFactoryTests
   {
     var factory = CreateFactory();
 
-    var log = factory.Create("action", "user", null, "ServiceAccount", null, owningTenantId: null);
+    var log = factory.Create("action", actor: null, "ServiceAccount", null, owningTenantId: null);
 
     Assert.Null(log.CorrelationId);
   }
@@ -77,7 +77,7 @@ public class AuthorizationChangeLogFactoryTests
   {
     var factory = CreateFactory();
 
-    var log = factory.Create("action", "user", null, "ServiceAccount", null, owningTenantId: null);
+    var log = factory.Create("action", actor: null, "ServiceAccount", null, owningTenantId: null);
 
     Assert.Null(log.IpAddress);
   }
@@ -91,8 +91,7 @@ public class AuthorizationChangeLogFactoryTests
 
     var log = factory.Create(
       "action",
-      "user",
-      actorId,
+      new PrincipalDescriptor(PrincipalType.User, actorId, null, "test"),
       "ServiceAccount",
       targetId,
       owningTenantId: null);

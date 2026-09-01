@@ -99,8 +99,7 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Tenant,
         tenant.Id,
         tenant.Id,
-        "test",
-        caller.Id.ToString()),
+        new PrincipalDescriptor(PrincipalType.User, caller.Id, tenant.Id, "test")),
       PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.User,
         caller.Id,
@@ -108,8 +107,7 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
         PermissionScopeKind.Tenant,
         tenant.Id,
         tenant.Id,
-        "test",
-        caller.Id.ToString()));
+        new PrincipalDescriptor(PrincipalType.User, caller.Id, tenant.Id, "test")));
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
     var request = new InternalDtos.CreateUserRequestDto(
@@ -154,8 +152,7 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      caller.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, caller.Id, tenant.Id, "test")));
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
     var request = new InternalDtos.CreateUserRequestDto(

@@ -26,6 +26,13 @@ public class EffectivePermissionsController(IPermissionEvaluator permissionEvalu
       return BadRequest("User tenant not found.");
     }
 
+    if (request.PrincipalKind is not (PermissionPrincipalKind.User or
+                                      PermissionPrincipalKind.UserGroup or
+                                      PermissionPrincipalKind.ServiceAccount))
+    {
+      return BadRequest("Unsupported principal kind.");
+    }
+
     // ServiceAccounts has no claims-driven query filter, so its predicate is the only tenant
     // guard here. Server service accounts are excluded (server-level configuration, not tenant business).
     if (!await PrincipalExistsInTenant(appDb, request.PrincipalKind, request.PrincipalId, tenantId, cancellationToken))
@@ -39,7 +46,7 @@ public class EffectivePermissionsController(IPermissionEvaluator permissionEvalu
         PermissionPrincipalKind.User => PrincipalType.User,
         PermissionPrincipalKind.UserGroup => PrincipalType.UserGroup,
         PermissionPrincipalKind.ServiceAccount => PrincipalType.TenantServiceAccount,
-        _ => throw new InvalidOperationException($"Unsupported principal kind: {request.PrincipalKind}")
+        _ => throw new InvalidOperationException("Unsupported principal kind.")
       },
       PrincipalId: request.PrincipalId,
       TenantId: tenantId,

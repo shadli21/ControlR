@@ -114,7 +114,7 @@ internal static class ServiceExtensions
     Assert.True(accountResult.IsSuccess);
 
     var credResult = await manager.AddCredentialForServer(
-      accountResult.Value.Id, "Credential", expiresAt: null, accountResult.Value.Id, TestContext.Current.CancellationToken);
+      accountResult.Value.Id, "Credential", expiresAt: null, TestActors.ServerServiceAccount(accountResult.Value.Id), TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
     return TestPrincipalHelper.CreateServerServiceAccountPrincipal(accountResult.Value, credResult.Value.Credential);

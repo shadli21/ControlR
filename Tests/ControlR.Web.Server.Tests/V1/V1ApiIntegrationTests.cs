@@ -26,7 +26,7 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 
@@ -67,7 +67,7 @@ public class V1ApiIntegrationTests(ITestOutputHelper testOutput)
       saResult.Value.Id,
       "Test Credential",
       expiresAt: null,
-      Guid.NewGuid(),
+      TestActors.User(),
       TestContext.Current.CancellationToken);
     Assert.True(credResult.IsSuccess);
 

@@ -14,10 +14,10 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   [Theory]
   [InlineData(PermissionNames.ServerAdmin, PermissionScopeKind.Server)]
   [InlineData(PermissionNames.TenantPermissionsWrite, PermissionScopeKind.Tenant)]
-  [InlineData(PermissionNames.DeviceRead, PermissionScopeKind.Tenant)]
+  [InlineData(PermissionNames.DeviceRead, PermissionScopeKind.Server)]
   [InlineData(PermissionNames.UserGroupAssignUsers, PermissionScopeKind.Tenant)]
   [InlineData(PermissionNames.DeviceGroupAssignDevices, PermissionScopeKind.Tenant)]
-  [InlineData(PermissionNames.DeviceLogonTokenCreate, PermissionScopeKind.Tenant)]
+  [InlineData(PermissionNames.DeviceLogonTokenCreate, PermissionScopeKind.Server)]
   public void Catalog_GetBroadestLegalScope_ResolvesToExpectedScope(string permissionName, PermissionScopeKind expected)
   {
     Assert.Equal(expected, PermissionCatalog.GetBroadestLegalScope(permissionName));
@@ -131,7 +131,7 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public void DevicePermissions_NeverAllowServerScope()
+  public void DevicePermissions_AllowServerScope()
   {
     var devicePermissions = PermissionCatalog.All.Values
       .Where(metadata => metadata.AllowedScopeKinds.Contains(PermissionScopeKind.Device))
@@ -139,7 +139,7 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
 
     Assert.NotEmpty(devicePermissions);
     Assert.All(devicePermissions, metadata =>
-      Assert.DoesNotContain(PermissionScopeKind.Server, metadata.AllowedScopeKinds));
+      Assert.Contains(PermissionScopeKind.Server, metadata.AllowedScopeKinds));
   }
 
   [Fact]
@@ -202,11 +202,12 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   {
     foreach (var (permissionName, metadata) in PermissionCatalog.All)
     {
-      var broadest = PermissionCatalog.GetBroadestLegalScope(permissionName);
+      var broadest = PermissionCatalog.GetBroadestTenantLegalScope(permissionName) ??
+                     PermissionCatalog.GetBroadestLegalScope(permissionName);
       Assert.NotNull(broadest);
       Assert.True(
         broadest is PermissionScopeKind.Server or PermissionScopeKind.Tenant,
-        $"Permission '{permissionName}' has broadest legal scope '{broadest}', which cannot be emitted by a preset.");
+        $"Permission '{permissionName}' has broadest seedable scope '{broadest}', which cannot be emitted by a preset.");
       Assert.Contains(broadest.Value, metadata.AllowedScopeKinds);
     }
   }
@@ -225,6 +226,35 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
       Assert.All(entry.Value.AllowedScopeKinds, scopeKind =>
         Assert.True(Enum.IsDefined(scopeKind)));
     });
+  }
+
+  [Fact]
+  public void PermissionScopeKinds_GetBroadestTenantLegalScope_ExcludesServer()
+  {
+    // Device permissions (Option A) now include Server in their allowed scope kinds. The
+    // tenant-bound variant must resolve to the broadest non-Server kind so tenant-facing UI
+    // defaults and preset seeding never pre-select a cross-tenant server grant.
+    var deviceKinds = new[]
+    {
+      PermissionScopeKind.Device,
+      PermissionScopeKind.DeviceGroup,
+      PermissionScopeKind.CustomerTenant,
+      PermissionScopeKind.Tenant,
+      PermissionScopeKind.Server
+    };
+    Assert.Equal(PermissionScopeKind.Tenant, PermissionScopeKinds.GetBroadestTenantLegalScope(deviceKinds));
+    Assert.Equal(PermissionScopeKind.Server, PermissionScopeKinds.GetBroadestLegalScope(deviceKinds));
+
+    // Server-only permissions fall back to the overall broadest legal scope.
+    var serverOnly = new[] { PermissionScopeKind.Server };
+    Assert.Equal(PermissionScopeKind.Server, PermissionScopeKinds.GetBroadestTenantLegalScope(serverOnly));
+
+    // Tenant-only permissions are unchanged.
+    var tenantOnly = new[] { PermissionScopeKind.Tenant };
+    Assert.Equal(PermissionScopeKind.Tenant, PermissionScopeKinds.GetBroadestTenantLegalScope(tenantOnly));
+
+    // Empty set resolves to null.
+    Assert.Null(PermissionScopeKinds.GetBroadestTenantLegalScope(Array.Empty<PermissionScopeKind>()));
   }
 
   [Fact]
@@ -251,15 +281,35 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public void PresetSeedableScope_NeverSeedsDevicePermissionsAtServerScope()
+  {
+    // Device permissions must seed (via presets) at tenant scope, never at server scope,
+    // so preset grants never grant cross-tenant device access.
+    foreach (var permission in PermissionPresets.GetPermissions(PermissionPresets.DeviceSuperUser))
+    {
+      if (PermissionCatalog.Get(permission)?.AllowedScopeKinds.Contains(PermissionScopeKind.Device) != true)
+      {
+        continue;
+      }
+
+      var seedScope = PermissionCatalog.GetBroadestTenantLegalScope(permission) ?? PermissionScopeKind.Tenant;
+      Assert.NotEqual(PermissionScopeKind.Server, seedScope);
+    }
+  }
+
+  [Fact]
   public void Presets_AllPermissionsResolveToBroadestSeedableScope()
   {
     // Presets must be seedable without a concrete resource target, so every preset permission
     // must resolve to a Server or Tenant scope (never a device/group/customer-specific kind).
+    // Device permissions resolve to Tenant (not Server) via GetBroadestTenantLegalScope,
+    // so presets never grant cross-tenant device access.
     foreach (var (presetName, permissions) in PermissionPresets.All)
     {
       foreach (var permission in permissions)
       {
-        var broadest = PermissionCatalog.GetBroadestLegalScope(permission);
+        var broadest = PermissionCatalog.GetBroadestTenantLegalScope(permission) ??
+                       PermissionCatalog.GetBroadestLegalScope(permission);
         Assert.True(
           broadest is PermissionScopeKind.Server or PermissionScopeKind.Tenant,
           $"Preset '{presetName}' permission '{permission}' resolves to broadest scope '{broadest}', which is not seedable without a resource target.");
@@ -302,7 +352,8 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("Scope Guard Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(

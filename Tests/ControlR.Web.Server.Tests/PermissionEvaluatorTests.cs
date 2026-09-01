@@ -463,8 +463,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       deviceA.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
 
     var evaluator = GetEvaluator(testApp);
     var principal = CreateUserPrincipal(user.Id, tenant.Id);
@@ -507,8 +506,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
     await SeedAssignment(testApp, PermissionAssignment.CreateGrant(
       PermissionPrincipalKind.User,
       user.Id,
@@ -516,8 +514,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       device.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString(),
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test"),
       PermissionEffect.Deny));
 
     var evaluator = GetEvaluator(testApp);
@@ -552,6 +549,38 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task EvaluateRules_IllegalScopeKind_FailsClosed()
+  {
+    // A persisted row with an illegal (permission, scopeKind) combination must not authorize,
+    // even though it bypasses manager write validation (e.g. direct DB writes). The evaluator
+    // checks the catalog's allowed scope kinds as defense-in-depth.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    await SeedAssignment(testApp, new PermissionAssignment
+    {
+      PrincipalKind = PermissionPrincipalKind.User,
+      PrincipalId = user.Id,
+      PermissionName = PermissionNames.InstallerKeyRead,
+      Effect = PermissionEffect.Allow,
+      ScopeKind = PermissionScopeKind.Device,
+      ScopeId = device.Id,
+      OwningTenantId = tenant.Id,
+      IsEnabled = true
+    });
+
+    var evaluator = GetEvaluator(testApp);
+    var principal = CreateUserPrincipal(user.Id, tenant.Id);
+    var deviceResource = new ResourceDescriptor(PermissionScopeKind.Device, device.Id, tenant.Id);
+
+    var result = await evaluator.Evaluate(principal, PermissionNames.InstallerKeyRead, deviceResource, TestContext.Current.CancellationToken);
+
+    Assert.False(result.Allowed);
+  }
+
+  [Fact]
   public async Task Evaluate_UnknownPermissionWithStaleAllow_Denies()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -565,8 +594,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Tenant,
       tenant.Id,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
 
     var evaluator = GetEvaluator(testApp);
     var result = await evaluator.Evaluate(
@@ -1521,7 +1549,7 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       Effect = PermissionEffect.Allow,
       ScopeKind = PermissionScopeKind.Server,
       ScopeId = null,
-      OwningTenantId = tenant.Id,
+      OwningTenantId = null,
       IsEnabled = true
     });
 

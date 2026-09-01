@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data.Entities.Bases;
 using ControlR.Web.Server.Data.Enums;
 
@@ -33,7 +34,9 @@ public class PermissionAssignment : EntityBase
   public PermissionScopeKind ScopeKind { get; set; }
 
   /// <summary>
-  /// Creates a grant row; server-scoped rows carry no ScopeId or OwningTenantId.
+  /// Creates a grant row; server-scoped rows carry no ScopeId or OwningTenantId. The
+  /// <paramref name="createdBy"/> descriptor stamps the row's creator attribution; a null
+  /// descriptor records a system-created row.
   /// </summary>
   public static PermissionAssignment CreateGrant(
     PermissionPrincipalKind principalKind,
@@ -42,8 +45,7 @@ public class PermissionAssignment : EntityBase
     PermissionScopeKind scopeKind,
     Guid? scopeId,
     Guid? owningTenantId,
-    string createdByPrincipalType,
-    string? createdByPrincipalId,
+    PrincipalDescriptor? createdBy,
     PermissionEffect effect = PermissionEffect.Allow,
     string? notes = null,
     bool isEnabled = true) =>
@@ -57,8 +59,8 @@ public class PermissionAssignment : EntityBase
       ScopeId = scopeKind == PermissionScopeKind.Server ? null : scopeId,
       IsEnabled = isEnabled,
       OwningTenantId = scopeKind == PermissionScopeKind.Server ? null : owningTenantId,
-      CreatedByPrincipalType = createdByPrincipalType,
-      CreatedByPrincipalId = createdByPrincipalId,
+      CreatedByPrincipalType = createdBy?.PrincipalType.ToAuthorizationChangeLogActorType() ?? AuthorizationChangeLogActorTypes.System,
+      CreatedByPrincipalId = createdBy?.PrincipalId.ToString(),
       Notes = notes
     };
 }

@@ -48,7 +48,7 @@ internal static class TestPrincipalHelper
     }
 
     var credResult = await manager.AddCredentialForServer(
-      account.Value.Id, "Test Credential", expiresAt: null, account.Value.Id, cancellationToken);
+      account.Value.Id, "Test Credential", expiresAt: null, TestActors.ServerServiceAccount(account.Value.Id), cancellationToken);
 
     if (!credResult.IsSuccess)
     {

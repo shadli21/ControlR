@@ -1,5 +1,4 @@
 using ControlR.Libraries.Shared.Helpers;
-using ControlR.Web.Server.Authn;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.Authorization;
@@ -11,7 +10,7 @@ namespace ControlR.Web.Server.Services;
 /// </summary>
 public interface IPersonalAccessTokenManager
 {
-  Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId);
+  Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId, PrincipalDescriptor actor);
 
   /// <summary>
   /// Creates a token with a pre-specified secret and ID for bootstrap scenarios where the
@@ -46,7 +45,7 @@ public class PersonalAccessTokenManager(
   private readonly IPasswordHasher<string> _passwordHasher = passwordHasher;
   private readonly TimeProvider _timeProvider = timeProvider;
 
-  public async Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId)
+  public async Task<Result<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreateToken(InternalDtos.CreatePersonalAccessTokenRequestDto request, Guid userId, PrincipalDescriptor actor)
   {
     try
     {
@@ -130,14 +129,12 @@ public class PersonalAccessTokenManager(
             scope.ScopeKind,
             scope.ScopeId,
             scopeTenantId,
-            AuthorizationChangeLogActorTypes.User,
-            userId.ToString()));
+            actor));
         }
 
         _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
           AuthorizationChangeLogActions.CredentialScopeSet,
-          AuthorizationChangeLogActorTypes.User,
-          userId,
+          actor,
           AuthorizationChangeLogTargetTypes.PersonalAccessToken,
           personalAccessToken.Id,
           scopeTenantId,
@@ -188,6 +185,11 @@ public class PersonalAccessTokenManager(
 
     try
     {
+      if (await _appDb.PersonalAccessTokens.IgnoreQueryFilters().AnyAsync(x => x.Id == tokenId))
+      {
+        return Result.Fail<InternalDtos.PersonalAccessTokenResponseDto>("A personal access token with this ID already exists.");
+      }
+
       var hashedKey = _passwordHasher.HashPassword(string.Empty, secret);
       var personalAccessToken = new PersonalAccessToken
       {
@@ -222,8 +224,27 @@ public class PersonalAccessTokenManager(
         return Result.Fail("Personal access token not found.");
       }
 
+      // Remove the token's assignment rows in the same unit of work as the token row.
+      // PermissionAssignment is a polymorphic principal with no FK cascade, so a new PAT
+      // reusing the same ID would otherwise inherit the deleted token's scopes.
+      await using var transaction = _appDb.Database.IsRelational()
+        ? await _appDb.Database.BeginTransactionAsync()
+        : null;
+
+      var assignments = await _appDb.PermissionAssignments
+        .IgnoreQueryFilters()
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.PersonalAccessToken &&
+                    x.PrincipalId == id)
+        .ToListAsync();
+
+      _appDb.PermissionAssignments.RemoveRange(assignments);
       _appDb.PersonalAccessTokens.Remove(personalAccessToken);
       await _appDb.SaveChangesAsync();
+
+      if (transaction is not null)
+      {
+        await transaction.CommitAsync();
+      }
 
       return Result.Ok();
     }

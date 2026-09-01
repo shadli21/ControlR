@@ -98,8 +98,7 @@ public class TenantInvitesProvider(
     {
       appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-        AuthorizationChangeLogActorTypes.System,
-        actorPrincipalId: null,
+        actor: null,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
         assignment.Id,
         assignment.OwningTenantId,
@@ -131,8 +130,7 @@ public class TenantInvitesProvider(
     {
       appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentDeleted,
-        AuthorizationChangeLogActorTypes.System,
-        actorPrincipalId: null,
+        actor: null,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
         assignment.Id,
         assignment.OwningTenantId,

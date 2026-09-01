@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Primitives;
 using ControlR.Web.Server.Services.UserGroups;
 using ControlR.Web.Server.Tests.Helpers;
@@ -17,16 +18,16 @@ public class UserGroupManagerTests(ITestOutputHelper testOutput)
 
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IUserGroupManager>();
-    var actorId = Guid.NewGuid();
+    var actor = new PrincipalDescriptor(PrincipalType.User, Guid.NewGuid(), tenant.Id, "test");
 
-    var created = await manager.Create("Group A", null, tenant.Id, actorId, TestContext.Current.CancellationToken);
+    var created = await manager.Create("Group A", null, tenant.Id, actor, TestContext.Current.CancellationToken);
     Assert.True(created.IsSuccess);
 
     var user = await testApp.App.Services.CreateTestUser(tenant.Id);
     var duplicateUserIds = new[] { user.Id, user.Id };
 
     var result = await manager.AddMembers(
-      created.Value.Id, duplicateUserIds, tenant.Id, actorId, TestContext.Current.CancellationToken);
+      created.Value.Id, duplicateUserIds, tenant.Id, actor, TestContext.Current.CancellationToken);
 
     Assert.True(result.IsSuccess, result.Reason);
   }
@@ -41,16 +42,16 @@ public class UserGroupManagerTests(ITestOutputHelper testOutput)
 
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IUserGroupManager>();
-    var actorId = Guid.NewGuid();
+    var actor = new PrincipalDescriptor(PrincipalType.User, Guid.NewGuid(), tenant.Id, "test");
 
-    var first = await manager.Create("Group A", null, tenant.Id, actorId, TestContext.Current.CancellationToken);
+    var first = await manager.Create("Group A", null, tenant.Id, actor, TestContext.Current.CancellationToken);
     Assert.True(first.IsSuccess);
 
-    var second = await manager.Create("Group B", null, tenant.Id, actorId, TestContext.Current.CancellationToken);
+    var second = await manager.Create("Group B", null, tenant.Id, actor, TestContext.Current.CancellationToken);
     Assert.True(second.IsSuccess);
 
     var result = await manager.Update(
-      second.Value.Id, "Group A", null, tenant.Id, actorId, TestContext.Current.CancellationToken);
+      second.Value.Id, "Group A", null, tenant.Id, actor, TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
     Assert.Equal(HttpResultErrorCode.Conflict, result.ErrorCode);
@@ -64,13 +65,13 @@ public class UserGroupManagerTests(ITestOutputHelper testOutput)
 
     using var scope = testApp.CreateScope();
     var manager = scope.ServiceProvider.GetRequiredService<IUserGroupManager>();
-    var actorId = Guid.NewGuid();
+    var actor = new PrincipalDescriptor(PrincipalType.User, Guid.NewGuid(), tenant.Id, "test");
 
-    var created = await manager.Create("Group A", null, tenant.Id, actorId, TestContext.Current.CancellationToken);
+    var created = await manager.Create("Group A", null, tenant.Id, actor, TestContext.Current.CancellationToken);
     Assert.True(created.IsSuccess);
 
     var result = await manager.Update(
-      created.Value.Id, "Group A", "Updated description", tenant.Id, actorId, TestContext.Current.CancellationToken);
+      created.Value.Id, "Group A", "Updated description", tenant.Id, actor, TestContext.Current.CancellationToken);
 
     Assert.True(result.IsSuccess);
   }

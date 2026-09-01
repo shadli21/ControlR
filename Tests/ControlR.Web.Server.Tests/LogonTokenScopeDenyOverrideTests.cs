@@ -29,7 +29,7 @@ public class LogonTokenScopeDenyOverrideTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Non-Device Scope Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Non-Device Scope Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(
@@ -80,7 +80,7 @@ public class LogonTokenScopeDenyOverrideTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Deny Override Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Deny Override Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(
@@ -144,7 +144,7 @@ public class LogonTokenScopeDenyOverrideTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Scope Coverage Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Scope Coverage Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(
@@ -209,7 +209,7 @@ public class LogonTokenScopeDenyOverrideTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Scope Coverage Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Scope Coverage Test PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(
@@ -241,7 +241,7 @@ public class LogonTokenScopeDenyOverrideTests(ITestOutputHelper testOutput)
 
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
-      new InternalDtos.CreatePersonalAccessTokenRequestDto("Replace Semantics PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id);
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Replace Semantics PAT", PersonalAccessTokenPermissionMode.InheritOwner), user.Id, new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, $"PAT creation failed: {patResult.Reason}");
 
     httpClient.DefaultRequestHeaders.Add(

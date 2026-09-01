@@ -11,6 +11,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
   private InternalDtos.PermissionAssignmentDto[]? _assignments;
   private bool _bulkDeleting;
+  private bool _canManageServerScope;
   private Guid? _currentUserId;
   private bool _hasTenantWritePermission;
   private bool _hasWritePermission;
@@ -74,6 +75,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
 
     _hasTenantWritePermission = HasPolicy(state.User, PolicyNames.RequirePermissionAssignmentsWrite);
     _hasWritePermission = _hasTenantWritePermission || HasPolicy(state.User, PolicyNames.RequireServerPermissionsWrite);
+    _canManageServerScope = HasPolicy(state.User, PolicyNames.RequireServerPermissionsWrite);
 
     if (PermissionCatalogStore.Items.Count == 0)
     {
@@ -161,7 +163,7 @@ public partial class PermissionAssignmentPanel : ComponentBase
   private PermissionScopeKind BroadestLegalScope(string permissionName)
   {
     var entry = PermissionCatalogStore.Items.FirstOrDefault(p => p.Name == permissionName);
-    return PermissionScopeKinds.GetBroadestLegalScope(entry?.AllowedScopeKinds ?? []) ?? PermissionScopeKind.Tenant;
+    return PermissionScopeKinds.GetBroadestTenantLegalScope(entry?.AllowedScopeKinds ?? []) ?? PermissionScopeKind.Tenant;
   }
 
   private async Task CreateAssignment()
@@ -175,7 +177,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
     {
       { x => x.PrincipalKind, kind },
       { x => x.PrincipalId, principalId },
-      { x => x.AccountKind, AccountKind }
+      { x => x.AccountKind, AccountKind },
+      { x => x.CanManageServerScope, _canManageServerScope }
     };
 
     var dialogOptions = PermissionAssignmentDialog.DefaultOptions;
@@ -278,7 +281,8 @@ public partial class PermissionAssignmentPanel : ComponentBase
       { x => x.ExistingAssignment, assignment },
       { x => x.PrincipalId, assignment.PrincipalId },
       { x => x.PrincipalKind, assignment.PrincipalKind },
-      { x => x.AccountKind, AccountKind }
+      { x => x.AccountKind, AccountKind },
+      { x => x.CanManageServerScope, _canManageServerScope }
     };
 
     var dialogOptions = PermissionAssignmentDialog.DefaultOptions;

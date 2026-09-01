@@ -29,13 +29,12 @@ public class ServerServiceAccountsController(
     [FromBody] CreateServiceAccountCredentialRequestDto request,
     CancellationToken cancellationToken)
   {
-    var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
-    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return Unauthorized();
     }
 
-    var result = await _serviceAccountManager.AddCredentialForServer(serviceAccountId, request.Name, request.ExpiresAt, principalId, cancellationToken);
+    var result = await _serviceAccountManager.AddCredentialForServer(serviceAccountId, request.Name, request.ExpiresAt, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -55,9 +54,9 @@ public class ServerServiceAccountsController(
     [FromServices] IPermissionEvaluator permissionEvaluator,
     CancellationToken cancellationToken)
   {
+    var caller = PrincipalDescriptorBuilder.FromClaims(User);
     if (request.AccessMode == ServiceAccountAccessMode.Unrestricted)
     {
-      var caller = PrincipalDescriptorBuilder.FromClaims(User);
       if (caller is null)
       {
         return Unauthorized();
@@ -74,7 +73,9 @@ public class ServerServiceAccountsController(
       }
     }
 
-    var result = await _serviceAccountManager.CreateForServer(request.Name, request.Description, request.AccessMode, cancellationToken);
+    var result = await _serviceAccountManager.CreateForServer(
+      request.Name, request.Description, request.AccessMode, cancellationToken,
+      actor: caller);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();
@@ -93,13 +94,12 @@ public class ServerServiceAccountsController(
     Guid serviceAccountId,
     CancellationToken cancellationToken)
   {
-    var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
-    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return Unauthorized();
     }
 
-    var result = await _serviceAccountManager.DeleteForServer(serviceAccountId, principalId, cancellationToken);
+    var result = await _serviceAccountManager.DeleteForServer(serviceAccountId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -146,13 +146,12 @@ public class ServerServiceAccountsController(
     Guid credentialId,
     CancellationToken cancellationToken)
   {
-    var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
-    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return Unauthorized();
     }
 
-    var result = await _serviceAccountManager.RevokeCredentialForServer(serviceAccountId, credentialId, principalId, cancellationToken);
+    var result = await _serviceAccountManager.RevokeCredentialForServer(serviceAccountId, credentialId, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToActionResult();
@@ -171,14 +170,13 @@ public class ServerServiceAccountsController(
     [FromBody] UpdateServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
-    var principalClaim = User.FindFirst(PrincipalClaimTypes.PrincipalId);
-    if (principalClaim is null || !Guid.TryParse(principalClaim.Value, out var principalId))
+    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
     {
       return Unauthorized();
     }
 
     var result = await _serviceAccountManager.UpdateForServer(
-      serviceAccountId, request.Name, request.Description, request.IsEnabled, principalId, cancellationToken);
+      serviceAccountId, request.Name, request.Description, request.IsEnabled, actor, cancellationToken);
     if (!result.IsSuccess)
     {
       return result.ToHttpResult().ToActionResult();

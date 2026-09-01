@@ -1,3 +1,4 @@
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Primitives;
@@ -33,7 +34,7 @@ public class CustomerManagerTenantIsolationTests(ITestOutputHelper testOutput)
       [deviceB.Id],
       null,
       tenantA.Id,
-      actor.Id,
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenantA.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
@@ -62,7 +63,7 @@ public class CustomerManagerTenantIsolationTests(ITestOutputHelper testOutput)
     var result = await manager.Delete(
       crossTenantCustomer.Id,
       tenantA.Id,
-      actor.Id,
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenantA.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);
@@ -137,7 +138,7 @@ public class CustomerManagerTenantIsolationTests(ITestOutputHelper testOutput)
       null,
       null,
       tenantA.Id,
-      actor.Id,
+      new PrincipalDescriptor(PrincipalType.User, actor.Id, tenantA.Id, "test"),
       TestContext.Current.CancellationToken);
 
     Assert.False(result.IsSuccess);

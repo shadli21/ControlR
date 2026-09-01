@@ -1,9 +1,12 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Asp.Versioning;
+using ControlR.Libraries.Api.Contracts.Authz;
+using ControlR.Libraries.Api.Contracts.Enums;
 using ControlR.Libraries.Api.Contracts.Hubs.Clients;
 using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Extensions.Dtos.V1;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Authorization.Capabilities;
 using ControlR.Web.Server.Services.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
@@ -37,13 +40,13 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
 
     if (!User.CanAccessTenant(device.TenantId))
     {
-      return Forbid();
+      return NotFound();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     appDb.Devices.Remove(device);
@@ -54,7 +57,7 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
   [HttpPost("delete-many")]
   public async Task<ActionResult<V1Dtos.DeleteManyDevicesResponseDto>> DeleteMany(
     [FromServices] AppDb appDb,
-    [FromServices] IAuthorizationService authorizationService,
+    [FromServices] IPermissionEvaluator permissionEvaluator,
     [FromBody] V1Dtos.DeleteDevicesRequestDto requestDto,
     CancellationToken cancellationToken)
   {
@@ -69,18 +72,35 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
       .Where(d => requestDto.DeviceIds.Contains(d.Id))
       .ToListAsync(cancellationToken);
 
-    var authorizedIdSet = new HashSet<Guid>();
-    foreach (var device in candidateDevices)
+    var principal = PrincipalDescriptorBuilder.FromClaims(User);
+    if (principal is null)
     {
-      if (!User.CanAccessTenant(device.TenantId))
-      {
-        continue;
-      }
+      return Forbid();
+    }
 
-      var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Delete);
-      if (authResult.Succeeded)
+    var candidates = candidateDevices
+      .Where(device => User.CanAccessTenant(device.TenantId))
+      .ToList();
+
+    var requests = candidates
+      .Select(device => new PermissionEvaluationRequest(
+        PermissionNames.DeviceDelete,
+        new ResourceDescriptor(
+          PermissionScopeKind.Device,
+          device.Id,
+          device.TenantId,
+          device.CustomerId,
+          [.. device.DeviceGroupMembers!.Select(member => member.DeviceGroupId)])))
+      .ToList();
+
+    var decisions = await permissionEvaluator.EvaluateBatch(principal, requests, cancellationToken);
+
+    var authorizedIdSet = new HashSet<Guid>();
+    for (var i = 0; i < candidates.Count; i++)
+    {
+      if (decisions[i].Allowed)
       {
-        authorizedIdSet.Add(device.Id);
+        authorizedIdSet.Add(candidates[i].Id);
       }
     }
 
@@ -146,13 +166,13 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
 
     if (!User.CanAccessTenant(device.TenantId))
     {
-      return Forbid();
+      return NotFound();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     if (!device.IsOnline || string.IsNullOrWhiteSpace(device.ConnectionId))
@@ -207,13 +227,13 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
 
     if (!User.CanAccessTenant(device.TenantId))
     {
-      return Forbid();
+      return NotFound();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.Read);
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion, cancellationToken);
@@ -321,13 +341,13 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
 
     if (!User.CanAccessTenant(device.TenantId))
     {
-      return Forbid();
+      return NotFound();
     }
 
     var authResult = await authorizationService.AuthorizeAsync(User, device, DeviceResourcePolicies.AliasWrite);
     if (!authResult.Succeeded)
     {
-      return Forbid();
+      return NotFound();
     }
 
     device.Alias = requestDto.Alias ?? string.Empty;

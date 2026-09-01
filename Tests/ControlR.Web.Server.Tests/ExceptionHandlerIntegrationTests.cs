@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ControlR.Web.Server.Authn;
+using ControlR.Web.Server.Authz.Permissions;
 using ControlR.Web.Server.Services;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Builder;
@@ -24,7 +25,8 @@ public class ExceptionHandlerIntegrationTests(ITestOutputHelper testOutput)
     var patManager = testServer.Services.GetRequiredService<IPersonalAccessTokenManager>();
     var patResult = await patManager.CreateToken(
       new InternalDtos.CreatePersonalAccessTokenRequestDto("404 Test PAT", PersonalAccessTokenPermissionMode.InheritOwner),
-      user.Id);
+      user.Id,
+      new PrincipalDescriptor(PrincipalType.User, user.Id, user.TenantId, "test"));
     Assert.True(patResult.IsSuccess, patResult.Reason);
 
     using var client = testServer.Factory.CreateClient();

@@ -29,7 +29,7 @@
       </MudItem>
       <MudItem xs="6">
         <MudSelect T="PermissionScopeKind" @bind-Value="_scopeKind" Label="Scope Kind" Disabled="_selectedPermission is null">
-          @foreach (var scopeKind in _selectedPermission?.AllowedScopeKinds ?? [])
+          @foreach (var scopeKind in AvailableScopeKinds(_selectedPermission))
           {
             var kind = scopeKind;
             <MudSelectItem Value="kind">@ScopeKindLabel(kind)</MudSelectItem>

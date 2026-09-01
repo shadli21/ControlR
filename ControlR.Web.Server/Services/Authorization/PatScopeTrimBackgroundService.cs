@@ -109,8 +109,7 @@ public class PatScopeTrimBackgroundService(
     {
       db.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.CredentialScopeTrim,
-        AuthorizationChangeLogActorTypes.System,
-        actorPrincipalId: null,
+        actor: null,
         AuthorizationChangeLogTargetTypes.PermissionAssignment,
         row.Id,
         row.OwningTenantId,

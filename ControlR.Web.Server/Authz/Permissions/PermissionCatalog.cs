@@ -16,8 +16,10 @@ public static class PermissionCatalog
 
   /// <summary>
   /// Returns the broadest legal scope for a permission, per the scope-breadth ordering
-  /// (Device, DeviceGroup, CustomerTenant, Tenant, then Server). Used when applying
-  /// presets at the highest sensible scope.
+  /// (Device, DeviceGroup, CustomerTenant, Tenant, then Server). Note that for device
+  /// permissions this includes <see cref="PermissionScopeKind.Server"/>, which is legal
+  /// only for cross-tenant server principals. Use <see cref="GetBroadestTenantLegalScope"/>
+  /// when seeding presets or selecting a default tenant-bound scope.
   /// </summary>
   public static PermissionScopeKind? GetBroadestLegalScope(string permissionName)
   {
@@ -28,6 +30,24 @@ public static class PermissionCatalog
     }
 
     return PermissionScopeKinds.GetBroadestLegalScope(kinds);
+  }
+
+  /// <summary>
+  /// Returns the broadest legal scope for a permission that remains within a tenant boundary
+  /// (i.e. excludes <see cref="PermissionScopeKind.Server"/>). Used by preset seeding so that
+  /// presets — which always target a specific tenant — never produce server-scoped grants (which
+  /// would be cross-tenant by definition). If the permission's only legal scope is Server, falls
+  /// back to <see cref="GetBroadestLegalScope"/>.
+  /// </summary>
+  public static PermissionScopeKind? GetBroadestTenantLegalScope(string permissionName)
+  {
+    var kinds = AllowedKinds(permissionName);
+    if (kinds is null || kinds.Value.IsDefaultOrEmpty)
+    {
+      return null;
+    }
+
+    return PermissionScopeKinds.GetBroadestTenantLegalScope(kinds.Value);
   }
 
   private static ImmutableArray<PermissionScopeKind>? AllowedKinds(string permissionName) =>
@@ -44,7 +64,11 @@ public static class PermissionCatalog
 
     var server = ImmutableArray.Create(PermissionScopeKind.Server);
     var tenant = ImmutableArray.Create(PermissionScopeKind.Tenant);
-    var deviceResources = ImmutableArray.Create(PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup, PermissionScopeKind.CustomerTenant, PermissionScopeKind.Tenant);
+    // Server scope is legal for device permissions (for cross-tenant server principals),
+    // but assignable only via server permission management (ValidateWriteAuthority requires
+    // ServerPermissionsWrite). Preset seeding uses GetBroadestTenantLegalScope, which excludes
+    // Server, so presets never create server-scoped device grants.
+    var deviceResources = ImmutableArray.Create(PermissionScopeKind.Device, PermissionScopeKind.DeviceGroup, PermissionScopeKind.CustomerTenant, PermissionScopeKind.Tenant, PermissionScopeKind.Server);
     var deviceGroup = ImmutableArray.Create(PermissionScopeKind.DeviceGroup, PermissionScopeKind.Tenant);
     var userGroup = ImmutableArray.Create(PermissionScopeKind.UserGroup, PermissionScopeKind.Tenant);
 

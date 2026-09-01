@@ -47,8 +47,14 @@ public class PersonalAccessTokenAuthenticationHandler(
     // catch its own attack pattern.
     var remoteIp = Context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     var tokenIdPrefix = providedPat.Split(':', 2).FirstOrDefault();
+    // Normalize the token prefix to a bounded key space: only a valid GUID (the token ID)
+    // becomes a distinct cache key; malformed/attacker-controlled prefixes collapse to a
+    // single fixed key so they cannot plant unbounded cache entries.
+    var tokenKeyPart = Guid.TryParse(tokenIdPrefix, out var tokenId)
+      ? tokenId.ToString()
+      : "invalid";
     var ipFailureKey = CacheKeys.GetPersonalAccessTokenAuthFailureByIp(remoteIp);
-    var tokenFailureKey = CacheKeys.GetPersonalAccessTokenAuthFailureByToken(tokenIdPrefix);
+    var tokenFailureKey = CacheKeys.GetPersonalAccessTokenAuthFailureByToken(tokenKeyPart);
 
     if (_failureCache.TryGetValue<int>(ipFailureKey, out var ipFailures) && ipFailures >= MaxFailures)
     {

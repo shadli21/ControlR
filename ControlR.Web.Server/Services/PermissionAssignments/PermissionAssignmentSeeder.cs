@@ -62,7 +62,7 @@ public class PermissionAssignmentSeeder(
           continue;
         }
 
-        var scopeKind = PermissionCatalog.GetBroadestLegalScope(permission) ?? PermissionScopeKind.Tenant;
+        var scopeKind = PermissionCatalog.GetBroadestTenantLegalScope(permission) ?? PermissionScopeKind.Tenant;
         var scopeId = scopeKind == PermissionScopeKind.Server ? (Guid?)null : tenantId;
 
         if (existing.Contains(new AssignmentKey(permission, scopeKind, scopeId, PermissionEffect.Allow)))
@@ -77,8 +77,7 @@ public class PermissionAssignmentSeeder(
           scopeKind,
           scopeId,
           tenantId,
-          AuthorizationChangeLogActorTypes.System,
-          userId.ToString()));
+          createdBy: null));
         seededCount++;
       }
     }
@@ -87,8 +86,7 @@ public class PermissionAssignmentSeeder(
     {
       _appDb.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.PermissionAssignmentsSeeded,
-        AuthorizationChangeLogActorTypes.System,
-        actorPrincipalId: null,
+        actor: null,
         AuthorizationChangeLogTargetTypes.User,
         userId,
         tenantId,

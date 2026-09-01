@@ -788,6 +788,7 @@ public class ViewerHub(
     var distinctIds = deviceIds.Distinct().ToArray();
 
     var devices = await _appDb.Devices.AsNoTracking()
+      .Include(x => x.DeviceGroupMembers)
       .Where(x => distinctIds.Contains(x.Id))
       .ToListAsync();
 

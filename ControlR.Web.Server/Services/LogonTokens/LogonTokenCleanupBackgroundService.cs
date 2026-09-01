@@ -124,8 +124,7 @@ public class LogonTokenCleanupBackgroundService(
     {
       db.AuthorizationChangeLogs.Add(_changeLogFactory.Create(
         AuthorizationChangeLogActions.CredentialScopeRemoved,
-        AuthorizationChangeLogActorTypes.System,
-        actorPrincipalId: null,
+        actor: null,
         AuthorizationChangeLogTargetTypes.LogonToken,
         tokenGroup.Key,
         tokenGroup.First().OwningTenantId,

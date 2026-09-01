@@ -12,6 +12,7 @@ using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
 using ControlR.Web.Server.Extensions.Database;
 using ControlR.Web.Server.Services;
+using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.DeviceManagement;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Authorization;
@@ -81,7 +82,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Act
     var request = new InternalDtos.DeleteDevicesRequestDto([.. nonExistentIds, existingId]);
-    var result = await controller.DeleteMany(db, services.GetRequiredService<IAuthorizationService>(), request, TestContext.Current.CancellationToken);
+    var result = await controller.DeleteMany(db, services.GetRequiredService<IPermissionEvaluator>(), request, TestContext.Current.CancellationToken);
 
     // Assert
     var response = result.Value;
@@ -185,7 +186,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
       // Act — request 10 existing + 3 non-existent
       var request = new InternalDtos.DeleteDevicesRequestDto([.. deleteRequestIds, .. nonExistentIds]);
-      var result = await controller.DeleteMany(db, services.GetRequiredService<IAuthorizationService>(), request, TestContext.Current.CancellationToken);
+      var result = await controller.DeleteMany(db, services.GetRequiredService<IPermissionEvaluator>(), request, TestContext.Current.CancellationToken);
 
       // Assert
       var response = result.Value;
@@ -240,7 +241,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
     // Act
     var result = await controller.DeleteMany(
       scope.ServiceProvider.GetRequiredService<AppDb>(),
-      scope.ServiceProvider.GetRequiredService<IAuthorizationService>(),
+      scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>(),
       request,
       TestContext.Current.CancellationToken);
 
@@ -311,7 +312,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
 
     // Act
     var request = new InternalDtos.DeleteDevicesRequestDto(deleteIds);
-    var result = await controller.DeleteMany(db, services.GetRequiredService<IAuthorizationService>(), request, TestContext.Current.CancellationToken);
+    var result = await controller.DeleteMany(db, services.GetRequiredService<IPermissionEvaluator>(), request, TestContext.Current.CancellationToken);
 
     // Assert
     var response = result.Value;
@@ -1700,8 +1701,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
       PermissionScopeKind.Device,
       scopedDeviceId,
       tenant.Id,
-      "test",
-      user.Id.ToString()));
+      new PrincipalDescriptor(PrincipalType.User, user.Id, tenant.Id, "test")));
     await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
     var claims = new List<Claim>
@@ -1966,7 +1966,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task UpdateDeviceAlias_UserWithoutAccess_ReturnsForbid()
+  public async Task UpdateDeviceAlias_UserWithoutAccess_ReturnsNotFound()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutputHelper);
     using var scope = testApp.CreateScope();
@@ -2025,7 +2025,7 @@ public class DevicesControllerTests(ITestOutputHelper testOutput)
       services.GetRequiredService<IAgentVersionProvider>(),
       services.GetRequiredService<ILogger<DevicesController>>());
 
-    Assert.IsType<ForbidResult>(result.Result);
+    Assert.IsType<NotFoundResult>(result.Result);
   }
 
   [Fact]
