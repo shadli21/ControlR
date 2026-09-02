@@ -11,96 +11,92 @@
   Server Settings
 </PrimaryTitle>
 
-<AuthorizeView Policy="@(PolicyNames.RequireServerAlertsWrite)">
-  <div class="mt-10">
-    <MudText Typo="Typo.h6" Color="Color.Primary" GutterBottom>
-      Server Alert
-    </MudText>
-    <MudText Typo="Typo.body2" Class="mb-3">
-      Configure a server-wide alert message that will appear at the top of all pages for all users.
-    </MudText>
+<div class="mt-10">
+  <MudText Typo="Typo.h6" Color="Color.Primary" GutterBottom>
+    Server Alert
+  </MudText>
+  <MudText Typo="Typo.body2" Class="mb-3">
+    Configure a server-wide alert message that will appear at the top of all pages for all users.
+  </MudText>
 
-    <MudTextField T="string"
-                  @bind-Value="_alertMessage"
-                  Label="Alert Message"
-                  MaxLength="500"
-                  Lines="3"
-                  Variant="Variant.Outlined"
-                  Class="mb-3"/>
+  <MudTextField T="string"
+                @bind-Value="_alertMessage"
+                Label="Alert Message"
+                MaxLength="500"
+                Lines="3"
+                Variant="Variant.Outlined"
+                Class="mb-3"/>
 
-    <MudSelect T="MessageSeverity"
-               @bind-Value="_alertSeverity"
-               Label="Severity"
-               Variant="Variant.Outlined"
-               Class="mb-3">
-      <MudSelectItem Value="MessageSeverity.Information">Information</MudSelectItem>
-      <MudSelectItem Value="MessageSeverity.Warning">Warning</MudSelectItem>
-      <MudSelectItem Value="MessageSeverity.Error">Error</MudSelectItem>
-      <MudSelectItem Value="MessageSeverity.Success">Success</MudSelectItem>
-    </MudSelect>
+  <MudSelect T="MessageSeverity"
+             @bind-Value="_alertSeverity"
+             Label="Severity"
+             Variant="Variant.Outlined"
+             Class="mb-3">
+    <MudSelectItem Value="MessageSeverity.Information">Information</MudSelectItem>
+    <MudSelectItem Value="MessageSeverity.Warning">Warning</MudSelectItem>
+    <MudSelectItem Value="MessageSeverity.Error">Error</MudSelectItem>
+    <MudSelectItem Value="MessageSeverity.Success">Success</MudSelectItem>
+  </MudSelect>
 
+  <MudCheckBox T="bool"
+               @bind-Value="_alertIsDismissable"
+               Label="Users can dismiss the alert"
+               Class="mb-3"/>
+
+  <MudTooltip Text="When unchecked, users' dismissals will be remembered across sessions.">
     <MudCheckBox T="bool"
-                 @bind-Value="_alertIsDismissable"
-                 Label="Users can dismiss the alert"
-                 Class="mb-3"/>
+                 @bind-Value="_alertIsSticky"
+                 Label="Alert reappears on next visit (sticky)"
+                 Class="mb-3">
+    </MudCheckBox>
+  </MudTooltip>
 
-    <MudTooltip Text="When unchecked, users' dismissals will be remembered across sessions.">
-      <MudCheckBox T="bool"
-                   @bind-Value="_alertIsSticky"
-                   Label="Alert reappears on next visit (sticky)"
-                   Class="mb-3">
-      </MudCheckBox>
+  <div class="mb-6">
+    <MudTooltip Text="When disabled, the alert will not be shown to users.">
+      <MudSwitch T="bool"
+                 Label="Enabled"
+                 Color="Color.Success"
+                 @bind-Value="_alertIsEnabled"/>
     </MudTooltip>
-
-    <div class="mb-6">
-      <MudTooltip Text="When disabled, the alert will not be shown to users.">
-        <MudSwitch T="bool"
-                   Label="Enabled"
-                   Color="Color.Success"
-                   @bind-Value="_alertIsEnabled"/>
-      </MudTooltip>
-    </div>
-
-    <MudButton Variant="Variant.Outlined"
-               Color="Color.Primary"
-               OnClick="SaveServerAlert"
-               Disabled="_isLoadingAlert">
-      @if (_isLoadingAlert)
-      {
-        <MudProgressCircular Size="Size.Small" Indeterminate/>
-      }
-      else
-      {
-        <text>Save</text>
-      }
-    </MudButton>
   </div>
-</AuthorizeView>
 
-<AuthorizeView Policy="@(PolicyNames.RequireServerTestEmailSend)">
-  <div class="mt-10">
-    <MudText Typo="Typo.h6" Color="Color.Primary" GutterBottom>
-      Test Email
-    </MudText>
-    <MudText Typo="Typo.body2" Class="mb-3">
-      Send a test email to your account to verify SMTP configuration.
-    </MudText>
+  <MudButton Variant="Variant.Outlined"
+             Color="Color.Primary"
+             OnClick="SaveServerAlert"
+             Disabled="_isLoadingAlert">
+    @if (_isLoadingAlert)
+    {
+      <MudProgressCircular Size="Size.Small" Indeterminate/>
+    }
+    else
+    {
+      <text>Save</text>
+    }
+  </MudButton>
+</div>
 
-    <MudButton Variant="Variant.Outlined"
-               Color="Color.Primary"
-               OnClick="SendTestEmail"
-               Disabled="_isSendingEmail">
-      @if (_isSendingEmail)
-      {
-        <MudProgressCircular Size="Size.Small" Indeterminate/>
-      }
-      else
-      {
-        <text>Send Test Email</text>
-      }
-    </MudButton>
-  </div>
-</AuthorizeView>
+<div class="mt-10">
+  <MudText Typo="Typo.h6" Color="Color.Primary" GutterBottom>
+    Test Email
+  </MudText>
+  <MudText Typo="Typo.body2" Class="mb-3">
+    Send a test email to your account to verify SMTP configuration.
+  </MudText>
+
+  <MudButton Variant="Variant.Outlined"
+             Color="Color.Primary"
+             OnClick="SendTestEmail"
+             Disabled="_isSendingEmail">
+    @if (_isSendingEmail)
+    {
+      <MudProgressCircular Size="Size.Small" Indeterminate/>
+    }
+    else
+    {
+      <text>Send Test Email</text>
+    }
+  </MudButton>
+</div>
 
 @code {
   private string _alertMessage = string.Empty;

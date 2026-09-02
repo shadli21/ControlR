@@ -18,7 +18,6 @@ public static class PolicyNames
   public const string RequirePermissionAssignmentsWrite = "RequirePermissionAssignmentsWrite";
   public const string RequirePersonalAccessTokensOthersRead = "RequirePersonalAccessTokensOthersRead";
   public const string RequirePersonalAccessTokensOthersWrite = "RequirePersonalAccessTokensOthersWrite";
-  public const string RequireServerAlertsWrite = "RequireServerAlertsWrite";
   public const string RequireServerAuthorizationLogsRead = "RequireServerAuthorizationLogsRead";
   public const string RequireServerPermissionsRead = "RequireServerPermissionsRead";
   public const string RequireServerPermissionsWrite = "RequireServerPermissionsWrite";
@@ -29,7 +28,6 @@ public static class PolicyNames
   public const string RequireServerTelemetryRead = "RequireServerTelemetryRead";
   public const string RequireServerTenantsRead = "RequireServerTenantsRead";
   public const string RequireServerTenantsWrite = "RequireServerTenantsWrite";
-  public const string RequireServerTestEmailSend = "RequireServerTestEmailSend";
   public const string RequireServiceAccountRead = "RequireServiceAccountRead";
   public const string RequireServiceAccountRotateCredentials = "RequireServiceAccountRotateCredentials";
   public const string RequireServiceAccountWrite = "RequireServiceAccountWrite";

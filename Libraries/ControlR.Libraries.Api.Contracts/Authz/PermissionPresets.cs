@@ -27,12 +27,10 @@ public static class PermissionPresets
       [ServerAdministrator] =
       [
         PermissionNames.ServerAlertsRead,
-        PermissionNames.ServerAlertsWrite,
         PermissionNames.ServerAuthorizationLogsRead,
         PermissionNames.ServerTenantsRead,
         PermissionNames.ServerTenantsWrite,
         PermissionNames.ServerSettingsWrite,
-        PermissionNames.ServerTestEmailSend,
         PermissionNames.ServerTelemetryRead,
         PermissionNames.ServerServiceAccountsRead,
         PermissionNames.ServerServiceAccountsWrite,

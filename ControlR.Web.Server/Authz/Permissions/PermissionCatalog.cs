@@ -73,14 +73,12 @@ public static class PermissionCatalog
     var userGroup = ImmutableArray.Create(PermissionScopeKind.UserGroup, PermissionScopeKind.Tenant);
 
     Add(PermissionNames.ServerAlertsRead, "Read Server Alerts", "View server alerts and notifications.", server);
-    Add(PermissionNames.ServerAlertsWrite, "Manage Server Alerts", "Create, update, and dismiss server alerts.", server);
     Add(PermissionNames.ServerAuthorizationLogsRead, "Read Server Authorization Logs", "View authorization change logs across all tenants, including server-scoped entries.", server);
     Add(PermissionNames.ServerPermissionsRead, "Read Server Permission Assignments", "View server-scoped permission assignments.", server);
     Add(PermissionNames.ServerPermissionsWrite, "Manage Server Permission Assignments", "Create, update, and delete server-scoped permission assignments.", server, selfRemovable: false);
-    Add(PermissionNames.ServerSettingsWrite, "Manage Server Settings", "Access and manage the server settings page.", server);
+    Add(PermissionNames.ServerSettingsWrite, "Manage Server Settings", "Configure server settings: the server-wide alert and SMTP test email.", server);
     Add(PermissionNames.ServerTenantsRead, "Read Server Tenants", "List all tenants on the server.", server);
     Add(PermissionNames.ServerTenantsWrite, "Manage Server Tenants", "Create, update, and delete tenants on the server.", server);
-    Add(PermissionNames.ServerTestEmailSend, "Send Test Email", "Send a test email to verify server SMTP configuration.", server);
     Add(PermissionNames.ServerTelemetryRead, "Read Server Telemetry", "View server telemetry (logs and metrics).", server);
     Add(PermissionNames.ServerServiceAccountsRead, "Read Server Service Accounts", "View server-scoped service accounts and credentials.", server);
     Add(PermissionNames.ServerServiceAccountsWrite, "Manage Server Service Accounts", "Create and delete server-scoped service accounts.", server);

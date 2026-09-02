@@ -80,14 +80,12 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
     var expectedServer = new[]
     {
       PermissionNames.ServerAlertsRead,
-      PermissionNames.ServerAlertsWrite,
       PermissionNames.ServerAuthorizationLogsRead,
       PermissionNames.ServerPermissionsRead,
       PermissionNames.ServerPermissionsWrite,
       PermissionNames.ServerSettingsWrite,
       PermissionNames.ServerTenantsRead,
       PermissionNames.ServerTenantsWrite,
-      PermissionNames.ServerTestEmailSend,
       PermissionNames.ServerTelemetryRead,
       PermissionNames.ServerServiceAccountsRead,
       PermissionNames.ServerServiceAccountsWrite,

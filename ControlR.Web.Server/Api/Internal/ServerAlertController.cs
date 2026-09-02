@@ -31,7 +31,7 @@ public class ServerAlertController(AppDb appDb) : ControllerBase
   }
 
   [HttpPost]
-  [Authorize(Policy = PolicyNames.RequireServerAlertsWrite)]
+  [Authorize(Policy = PolicyNames.RequireServerSettingsWrite)]
   public async Task<ActionResult<InternalDtos.ServerAlertResponseDto>> UpdateAlert([FromBody] InternalDtos.ServerAlertRequestDto request)
   {
     var alert = await _appDb

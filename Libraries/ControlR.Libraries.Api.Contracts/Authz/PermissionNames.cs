@@ -39,7 +39,6 @@ public static class PermissionNames
   public const string PersonalAccessTokenSelfRead = "personal-access-token.self.read";
   public const string PersonalAccessTokenSelfWrite = "personal-access-token.self.write";
   public const string ServerAlertsRead = "server.alerts.read";
-  public const string ServerAlertsWrite = "server.alerts.write";
   public const string ServerAuthorizationLogsRead = "server.authorization-logs.read";
   public const string ServerPermissionsRead = "server.permissions.read";
   public const string ServerPermissionsWrite = "server.permissions.write";
@@ -50,7 +49,6 @@ public static class PermissionNames
   public const string ServerTelemetryRead = "server.telemetry.read";
   public const string ServerTenantsRead = "server.tenants.read";
   public const string ServerTenantsWrite = "server.tenants.write";
-  public const string ServerTestEmailSend = "server.test-email.send";
   public const string ServiceAccountRead = "service-account.read";
   public const string ServiceAccountRotateCredentials = "service-account.rotate-credentials";
   public const string ServiceAccountWrite = "service-account.write";

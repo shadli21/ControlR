@@ -193,14 +193,12 @@ public partial class Permissions_Phase2 : Migration
               INNER JOIN (
                 VALUES
                   ('Server Administrator', '{PermissionNames.ServerAlertsRead}', '{PermissionScopeKind.Server}'),
-                  ('Server Administrator', '{PermissionNames.ServerAlertsWrite}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerAuthorizationLogsRead}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerPermissionsRead}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerPermissionsWrite}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerSettingsWrite}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerTenantsRead}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerTenantsWrite}', '{PermissionScopeKind.Server}'),
-                  ('Server Administrator', '{PermissionNames.ServerTestEmailSend}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerTelemetryRead}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerServiceAccountsRead}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerServiceAccountsWrite}', '{PermissionScopeKind.Server}'),
