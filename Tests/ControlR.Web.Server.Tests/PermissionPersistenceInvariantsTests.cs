@@ -137,7 +137,7 @@ public class PermissionPersistenceInvariantsTests(ITestOutputHelper testOutput)
     var count = await appDb.PermissionAssignments
       .IgnoreQueryFilters()
       .CountAsync(x => x.ScopeKind == PermissionScopeKind.Server &&
-                       x.PermissionName == PermissionNames.ServerAdmin &&
+                       x.PermissionName == PermissionNames.ServerTenantsWrite &&
                        x.ScopeId == null && x.OwningTenantId == null,
       TestContext.Current.CancellationToken);
     Assert.True(count >= 1);
@@ -310,7 +310,7 @@ public class PermissionPersistenceInvariantsTests(ITestOutputHelper testOutput)
          true, 'system', CURRENT_TIMESTAMP)
       """,
       conn);
-    cmd.Parameters.Add(new NpgsqlParameter("@permissionName", permissionName ?? PermissionNames.ServerAdmin));
+    cmd.Parameters.Add(new NpgsqlParameter("@permissionName", permissionName ?? PermissionNames.ServerTenantsWrite));
     cmd.Parameters.Add(new NpgsqlParameter("@principalKind", PermissionPrincipalKind.User.ToString()));
     cmd.Parameters.Add(new NpgsqlParameter("@effect", PermissionEffect.Allow.ToString()));
     cmd.Parameters.Add(new NpgsqlParameter("@scopeKind", scopeKind.ToString()));

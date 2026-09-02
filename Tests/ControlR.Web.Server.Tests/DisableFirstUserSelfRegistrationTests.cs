@@ -109,7 +109,7 @@ public class DisableFirstUserSelfRegistrationTests(ITestOutputHelper testOutput)
       .Where(x => x.PrincipalId == result.User!.Id)
       .Select(x => x.PermissionName)
       .ToListAsync(TestContext.Current.CancellationToken);
-    Assert.DoesNotContain(PermissionNames.ServerAdmin, permissions);
+    Assert.DoesNotContain(PermissionNames.ServerPermissionsWrite, permissions);
   }
 
   [Fact]
@@ -158,7 +158,7 @@ public class DisableFirstUserSelfRegistrationTests(ITestOutputHelper testOutput)
       .Select(x => x.PermissionName)
       .ToListAsync(TestContext.Current.CancellationToken);
 
-    Assert.Contains(PermissionNames.ServerAdmin, permissions);
+    Assert.Contains(PermissionNames.ServerPermissionsWrite, permissions);
     Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
   }
 

@@ -75,7 +75,7 @@ public class UsersControllerServerAdminTests(ITestOutputHelper testOutput)
     Assert.NotNull(createdUser);
 
     var hasServerAdmin = await db.PermissionAssignments.AnyAsync(
-      x => x.PrincipalId == createdUser.Id && x.PermissionName == PermissionNames.ServerAdmin,
+      x => x.PrincipalId == createdUser.Id && x.PermissionName == PermissionNames.ServerPermissionsWrite,
       TestContext.Current.CancellationToken);
     Assert.True(hasServerAdmin);
   }

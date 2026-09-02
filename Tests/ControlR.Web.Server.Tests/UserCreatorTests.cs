@@ -110,7 +110,7 @@ public class UserCreatorTests(ITestOutputHelper output)
           .Where(x => x.PrincipalId == result.User!.Id)
           .Select(x => x.PermissionName)
           .ToListAsync(TestContext.Current.CancellationToken);
-        Assert.Contains(PermissionNames.ServerAdmin, permissions);
+        Assert.Contains(PermissionNames.ServerPermissionsWrite, permissions);
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class UserCreatorTests(ITestOutputHelper output)
         Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
         Assert.Contains(PermissionNames.DeviceRead, permissions);
         Assert.Contains(PermissionNames.AgentInstall, permissions);
-        Assert.DoesNotContain(PermissionNames.ServerAdmin, permissions);
+        Assert.DoesNotContain(PermissionNames.ServerPermissionsWrite, permissions);
     }
 
     [Fact]

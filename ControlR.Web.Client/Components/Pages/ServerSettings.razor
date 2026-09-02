@@ -1,5 +1,5 @@
 @attribute [Route(ClientRoutes.ServerSettings)]
-@attribute [Authorize(Policy = PolicyNames.RequireServerAdmin)]
+@attribute [Authorize(Policy = PolicyNames.RequireServerSettingsWrite)]
 
 @inject ISnackbar Snackbar
 @inject IControlrInternalApi ControlrApi
