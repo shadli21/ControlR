@@ -1040,19 +1040,21 @@ public class PermissionAssignmentManager(
       PermissionNames.TenantPermissionsWrite,
       PermissionNames.TenantPermissionsDeny
     };
+    var permissionRequests = new[]
+    {
+      new PermissionEvaluationRequest(permissionNames[0], new ResourceDescriptor(PermissionScopeKind.Server)),
+      new PermissionEvaluationRequest(permissionNames[1], new ResourceDescriptor(PermissionScopeKind.Server)),
+      new PermissionEvaluationRequest(permissionNames[2], new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId)),
+      new PermissionEvaluationRequest(permissionNames[3], new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId)),
+      new PermissionEvaluationRequest(permissionNames[4], new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId))
+    };
     var decisions = await _permissionEvaluator.EvaluateBatch(
       actor,
-      [
-        new PermissionEvaluationRequest(permissionNames[0], new ResourceDescriptor(PermissionScopeKind.Server)),
-        new PermissionEvaluationRequest(permissionNames[1], new ResourceDescriptor(PermissionScopeKind.Server)),
-        new PermissionEvaluationRequest(permissionNames[2], new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId)),
-        new PermissionEvaluationRequest(permissionNames[3], new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId)),
-        new PermissionEvaluationRequest(permissionNames[4], new ResourceDescriptor(PermissionScopeKind.Tenant, tenantId, tenantId))
-      ],
+      permissionRequests,
       cancellationToken);
 
     return permissionNames
-      .Where((_, index) => decisions[index].Allowed)
+      .Where((_, index) => decisions[permissionRequests[index]].Allowed)
       .ToHashSet(StringComparer.Ordinal);
   }
 

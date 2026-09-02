@@ -98,7 +98,7 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     var authorizedIdSet = new HashSet<Guid>();
     for (var i = 0; i < candidates.Count; i++)
     {
-      if (decisions[i].Allowed)
+      if (decisions[requests[i]].Allowed)
       {
         authorizedIdSet.Add(candidates[i].Id);
       }

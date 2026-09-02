@@ -93,7 +93,7 @@ public class PatScopeTrimBackgroundService(
       requests,
       cancellationToken);
     var coveredRowIds = rowsWithResources
-      .Where((_, index) => decisions[index].Allowed)
+      .Where((_, index) => decisions[requests[index]].Allowed)
       .Select(item => item.Row.Id)
       .ToHashSet();
     var excessRows = scopeRows

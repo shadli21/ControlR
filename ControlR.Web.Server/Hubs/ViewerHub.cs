@@ -806,17 +806,17 @@ public class ViewerHub(
         await _resourceFactory.CreateDevice(device, Context.ConnectionAborted)));
     }
 
-    var decisions = await _permissionEvaluator.EvaluateBatch(
+    var results = await _permissionEvaluator.EvaluateBatch(
       principal,
       requests,
       Context.ConnectionAborted);
 
-    for (var index = 0; index < devices.Count; index++)
+    for (var index = 0; index < results.Count; index++)
     {
-      if (decisions[index].Allowed)
+      if (results[requests[index]].Allowed)
       {
-        var device = devices[index];
-        await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.DeviceHeartbeat(device.Id));
+        var deviceId = requests[index].Resource.Id!.Value;
+        await Groups.AddToGroupAsync(Context.ConnectionId, HubGroupNames.DeviceHeartbeat(deviceId));
       }
     }
 

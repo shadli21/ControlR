@@ -486,9 +486,9 @@ public class PermissionEvaluatorTests(ITestOutputHelper testOutput)
       TestContext.Current.CancellationToken);
 
     Assert.Equal(3, results.Count);
-    Assert.False(results[0].Allowed);
-    Assert.True(results[1].Allowed);
-    Assert.False(results[2].Allowed);
+    Assert.False(results[requests[0]].Allowed);
+    Assert.True(results[requests[1]].Allowed);
+    Assert.False(results[requests[2]].Allowed);
   }
 
   [Fact]
