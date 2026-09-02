@@ -73,7 +73,7 @@ public class IdentityApiRegisterFilterTests(ITestOutputHelper testOutput)
       .Where(x => x.PrincipalId == user.Id)
       .Select(x => x.PermissionName)
       .ToListAsync(TestContext.Current.CancellationToken);
-    Assert.Contains(PermissionNames.ServerAdmin, permissions);
+    Assert.Contains(PermissionNames.ServerPermissionsWrite, permissions);
     Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
     Assert.Contains(PermissionNames.DeviceRead, permissions);
     Assert.Contains(PermissionNames.AgentInstall, permissions);
@@ -162,7 +162,7 @@ public class IdentityApiRegisterFilterTests(ITestOutputHelper testOutput)
       var adminUser = await userManager.FindByEmailAsync(adminRequest.Email);
       Assert.NotNull(adminUser);
       var hasServerAdmin = await appDb.PermissionAssignments
-        .AnyAsync(x => x.PrincipalId == adminUser.Id && x.PermissionName == PermissionNames.ServerAdmin, TestContext.Current.CancellationToken);
+        .AnyAsync(x => x.PrincipalId == adminUser.Id && x.PermissionName == PermissionNames.ServerPermissionsWrite, TestContext.Current.CancellationToken);
       Assert.True(hasServerAdmin);
     }
 
@@ -240,7 +240,7 @@ public class IdentityApiRegisterFilterTests(ITestOutputHelper testOutput)
       .Where(x => x.PrincipalId == user.Id)
       .Select(x => x.PermissionName)
       .ToListAsync(TestContext.Current.CancellationToken);
-    Assert.DoesNotContain(PermissionNames.ServerAdmin, permissions);
+    Assert.DoesNotContain(PermissionNames.ServerPermissionsWrite, permissions);
     Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
     Assert.Contains(PermissionNames.DeviceRead, permissions);
     Assert.Contains(PermissionNames.AgentInstall, permissions);

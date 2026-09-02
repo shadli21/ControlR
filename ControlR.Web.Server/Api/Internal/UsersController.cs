@@ -60,7 +60,7 @@ public class UsersController : ControllerBase
         return BadRequest($"Presets not found: {string.Join(',', missingPresets)}");
       }
 
-      var requiresServerAdmin = presetNames.Contains(PermissionPresets.ServerAdministrator);
+      var requiresServerAdminPreset = presetNames.Contains(PermissionPresets.ServerAdministrator);
       var requiresTenantAdmin = presetNames.Contains(PermissionPresets.TenantAdministrator);
       // Presets seed device permissions at the broadest tenant-legal scope (Tenant), so a preset
       // that grants device permissions still creates tenant-scoped grants and requires tenant
@@ -71,7 +71,7 @@ public class UsersController : ControllerBase
         .Any(permissionName =>
           PermissionCatalog.GetBroadestTenantLegalScope(permissionName) == PermissionScopeKind.Tenant);
 
-      if (requiresServerAdmin || requiresTenantPermissionManagement)
+      if (requiresServerAdminPreset || requiresTenantPermissionManagement)
       {
         var callerPrincipal = PrincipalDescriptorBuilder.FromClaims(User);
         if (callerPrincipal is null)
@@ -84,29 +84,32 @@ public class UsersController : ControllerBase
           PermissionScopeKind.Tenant,
           tenantId,
           tenantId);
+        // Granting the ServerAdministrator preset is a server permission-management action, so
+        // the authority check is ServerPermissionsWrite (the same permission that governs
+        // creating server-scoped assignments), not a blanket admin knob.
         var decisions = await permissionEvaluator.EvaluateBatch(
           callerPrincipal,
           [
-            new PermissionEvaluationRequest(PermissionNames.ServerAdmin, serverResource),
+            new PermissionEvaluationRequest(PermissionNames.ServerPermissionsWrite, serverResource),
             new PermissionEvaluationRequest(PermissionNames.TenantPermissionsWrite, tenantResource),
             new PermissionEvaluationRequest(PermissionNames.TenantPermissionsDeny, tenantResource)
           ],
           HttpContext.RequestAborted);
-        var hasServerAdmin = decisions[0].Allowed;
+        var hasServerPermsWrite = decisions[0].Allowed;
         var hasTenantWrite = decisions[1].Allowed;
         var hasTenantDeny = decisions[2].Allowed;
 
-        if (requiresServerAdmin && !hasServerAdmin)
+        if (requiresServerAdminPreset && !hasServerPermsWrite)
         {
           return Forbid();
         }
 
-        if (requiresTenantPermissionManagement && !hasServerAdmin && !hasTenantWrite)
+        if (requiresTenantPermissionManagement && !hasServerPermsWrite && !hasTenantWrite)
         {
           return Forbid();
         }
 
-        if (requiresTenantAdmin && !hasServerAdmin && !(hasTenantWrite && hasTenantDeny))
+        if (requiresTenantAdmin && !hasServerPermsWrite && !(hasTenantWrite && hasTenantDeny))
         {
           return Forbid();
         }

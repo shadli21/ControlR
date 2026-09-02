@@ -12,7 +12,7 @@ namespace ControlR.Web.Server.Tests;
 public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
 {
   [Theory]
-  [InlineData(PermissionNames.ServerAdmin, PermissionScopeKind.Server)]
+  [InlineData(PermissionNames.ServerTenantsWrite, PermissionScopeKind.Server)]
   [InlineData(PermissionNames.TenantPermissionsWrite, PermissionScopeKind.Tenant)]
   [InlineData(PermissionNames.DeviceRead, PermissionScopeKind.Server)]
   [InlineData(PermissionNames.UserGroupAssignUsers, PermissionScopeKind.Tenant)]
@@ -45,7 +45,7 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
-  public async Task Create_ServerAdminAtTenantScope_ReturnsBadRequest()
+  public async Task Create_ServerOnlyPermissionAtTenantScope_ReturnsBadRequest()
   {
     var (testServer, client, tenantId, userId) = await CreateAuthenticatedAdmin();
     using var _ = testServer;
@@ -55,7 +55,7 @@ public class PermissionScopeGuardTests(ITestOutputHelper testOutput)
       new InternalDtos.CreatePermissionAssignmentRequestDto(
         PermissionPrincipalKind.User,
         userId,
-        PermissionNames.ServerAdmin,
+        PermissionNames.ServerTenantsWrite,
         PermissionEffect.Allow,
         PermissionScopeKind.Tenant,
         tenantId,

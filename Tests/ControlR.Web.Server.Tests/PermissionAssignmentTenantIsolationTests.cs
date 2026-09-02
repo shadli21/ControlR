@@ -81,7 +81,7 @@ public class PermissionAssignmentTenantIsolationTests(ITestOutputHelper testOutp
       new InternalDtos.CreatePermissionAssignmentRequestDto(
         PermissionPrincipalKind.User,
         userA.Id,
-        PermissionNames.ServerAdmin,
+        PermissionNames.ServerPermissionsWrite,
         PermissionEffect.Allow,
         PermissionScopeKind.Server,
         null,

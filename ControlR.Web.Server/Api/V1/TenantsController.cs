@@ -9,11 +9,11 @@ namespace ControlR.Web.Server.Api.V1;
 
 [Route(HttpConstants.V1.TenantsEndpoint)]
 [ApiController]
-[Authorize(Policy = PolicyNames.RequireServerAdmin)]
 [ApiVersion(ApiVersions.V1)]
 public class TenantsController(ITenantProvisioningService tenantProvisioningService) : ControllerBase
 {
   [HttpPost]
+  [Authorize(Policy = PolicyNames.RequireServerTenantsWrite)]
   [ProducesResponseType<CreateTenantResponseDto>(StatusCodes.Status201Created)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]
   [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -31,6 +31,7 @@ public class TenantsController(ITenantProvisioningService tenantProvisioningServ
   }
 
   [HttpDelete("{id:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServerTenantsWrite)]
   [ProducesResponseType(StatusCodes.Status204NoContent)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -48,6 +49,7 @@ public class TenantsController(ITenantProvisioningService tenantProvisioningServ
   }
 
   [HttpGet("{id:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServerTenantsRead)]
   [ProducesResponseType<GetTenantResponseDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   public async Task<ActionResult<GetTenantResponseDto>> Get(
@@ -64,6 +66,7 @@ public class TenantsController(ITenantProvisioningService tenantProvisioningServ
   }
 
   [HttpPut("{id:guid}")]
+  [Authorize(Policy = PolicyNames.RequireServerTenantsWrite)]
   [ProducesResponseType<GetTenantResponseDto>(StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   [ProducesResponseType(StatusCodes.Status400BadRequest)]

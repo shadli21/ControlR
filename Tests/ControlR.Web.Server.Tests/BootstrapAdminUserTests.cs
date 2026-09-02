@@ -49,7 +49,7 @@ public class BootstrapAdminUserTests(ITestOutputHelper output)
       .Where(x => x.PrincipalId == user.Id)
       .Select(x => x.PermissionName)
       .ToListAsync(TestContext.Current.CancellationToken);
-    Assert.Contains(PermissionNames.ServerAdmin, permissions);
+    Assert.Contains(PermissionNames.ServerPermissionsWrite, permissions);
     Assert.Contains(PermissionNames.TenantSettingsWrite, permissions);
     Assert.Contains(PermissionNames.DeviceRead, permissions);
     Assert.Contains(PermissionNames.AgentInstall, permissions);

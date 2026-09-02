@@ -57,7 +57,7 @@ public class ClientPolicyGrantTests(ITestOutputHelper testOutput)
 
     var result = await evaluator.GetGrantedPolicies(principal, TestContext.Current.CancellationToken);
 
-    Assert.DoesNotContain(PolicyNames.RequireServerAdmin, result);
+    Assert.DoesNotContain(PolicyNames.RequireServerSettingsWrite, result);
   }
 
   [Fact]
@@ -73,7 +73,7 @@ public class ClientPolicyGrantTests(ITestOutputHelper testOutput)
 
     var result = await evaluator.GetGrantedPolicies(principal, TestContext.Current.CancellationToken);
 
-    Assert.Contains(PolicyNames.RequireServerAdmin, result);
+    Assert.Contains(PolicyNames.RequireServerSettingsWrite, result);
     Assert.Contains(PolicyNames.RequireServerTelemetryRead, result);
   }
 

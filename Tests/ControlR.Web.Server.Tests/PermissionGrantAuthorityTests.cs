@@ -372,7 +372,7 @@ public class PermissionGrantAuthorityTests(ITestOutputHelper testOutput)
       new InternalDtos.CreatePermissionAssignmentRequestDto(
         PermissionPrincipalKind.User,
         target.Id,
-        PermissionNames.ServerAdmin,
+        PermissionNames.ServerTenantsWrite,
         PermissionEffect.Allow,
         PermissionScopeKind.Server,
         null,

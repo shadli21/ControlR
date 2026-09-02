@@ -79,13 +79,15 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
     // Server-scoped subset of the Server Administrator preset (server-only permissions).
     var expectedServer = new[]
     {
-      PermissionNames.ServerAdmin,
       PermissionNames.ServerAlertsRead,
       PermissionNames.ServerAlertsWrite,
       PermissionNames.ServerAuthorizationLogsRead,
       PermissionNames.ServerPermissionsRead,
       PermissionNames.ServerPermissionsWrite,
+      PermissionNames.ServerSettingsWrite,
       PermissionNames.ServerTenantsRead,
+      PermissionNames.ServerTenantsWrite,
+      PermissionNames.ServerTestEmailSend,
       PermissionNames.ServerTelemetryRead,
       PermissionNames.ServerServiceAccountsRead,
       PermissionNames.ServerServiceAccountsWrite,
@@ -192,7 +194,7 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
     var serverAdminPermissions = await verifyDb.PermissionAssignments
       .Where(x => x.PrincipalId == user.Id &&
                   x.ScopeKind == PermissionScopeKind.Server &&
-                 (x.PermissionName == PermissionNames.ServerAdmin ||
+                 (x.PermissionName == PermissionNames.ServerTenantsWrite ||
                   x.PermissionName == PermissionNames.ServerTelemetryRead ||
                   x.PermissionName == PermissionNames.ServerServiceAccountsWrite))
       .ToListAsync(TestContext.Current.CancellationToken);

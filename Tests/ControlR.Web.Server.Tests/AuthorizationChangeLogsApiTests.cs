@@ -191,14 +191,6 @@ public class AuthorizationChangeLogsApiTests(ITestOutputHelper testOutput)
       db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
         PermissionPrincipalKind.User,
         serverAdmin.Id,
-        PermissionNames.ServerAdmin,
-        PermissionScopeKind.Server,
-        null,
-        tenantA.Id,
-        new PrincipalDescriptor(PrincipalType.User, serverAdmin.Id, tenantA.Id, "test")));
-      db.PermissionAssignments.Add(PermissionAssignment.CreateGrant(
-        PermissionPrincipalKind.User,
-        serverAdmin.Id,
         PermissionNames.ServerAuthorizationLogsRead,
         PermissionScopeKind.Server,
         null,
