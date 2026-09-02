@@ -42,10 +42,10 @@ Services use extension methods, not direct `Program.cs` registrations:
 
 ## Tenant Isolation (EF Query Filters)
 
-- `AppDb` applies **claims-driven global query filters**: `UseUserClaims(user)` (`Data/Configuration/DbContextOptionsBuilderExtensions.cs`) reads the authenticated principal's tenant/user claims when the context is created. When a tenant claim is present, most tenant-owned entities (`Users`, `Devices`, `UserGroups`, `DeviceGroups`, `Customers`, `Tags`, etc.) are filtered automatically — including via `[FromServices] AppDb` in controllers.
+- `AppDb` applies **claims-driven global query filters**: `UseUserClaims(user)` (`Data/Configuration/DbContextOptionsBuilderExtensions.cs`) reads the authenticated principal's tenant/user claims when the context is created. When a tenant claim is present, most tenant-owned entities (`Users`, `Devices`, `UserGroups`, `DeviceGroups`, `Customers`, `Tags`, etc.) are filtered automatically, including via `[FromServices] AppDb` in controllers.
 - **Server principals** (no tenant claim, e.g. server service accounts) get an **unfiltered context by explicit contract**. That is what enables their cross-tenant access.
-- **Exempt by design — NO query filters:** `PermissionAssignment`, `ServiceAccount`, `AuthorizationChangeLog`. Tenant isolation for these is enforced in service code (e.g. `PermissionAssignmentManager.IsVisibleToTenant`). Never assume a filter exists for them.
-- For security-critical boundaries, don't rely solely on the implicit filters: explicit `TenantId == tenantId` predicates are encouraged. They survive unfiltered contexts and make the boundary self-documenting.
+- **Exempt by design, NO query filters:** `PermissionAssignment`, `ServiceAccount`, `AuthorizationChangeLog`. Tenant isolation for these is enforced in service code. Never assume a filter exists for them.
+- For security-critical boundaries, don't rely solely on the implicit filters. Explicit `TenantId == tenantId` predicates are encouraged. They survive unfiltered contexts and make the boundary self-documenting.
 
 ## DTO Locations
 
@@ -78,7 +78,7 @@ DTOs live in `Dtos/ServerApi/` under `ControlR.Libraries.Api.Contracts.Dtos.Serv
 
 ## API Routing & Versioning
 
-**Two route roots, two stability levels** — never cross them:
+**Two route roots, two stability levels**:
 
 | Root | URL prefix | Stability | Consumer |
 |---|---|---|---|
