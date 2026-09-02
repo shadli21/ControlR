@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ControlR.Web.Server.Authz.Permissions;
-using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Services.Authorization;
 using ControlR.Web.Server.Services.Users;
-using ControlR.Libraries.Api.Contracts.Constants;
 
 namespace ControlR.Web.Server.Api.Internal;
 
@@ -87,17 +85,26 @@ public class UsersController : ControllerBase
         // Granting the ServerAdministrator preset is a server permission-management action, so
         // the authority check is ServerPermissionsWrite (the same permission that governs
         // creating server-scoped assignments), not a blanket admin knob.
+        var requestServerPermsWrite = new PermissionEvaluationRequest(
+          PermissionNames.ServerPermissionsWrite,
+          serverResource);
+
+        var requestTenantPermsWrite = new PermissionEvaluationRequest(
+          PermissionNames.TenantPermissionsWrite,
+          tenantResource);
+          
+        var requestTenantPermsDeny = new PermissionEvaluationRequest(
+          PermissionNames.TenantPermissionsDeny,
+          tenantResource);
+
         var decisions = await permissionEvaluator.EvaluateBatch(
           callerPrincipal,
-          [
-            new PermissionEvaluationRequest(PermissionNames.ServerPermissionsWrite, serverResource),
-            new PermissionEvaluationRequest(PermissionNames.TenantPermissionsWrite, tenantResource),
-            new PermissionEvaluationRequest(PermissionNames.TenantPermissionsDeny, tenantResource)
-          ],
+          [requestServerPermsWrite, requestTenantPermsWrite, requestTenantPermsDeny],
           HttpContext.RequestAborted);
-        var hasServerPermsWrite = decisions[0].Allowed;
-        var hasTenantWrite = decisions[1].Allowed;
-        var hasTenantDeny = decisions[2].Allowed;
+
+        var hasServerPermsWrite = decisions[requestServerPermsWrite].Allowed;
+        var hasTenantWrite = decisions[requestTenantPermsWrite].Allowed;
+        var hasTenantDeny = decisions[requestTenantPermsDeny].Allowed;
 
         if (requiresServerAdminPreset && !hasServerPermsWrite)
         {

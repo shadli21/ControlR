@@ -79,7 +79,7 @@ public class CredentialScopeService(
       cancellationToken);
     for (var index = 0; index < decisions.Count; index++)
     {
-      if (!decisions[index].Allowed)
+      if (!decisions[requests[index]].Allowed)
       {
         var scope = scopes[index];
         return HttpResult.Fail(

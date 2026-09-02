@@ -31,28 +31,31 @@ public class AuthorizationChangeLogsController : ControllerBase
       return BadRequest("User principal not found.");
     }
 
-    var requests = new List<PermissionEvaluationRequest>
-    {
-      new(
-        PermissionNames.ServerAuthorizationLogsRead,
-        new ResourceDescriptor(PermissionScopeKind.Server))
-    };
-    if (principal.TenantId.HasValue)
-    {
-      requests.Add(new PermissionEvaluationRequest(
-        PermissionNames.TenantAuthorizationLogsRead,
-        new ResourceDescriptor(
-          PermissionScopeKind.Tenant,
-          principal.TenantId.Value,
-          principal.TenantId.Value)));
-    }
+    var serverResource = new ResourceDescriptor(PermissionScopeKind.Server);
+    var requestServer = new PermissionEvaluationRequest(
+      PermissionNames.ServerAuthorizationLogsRead,
+      serverResource);
+
+    var requestTenant = principal.TenantId.HasValue
+      ? new PermissionEvaluationRequest(
+          PermissionNames.TenantAuthorizationLogsRead,
+          new ResourceDescriptor(
+            PermissionScopeKind.Tenant,
+            principal.TenantId.Value,
+            principal.TenantId.Value))
+      : null;
+
+    PermissionEvaluationRequest[]? requests = requestTenant is null
+      ? [requestServer]
+      : [requestServer, requestTenant];
 
     var decisions = await permissionEvaluator.EvaluateBatch(
       principal,
       requests,
       cancellationToken);
-    var canReadServer = decisions[0].Allowed;
-    var canReadTenant = decisions.Count > 1 && decisions[1].Allowed;
+
+    var canReadServer = decisions[requestServer].Allowed;
+    var canReadTenant = requestTenant is not null && decisions[requestTenant].Allowed;
 
     if (!canReadServer && !canReadTenant)
     {

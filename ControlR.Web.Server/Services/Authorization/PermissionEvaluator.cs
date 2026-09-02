@@ -1,4 +1,7 @@
+using System.Collections.Frozen;
+using System.Collections.Immutable;
 using ControlR.Libraries.Api.Contracts.Authz;
+using ControlR.Libraries.Shared.Comparers;
 using ControlR.Web.Server.Authz.Permissions;
 
 namespace ControlR.Web.Server.Services.Authorization;
@@ -10,7 +13,7 @@ public interface IPermissionEvaluator
     string permissionName,
     ResourceDescriptor resource,
     CancellationToken cancellationToken);
-  Task<IReadOnlyList<PermissionEvaluationResult>> EvaluateBatch(
+  Task<IReadOnlyDictionary<PermissionEvaluationRequest, PermissionEvaluationResult>> EvaluateBatch(
     PrincipalDescriptor principal,
     IReadOnlyList<PermissionEvaluationRequest> requests,
     CancellationToken cancellationToken);
@@ -43,19 +46,22 @@ public sealed class PermissionEvaluator(
     return _decisionEvaluator.Evaluate(context, permissionName, resource);
   }
 
-  public async Task<IReadOnlyList<PermissionEvaluationResult>> EvaluateBatch(
+  public async Task<IReadOnlyDictionary<PermissionEvaluationRequest, PermissionEvaluationResult>> EvaluateBatch(
     PrincipalDescriptor principal,
     IReadOnlyList<PermissionEvaluationRequest> requests,
     CancellationToken cancellationToken)
   {
     if (requests.Count == 0)
     {
-      return [];
+      return ImmutableDictionary.Create<PermissionEvaluationRequest, PermissionEvaluationResult>(
+        ReferenceEqualityComparer<PermissionEvaluationRequest>.Instance);
     }
 
     var context = await _contextLoader.Load(principal, cancellationToken);
-    return [.. requests.Select(request =>
-      _decisionEvaluator.Evaluate(context, request.PermissionName, request.Resource))];
+    return requests.ToFrozenDictionary(
+      request => request,
+      request => _decisionEvaluator.Evaluate(context, request.PermissionName, request.Resource),
+      ReferenceEqualityComparer<PermissionEvaluationRequest>.Instance);
   }
 
   public async Task<IReadOnlyDictionary<string, PermissionEvaluationResult>> EvaluateMany(
@@ -72,7 +78,7 @@ public sealed class PermissionEvaluator(
     var context = await _contextLoader.Load(principal, cancellationToken);
     return permissionNames
       .Distinct(StringComparer.Ordinal)
-      .ToDictionary(
+      .ToFrozenDictionary(
         permissionName => permissionName,
         permissionName => _decisionEvaluator.Evaluate(context, permissionName, resource),
         StringComparer.Ordinal);
@@ -137,7 +143,7 @@ public sealed class PermissionEvaluator(
         cancellationToken);
     }
 
-    return grantedPolicies;
+    return grantedPolicies.ToFrozenSet();
   }
 
   private async Task AddGrantedPoliciesCore(
