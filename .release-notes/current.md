@@ -1,5 +1,7 @@
 ## Breaking Changes
 
+- ⚠️ You will need to log out and back in if you have "Remember Me" enabled. ⚠️
+  - A pre-existing auth cookie will lack the new permission claims.
 - Some of the routes and DTOs used in the `/api/v1/*` endpoints have been changed.
   - There will be no more breaking changes to the `/api/v1/*` endpoints after this release.
 - Although roles were migrated to permission presets, user tags that mapped users to devices were removed.
@@ -32,16 +34,4 @@ None.
 
 ## Internal
 
-- Client authorization state now carries server-evaluated policy grants rather than
-  scope-agnostic permission-name hints. Only tenant/server-wide policies are projected to
-  the client; resource-specific authorization remains server-side and resource-bound.
-- Deploy tag selection now evaluates the intended deployment target (new device or a
-  predetermined existing device with the selected customer) before offering tag assignment,
-  instead of relying on a global permission claim.
-- Device permissions now include the Server scope so server-scoped principals (e.g. server
-  service accounts in Unrestricted mode) can be granted device permissions. Preset seeding
-  still uses the broadest tenant-scoped scope, so presets never create cross-tenant grants.
-  The decision evaluator fails closed on allow rules at illegal scope kinds while still
-  honoring deny rules at any scope. The permission assignment UI now hides the Server scope
-  option from the dropdown when the caller does not have server permission management
-  authority.
+None.

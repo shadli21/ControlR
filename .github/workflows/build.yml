@@ -68,12 +68,6 @@ on:
         default: ""
         type: string
 
-      ref:
-        description: "Git ref (branch or tag) to build. Defaults to the default branch."
-        required: false
-        default: ""
-        type: string
-
       skip_version_increment:
         description: "Use the supplied version as-is without incrementing CURRENT_VERSION"
         required: false
@@ -87,55 +81,66 @@ on:
         required: false
         default: true
         type: boolean
+
       use_local_storage:
         description: "Use local storage for artifacts"
         required: false
         default: true
         type: boolean
+
       retention_days_artifacts:
         description: "Retention days for artifacts"
         required: false
         default: 1
         type: number
+
       version:
         description: "Version number"
         required: true
         type: string
+
       server_runtime:
         description: "Server target runtime/OS"
         required: false
         default: linux-x64
         type: string
+
       notarize_mac_bundle:
         description: "Notarize macOS bundle"
         required: false
         default: true
         type: boolean
+
       build_nugets:
         description: "Build NuGet packages"
         required: false
         default: true
         type: boolean
+
       prerelease:
         description: "Is prerelease?"
         required: false
         default: false
         type: boolean
+
       run_tests:
         description: "Run tests"
         required: false
         default: false
         type: boolean
+
       customization_config_url:
         description: "URL to JSON customization config (empty for default branding)"
         required: false
         default: ""
         type: string
+
       ref:
         description: "Git ref (branch or tag) to build. Defaults to the default branch."
         required: false
         default: ""
         type: string
+        
       skip_version_increment:
         description: "Use the supplied version as-is without incrementing CURRENT_VERSION"
         required: false
