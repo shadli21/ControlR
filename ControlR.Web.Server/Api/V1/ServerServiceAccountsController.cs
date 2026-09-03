@@ -29,7 +29,7 @@ public class ServerServiceAccountsController(
     [FromBody] CreateServiceAccountCredentialRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return Unauthorized();
     }
@@ -54,7 +54,7 @@ public class ServerServiceAccountsController(
     [FromServices] IPermissionEvaluator permissionEvaluator,
     CancellationToken cancellationToken)
   {
-    var caller = PrincipalDescriptorBuilder.FromClaims(User);
+    var caller = User.ToPrincipalDescriptor();
     if (request.AccessMode == ServiceAccountAccessMode.Unrestricted)
     {
       if (caller is null)
@@ -94,7 +94,7 @@ public class ServerServiceAccountsController(
     Guid serviceAccountId,
     CancellationToken cancellationToken)
   {
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return Unauthorized();
     }
@@ -146,7 +146,7 @@ public class ServerServiceAccountsController(
     Guid credentialId,
     CancellationToken cancellationToken)
   {
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return Unauthorized();
     }
@@ -170,7 +170,7 @@ public class ServerServiceAccountsController(
     [FromBody] UpdateServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return Unauthorized();
     }

@@ -179,7 +179,7 @@ public class DeviceScopeParityPropertyTests(ITestOutputHelper testOutput)
       new Claim(UserClaimTypes.TenantId, tenantId.ToString())
     ], "TestAuth"));
 
-    var descriptor = PrincipalDescriptorBuilder.FromClaims(claims)
+    var descriptor = claims.ToPrincipalDescriptor()
       ?? throw new InvalidOperationException("Failed to build principal descriptor from claims.");
 
     return (claims, descriptor);

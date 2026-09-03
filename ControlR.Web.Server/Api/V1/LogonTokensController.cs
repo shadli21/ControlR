@@ -39,7 +39,7 @@ public class LogonTokensController : ControllerBase
       return Forbid();
     }
 
-    var creator = PrincipalDescriptorBuilder.FromClaims(User);
+    var creator = User.ToPrincipalDescriptor();
     if (creator is null)
     {
       return BadRequest("Caller principal not found.");
@@ -85,7 +85,7 @@ public class LogonTokensController : ControllerBase
       return Forbid();
     }
 
-    var creator = PrincipalDescriptorBuilder.FromClaims(User);
+    var creator = User.ToPrincipalDescriptor();
     if (creator is null)
     {
       return BadRequest("Caller principal not found.");

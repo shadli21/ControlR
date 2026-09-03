@@ -34,7 +34,7 @@ public sealed class DeviceAccessScopeResolver(
       return DeviceAccessScope.None();
     }
 
-    var principal = PrincipalDescriptorBuilder.FromClaims(user);
+    var principal = user.ToPrincipalDescriptor();
     if (principal is null)
     {
       return DeviceAccessScope.None();

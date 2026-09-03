@@ -25,7 +25,7 @@ public class PermissionRequirementHandler(
     PermissionRequirement requirement,
     object resource)
   {
-    var principal = PrincipalDescriptorBuilder.FromClaims(context.User);
+    var principal = context.User.ToPrincipalDescriptor();
     if (principal is null)
     {
       _logger.LogWarning("Cannot build principal descriptor from claims. Denying {Permission}.", requirement.PermissionName);

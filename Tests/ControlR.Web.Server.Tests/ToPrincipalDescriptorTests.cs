@@ -4,10 +4,10 @@ using ControlR.Web.Server.Authz.Permissions;
 
 namespace ControlR.Web.Server.Tests;
 
-public class PrincipalDescriptorBuilderTests
+public class ToPrincipalDescriptorTests
 {
   [Fact]
-  public void FromClaims_DesktopSessionRestrictionClaims_ParsesAllowedIds()
+  public void ToPrincipalDescriptor_DesktopSessionRestrictionClaims_ParsesAllowedIds()
   {
     var principal = new ClaimsPrincipal(new ClaimsIdentity(
     [
@@ -20,7 +20,7 @@ public class PrincipalDescriptorBuilderTests
       new Claim(UserClaimTypes.DesktopSessionRestriction, bool.TrueString)
     ], "TestAuth"));
 
-    var descriptor = PrincipalDescriptorBuilder.FromClaims(principal);
+    var descriptor = principal.ToPrincipalDescriptor();
 
     Assert.NotNull(descriptor);
     Assert.NotNull(descriptor.AllowedDesktopSessionIds);
@@ -29,7 +29,7 @@ public class PrincipalDescriptorBuilderTests
   }
 
   [Fact]
-  public void FromClaims_DesktopSessionRestrictionClaim_WithoutIds_IsNotRestricted()
+  public void ToPrincipalDescriptor_DesktopSessionRestrictionClaim_WithoutIds_IsNotRestricted()
   {
     // Restriction flag present with no allowed ids -> empty set normalized to null.
     var principal = new ClaimsPrincipal(new ClaimsIdentity(
@@ -41,7 +41,7 @@ public class PrincipalDescriptorBuilderTests
       new Claim(UserClaimTypes.DesktopSessionRestriction, bool.TrueString)
     ], "TestAuth"));
 
-    var descriptor = PrincipalDescriptorBuilder.FromClaims(principal);
+    var descriptor = principal.ToPrincipalDescriptor();
 
     Assert.NotNull(descriptor);
     Assert.Null(descriptor.AllowedDesktopSessionIds);
@@ -49,7 +49,7 @@ public class PrincipalDescriptorBuilderTests
   }
 
   [Fact]
-  public void FromClaims_MalformedPrincipalId_ReturnsNull()
+  public void ToPrincipalDescriptor_MalformedPrincipalId_ReturnsNull()
   {
     var principal = new ClaimsPrincipal(new ClaimsIdentity(
     [
@@ -58,11 +58,11 @@ public class PrincipalDescriptorBuilderTests
       new Claim(UserClaimTypes.TenantId, Guid.NewGuid().ToString())
     ], "TestAuth"));
 
-    Assert.Null(PrincipalDescriptorBuilder.FromClaims(principal));
+    Assert.Null(principal.ToPrincipalDescriptor());
   }
 
   [Fact]
-  public void FromClaims_MissingCanonicalClaims_ReturnsNull()
+  public void ToPrincipalDescriptor_MissingCanonicalClaims_ReturnsNull()
   {
     // No principal type or principal id claim at all.
     var principal = new ClaimsPrincipal(new ClaimsIdentity(
@@ -70,11 +70,11 @@ public class PrincipalDescriptorBuilderTests
       new Claim(UserClaimTypes.TenantId, Guid.NewGuid().ToString())
     ], "TestAuth"));
 
-    Assert.Null(PrincipalDescriptorBuilder.FromClaims(principal));
+    Assert.Null(principal.ToPrincipalDescriptor());
   }
 
   [Fact]
-  public void FromClaims_NonCanonicalDesktopSessionRestrictionValue_IsNotRestricted()
+  public void ToPrincipalDescriptor_NonCanonicalDesktopSessionRestrictionValue_IsNotRestricted()
   {
     // Restriction claim must carry the exact boolean string; anything else is ignored.
     var principal = new ClaimsPrincipal(new ClaimsIdentity(
@@ -86,14 +86,14 @@ public class PrincipalDescriptorBuilderTests
       new Claim(UserClaimTypes.DesktopSessionRestriction, "TRUE")
     ], "TestAuth"));
 
-    var descriptor = PrincipalDescriptorBuilder.FromClaims(principal);
+    var descriptor = principal.ToPrincipalDescriptor();
 
     Assert.NotNull(descriptor);
     Assert.False(descriptor.HasDesktopSessionRestriction);
   }
 
   [Fact]
-  public void FromClaims_ServerServiceAccountWithoutTenantClaim_ReturnsDescriptor()
+  public void ToPrincipalDescriptor_ServerServiceAccountWithoutTenantClaim_ReturnsDescriptor()
   {
     var principal = new ClaimsPrincipal(new ClaimsIdentity(
     [
@@ -101,7 +101,7 @@ public class PrincipalDescriptorBuilderTests
       new Claim(PrincipalClaimTypes.PrincipalId, Guid.NewGuid().ToString())
     ], "TestAuth"));
 
-    var descriptor = PrincipalDescriptorBuilder.FromClaims(principal);
+    var descriptor = principal.ToPrincipalDescriptor();
 
     Assert.NotNull(descriptor);
     Assert.Null(descriptor.TenantId);
@@ -109,7 +109,7 @@ public class PrincipalDescriptorBuilderTests
   }
 
   [Fact]
-  public void FromClaims_UserWithMalformedTenantClaim_ReturnsNull()
+  public void ToPrincipalDescriptor_UserWithMalformedTenantClaim_ReturnsNull()
   {
     var principal = new ClaimsPrincipal(new ClaimsIdentity(
     [
@@ -118,11 +118,11 @@ public class PrincipalDescriptorBuilderTests
       new Claim(UserClaimTypes.TenantId, "not-a-guid")
     ], "TestAuth"));
 
-    Assert.Null(PrincipalDescriptorBuilder.FromClaims(principal));
+    Assert.Null(principal.ToPrincipalDescriptor());
   }
 
   [Fact]
-  public void FromClaims_UserWithoutTenantClaim_ReturnsNull()
+  public void ToPrincipalDescriptor_UserWithoutTenantClaim_ReturnsNull()
   {
     var principal = new ClaimsPrincipal(new ClaimsIdentity(
     [
@@ -130,6 +130,6 @@ public class PrincipalDescriptorBuilderTests
       new Claim(PrincipalClaimTypes.PrincipalId, Guid.NewGuid().ToString())
     ], "TestAuth"));
 
-    Assert.Null(PrincipalDescriptorBuilder.FromClaims(principal));
+    Assert.Null(principal.ToPrincipalDescriptor());
   }
 }

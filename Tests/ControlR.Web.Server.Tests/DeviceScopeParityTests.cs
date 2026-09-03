@@ -320,7 +320,7 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.ServerServiceAccount),
       new Claim(PrincipalClaimTypes.PrincipalId, serviceAccountId.ToString())
     ], "TestAuth"));
-    var principal = PrincipalDescriptorBuilder.FromClaims(claims)
+    var principal = claims.ToPrincipalDescriptor()
       ?? throw new InvalidOperationException("Failed to build principal descriptor from claims.");
 
     using var scope = testApp.App.Services.CreateScope();
@@ -449,7 +449,7 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       new Claim(PrincipalClaimTypes.PrincipalType, PrincipalClaimValues.ServerServiceAccount),
       new Claim(PrincipalClaimTypes.PrincipalId, serviceAccountId.ToString())
     ], "TestAuth"));
-    var principal = PrincipalDescriptorBuilder.FromClaims(claims)
+    var principal = claims.ToPrincipalDescriptor()
       ?? throw new InvalidOperationException("Failed to build principal descriptor from claims.");
 
     using var scope = testApp.App.Services.CreateScope();
@@ -561,7 +561,7 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       new Claim(PrincipalClaimTypes.CredentialId, credentialId.ToString()),
       new Claim(PrincipalClaimTypes.CredentialType, credentialType.ToString())
     ], "TestAuth"));
-    var descriptor = PrincipalDescriptorBuilder.FromClaims(claims)
+    var descriptor = claims.ToPrincipalDescriptor()
       ?? throw new InvalidOperationException("Failed to build principal descriptor from claims.");
     return (claims, descriptor);
   }
@@ -576,7 +576,7 @@ public class DeviceScopeParityTests(ITestOutputHelper testOutput)
       new Claim(UserClaimTypes.TenantId, tenantId.ToString())
     ], "TestAuth"));
 
-    var descriptor = PrincipalDescriptorBuilder.FromClaims(claims)
+    var descriptor = claims.ToPrincipalDescriptor()
       ?? throw new InvalidOperationException("Failed to build principal descriptor from claims.");
 
     return (claims, descriptor);

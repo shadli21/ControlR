@@ -71,7 +71,7 @@ public class UsersController : ControllerBase
 
       if (requiresServerAdminPreset || requiresTenantPermissionManagement)
       {
-        var callerPrincipal = PrincipalDescriptorBuilder.FromClaims(User);
+        var callerPrincipal = User.ToPrincipalDescriptor();
         if (callerPrincipal is null)
         {
           return BadRequest("Caller principal not found.");
@@ -179,7 +179,7 @@ public class UsersController : ControllerBase
       return NotFound();
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }

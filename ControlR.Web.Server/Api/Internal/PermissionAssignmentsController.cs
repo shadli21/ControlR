@@ -224,7 +224,7 @@ public class PermissionAssignmentsController(
     out Guid tenantId,
     [NotNullWhen(true)] out PrincipalDescriptor? actor)
   {
-    var principal = PrincipalDescriptorBuilder.FromClaims(User);
+    var principal = User.ToPrincipalDescriptor();
     if (principal is null)
     {
       actor = null;

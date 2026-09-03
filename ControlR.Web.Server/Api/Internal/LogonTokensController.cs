@@ -44,7 +44,7 @@ public class LogonTokensController : ControllerBase
       return Forbid();
     }
 
-    var creator = PrincipalDescriptorBuilder.FromClaims(User);
+    var creator = User.ToPrincipalDescriptor();
     if (creator is null)
     {
       return BadRequest("User principal not found.");

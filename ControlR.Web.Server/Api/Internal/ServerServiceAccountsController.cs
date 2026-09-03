@@ -20,7 +20,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromBody] InternalDtos.CreateServerServiceAccountCredentialRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
@@ -44,7 +44,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromServices] IPermissionEvaluator permissionEvaluator,
     CancellationToken cancellationToken)
   {
-    var caller = PrincipalDescriptorBuilder.FromClaims(User);
+    var caller = User.ToPrincipalDescriptor();
     if (request.AccessMode == ServiceAccountAccessMode.Unrestricted)
     {
       if (caller is null)
@@ -82,7 +82,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromRoute] Guid serviceAccountId,
     CancellationToken cancellationToken)
   {
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
@@ -127,7 +127,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromRoute] Guid credentialId,
     CancellationToken cancellationToken)
   {
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
@@ -149,7 +149,7 @@ public class ServerServiceAccountsController(IServiceAccountManager serviceAccou
     [FromBody] InternalDtos.UpdateServerServiceAccountRequestDto request,
     CancellationToken cancellationToken)
   {
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }

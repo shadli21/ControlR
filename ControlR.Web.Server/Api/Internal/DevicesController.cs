@@ -76,7 +76,7 @@ public class DevicesController(
       .Where(d => d.TenantId == tenantId && requestDto.DeviceIds.Contains(d.Id))
       .ToListAsync(cancellationToken);
 
-    var principal = PrincipalDescriptorBuilder.FromClaims(User);
+    var principal = User.ToPrincipalDescriptor();
     if (principal is null)
     {
       return Forbid();

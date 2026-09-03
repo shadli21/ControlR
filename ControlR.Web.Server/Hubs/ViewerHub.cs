@@ -152,7 +152,7 @@ public class ViewerHub(
       var device = authResult.Value;
       var principal = Context.User is null
         ? null
-        : PrincipalDescriptorBuilder.FromClaims(Context.User);
+        : Context.User.ToPrincipalDescriptor();
       if (principal is null)
       {
         return [];
@@ -185,7 +185,7 @@ public class ViewerHub(
 
       var principal = Context.User is null
         ? null
-        : PrincipalDescriptorBuilder.FromClaims(Context.User);
+        : Context.User.ToPrincipalDescriptor();
       if (principal is null)
       {
         return HubResult.Fail<DeviceAccessPermissionsDto>("Unauthorized.");
@@ -792,7 +792,7 @@ public class ViewerHub(
       .Where(x => distinctIds.Contains(x.Id))
       .ToListAsync();
 
-    var principal = PrincipalDescriptorBuilder.FromClaims(Context.User);
+    var principal = Context.User.ToPrincipalDescriptor();
     if (principal is null)
     {
       return HubResult.Fail("Invalid principal.");
@@ -985,7 +985,7 @@ public class ViewerHub(
   {
     var principal = Context.User is null
       ? null
-      : PrincipalDescriptorBuilder.FromClaims(Context.User);
+      : Context.User.ToPrincipalDescriptor();
     return principal is not null &&
       _desktopSessionAccessAuthorizer.CanUse(principal, deviceId, systemSessionId);
   }
@@ -1043,7 +1043,7 @@ public class ViewerHub(
 
     var principal = Context.User is null
       ? null
-      : PrincipalDescriptorBuilder.FromClaims(Context.User);
+      : Context.User.ToPrincipalDescriptor();
     if (principal is null)
     {
       return;

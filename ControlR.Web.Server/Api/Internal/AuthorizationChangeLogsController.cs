@@ -25,7 +25,7 @@ public class AuthorizationChangeLogsController : ControllerBase
     [FromQuery] InternalDtos.AuthorizationChangeLogSearchQueryDto searchQuery,
     CancellationToken cancellationToken = default)
   {
-    var principal = PrincipalDescriptorBuilder.FromClaims(User);
+    var principal = User.ToPrincipalDescriptor();
     if (principal is null)
     {
       return BadRequest("User principal not found.");

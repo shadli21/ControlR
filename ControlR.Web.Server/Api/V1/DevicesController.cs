@@ -72,7 +72,7 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
       .Where(d => requestDto.DeviceIds.Contains(d.Id))
       .ToListAsync(cancellationToken);
 
-    var principal = PrincipalDescriptorBuilder.FromClaims(User);
+    var principal = User.ToPrincipalDescriptor();
     if (principal is null)
     {
       return Forbid();
@@ -188,7 +188,7 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
         .Client(device.ConnectionId)
         .GetActiveDesktopSessions();
 
-      var principal = PrincipalDescriptorBuilder.FromClaims(User);
+      var principal = User.ToPrincipalDescriptor();
       if (principal is null)
       {
         return Unauthorized();

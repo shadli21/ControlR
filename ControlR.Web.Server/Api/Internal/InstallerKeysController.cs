@@ -106,7 +106,7 @@ public class InstallerKeysController(
 
   private async Task<bool> CanManageAllKeys(CancellationToken cancellationToken)
   {
-    var principal = PrincipalDescriptorBuilder.FromClaims(User);
+    var principal = User.ToPrincipalDescriptor();
     if (principal is null)
     {
       return false;

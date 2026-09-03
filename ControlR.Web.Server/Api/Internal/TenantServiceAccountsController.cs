@@ -23,7 +23,7 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
@@ -52,7 +52,7 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
@@ -79,7 +79,7 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
@@ -139,7 +139,7 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }
@@ -167,7 +167,7 @@ public class TenantServiceAccountsController(IServiceAccountManager serviceAccou
       return BadRequest("User tenant not found.");
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return BadRequest("User ID not found.");
     }

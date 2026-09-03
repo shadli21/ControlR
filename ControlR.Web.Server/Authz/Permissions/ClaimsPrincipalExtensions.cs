@@ -4,13 +4,13 @@ using ControlR.Web.Server.Authn;
 namespace ControlR.Web.Server.Authz.Permissions;
 
 /// <summary>
-/// Builds a <see cref="PrincipalDescriptor"/> from an authenticated principal's claims. Shared
-/// by the authorization handler (point authorization) and the device-scope resolver (set
-/// enumeration) so both interpret the same claims identically.
+/// Extensions for building a <see cref="PrincipalDescriptor"/> from an authenticated principal's
+/// claims. Shared by the authorization handler (point authorization) and the device-scope
+/// resolver (set enumeration) so both interpret the same claims identically.
 /// </summary>
-public static class PrincipalDescriptorBuilder
+public static class ClaimsPrincipalExtensions
 {
-  public static PrincipalDescriptor? FromClaims(ClaimsPrincipal user)
+  public static PrincipalDescriptor? ToPrincipalDescriptor(this ClaimsPrincipal user)
   {
     var principalTypeClaim = user.FindFirst(PrincipalClaimTypes.PrincipalType)?.Value;
     var principalIdClaim = user.FindFirst(PrincipalClaimTypes.PrincipalId)?.Value;

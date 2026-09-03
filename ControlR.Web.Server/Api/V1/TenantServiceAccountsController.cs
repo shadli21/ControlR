@@ -34,7 +34,7 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return Unauthorized();
     }
@@ -65,7 +65,7 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return Unauthorized();
     }
@@ -99,7 +99,7 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return Unauthorized();
     }
@@ -173,7 +173,7 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return Unauthorized();
     }
@@ -205,7 +205,7 @@ public class TenantServiceAccountsController(
       return Forbid();
     }
 
-    if (PrincipalDescriptorBuilder.FromClaims(User) is not { } actor)
+    if (User.ToPrincipalDescriptor() is not { } actor)
     {
       return Unauthorized();
     }
