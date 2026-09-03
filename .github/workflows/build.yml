@@ -142,7 +142,7 @@ on:
         type: string
         
       skip_version_increment:
-        description: "Use the supplied version as-is without incrementing CURRENT_VERSION"
+        description: "Use the supplied version without incrementing or setting the current version."
         required: false
         default: false
         type: boolean
