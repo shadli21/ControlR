@@ -14,6 +14,11 @@ internal sealed class Program
   public static AppBuilder BuildAvaloniaApp()
       => AppBuilder.Configure<App>()
           .UsePlatformDetect()
+#if IS_LINUX
+          // Experimental as of Avalonia 12.1, so UsePlatformDetect() does not pick it up.
+          // Falls back to X11 when no usable Wayland compositor is available.
+          .UseWaylandWithFallback()
+#endif
           .WithInterFont()
 #if DEBUG
           .WithDeveloperTools()
