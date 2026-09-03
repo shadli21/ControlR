@@ -5,13 +5,14 @@
     <PackageVersion Include="Asp.Versioning.Mvc" Version="10.0.0" />
     <PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.0.0" />
     <PackageVersion Include="Asp.Versioning.OpenApi" Version="10.0.0-rc.1" />
-    <PackageVersion Include="Avalonia" Version="12.0.5" />
-    <PackageVersion Include="Avalonia.Controls.DataGrid" Version="12.0.1" />
-    <PackageVersion Include="Avalonia.Desktop" Version="12.0.5" />
-    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.0.5" />
-    <PackageVersion Include="Avalonia.LinuxFramebuffer" Version="12.0.2" />
-    <PackageVersion Include="Avalonia.Skia" Version="12.0.5" />
-    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.5" />
+    <PackageVersion Include="Avalonia" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.LinuxFramebuffer" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Skia" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Wayland" Version="12.1.2" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.5.0" />
     <PackageVersion Include="Bitbound.Analyzers.MemberOrder" Version="1.0.52" />
@@ -111,8 +112,8 @@
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.9" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.13.0" />
     <!-- Avalonia has transient dependencies built against this version of Tmds.DBus. -->
-    <PackageVersion Include="Tmds.DBus" Version="[0.92.0]" />
-    <PackageVersion Include="Tmds.DBus.Protocol" Version="[0.92.0]" />
+    <PackageVersion Include="Tmds.DBus" Version="[0.94.1]" />
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="[0.94.1]" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.abstractions" Version="2.0.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />

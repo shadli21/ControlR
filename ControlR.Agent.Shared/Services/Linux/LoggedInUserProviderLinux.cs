@@ -8,8 +8,9 @@ namespace ControlR.Agent.Shared.Services.Linux;
 public interface ILoggedInUserProvider
 {
   /// <summary>
-  ///   Gets a list of UIDs for currently logged-in users.
-  ///   Excludes system users (UID < 1000) and display manager sessions.
+  ///   Gets a list of UIDs for users with an active graphical session (X11 or
+  ///   Wayland). Excludes system users (UID <1000), display manager sessions,
+  ///   and text/SSH sessions, which cannot host the desktop client.
   /// </summary>
   /// <returns>A list of UIDs as strings.</returns>
   Task<List<string>> GetLoggedInUserUids();
@@ -52,11 +53,27 @@ internal class LoggedInUserProviderLinux(
         {
           var sessionInfo = ParseSessionInfo(sessionInfoResult.Value);
 
-          // Skip sessions that are closing or display manager sessions
+          // Skip sessions that are closing.
           if (sessionInfo.TryGetValue("State", out var sessionState) &&
-              sessionInfo.TryGetValue("User", out var userValue) &&
-              (sessionState?.Equals("closing", StringComparison.OrdinalIgnoreCase) == true ||
-               IsDisplayManagerUser(userValue)))
+              sessionState?.Equals("closing", StringComparison.OrdinalIgnoreCase) == true)
+          {
+            continue;
+          }
+
+          // Skip sessions that are display manager sessions.
+          if (sessionInfo.TryGetValue("User", out var userValue) &&
+              IsDisplayManagerUser(userValue))
+          {
+            continue;
+          }
+
+          // Only consider graphical sessions (x11 or wayland). The desktop client
+          // is a GUI application and cannot run in a text/SSH session, so users
+          // without a graphical session (e.g. an SSH-only user at the login screen)
+          // must be excluded.
+          if (!sessionInfo.TryGetValue("Type", out var sessionType) ||
+              (!string.Equals(sessionType, "x11", StringComparison.OrdinalIgnoreCase) &&
+               !string.Equals(sessionType, "wayland", StringComparison.OrdinalIgnoreCase)))
           {
             continue;
           }

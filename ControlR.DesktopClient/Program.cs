@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 
@@ -15,6 +14,11 @@ internal sealed class Program
   public static AppBuilder BuildAvaloniaApp()
       => AppBuilder.Configure<App>()
           .UsePlatformDetect()
+#if IS_LINUX
+          // Experimental as of Avalonia 12.1, so UsePlatformDetect() does not pick it up.
+          // Falls back to X11 when no usable Wayland compositor is available.
+          .UseWaylandWithFallback()
+#endif
           .WithInterFont()
 #if DEBUG
           .WithDeveloperTools()
@@ -31,12 +35,15 @@ internal sealed class Program
   [STAThread]
   public static void Main(string[] args)
   {
+    UseLinuxDisplayGuard();
+
     while (true)
     {
       try
       {
         if (_appBuilder is null)
         {
+          // AppBuilder has static internal state that will throw if it's configured more than once.
           _appBuilder = BuildAvaloniaApp();
           _appBuilder.StartWithClassicDesktopLifetime(args, lifetime => { _lifetime = lifetime; });
         }
@@ -46,12 +53,12 @@ internal sealed class Program
         }
         else
         {
-          Debug.WriteLine("Unexpected initialization state.");
+          Console.WriteLine("Unexpected initialization state.");
         }
       }
       catch (InvalidOperationException ex) when (ex.Message.Contains("RenderTimer"))
       {
-        Debug.WriteLine(
+        Console.WriteLine(
           "An error occurred internally within Avalonia while activating the RenderTimer. " +
           "This can occur sometimes when the device is in a low-power mode. " +
           $"Error: {ex.Message}");
@@ -61,10 +68,35 @@ internal sealed class Program
       }
       catch (Exception ex)
       {
-        Debug.WriteLine($"A fatal error occurred: {ex}");
+        Console.WriteLine($"A fatal error occurred: {ex}");
         throw;
       }
       break;
     }
+  }
+
+  /// <summary>
+  ///   On Linux, the desktop client requires either an X11 or Wayland display to be available.
+  ///   This method checks for the presence of a display and exits the application if none is found.
+  ///   The delay prevents the agent from restarting the desktop client in a tight loop when no display is available.
+  /// </summary>
+  private static void UseLinuxDisplayGuard()
+  {
+    if (!OperatingSystem.IsLinux())
+    {
+      return;
+    }
+
+    var x11Display = Environment.GetEnvironmentVariable("DISPLAY");
+    var waylandDisplay = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY");
+
+    if (!string.IsNullOrWhiteSpace(x11Display) || !string.IsNullOrWhiteSpace(waylandDisplay))
+    {
+      return;
+    }
+
+    Console.WriteLine("No X11 or Wayland display detected. Exiting.");
+    Thread.Sleep(30_000);
+    Environment.Exit(1);
   }
 }
