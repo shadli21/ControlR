@@ -11,7 +11,9 @@ public static class DeviceAccessQueryExtensions
   {
     if (accessScope.ExcludedTenantIds.Contains(Guid.Empty))
     {
-      return query.Take(0);
+      return query
+        .OrderBy(device => device.CreatedAt)
+        .Take(0);
     }
 
     query = query
