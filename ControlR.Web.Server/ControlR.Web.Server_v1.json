@@ -3716,6 +3716,16 @@
       "DeviceSearchRequestDto": {
         "type": "object",
         "properties": {
+          "customerIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           "deviceGroupFilterMatchMode": {
             "$ref": "#/components/schemas/FilterMatchMode"
           },

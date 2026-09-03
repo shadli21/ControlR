@@ -132,10 +132,12 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     [FromServices] IAgentVersionProvider agentVersionProvider,
     [EnumeratorCancellation] CancellationToken cancellationToken)
   {
-    var query = await appDb.Devices.Include(x => x.Tags).AsSplitQuery()
+    var query = await appDb.Devices
+      .Include(x => x.Tags)
+      .AsSplitQuery()
       .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver, cancellationToken);
 
-    await foreach (var device in query.OrderBy(x => x.CreatedAt).AsAsyncEnumerable().WithCancellation(cancellationToken))
+    await foreach (var device in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
     {
       var isOutdated = await agentVersionProvider.IsAgentOutdated(device.AgentVersion, cancellationToken);
       yield return device.ToV1ResponseDto(isOutdated);
@@ -248,7 +250,7 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     var query = await appDb.Devices
       .ApplyDeviceAccessScope(User, _deviceAccessScopeResolver, cancellationToken);
 
-    await foreach (var device in query.OrderBy(x => x.CreatedAt).AsAsyncEnumerable().WithCancellation(cancellationToken))
+    await foreach (var device in query.AsAsyncEnumerable().WithCancellation(cancellationToken))
     {
       yield return device.ToV1SummaryDto();
     }
@@ -269,7 +271,8 @@ public class DevicesController(IDeviceAccessScopeResolver deviceAccessScopeResol
     var filteredQuery = authorizedQuery
       .FilterBySearchText(requestDto.SearchText, isRelationalDatabase)
       .FilterByOnlineOffline(requestDto.HideOfflineDevices)
-      .FilterByColumnFilters(requestDto.FilterDefinitions, isRelationalDatabase, logger);
+      .FilterByColumnFilters(requestDto.FilterDefinitions, isRelationalDatabase, logger)
+      .FilterByCustomerIds(requestDto.CustomerIds);
 
     var scopedQuery = filteredQuery.FilterByTagsAndDeviceGroups(
       requestDto.TagIds,

@@ -6,6 +6,7 @@ namespace ControlR.Libraries.Api.Contracts.Dtos.ServerApi.V1;
 
 public class DeviceSearchRequestDto
 {
+  public IReadOnlyList<Guid>? CustomerIds { get; set; }
   public FilterMatchMode DeviceGroupFilterMatchMode { get; set; }
   public IReadOnlyList<Guid>? DeviceGroupIds { get; set; }
   public IReadOnlyList<DeviceColumnFilter>? FilterDefinitions { get; set; }
