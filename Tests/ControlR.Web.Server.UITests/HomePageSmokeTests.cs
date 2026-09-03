@@ -4,7 +4,7 @@ namespace ControlR.Web.Server.UITests;
 
 public class HomePageSmokeTests
 {
-  [Fact(Timeout = 180_000)]
+  [Fact]
   public async Task WelcomePage_ShouldRender_AndNavigateToLogin()
   {
     await using var session = await UiBrowserSession.Create();

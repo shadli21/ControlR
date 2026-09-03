@@ -4,7 +4,7 @@ namespace ControlR.Web.Server.UITests;
 
 public class DashboardLoginTests
 {
-  [Fact(Timeout = 180_000)]
+  [Fact]
   public async Task Login_WithBootstrapAdmin_NavigatesToDashboard()
   {
     await using var session = await UiBrowserSession.Create();

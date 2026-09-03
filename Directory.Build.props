@@ -31,8 +31,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <NoWarn>$(NoWarn);S125;NU1608;NU1903</NoWarn>
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);BB0001</WarningsNotAsErrors>
+    <NoWarn>$(NoWarn);S125;AV0029;</NoWarn>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);BB0001;</WarningsNotAsErrors>
   </PropertyGroup>
 
   <PropertyGroup
