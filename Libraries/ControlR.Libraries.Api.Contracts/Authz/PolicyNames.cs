@@ -26,6 +26,7 @@ public static class PolicyNames
   public const string RequireServerServiceAccountsWrite = "RequireServerServiceAccountsWrite";
   public const string RequireServerSettingsWrite = "RequireServerSettingsWrite";
   public const string RequireServerTelemetryRead = "RequireServerTelemetryRead";
+  public const string RequireServerTenantsDelete = "RequireServerTenantsDelete";
   public const string RequireServerTenantsRead = "RequireServerTenantsRead";
   public const string RequireServerTenantsWrite = "RequireServerTenantsWrite";
   public const string RequireServiceAccountRead = "RequireServiceAccountRead";

@@ -77,8 +77,9 @@ public static class PermissionCatalog
     Add(PermissionNames.ServerPermissionsRead, "Read Server Permission Assignments", "View server-scoped permission assignments.", server);
     Add(PermissionNames.ServerPermissionsWrite, "Manage Server Permission Assignments", "Create, update, and delete server-scoped permission assignments.", server, selfRemovable: false);
     Add(PermissionNames.ServerSettingsWrite, "Manage Server Settings", "Configure server settings: the server-wide alert and SMTP test email.", server);
+    Add(PermissionNames.ServerTenantsDelete, "Delete Server Tenants", "Delete tenants from the server.", server);
     Add(PermissionNames.ServerTenantsRead, "Read Server Tenants", "List all tenants on the server.", server);
-    Add(PermissionNames.ServerTenantsWrite, "Manage Server Tenants", "Create, update, and delete tenants on the server.", server);
+    Add(PermissionNames.ServerTenantsWrite, "Manage Server Tenants", "Create and update tenants on the server.", server);
     Add(PermissionNames.ServerTelemetryRead, "Read Server Telemetry", "View server telemetry (logs and metrics).", server);
     Add(PermissionNames.ServerServiceAccountsRead, "Read Server Service Accounts", "View server-scoped service accounts and credentials.", server);
     Add(PermissionNames.ServerServiceAccountsWrite, "Manage Server Service Accounts", "Create and delete server-scoped service accounts.", server);

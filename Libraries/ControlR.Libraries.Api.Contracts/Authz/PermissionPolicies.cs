@@ -56,6 +56,7 @@ public static class PermissionPolicies
       [PolicyNames.RequireServerPermissionsRead] = new(PermissionNames.ServerPermissionsRead, PermissionScopeKind.Server),
       [PolicyNames.RequireServerPermissionsWrite] = new(PermissionNames.ServerPermissionsWrite, PermissionScopeKind.Server),
       [PolicyNames.RequireServerSettingsWrite] = new(PermissionNames.ServerSettingsWrite, PermissionScopeKind.Server),
+      [PolicyNames.RequireServerTenantsDelete] = new(PermissionNames.ServerTenantsDelete, PermissionScopeKind.Server),
       [PolicyNames.RequireServerTenantsRead] = new(PermissionNames.ServerTenantsRead, PermissionScopeKind.Server),
       [PolicyNames.RequireServerTenantsWrite] = new(PermissionNames.ServerTenantsWrite, PermissionScopeKind.Server),
       [PolicyNames.RequireServerServiceAccountsRead] = new(PermissionNames.ServerServiceAccountsRead, PermissionScopeKind.Server),

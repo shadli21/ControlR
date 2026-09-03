@@ -31,7 +31,7 @@ public class TenantsController(ITenantProvisioningService tenantProvisioningServ
   }
 
   [HttpDelete("{id:guid}")]
-  [Authorize(Policy = PolicyNames.RequireServerTenantsWrite)]
+  [Authorize(Policy = PolicyNames.RequireServerTenantsDelete)]
   [ProducesResponseType(StatusCodes.Status204NoContent)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
   [ProducesResponseType(StatusCodes.Status500InternalServerError)]

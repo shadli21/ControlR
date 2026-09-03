@@ -197,6 +197,7 @@ public partial class Permissions_Phase2 : Migration
                   ('Server Administrator', '{PermissionNames.ServerPermissionsRead}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerPermissionsWrite}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerSettingsWrite}', '{PermissionScopeKind.Server}'),
+                  ('Server Administrator', '{PermissionNames.ServerTenantsDelete}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerTenantsRead}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerTenantsWrite}', '{PermissionScopeKind.Server}'),
                   ('Server Administrator', '{PermissionNames.ServerTelemetryRead}', '{PermissionScopeKind.Server}'),

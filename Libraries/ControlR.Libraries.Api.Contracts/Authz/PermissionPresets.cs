@@ -28,6 +28,7 @@ public static class PermissionPresets
       [
         PermissionNames.ServerAlertsRead,
         PermissionNames.ServerAuthorizationLogsRead,
+        PermissionNames.ServerTenantsDelete,
         PermissionNames.ServerTenantsRead,
         PermissionNames.ServerTenantsWrite,
         PermissionNames.ServerSettingsWrite,

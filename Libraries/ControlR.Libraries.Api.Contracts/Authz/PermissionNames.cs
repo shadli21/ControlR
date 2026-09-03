@@ -47,6 +47,7 @@ public static class PermissionNames
   public const string ServerServiceAccountsWrite = "server.service-accounts.write";
   public const string ServerSettingsWrite = "server.settings.write";
   public const string ServerTelemetryRead = "server.telemetry.read";
+  public const string ServerTenantsDelete = "server.tenants.delete";
   public const string ServerTenantsRead = "server.tenants.read";
   public const string ServerTenantsWrite = "server.tenants.write";
   public const string ServiceAccountRead = "service-account.read";
