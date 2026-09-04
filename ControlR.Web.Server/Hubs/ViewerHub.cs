@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Dtos.Devices;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos.PwshCommandCompletions;
@@ -181,9 +180,7 @@ public class ViewerHub(
         return HubResult.Fail<DeviceAccessPermissionsDto>("Device not found.");
       }
 
-      var principal = Context.User is null
-        ? null
-        : Context.User.ToPrincipalDescriptor();
+      var principal = Context.User?.ToPrincipalDescriptor();
       if (principal is null)
       {
         return HubResult.Fail<DeviceAccessPermissionsDto>("Unauthorized.");
@@ -999,9 +996,7 @@ public class ViewerHub(
 
   private bool CanUseDesktopSession(Guid deviceId, int systemSessionId)
   {
-    var principal = Context.User is null
-      ? null
-      : Context.User.ToPrincipalDescriptor();
+    var principal = Context.User?.ToPrincipalDescriptor();
     return principal is not null &&
       _desktopSessionAccessAuthorizer.CanUse(principal, deviceId, systemSessionId);
   }
@@ -1057,9 +1052,7 @@ public class ViewerHub(
       return;
     }
 
-    var principal = Context.User is null
-      ? null
-      : Context.User.ToPrincipalDescriptor();
+    var principal = Context.User?.ToPrincipalDescriptor();
     if (principal is null)
     {
       return;
