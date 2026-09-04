@@ -3496,7 +3496,7 @@
             "format": "int32"
           },
           "type": {
-            "$ref": "#/components/schemas/DesktopSessionType"
+            "$ref": "#/components/schemas/DesktopSessionTypeDto"
           },
           "username": {
             "type": "string"
@@ -3514,7 +3514,7 @@
           }
         }
       },
-      "DesktopSessionType": {
+      "DesktopSessionTypeDto": {
         "enum": [
           "Console",
           "Rdp"

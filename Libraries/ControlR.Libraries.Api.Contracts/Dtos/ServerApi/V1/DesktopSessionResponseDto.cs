@@ -8,7 +8,7 @@ public record DesktopSessionResponseDto(
   string Name,
   int ProcessId,
   int SystemSessionId,
-  DesktopSessionType Type,
+  DesktopSessionTypeDto Type,
   string Username)
 {
   public static DesktopSessionResponseDto From(DesktopSession session)
@@ -19,7 +19,7 @@ public record DesktopSessionResponseDto(
       session.Name,
       session.ProcessId,
       session.SystemSessionId,
-      session.Type,
+      (DesktopSessionTypeDto)session.Type,
       session.Username);
   }
 }
