@@ -150,9 +150,7 @@ public class ViewerHub(
       }
 
       var device = authResult.Value;
-      var principal = Context.User is null
-        ? null
-        : Context.User.ToPrincipalDescriptor();
+      var principal = Context.User?.ToPrincipalDescriptor();
       if (principal is null)
       {
         return [];
@@ -410,7 +408,16 @@ public class ViewerHub(
     }
   }
 
+  [Obsolete("Use RequestRemoteControlSession2. (deprecated 2026-09-03, v0.28.x)")]
   public async Task<HubResult> RequestRemoteControlSession(
+    Guid deviceId,
+    RemoteControlSessionRequestDto sessionRequestDto)
+  {
+    return await RequestRemoteControlSession2(
+      sessionRequestDto with { DeviceId = deviceId });
+  }
+
+  public async Task<HubResult> RequestRemoteControlSession2(
     RemoteControlSessionRequestDto sessionRequestDto)
   {
     try
@@ -474,7 +481,16 @@ public class ViewerHub(
     }
   }
 
-  public async Task<HubResult> RequestVncSession(VncSessionRequestDto sessionRequestDto)
+  [Obsolete("Use RequestVncSession2. (deprecated 2026-09-03, v0.28.x)")]
+  public async Task<HubResult> RequestVncSession(
+    Guid deviceId,
+    VncSessionRequestDto sessionRequestDto)
+  {
+    return await RequestVncSession2(
+      sessionRequestDto with { DeviceId = deviceId });
+  }
+
+  public async Task<HubResult> RequestVncSession2(VncSessionRequestDto sessionRequestDto)
   {
     try
     {
