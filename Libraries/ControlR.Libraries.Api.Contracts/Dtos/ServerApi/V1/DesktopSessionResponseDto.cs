@@ -19,7 +19,13 @@ public record DesktopSessionResponseDto(
       session.Name,
       session.ProcessId,
       session.SystemSessionId,
-      (DesktopSessionTypeDto)session.Type,
+      session.Type switch
+      {
+        DesktopSessionType.Console => DesktopSessionTypeDto.Console,
+        DesktopSessionType.Rdp => DesktopSessionTypeDto.Rdp,
+        var unknown => throw new InvalidDataException(
+          $"Unsupported {nameof(DesktopSessionType)} value: {unknown} ({(int)unknown})."),
+      },
       session.Username);
   }
 }
