@@ -55,9 +55,14 @@ public class TenantMoveAssignmentIsolationTests(ITestOutputHelper testOutput)
       var movedUser = await db.Users.IgnoreQueryFilters().FirstAsync(x => x.Id == user.Id, TestContext.Current.CancellationToken);
       Assert.Equal(tenantB.Id, movedUser.TenantId);
 
+      // Former-tenant rows must be gone. The destination-tenant self-service baseline is
+      // re-seeded on move (invited users keep managing their own PATs), so only rows owned
+      // by the former tenant are asserted away.
       var remainingAssignments = await db.PermissionAssignments
         .IgnoreQueryFilters()
-        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User && x.PrincipalId == user.Id)
+        .Where(x => x.PrincipalKind == PermissionPrincipalKind.User &&
+                    x.PrincipalId == user.Id &&
+                    x.OwningTenantId != tenantB.Id)
         .CountAsync(TestContext.Current.CancellationToken);
       Assert.Equal(0, remainingAssignments);
 

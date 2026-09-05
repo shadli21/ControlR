@@ -50,6 +50,8 @@ public static class PermissionPolicies
       [PolicyNames.RequireInstallerKeyWrite] = new(PermissionNames.InstallerKeyWrite, PermissionScopeKind.Tenant),
       [PolicyNames.RequirePermissionAssignmentsRead] = new(PermissionNames.TenantPermissionsRead, PermissionScopeKind.Tenant),
       [PolicyNames.RequirePermissionAssignmentsWrite] = new(PermissionNames.TenantPermissionsWrite, PermissionScopeKind.Tenant),
+      [PolicyNames.RequirePersonalAccessTokenSelfRead] = new(PermissionNames.PersonalAccessTokenSelfRead, PermissionScopeKind.Tenant),
+      [PolicyNames.RequirePersonalAccessTokenSelfWrite] = new(PermissionNames.PersonalAccessTokenSelfWrite, PermissionScopeKind.Tenant),
       [PolicyNames.RequirePersonalAccessTokensOthersRead] = new(PermissionNames.PersonalAccessTokenOthersRead, PermissionScopeKind.Tenant),
       [PolicyNames.RequirePersonalAccessTokensOthersWrite] = new(PermissionNames.PersonalAccessTokenOthersWrite, PermissionScopeKind.Tenant),
       [PolicyNames.RequireServerAuthorizationLogsRead] = new(PermissionNames.ServerAuthorizationLogsRead, PermissionScopeKind.Server),

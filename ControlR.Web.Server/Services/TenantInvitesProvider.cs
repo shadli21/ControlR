@@ -33,8 +33,10 @@ public class TenantInvitesProvider(
   UserManager<AppUser> userManager,
   IUserCreator userCreator,
   IAuthorizationChangeLogFactory changeLogFactory,
+  IPermissionAssignmentSeeder assignmentSeeder,
   ILogger<TenantInvitesProvider> logger) : ITenantInvitesProvider
 {
+  private readonly IPermissionAssignmentSeeder _assignmentSeeder = assignmentSeeder;
   private readonly IAuthorizationChangeLogFactory _changeLogFactory = changeLogFactory;
   private readonly IDbContextFactory<AppDb> _dbContextFactory = dbContextFactory;
   private readonly ILogger<TenantInvitesProvider> _logger = logger;
@@ -142,6 +144,11 @@ public class TenantInvitesProvider(
 
     appDb.TenantInvites.Remove(invite);
     await appDb.SaveChangesAsync();
+
+    // The move wiped every prior grant, including the self-service baseline the account was
+    // created with. Re-seed it against the destination tenant so an invited user can still
+    // manage their own personal access tokens, matching a directly-created user.
+    await _assignmentSeeder.SeedUserBaseline(invitee.Id, invite.TenantId);
 
     _logger.LogInformation(
       "User {UserId} moved to tenant {TenantId}: removed {AssignmentCount} assignment(s), {PatScopeCount} PAT scope row(s), and {MembershipCount} group membership(s).",

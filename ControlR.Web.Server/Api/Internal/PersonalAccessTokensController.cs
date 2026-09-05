@@ -11,6 +11,7 @@ public class PersonalAccessTokensController : ControllerBase
 {
 
   [HttpPost]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokenSelfWrite)]
   public async Task<ActionResult<InternalDtos.CreatePersonalAccessTokenResponseDto>> CreatePersonalAccessToken(
     [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
     [FromServices] UserManager<AppUser> userManager,
@@ -37,6 +38,7 @@ public class PersonalAccessTokensController : ControllerBase
   }
 
   [HttpDelete("{id}")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokenSelfWrite)]
   public async Task<ActionResult> DeletePersonalAccessToken(
     [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
     [FromServices] UserManager<AppUser> userManager,
@@ -58,6 +60,7 @@ public class PersonalAccessTokensController : ControllerBase
   }
 
   [HttpGet]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokenSelfRead)]
   public async Task<ActionResult<IEnumerable<InternalDtos.PersonalAccessTokenResponseDto>>> GetPersonalAccessTokens(
     [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
     [FromServices] UserManager<AppUser> userManager)
@@ -73,6 +76,7 @@ public class PersonalAccessTokensController : ControllerBase
   }
 
   [HttpPut("{id}")]
+  [Authorize(Policy = PolicyNames.RequirePersonalAccessTokenSelfWrite)]
   public async Task<ActionResult<InternalDtos.PersonalAccessTokenResponseDto>> UpdatePersonalAccessToken(
     [FromServices] IPersonalAccessTokenManager personalAccessTokenManager,
     [FromServices] UserManager<AppUser> userManager,

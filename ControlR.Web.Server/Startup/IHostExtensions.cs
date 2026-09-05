@@ -93,7 +93,8 @@ public static class HostExtensions
 
     logger.LogInformation("Bootstrap admin user created: {Email}.", options.AdminEmail);
 
-    await sp.GetRequiredService<IPermissionAssignmentSeeder>().SeedAssignments(
+    var seeder = sp.GetRequiredService<IPermissionAssignmentSeeder>();
+    await seeder.SeedAssignments(
       user.Id,
       user.TenantId,
       [
@@ -103,6 +104,7 @@ public static class HostExtensions
         PermissionPresets.AgentInstaller,
         PermissionPresets.InstallerKeyManager,
       ]);
+    await seeder.SeedUserBaseline(user.Id, user.TenantId);
 
     var claimResult = await userManager.AddClaimsAsync(user, [
       new Claim(UserClaimTypes.UserId, $"{user.Id}"),

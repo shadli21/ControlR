@@ -54,6 +54,18 @@ public class PersonalAccessTokenManager(
         return Result.Fail<InternalDtos.CreatePersonalAccessTokenResponseDto>("PermissionMode is not a valid value.");
       }
 
+      // Credential laundering guard: an InheritOwner token evaluates as the owner's full
+      // effective permissions, so it may only be minted by a full-identity session (cookie,
+      // bearer, or service-account credential). A credential-scoped principal (PAT or logon
+      // token) may mint only Restricted tokens, whose scopes are validated against the owner.
+      // Without this, a scoped PAT could launder itself into an unscoped one.
+      if (request.PermissionMode == PersonalAccessTokenPermissionMode.InheritOwner &&
+          actor.IsCredentialScoped)
+      {
+        return Result.Fail<InternalDtos.CreatePersonalAccessTokenResponseDto>(
+          "InheritOwner tokens may only be created by a full-identity session. Use the Restricted mode with explicit scopes.");
+      }
+
       var scopes = request.Scopes;
       var hasScopes = scopes is { Count: > 0 };
 

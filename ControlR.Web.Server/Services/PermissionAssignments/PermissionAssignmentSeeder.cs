@@ -15,6 +15,16 @@ public interface IPermissionAssignmentSeeder
     Guid tenantId,
     IEnumerable<string> presetNames,
     CancellationToken cancellationToken = default);
+
+  /// <summary>
+  /// Seeds the default permission baseline every interactive (non-external) user receives.
+  /// Single source of truth for the baseline: call sites must not inline the preset list,
+  /// so growing the baseline is a one-line change here plus the migration-parity test.
+  /// </summary>
+  Task SeedUserBaseline(
+    Guid userId,
+    Guid tenantId,
+    CancellationToken cancellationToken = default);
 }
 
 public class PermissionAssignmentSeeder(
@@ -95,6 +105,15 @@ public class PermissionAssignmentSeeder(
 
     await _appDb.SaveChangesAsync(cancellationToken);
   }
+
+  /// <summary>
+  /// Seeds the default permission baseline every interactive (non-external) user receives.
+  /// </summary>
+  public Task SeedUserBaseline(
+    Guid userId,
+    Guid tenantId,
+    CancellationToken cancellationToken = default) =>
+    SeedAssignments(userId, tenantId, [PermissionPresets.SelfService], cancellationToken);
 
   private readonly record struct AssignmentKey(
     string PermissionName,

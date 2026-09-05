@@ -1,4 +1,5 @@
 ﻿@attribute [Route(ClientRoutes.PersonalAccessTokens)]
+@attribute [Authorize(Policy = PolicyNames.RequirePersonalAccessTokenSelfRead)]
 
 <div>
   <PageTitle>Personal Access Tokens</PageTitle>
