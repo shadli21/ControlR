@@ -212,7 +212,7 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
   [Fact]
   public async Task CreateToken_RestrictedByCredentialScopedActor_Succeeds()
   {
-    // A scoped credential may still mint Restricted tokens; their scopes are validated
+    // A scoped credential may still mint Restricted tokens. Their scopes are validated
     // against the owner, so no privilege beyond the owner's grants is possible.
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
     var tenant = await testApp.App.Services.CreateTestTenant();

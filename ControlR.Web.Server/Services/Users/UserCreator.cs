@@ -297,9 +297,8 @@ public interface IUserCreator
           cancellationToken);
       }
 
-      // Every interactive user gets the self-service baseline (manage own PATs), matching the
-      // pre-permissions behavior where the self-PAT endpoints were open to any authenticated
-      // user. Seeded for all UserCreator paths; the seeder dedupes against preset grants.
+      // Every interactive user gets the self-service baseline (manage own PATs). Seeded for
+      // all UserCreator paths. The seeder dedupes against preset grants.
       await _assignmentSeeder.SeedUserBaseline(user.Id, user.TenantId, cancellationToken);
 
       if (externalLoginInfo is not null)

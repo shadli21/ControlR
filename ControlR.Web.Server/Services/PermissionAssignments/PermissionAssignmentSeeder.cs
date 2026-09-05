@@ -18,8 +18,8 @@ public interface IPermissionAssignmentSeeder
 
   /// <summary>
   /// Seeds the default permission baseline every interactive (non-external) user receives.
-  /// Single source of truth for the baseline: call sites must not inline the preset list,
-  /// so growing the baseline is a one-line change here plus the migration-parity test.
+  /// Call sites must not inline the preset list. Growing the baseline is a change here plus
+  /// the unreleased-migration parity update in RoleBackfillMigrationTests.
   /// </summary>
   Task SeedUserBaseline(
     Guid userId,

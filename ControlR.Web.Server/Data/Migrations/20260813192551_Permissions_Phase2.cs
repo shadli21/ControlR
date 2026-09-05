@@ -273,12 +273,10 @@ public partial class Permissions_Phase2 : Migration
               """;
     migrationBuilder.Sql(backfillSql);
 
-    // Backfill: grant every regular user the self-service PAT permissions. Before the
-    // permission system, the self-PAT endpoints were available to any authenticated user;
-    // preserving that released behavior requires every non-external user to hold the
-    // tenant-scoped self read/write grants. External (guest) users are excluded because they
-    // are synthetic single-device identities, not interactive accounts. NOT EXISTS collapses
-    // duplicates with the role backfill above (e.g. Tenant Administrator members).
+      // Backfill: grant every non-external user the self-service PAT baseline. Pre-permission
+      // releases let any authenticated user manage their own tokens, and this preserves that.
+      // External (guest) users are synthetic single-device identities, not interactive accounts.
+      // NOT EXISTS collapses duplicates with the role backfill above (e.g. Tenant Administrator).
     var selfServiceBackfillSql = $"""
               INSERT INTO "PermissionAssignments"
                 ("{nameof(PermissionAssignment.PrincipalKind)}", "{nameof(PermissionAssignment.PrincipalId)}", "{nameof(PermissionAssignment.PermissionName)}", "{nameof(PermissionAssignment.Effect)}", "{nameof(PermissionAssignment.ScopeKind)}", "{nameof(PermissionAssignment.ScopeId)}", "{nameof(PermissionAssignment.IsEnabled)}", "{nameof(PermissionAssignment.OwningTenantId)}", "{nameof(PermissionAssignment.CreatedByPrincipalType)}", "{nameof(PermissionAssignment.CreatedByPrincipalId)}")

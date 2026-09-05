@@ -173,7 +173,8 @@ public class TenantInvitesProvider(
       return HttpResult.Fail<InternalDtos.TenantInviteResponseDto>(HttpResultErrorCode.Conflict, "Invitee already has a pending invite.");
     }
 
-#pragma warning disable CA1862 // Use the 'StringComparison' method overloads to perform case-insensitive string comparisons
+#pragma warning disable CA1862 // Use the 'StringComparison' method overloads to perform case-insensitive string comparisons. 
+    // Reason: StringComparison is not available in EF Core LINQ-to-Entities queries.
     if (await appDb.Users.AnyAsync(x => x.Email!.ToLower() == normalizedEmail, cancellationToken: cancellationToken))
     {
       return HttpResult.Fail<InternalDtos.TenantInviteResponseDto>(HttpResultErrorCode.Conflict, "User already exists in the database.");

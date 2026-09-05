@@ -309,8 +309,8 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
     };
     Assert.True((await userManager.CreateAsync(externalUser, "T3stP@ssw0rd!")).Succeeded);
 
-    // The admin user already receives both self permissions from the Tenant Administrator
-    // role backfill; the NOT EXISTS guard must not duplicate them.
+    // The admin user already receives the self permissions from the Tenant Administrator
+    // role backfill. The NOT EXISTS guard must not duplicate them.
     await db.Database.ExecuteSqlRawAsync(
       """
       INSERT INTO "AspNetUserRoles" ("UserId", "RoleId")

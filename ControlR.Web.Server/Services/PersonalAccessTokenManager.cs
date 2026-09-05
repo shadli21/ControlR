@@ -58,7 +58,6 @@ public class PersonalAccessTokenManager(
       // effective permissions, so it may only be minted by a full-identity session (cookie,
       // bearer, or service-account credential). A credential-scoped principal (PAT or logon
       // token) may mint only Restricted tokens, whose scopes are validated against the owner.
-      // Without this, a scoped PAT could launder itself into an unscoped one.
       if (request.PermissionMode == PersonalAccessTokenPermissionMode.InheritOwner &&
           actor.IsCredentialScoped)
       {

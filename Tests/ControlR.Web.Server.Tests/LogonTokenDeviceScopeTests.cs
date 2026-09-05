@@ -17,7 +17,7 @@ public class LogonTokenDeviceScopeTests(ITestOutputHelper testOutput)
   {
     // The logon token's application cookie must not reach the self-PAT endpoints. The token's
     // grants are device-scoped, so the tenant-scoped self PAT permissions can never be held
-    // through it; without that boundary a scoped device session could mint an InheritOwner
+    // through it. Without that boundary a scoped device session could mint an InheritOwner
     // PAT and inherit the owner's full effective permissions.
     using var testApp = await TestWebServerBuilder.CreateTestServer(_testOutput);
     using var httpClient = testApp.Factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
