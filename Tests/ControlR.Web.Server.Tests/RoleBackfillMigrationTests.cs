@@ -1,5 +1,6 @@
 using ControlR.Web.Server.Data;
 using ControlR.Web.Server.Data.Entities;
+using ControlR.Web.Server.Data.Enums;
 using ControlR.Web.Server.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -243,12 +244,110 @@ public class RoleBackfillMigrationTests(ITestOutputHelper output)
       .Select(x => x.PermissionName)
       .ToListAsync(TestContext.Current.CancellationToken);
 
+    // The role backfill plus the all-users self-service PAT baseline (released behavior:
+    // any authenticated user could manage their own tokens). Expected set is derived from
+    // the live preset so that growing SelfService fails this test until the migration's
+    // hard-coded SQL is updated in step. Retire this coupling once Permissions_Phase2 ships.
     Assert.Equal(
-      [
-        PermissionNames.AgentInstall,
-        PermissionNames.InstallerKeyRead,
-        PermissionNames.InstallerKeyWrite
-      ],
+      PermissionPresets
+        .GetPermissions(PermissionPresets.AgentInstaller)
+        .Concat(PermissionPresets.GetPermissions(PermissionPresets.SelfService))
+        .Order()
+        .ToArray(),
       agentInstallerPermissions.Order());
+  }
+
+  /// <summary>
+  /// The self-service baseline backfill grants every non-external user the tenant-scoped
+  /// self permissions (pre-permissions, the self-PAT endpoints were open to any authenticated
+  /// user), skips external/guest accounts, and does not duplicate rows for users whose role
+  /// backfill already granted them. Expected permissions are derived from the live
+  /// <see cref="PermissionPresets.SelfService"/> preset so the unreleased migration's SQL and
+  /// the preset cannot silently drift apart.
+  /// </summary>
+  [Fact]
+  public async Task RemoveRoles_BackfillsSelfServicePatPermissions_ForAllNonExternalUsers()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(
+      output,
+      useInMemoryDatabase: false,
+      applyMigrations: false);
+
+    using var scope = testApp.CreateScope();
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var migrator = db.GetInfrastructure().GetRequiredService<IMigrator>();
+
+    await migrator.MigrateAsync(PreRemoveRolesMigration, TestContext.Current.CancellationToken);
+
+    var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Self Service Tenant" };
+    db.Tenants.Add(tenant);
+    await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+    var plainUser = new AppUser
+    {
+      TenantId = tenant.Id,
+      UserName = "plain@test.local",
+      Email = "plain@test.local"
+    };
+    Assert.True((await userManager.CreateAsync(plainUser, "T3stP@ssw0rd!")).Succeeded);
+
+    var adminUser = new AppUser
+    {
+      TenantId = tenant.Id,
+      UserName = "admin@test.local",
+      Email = "admin@test.local"
+    };
+    Assert.True((await userManager.CreateAsync(adminUser, "T3stP@ssw0rd!")).Succeeded);
+
+    var externalUser = new AppUser
+    {
+      TenantId = tenant.Id,
+      UserName = "ext-guest",
+      Email = "ext-guest@controlr.local",
+      AccountType = AccountType.ExternalUser
+    };
+    Assert.True((await userManager.CreateAsync(externalUser, "T3stP@ssw0rd!")).Succeeded);
+
+    // The admin user already receives both self permissions from the Tenant Administrator
+    // role backfill; the NOT EXISTS guard must not duplicate them.
+    await db.Database.ExecuteSqlRawAsync(
+      """
+      INSERT INTO "AspNetUserRoles" ("UserId", "RoleId")
+      SELECT {0}, "Id" FROM "AspNetRoles" WHERE "Name" = 'Tenant Administrator';
+      """, adminUser.Id);
+
+    await migrator.MigrateAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+    using var verifyScope = testApp.CreateScope();
+    await using var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDb>();
+
+    var selfPermissions = PermissionPresets
+      .GetPermissions(PermissionPresets.SelfService)
+      .ToArray();
+
+    var plainRows = await verifyDb.PermissionAssignments
+      .Where(x => x.PrincipalId == plainUser.Id && selfPermissions.Contains(x.PermissionName))
+      .ToListAsync(TestContext.Current.CancellationToken);
+    Assert.Equal(selfPermissions.Length, plainRows.Count);
+    foreach (var row in plainRows)
+    {
+      Assert.Equal(PermissionPrincipalKind.User, row.PrincipalKind);
+      Assert.Equal(PermissionEffect.Allow, row.Effect);
+      Assert.Equal(PermissionScopeKind.Tenant, row.ScopeKind);
+      Assert.Equal(tenant.Id, row.ScopeId);
+      Assert.Equal(tenant.Id, row.OwningTenantId);
+      Assert.True(row.IsEnabled);
+    }
+
+    var adminRows = await verifyDb.PermissionAssignments
+      .Where(x => x.PrincipalId == adminUser.Id && selfPermissions.Contains(x.PermissionName))
+      .ToListAsync(TestContext.Current.CancellationToken);
+    Assert.Equal(selfPermissions.Length, adminRows.Count);
+
+    var externalRows = await verifyDb.PermissionAssignments
+      .Where(x => x.PrincipalId == externalUser.Id)
+      .CountAsync(TestContext.Current.CancellationToken);
+    Assert.Equal(0, externalRows);
   }
 }

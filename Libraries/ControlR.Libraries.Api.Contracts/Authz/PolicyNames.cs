@@ -16,6 +16,8 @@ public static class PolicyNames
   public const string RequireInstallerKeyWrite = "RequireInstallerKeyWrite";
   public const string RequirePermissionAssignmentsRead = "RequirePermissionAssignmentsRead";
   public const string RequirePermissionAssignmentsWrite = "RequirePermissionAssignmentsWrite";
+  public const string RequirePersonalAccessTokenSelfRead = "RequirePersonalAccessTokenSelfRead";
+  public const string RequirePersonalAccessTokenSelfWrite = "RequirePersonalAccessTokenSelfWrite";
   public const string RequirePersonalAccessTokensOthersRead = "RequirePersonalAccessTokensOthersRead";
   public const string RequirePersonalAccessTokensOthersWrite = "RequirePersonalAccessTokensOthersWrite";
   public const string RequireServerAuthorizationLogsRead = "RequireServerAuthorizationLogsRead";

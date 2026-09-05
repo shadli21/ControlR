@@ -144,6 +144,42 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
   }
 
   [Fact]
+  public async Task CreateToken_InheritOwnerByCredentialScopedActor_FailsAndCreatesNothing()
+  {
+    // Credential laundering guard: an InheritOwner token evaluates as the owner's full
+    // effective permissions, so a credential-scoped actor (PAT or logon token) must not be
+    // able to mint one. Only full-identity sessions may.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(
+      tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local", PermissionPresets.DeviceSuperUser);
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var patActor = new PrincipalDescriptor(
+      PrincipalType.User,
+      user.Id,
+      user.TenantId,
+      "test",
+      CredentialId: Guid.NewGuid(),
+      CredentialType: CredentialType.PersonalAccessToken);
+
+    var result = await manager.CreateToken(
+      new InternalDtos.CreatePersonalAccessTokenRequestDto("Laundered PAT", PersonalAccessTokenPermissionMode.InheritOwner),
+      user.Id,
+      patActor);
+
+    Assert.False(result.IsSuccess);
+
+    await using var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+    var tokenCount = await db.PersonalAccessTokens
+      .IgnoreQueryFilters()
+      .CountAsync(x => x.UserId == user.Id, TestContext.Current.CancellationToken);
+    Assert.Equal(0, tokenCount);
+  }
+
+  [Fact]
   public async Task CreateToken_InheritOwnerWithScopes_FailsAndCreatesNothing()
   {
     await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
@@ -171,6 +207,39 @@ public class PersonalAccessTokenScopeTests(ITestOutputHelper testOutput)
       .IgnoreQueryFilters()
       .CountAsync(x => x.UserId == user.Id, TestContext.Current.CancellationToken);
     Assert.Equal(0, tokenCount);
+  }
+
+  [Fact]
+  public async Task CreateToken_RestrictedByCredentialScopedActor_Succeeds()
+  {
+    // A scoped credential may still mint Restricted tokens; their scopes are validated
+    // against the owner, so no privilege beyond the owner's grants is possible.
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.App.Services.CreateTestTenant();
+    var user = await testApp.App.Services.CreateTestUser(
+      tenant.Id, $"pat-owner-{Guid.NewGuid():N}@t.local", PermissionPresets.DeviceSuperUser);
+    var device = await testApp.App.Services.CreateTestDevice(tenant.Id);
+
+    using var scope = testApp.CreateScope();
+    var manager = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenManager>();
+
+    var patActor = new PrincipalDescriptor(
+      PrincipalType.User,
+      user.Id,
+      user.TenantId,
+      "test",
+      CredentialId: Guid.NewGuid(),
+      CredentialType: CredentialType.PersonalAccessToken);
+
+    var result = await manager.CreateToken(
+      new InternalDtos.CreatePersonalAccessTokenRequestDto(
+        "Scoped-from-scoped PAT",
+        PersonalAccessTokenPermissionMode.Restricted,
+        Scopes: [new InternalDtos.CredentialScopeDto(PermissionNames.DeviceRead, PermissionScopeKind.Device, device.Id)]),
+      user.Id,
+      patActor);
+
+    Assert.True(result.IsSuccess, $"Expected Restricted PAT creation to succeed: {result.Reason}");
   }
 
   [Fact]

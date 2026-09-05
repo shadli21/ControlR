@@ -73,7 +73,7 @@ public class UserCreatorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task CreateUser_ExistingTenant_DoesNotAssignDefaultPresets()
+    public async Task CreateUser_ExistingTenant_DoesNotAssignAdminPresets()
     {
         await using var testApp = await TestAppBuilder.CreateTestApp(output);
         using var scope = testApp.CreateScope();
@@ -90,9 +90,18 @@ public class UserCreatorTests(ITestOutputHelper output)
         var result = await userCreator.CreateUser("user@example.com", "Password123!", tenant.Id);
 
         Assert.True(result.Succeeded);
-        var assignmentCount = await appDb.PermissionAssignments
-          .CountAsync(x => x.PrincipalId == result.User!.Id, TestContext.Current.CancellationToken);
-        Assert.Equal(0, assignmentCount);
+        var permissions = await appDb.PermissionAssignments
+          .Where(x => x.PrincipalId == result.User!.Id)
+          .Select(x => x.PermissionName)
+          .ToListAsync(TestContext.Current.CancellationToken);
+
+        // A user in an existing tenant gets only the self-service baseline (manage own PATs),
+        // which preserves the pre-permissions behavior. No admin/device presets are seeded.
+        var expectedSelfService = PermissionPresets
+          .GetPermissions(PermissionPresets.SelfService)
+          .Order()
+          .ToArray();
+        Assert.Equal(expectedSelfService, permissions.Order().ToArray());
     }
 
     [Fact]
