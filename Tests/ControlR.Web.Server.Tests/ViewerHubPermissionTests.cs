@@ -48,12 +48,43 @@ public class ViewerHubPermissionTests(ITestOutputHelper testOutput)
       .Setup(client => client.CreateRemoteControlSession(It.IsAny<RemoteControlSessionRequestDto>()))
       .ReturnsAsync(HubResult.Ok());
 
-    var result = await hub.RequestRemoteControlSession(request);
+    var result = await hub.RequestRemoteControlSession2(request);
 
     Assert.True(result.IsSuccess);
     agentClient.Verify(client => client.CreateRemoteControlSession(
       It.Is<RemoteControlSessionRequestDto>(forwarded =>
         forwarded.DeviceId == request.DeviceId &&
+        forwarded.ViewerConnectionId == hub.Context.ConnectionId)), Times.Once);
+  }
+
+  [Fact]
+  public async Task RequestRemoteControlSession_CompatibilityOverload_ForwardsDtoDeviceIdentity()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.Services.CreateTestTenant();
+    var user = await testApp.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.Services.CreateTestDevice(tenant.Id);
+    await SeedAssignment(testApp, user.Id, device.Id, tenant.Id, PermissionNames.DeviceRemoteControlConnect);
+    var request = new RemoteControlSessionRequestDto(
+      Guid.NewGuid(),
+      new Uri("wss://localhost/remote-control"),
+      1,
+      100,
+      Guid.Empty,
+      false,
+      false);
+
+    var (hub, agentClient) = CreateHub(testApp, user, tenant.Id);
+    agentClient
+      .Setup(client => client.CreateRemoteControlSession(It.IsAny<RemoteControlSessionRequestDto>()))
+      .ReturnsAsync(HubResult.Ok());
+
+    var result = await hub.RequestRemoteControlSession(device.Id, request);
+
+    Assert.True(result.IsSuccess);
+    agentClient.Verify(client => client.CreateRemoteControlSession(
+      It.Is<RemoteControlSessionRequestDto>(forwarded =>
+        forwarded.DeviceId == device.Id &&
         forwarded.ViewerConnectionId == hub.Context.ConnectionId)), Times.Once);
   }
 
@@ -77,7 +108,7 @@ public class ViewerHubPermissionTests(ITestOutputHelper testOutput)
 
     var (hub, agentClient) = CreateHub(testApp, user, tenant.Id);
 
-    var result = await hub.RequestRemoteControlSession(request);
+    var result = await hub.RequestRemoteControlSession2(request);
 
     Assert.False(result.IsSuccess);
     agentClient.Verify(
@@ -106,12 +137,42 @@ public class ViewerHubPermissionTests(ITestOutputHelper testOutput)
       .Setup(client => client.CreateVncSession(It.IsAny<VncSessionRequestDto>()))
       .ReturnsAsync(HubResult.Ok());
 
-    var result = await hub.RequestVncSession(request);
+    var result = await hub.RequestVncSession2(request);
 
     Assert.True(result.IsSuccess);
     agentClient.Verify(client => client.CreateVncSession(
       It.Is<VncSessionRequestDto>(forwarded =>
         forwarded.DeviceId == request.DeviceId &&
+        forwarded.ViewerConnectionId == hub.Context.ConnectionId)), Times.Once);
+  }
+
+  [Fact]
+  public async Task RequestVncSession_CompatibilityOverload_ForwardsDtoDeviceIdentity()
+  {
+    await using var testApp = await TestAppBuilder.CreateTestApp(_testOutput);
+    var tenant = await testApp.Services.CreateTestTenant();
+    var user = await testApp.Services.CreateTestUser(tenant.Id);
+    var device = await testApp.Services.CreateTestDevice(tenant.Id);
+    await SeedAssignment(testApp, user.Id, device.Id, tenant.Id, PermissionNames.DeviceVncRelayConnect);
+    var request = new VncSessionRequestDto(
+      Guid.NewGuid(),
+      new Uri("wss://localhost/vnc"),
+      string.Empty,
+      Guid.Empty,
+      false,
+      5900);
+
+    var (hub, agentClient) = CreateHub(testApp, user, tenant.Id);
+    agentClient
+      .Setup(client => client.CreateVncSession(It.IsAny<VncSessionRequestDto>()))
+      .ReturnsAsync(HubResult.Ok());
+
+    var result = await hub.RequestVncSession(device.Id, request);
+
+    Assert.True(result.IsSuccess);
+    agentClient.Verify(client => client.CreateVncSession(
+      It.Is<VncSessionRequestDto>(forwarded =>
+        forwarded.DeviceId == device.Id &&
         forwarded.ViewerConnectionId == hub.Context.ConnectionId)), Times.Once);
   }
 

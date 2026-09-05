@@ -194,7 +194,7 @@ public class ServiceAccountEndToEndTests(ITestOutputHelper testOutput)
 
   private static void AssertConsoleSession(IReadOnlyList<V1Dtos.DesktopSessionResponseDto> sessions)
   {
-    var consoleSession = sessions.First(x => x.Type == DesktopSessionType.Console);
+    var consoleSession = sessions.First(x => x.Type == V1Dtos.DesktopSessionTypeDto.Console);
     Assert.Equal("Console", consoleSession.Name);
     Assert.Equal("Default", consoleSession.DesktopName);
     Assert.Equal(1, consoleSession.SystemSessionId);
@@ -205,7 +205,7 @@ public class ServiceAccountEndToEndTests(ITestOutputHelper testOutput)
 
   private static void AssertRdpSession(IReadOnlyList<V1Dtos.DesktopSessionResponseDto> sessions)
   {
-    var rdpSession = sessions.First(x => x.Type == DesktopSessionType.Rdp);
+    var rdpSession = sessions.First(x => x.Type == V1Dtos.DesktopSessionTypeDto.Rdp);
     Assert.Equal("RDP-Tcp#0", rdpSession.Name);
     Assert.Equal("Default", rdpSession.DesktopName);
     Assert.Equal(2, rdpSession.SystemSessionId);

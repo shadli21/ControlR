@@ -97,7 +97,7 @@ public partial class VncRelay
           notifyUserPreference.Value,
           _port);
 
-      var sessionResult = await ViewerHub.Server.RequestVncSession(requestDto);
+      var sessionResult = await ViewerHub.Server.RequestVncSession2(requestDto);
 
       if (!sessionResult.IsSuccess)
       {

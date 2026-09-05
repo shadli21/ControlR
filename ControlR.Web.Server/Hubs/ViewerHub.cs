@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using ControlR.Libraries.Api.Contracts.Constants;
 using ControlR.Libraries.Api.Contracts.Dtos.Devices;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos;
 using ControlR.Libraries.Api.Contracts.Dtos.HubDtos.PwshCommandCompletions;
@@ -150,9 +149,7 @@ public class ViewerHub(
       }
 
       var device = authResult.Value;
-      var principal = Context.User is null
-        ? null
-        : Context.User.ToPrincipalDescriptor();
+      var principal = Context.User?.ToPrincipalDescriptor();
       if (principal is null)
       {
         return [];
@@ -183,9 +180,7 @@ public class ViewerHub(
         return HubResult.Fail<DeviceAccessPermissionsDto>("Device not found.");
       }
 
-      var principal = Context.User is null
-        ? null
-        : Context.User.ToPrincipalDescriptor();
+      var principal = Context.User?.ToPrincipalDescriptor();
       if (principal is null)
       {
         return HubResult.Fail<DeviceAccessPermissionsDto>("Unauthorized.");
@@ -410,7 +405,16 @@ public class ViewerHub(
     }
   }
 
+  [Obsolete("Use RequestRemoteControlSession2. (deprecated 2026-09-03, v0.28.x)")]
   public async Task<HubResult> RequestRemoteControlSession(
+    Guid deviceId,
+    RemoteControlSessionRequestDto sessionRequestDto)
+  {
+    return await RequestRemoteControlSession2(
+      sessionRequestDto with { DeviceId = deviceId });
+  }
+
+  public async Task<HubResult> RequestRemoteControlSession2(
     RemoteControlSessionRequestDto sessionRequestDto)
   {
     try
@@ -474,7 +478,16 @@ public class ViewerHub(
     }
   }
 
-  public async Task<HubResult> RequestVncSession(VncSessionRequestDto sessionRequestDto)
+  [Obsolete("Use RequestVncSession2. (deprecated 2026-09-03, v0.28.x)")]
+  public async Task<HubResult> RequestVncSession(
+    Guid deviceId,
+    VncSessionRequestDto sessionRequestDto)
+  {
+    return await RequestVncSession2(
+      sessionRequestDto with { DeviceId = deviceId });
+  }
+
+  public async Task<HubResult> RequestVncSession2(VncSessionRequestDto sessionRequestDto)
   {
     try
     {
@@ -983,9 +996,7 @@ public class ViewerHub(
 
   private bool CanUseDesktopSession(Guid deviceId, int systemSessionId)
   {
-    var principal = Context.User is null
-      ? null
-      : Context.User.ToPrincipalDescriptor();
+    var principal = Context.User?.ToPrincipalDescriptor();
     return principal is not null &&
       _desktopSessionAccessAuthorizer.CanUse(principal, deviceId, systemSessionId);
   }
@@ -1041,9 +1052,7 @@ public class ViewerHub(
       return;
     }
 
-    var principal = Context.User is null
-      ? null
-      : Context.User.ToPrincipalDescriptor();
+    var principal = Context.User?.ToPrincipalDescriptor();
     if (principal is null)
     {
       return;
